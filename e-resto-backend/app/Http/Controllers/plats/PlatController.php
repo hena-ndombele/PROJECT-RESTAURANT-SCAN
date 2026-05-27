@@ -1,0 +1,291 @@
+<?php
+
+namespace App\Http\Controllers\plats;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Plat;
+use App\Models\Category;
+use Illuminate\Support\Facades\Storage;
+
+class PlatController extends Controller
+{
+
+    /**
+     * @OA\Get(
+     * path="/api/plats/get_plats",
+     * summary="Lister les plats",
+     * tags={"Plats"},
+     * @OA\Response(
+     * response=200,
+     * description="Liste des plats"
+     * )
+     * )
+     */
+    public function index()
+    {
+        $plats = Plat::with('category')->paginate(10);
+        return response()->json($plats);
+    }
+
+
+    /**
+     * @OA\Post(
+     * path="/api/plats/create-plats",
+     * summary="Créer un plat",
+     * tags={"Plats"},
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * required={"name","price","category_id"},
+     * @OA\Property(property="name", type="string", example="Pizza"),
+     * @OA\Property(property="description", type="string", example="Pizza fromage"),
+     * @OA\Property(property="price", type="number", example=12.5),
+     * @OA\Property(property="category_id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
+     * @OA\Property(
+     * property="image",
+     * type="string",
+     * format="binary",
+     * description="Image du plat"
+     * )
+     * )
+     * )
+     * ),
+     * @OA\Response(
+     * response=201,
+     * description="Plat créé avec succès"
+     * )
+     * )
+     */
+public function store(Request $request)
+{
+    $validatedData = $request->validate([
+        'name' => 'required|string',
+        'description' => 'required|string',
+        'price' => 'required|numeric',
+        'currency' => 'required|string|in:USD,CDF',
+        'category_id' => 'required|exists:categories,id',
+        'preparation_time' => 'nullable|integer', // Temps en minutes
+        'is_available' => 'nullable|boolean',     // Disponibilité
+        'ingredients' => 'nullable|array',         // Tableau d'ingrédients
+        'image_principale' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
+
+    // Extraction des données textuelles et numériques
+    $data = $request->only([
+        'name', 
+        'description', 
+        'price', 
+        'currency', 
+        'category_id', 
+        'preparation_time'
+    ]);
+
+    // Gestion de la disponibilité (Force le boolean si envoyé via FormData)
+    $data['is_available'] = $request->boolean('is_available', true);
+
+    // Stockage des ingrédients en JSON
+    if ($request->has('ingredients')) {
+        $data['ingredients'] = $request->input('ingredients');
+    }
+
+    // Stockage des images
+    if ($request->hasFile('image_principale')) {
+        $data['image'] = $request->file('image_principale')->store('plats', 'public');
+    }
+    if ($request->hasFile('image_secondaire_1')) {
+        $data['image_secondaire_1'] = $request->file('image_secondaire_1')->store('plats', 'public');
+    }
+    if ($request->hasFile('image_secondaire_2')) {
+        $data['image_secondaire_2'] = $request->file('image_secondaire_2')->store('plats', 'public');
+    }
+
+    $plat = Plat::create($data);
+
+    return response()->json([
+        'message' => 'Plat créé avec succès', 
+        'data' => $plat->load('category')
+    ], 201);
+}
+
+
+    /**
+     * @OA\Get(
+     * path="/api/plats/{id}",
+     * summary="Afficher un plat",
+     * tags={"Plats"},
+     * @OA\Parameter(
+     * name="id",
+     * in="path",
+     * required=true,
+     * description="UUID du plat",
+     * @OA\Schema(type="string", format="uuid")
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="Plat trouvé"
+     * )
+     * )
+     */
+    public function show($id)
+    {
+        $plat = Plat::with('category')->findOrFail($id);
+        return response()->json($plat);
+    }
+
+
+    /**
+     * @OA\Post(
+     * path="/api/plats/{id}",
+     * summary="Mettre à jour un plat",
+     * tags={"Plats"},
+     * @OA\Parameter(
+     * name="id",
+     * in="path",
+     * required=true,
+     * description="UUID du plat",
+     * @OA\Schema(type="string", format="uuid")
+     * ),
+     * @OA\RequestBody(
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * @OA\Property(property="name", type="string", example="Burger"),
+     * @OA\Property(property="description", type="string", example="Burger viande"),
+     * @OA\Property(property="price", type="number", example=15),
+     * @OA\Property(property="category_id", type="string", format="uuid"),
+     * @OA\Property(
+     * property="image",
+     * type="string",
+     * format="binary"
+     * )
+     * )
+     * )
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="Plat mis à jour"
+     * )
+     * )
+     */
+public function update(Request $request, $id)
+{
+    $plat = Plat::findOrFail($id);
+
+    $validatedData = $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'description' => 'sometimes|string',
+        'price' => 'sometimes|numeric|min:0',
+        'currency' => 'sometimes|string|in:USD,CDF',
+        'category_id' => 'sometimes|exists:categories,id',
+        'preparation_time' => 'nullable|integer',
+        'is_available' => 'nullable|boolean',
+        'ingredients' => 'nullable|array',
+        'image_principale' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
+
+    // On récupère les données validées
+    $data = $validatedData;
+
+    // Gestion de la disponibilité si présente dans la requête
+    if ($request->has('is_available')) {
+        $data['is_available'] = $request->boolean('is_available');
+    }
+
+    // Mapping des inputs vers les colonnes de la DB
+    $imageFields = [
+        'image_principale' => 'image', 
+        'image_secondaire_1' => 'image_secondaire_1', 
+        'image_secondaire_2' => 'image_secondaire_2'
+    ];
+
+    foreach ($imageFields as $inputName => $dbColumn) {
+        if ($request->hasFile($inputName)) {
+            // 1. Supprimer l'ancienne image si elle existe
+            if ($plat->$dbColumn && Storage::disk('public')->exists($plat->$dbColumn)) {
+                Storage::disk('public')->delete($plat->$dbColumn);
+            }
+            // 2. Stocker la nouvelle image
+            $data[$dbColumn] = $request->file($inputName)->store('plats', 'public');
+        }
+    }
+
+    // Mise à jour globale
+    $plat->update($data);
+
+    return response()->json([
+        'message' => 'Plat mis à jour avec succès',
+        'data' => $plat->load('category')
+    ]);
+}
+
+
+    /**
+     * @OA\Delete(
+     * path="/api/plats/{id}",
+     * summary="Supprimer un plat",
+     * tags={"Plats"},
+     * @OA\Parameter(
+     * name="id",
+     * in="path",
+     * required=true,
+     * description="UUID du plat",
+     * @OA\Schema(type="string", format="uuid")
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="Plat supprimé"
+     * )
+     * )
+     */
+    public function destroy($id)
+    {
+        $plat = Plat::findOrFail($id);
+
+        if ($plat->image && Storage::disk('public')->exists($plat->image)) {
+            Storage::disk('public')->delete($plat->image);
+        }
+
+        $plat->delete();
+
+        return response()->json([
+            'message' => 'Plat supprimé avec succès'
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     * path="/api/search-plats",
+     * summary="Rechercher des plats",
+     * tags={"Plats"},
+     * @OA\Parameter(
+     * name="query",
+     * in="query",
+     * required=true,
+     * description="Mot clé de recherche",
+     * @OA\Schema(type="string", example="pizza")
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="Résultat de recherche"
+     * )
+     * )
+     */
+    public function search(Request $request)
+    {
+        $query = $request->input('query');
+
+        $plats = Plat::with('category')
+            ->where('name', 'LIKE', "%{$query}%")
+            ->orWhere('description', 'LIKE', "%{$query}%")
+            ->paginate(10);
+
+        return response()->json($plats);
+    }
+}

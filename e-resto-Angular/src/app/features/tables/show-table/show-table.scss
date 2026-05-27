@@ -1,0 +1,49 @@
+.premium-qr-wrapper {
+  position: relative;
+  display: inline-block;
+  padding: 40px;
+  background: white;
+
+  // Le cercle doré autour du QR
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 320px;
+    height: 320px;
+    border: 4px solid #d4af37; // Couleur Or
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+
+  // Les coins décoratifs (effet vintage)
+  .corner-decor {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border: 2px solid #d4af37;
+    &.top-left { top: 20px; left: 20px; border-right: 0; border-bottom: 0; }
+    &.top-right { top: 20px; right: 20px; border-left: 0; border-bottom: 0; }
+    &.bottom-left { bottom: 20px; left: 20px; border-right: 0; border-top: 0; }
+    &.bottom-right { bottom: 20px; right: 20px; border-left: 0; border-top: 0; }
+  }
+}
+
+.qr-center-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 5px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  z-index: 10;
+
+  img {
+    width: 45px;
+    height: 45px;
+  }
+}

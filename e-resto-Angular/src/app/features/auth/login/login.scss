@@ -1,0 +1,50 @@
+///* Image de fond pour le côté gauche */
+//.bg-overlay {
+//
+//  background-image: url('/assets/images/image1.jpg');
+//  background-size: cover;
+//  background-position: center;
+//}
+//
+///* Overlay sombre pour rendre le texte lisible */
+//.bg-overlay::before {
+//  content: "";
+//  position: absolute;
+//  top: 0; left: 0; right: 0; bottom: 0;
+//  background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 100%);
+//  z-index: 1;
+//}
+//
+//.z-index-2 {
+//  z-index: 2;
+//}
+//
+///* Inputs au look épuré */
+//.form-control {
+//  border-radius: 8px;
+//  padding: 0.75rem 1rem;
+//  font-size: 0.95rem;
+//  border: 1px solid #e0e0e0;
+//  transition: all 0.2s ease;
+//}
+//
+//.form-control:focus {
+//  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+//  border-color: #0d6efd;
+//}
+//
+///* Bouton plus moderne */
+//.btn-primary {
+//  border-radius: 8px;
+//  background-color: #0d6efd;
+//  border: none;
+//  transition: transform 0.1s ease;
+//}
+//
+//.btn-primary:active {
+//  transform: scale(0.98);
+//}
+//
+//.border-soft {
+//  border-color: #f1f1f1;
+//}

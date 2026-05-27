@@ -1,0 +1,58 @@
+<button type="button"
+        class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
+        style="width: 35px; height: 35px; border: 2px solid; background-color: transparent;"
+        data-bs-toggle="modal"
+        [attr.data-bs-target]="'#showTableModal' + tableDetail.id">
+    <i class="ti ti-eye fs-4"></i>
+</button>
+
+<div class="modal fade" id="showTableModal{{tableDetail.id}}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header  pb-0">
+                <h5 class="modal-title fw-bold text-dark" style="text-align: center">TABLE DETAILS</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                @if (tableDetail) {
+                    <div [id]="'printArea' + tableDetail.id" class="text-center p-5 "
+                         style="background: #ffffff; border: 1px solid #eaeaea; position: relative;">
+
+                        <div class="mb-3">
+                            <img src="assets/logo/e-resto-logo.png" alt="Logo" style="height: 60px; object-fit: contain; border-radius: 5px; border:2px solid black">
+                        </div>
+
+                        <h2 class="fw-black text-dark mb-4" style="font-size: 22px; font-weight: 900;">
+                            SCAN TO ORDER
+                        </h2>
+
+                        <div class="qr-container d-inline-block position-relative p-3 rounded-4 shadow-sm mb-4"
+                             style="border: 2px solid #f1f1f1; background: white; border: 1px solid black">
+                            <img [src]="tableDetail.qr_url"
+                                 alt="QR Code"
+                                 style="width: 250px; height: 250px; display: block;">
+                            <div class="qr-center-logo">
+                                <img src="assets/logo/e-resto-logo.png" style="width: 45px; height: 45px; background: white; padding: 3px; border-radius: 5px; border: 1px solid #F9A11B">
+                            </div>
+                        </div>
+
+                        <h1 class="display-4 fw-bold mb-0" style="color: white; font-weight: 900; text-transform: uppercase;font-size: 25px; border: 1px solid black; background: black">
+                            {{ tableDetail.name }}
+                        </h1>
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer border-0 px-4 pb-3">
+                @if (tableDetail) {
+                    <button type="button" class="btn  w-100 py-2 d-flex align-items-center justify-content-center" (click)="printQRCode()" style="background: #F9A11B; ">
+                        <i class="ti ti-printer me-2 fs-4"></i>
+                        <span class="">PRINT QR CODE</span>
+                    </button>
+                }
+            </div>
+
+        </div>
+    </div>
+</div>

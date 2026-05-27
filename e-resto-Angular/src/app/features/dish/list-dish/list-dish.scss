@@ -1,0 +1,10 @@
+.text-truncate-2 {
+  display: -webkit-box;           /* Définit un conteneur flexible type box */
+  -webkit-line-clamp: 2;          /* Limite strictement à 2 lignes */
+  -webkit-box-orient: vertical;   /* Définit l'orientation verticale */
+  overflow: hidden;               /* Cache tout ce qui dépasse */
+  text-overflow: ellipsis;        /* Ajoute les "..." */
+  word-break: break-word;         /* Évite que les mots longs cassent le layout */
+  line-height: 20px;              /* Ajustez selon votre design */
+  height: 40px;                   /* Doit être égal à line-height * nombre de lignes */
+}

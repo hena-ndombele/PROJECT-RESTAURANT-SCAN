@@ -1,0 +1,84 @@
+<button type="button"
+        class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center"
+        style="width: 35px; height: 35px; border: 1px solid #ff8200; background-color: transparent;"
+        data-bs-toggle="modal"
+        [attr.data-bs-target]="'#updateCategoryModal' + categoryId">
+    <i class="ti ti-edit fs-4"></i>
+</button>
+
+<div class="modal fade" [id]="'updateCategoryModal' + categoryId" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fs-3 mb-1" style="font-weight: bolder">Update Category
+                        ({{ categoryDetail?.name }})</h5>
+                    <p class="mb-0 text-muted small">Edit details</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4 text-start">
+                <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()">
+
+
+
+                    <div class="d-flex align-items-center gap-4 mb-4 p-3 bg-light rounded-3">
+                        <div class="position-relative">@if (imagePreview) {
+                            <img [src]="imagePreview" alt="Preview" class="rounded shadow-sm"
+                                 style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #ff8200">
+                        } @else if (categoryDetail?.image) {
+                            <img [src]="IMAGE_URL + categoryDetail?.image" alt="Current" class="rounded shadow-sm"
+                                 style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6">
+                        } @else {
+                            <div class="bg-secondary-subtle d-flex align-items-center justify-content-center rounded"
+                                 style="width: 100px; height: 100px;">
+                                <i class="ti ti-photo fs-1 text-muted"></i>
+                            </div>
+                        }
+                        </div>
+
+                        <input type="file"
+                               class="form-control form-control-sm"
+                               accept="image/*"
+                               [disabled]="isLoading"
+                               (change)="onFileSelected($event)">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold">Category Name <span style="color:red">*</span></label>
+                            <input type="text" class="form-control" formControlName="name">
+                            @if (categoryForm.get('name')?.invalid && categoryForm.get('name')?.touched) {
+                                <small class="text-danger">Name is required.</small>
+                            }
+                        </div>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description <span style="color:red">*</span></label>
+                        <textarea class="form-control" formControlName="description" rows="4"></textarea>
+                    </div>
+
+                    <div class="modal-footer d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle me-1"></i> Cancel
+                        </button>
+
+                        <button type="submit" class="btn btn-primary text-black"
+                                [disabled]="categoryForm.invalid || isLoading">
+                            @if (isLoading) {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            <i class="bi bi-plus-circle me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+
+        </div>
+    </div>
+</div>

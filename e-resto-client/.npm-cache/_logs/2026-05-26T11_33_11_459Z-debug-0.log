@@ -1,0 +1,368 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Users\ndombeleh\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.0.0
+2 info using node@v24.10.0
+3 silly config load:file:C:\Users\ndombeleh\AppData\Roaming\npm\node_modules\npm\npmrc
+4 silly config load:file:C:\xampp\htdocs\E-RESTO\e-resto-client\.npmrc
+5 silly config load:file:C:\Users\ndombeleh\.npmrc
+6 silly config load:file:C:\Users\ndombeleh\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install laravel-echo pusher-js
+8 verbose argv "install" "laravel-echo" "pusher-js" "--cache" ".\\.npm-cache"
+9 verbose logfile logs-max:10 dir:C:\xampp\htdocs\E-RESTO\e-resto-client\.npm-cache\_logs\2026-05-26T11_33_11_459Z-
+10 verbose logfile C:\xampp\htdocs\E-RESTO\e-resto-client\.npm-cache\_logs\2026-05-26T11_33_11_459Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly fetch manifest laravel-echo@*
+15 silly packumentCache full:https://registry.npmjs.org/laravel-echo cache-miss
+16 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+17 http fetch GET 200 https://registry.npmjs.org/laravel-echo 984ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/laravel-echo set size:undefined disposed:false
+19 silly fetch manifest pusher-js@*
+20 silly packumentCache full:https://registry.npmjs.org/pusher-js cache-miss
+21 http fetch GET 200 https://registry.npmjs.org/pusher-js 521ms (cache miss)
+22 silly packumentCache full:https://registry.npmjs.org/pusher-js set size:undefined disposed:false
+23 silly fetch manifest socket.io-client@*
+24 silly packumentCache full:https://registry.npmjs.org/socket.io-client cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/socket.io-client 187ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/socket.io-client set size:undefined disposed:false
+27 silly placeDep ROOT laravel-echo@2.3.4 OK for: e-resto-client@1.0.0 want: *
+28 silly placeDep ROOT pusher-js@8.5.0 OK for: laravel-echo@2.3.4 want: *
+29 silly placeDep ROOT socket.io-client@4.8.3 OK for: laravel-echo@2.3.4 want: *
+30 silly placeDep ROOT pusher-js@8.5.0 REPLACE for: e-resto-client@1.0.0 want: *
+31 silly fetch manifest @socket.io/component-emitter@~3.1.0
+32 silly packumentCache full:https://registry.npmjs.org/@socket.io%2fcomponent-emitter cache-miss
+33 silly fetch manifest debug@~4.4.1
+34 silly packumentCache full:https://registry.npmjs.org/debug cache-miss
+35 silly fetch manifest engine.io-client@~6.6.1
+36 silly packumentCache full:https://registry.npmjs.org/engine.io-client cache-miss
+37 silly fetch manifest socket.io-parser@~4.2.4
+38 silly packumentCache full:https://registry.npmjs.org/socket.io-parser cache-miss
+39 silly fetch manifest tweetnacl@^1.0.3
+40 silly packumentCache full:https://registry.npmjs.org/tweetnacl cache-miss
+41 silly fetch manifest tweetnacl@^1.0.3
+42 silly packumentCache full:https://registry.npmjs.org/tweetnacl cache-miss
+43 http fetch GET 200 https://registry.npmjs.org/debug 139ms (cache miss)
+44 silly packumentCache full:https://registry.npmjs.org/debug set size:undefined disposed:false
+45 http fetch GET 200 https://registry.npmjs.org/tweetnacl 485ms (cache miss)
+46 silly packumentCache full:https://registry.npmjs.org/tweetnacl set size:undefined disposed:false
+47 http fetch GET 200 https://registry.npmjs.org/engine.io-client 631ms (cache miss)
+48 silly packumentCache full:https://registry.npmjs.org/engine.io-client set size:undefined disposed:false
+49 http fetch GET 200 https://registry.npmjs.org/tweetnacl 652ms (cache miss)
+50 silly packumentCache full:https://registry.npmjs.org/tweetnacl set size:undefined disposed:false
+51 http fetch GET 200 https://registry.npmjs.org/socket.io-parser 840ms (cache miss)
+52 silly packumentCache full:https://registry.npmjs.org/socket.io-parser set size:undefined disposed:false
+53 http fetch GET 200 https://registry.npmjs.org/@socket.io%2fcomponent-emitter 946ms (cache miss)
+54 silly packumentCache full:https://registry.npmjs.org/@socket.io%2fcomponent-emitter set size:undefined disposed:false
+55 silly placeDep ROOT tweetnacl@1.0.3 OK for: pusher-js@8.5.0 want: ^1.0.3
+56 silly placeDep ROOT @socket.io/component-emitter@3.1.2 OK for: socket.io-client@4.8.3 want: ~3.1.0
+57 silly placeDep ROOT debug@4.4.3 OK for: socket.io-client@4.8.3 want: ~4.4.1
+58 silly placeDep ROOT engine.io-client@6.6.5 OK for: socket.io-client@4.8.3 want: ~6.6.1
+59 silly placeDep ROOT socket.io-parser@4.2.6 OK for: socket.io-client@4.8.3 want: ~4.2.4
+60 silly fetch manifest ms@^2.1.3
+61 silly packumentCache full:https://registry.npmjs.org/ms cache-miss
+62 silly fetch manifest engine.io-parser@~5.2.1
+63 silly packumentCache full:https://registry.npmjs.org/engine.io-parser cache-miss
+64 silly fetch manifest ws@~8.20.1
+65 silly packumentCache full:https://registry.npmjs.org/ws cache-miss
+66 silly fetch manifest xmlhttprequest-ssl@~2.1.1
+67 silly packumentCache full:https://registry.npmjs.org/xmlhttprequest-ssl cache-miss
+68 http fetch GET 200 https://registry.npmjs.org/xmlhttprequest-ssl 121ms (cache miss)
+69 silly packumentCache full:https://registry.npmjs.org/xmlhttprequest-ssl set size:undefined disposed:false
+70 http fetch GET 200 https://registry.npmjs.org/ms 127ms (cache miss)
+71 silly packumentCache full:https://registry.npmjs.org/ms set size:undefined disposed:false
+72 http fetch GET 200 https://registry.npmjs.org/ws 215ms (cache miss)
+73 silly packumentCache full:https://registry.npmjs.org/ws set size:undefined disposed:false
+74 http fetch GET 200 https://registry.npmjs.org/engine.io-parser 403ms (cache miss)
+75 silly packumentCache full:https://registry.npmjs.org/engine.io-parser set size:undefined disposed:false
+76 silly placeDep ROOT ms@2.1.3 OK for: debug@4.4.3 want: ^2.1.3
+77 silly fetch manifest bufferutil@^4.0.1
+78 silly packumentCache full:https://registry.npmjs.org/bufferutil cache-miss
+79 http fetch GET 200 https://registry.npmjs.org/bufferutil 149ms (cache miss)
+80 silly packumentCache full:https://registry.npmjs.org/bufferutil set size:undefined disposed:false
+81 silly fetch manifest utf-8-validate@>=5.0.2
+82 silly packumentCache full:https://registry.npmjs.org/utf-8-validate cache-miss
+83 http fetch GET 200 https://registry.npmjs.org/utf-8-validate 359ms (cache miss)
+84 silly packumentCache full:https://registry.npmjs.org/utf-8-validate set size:undefined disposed:false
+85 silly placeDep ROOT engine.io-parser@5.2.3 OK for: engine.io-client@6.6.5 want: ~5.2.1
+86 silly placeDep ROOT ws@8.20.1 OK for: engine.io-client@6.6.5 want: ~8.20.1
+87 silly placeDep ROOT xmlhttprequest-ssl@2.1.2 OK for: engine.io-client@6.6.5 want: ~2.1.1
+88 silly reify moves {}
+89 silly audit bulk request {
+89 silly audit   '@emnapi/core': [ '1.10.0' ],
+89 silly audit   '@emnapi/runtime': [ '1.10.0' ],
+89 silly audit   '@emnapi/wasi-threads': [ '1.2.1' ],
+89 silly audit   '@napi-rs/wasm-runtime': [ '1.1.4' ],
+89 silly audit   '@oxc-project/types': [ '0.132.0' ],
+89 silly audit   '@rolldown/binding-android-arm64': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-darwin-arm64': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-darwin-x64': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-freebsd-x64': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-linux-arm-gnueabihf': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-linux-arm64-gnu': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-linux-arm64-musl': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-linux-ppc64-gnu': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-linux-s390x-gnu': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-linux-x64-gnu': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-linux-x64-musl': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-openharmony-arm64': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-wasm32-wasi': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-win32-arm64-msvc': [ '1.0.2' ],
+89 silly audit   '@rolldown/binding-win32-x64-msvc': [ '1.0.2' ],
+89 silly audit   '@rolldown/pluginutils': [ '1.0.1' ],
+89 silly audit   '@tybys/wasm-util': [ '0.10.2' ],
+89 silly audit   '@vitejs/plugin-react': [ '6.0.2' ],
+89 silly audit   'detect-libc': [ '2.1.2' ],
+89 silly audit   fdir: [ '6.5.0' ],
+89 silly audit   fsevents: [ '2.3.3' ],
+89 silly audit   lightningcss: [ '1.32.0' ],
+89 silly audit   'lightningcss-android-arm64': [ '1.32.0' ],
+89 silly audit   'lightningcss-darwin-arm64': [ '1.32.0' ],
+89 silly audit   'lightningcss-darwin-x64': [ '1.32.0' ],
+89 silly audit   'lightningcss-freebsd-x64': [ '1.32.0' ],
+89 silly audit   'lightningcss-linux-arm-gnueabihf': [ '1.32.0' ],
+89 silly audit   'lightningcss-linux-arm64-gnu': [ '1.32.0' ],
+89 silly audit   'lightningcss-linux-arm64-musl': [ '1.32.0' ],
+89 silly audit   'lightningcss-linux-x64-gnu': [ '1.32.0' ],
+89 silly audit   'lightningcss-linux-x64-musl': [ '1.32.0' ],
+89 silly audit   'lightningcss-win32-arm64-msvc': [ '1.32.0' ],
+89 silly audit   'lightningcss-win32-x64-msvc': [ '1.32.0' ],
+89 silly audit   nanoid: [ '3.3.12' ],
+89 silly audit   picocolors: [ '1.1.1' ],
+89 silly audit   picomatch: [ '4.0.4' ],
+89 silly audit   postcss: [ '8.5.15' ],
+89 silly audit   react: [ '19.2.6' ],
+89 silly audit   'react-dom': [ '19.2.6' ],
+89 silly audit   rolldown: [ '1.0.2' ],
+89 silly audit   scheduler: [ '0.27.0' ],
+89 silly audit   'source-map-js': [ '1.2.1' ],
+89 silly audit   tinyglobby: [ '0.2.16' ],
+89 silly audit   tslib: [ '2.8.1' ],
+89 silly audit   vite: [ '8.0.14' ],
+89 silly audit   'laravel-echo': [ '2.3.4' ],
+89 silly audit   'socket.io-client': [ '4.8.3' ],
+89 silly audit   'pusher-js': [ '8.5.0' ],
+89 silly audit   tweetnacl: [ '1.0.3' ],
+89 silly audit   '@socket.io/component-emitter': [ '3.1.2' ],
+89 silly audit   debug: [ '4.4.3' ],
+89 silly audit   'engine.io-client': [ '6.6.5' ],
+89 silly audit   'socket.io-parser': [ '4.2.6' ],
+89 silly audit   ms: [ '2.1.3' ],
+89 silly audit   'engine.io-parser': [ '5.2.3' ],
+89 silly audit   ws: [ '8.20.1' ],
+89 silly audit   'xmlhttprequest-ssl': [ '2.1.2' ]
+89 silly audit }
+90 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-win32-arm64-msvc
+91 silly reify mark deleted [
+91 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-win32-arm64-msvc'
+91 silly reify ]
+92 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-x64-musl
+93 silly reify mark deleted [
+93 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-x64-musl'
+93 silly reify ]
+94 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-x64-gnu
+95 silly reify mark deleted [
+95 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-x64-gnu'
+95 silly reify ]
+96 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-arm64-musl
+97 silly reify mark deleted [
+97 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-arm64-musl'
+97 silly reify ]
+98 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-arm64-gnu
+99 silly reify mark deleted [
+99 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-arm64-gnu'
+99 silly reify ]
+100 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-arm-gnueabihf
+101 silly reify mark deleted [
+101 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-arm-gnueabihf'
+101 silly reify ]
+102 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-freebsd-x64
+103 silly reify mark deleted [
+103 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-freebsd-x64'
+103 silly reify ]
+104 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-darwin-x64
+105 silly reify mark deleted [
+105 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-darwin-x64'
+105 silly reify ]
+106 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-darwin-arm64
+107 silly reify mark deleted [
+107 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-darwin-arm64'
+107 silly reify ]
+108 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-android-arm64
+109 silly reify mark deleted [
+109 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-android-arm64'
+109 silly reify ]
+110 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\fsevents
+111 silly reify mark deleted [
+111 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\fsevents'
+111 silly reify ]
+112 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-win32-arm64-msvc
+113 silly reify mark deleted [
+113 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-win32-arm64-msvc'
+113 silly reify ]
+114 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-wasm32-wasi
+115 silly reify mark deleted [
+115 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-wasm32-wasi'
+115 silly reify ]
+116 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@emnapi\core
+117 silly reify mark deleted [
+117 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@emnapi\\core'
+117 silly reify ]
+118 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@emnapi\runtime
+119 silly reify mark deleted [
+119 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@emnapi\\runtime'
+119 silly reify ]
+120 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@napi-rs\wasm-runtime
+121 silly reify mark deleted [
+121 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@napi-rs\\wasm-runtime'
+121 silly reify ]
+122 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@emnapi\wasi-threads
+123 silly reify mark deleted [
+123 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@emnapi\\wasi-threads'
+123 silly reify ]
+124 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\tslib
+125 silly reify mark deleted [ 'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\tslib' ]
+126 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@tybys\wasm-util
+127 silly reify mark deleted [
+127 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@tybys\\wasm-util'
+127 silly reify ]
+128 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-openharmony-arm64
+129 silly reify mark deleted [
+129 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-openharmony-arm64'
+129 silly reify ]
+130 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-x64-musl
+131 silly reify mark deleted [
+131 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-x64-musl'
+131 silly reify ]
+132 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-x64-gnu
+133 silly reify mark deleted [
+133 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-x64-gnu'
+133 silly reify ]
+134 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-s390x-gnu
+135 silly reify mark deleted [
+135 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-s390x-gnu'
+135 silly reify ]
+136 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-ppc64-gnu
+137 silly reify mark deleted [
+137 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-ppc64-gnu'
+137 silly reify ]
+138 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-arm64-musl
+139 silly reify mark deleted [
+139 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-arm64-musl'
+139 silly reify ]
+140 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-arm64-gnu
+141 silly reify mark deleted [
+141 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-arm64-gnu'
+141 silly reify ]
+142 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-arm-gnueabihf
+143 silly reify mark deleted [
+143 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-arm-gnueabihf'
+143 silly reify ]
+144 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-freebsd-x64
+145 silly reify mark deleted [
+145 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-freebsd-x64'
+145 silly reify ]
+146 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-darwin-x64
+147 silly reify mark deleted [
+147 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-darwin-x64'
+147 silly reify ]
+148 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-darwin-arm64
+149 silly reify mark deleted [
+149 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-darwin-arm64'
+149 silly reify ]
+150 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-android-arm64
+151 silly reify mark deleted [
+151 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-android-arm64'
+151 silly reify ]
+152 http cache socket.io-parser@https://registry.npmjs.org/socket.io-parser/-/socket.io-parser-4.2.6.tgz 0ms (cache hit)
+153 http cache xmlhttprequest-ssl@https://registry.npmjs.org/xmlhttprequest-ssl/-/xmlhttprequest-ssl-2.1.2.tgz 0ms (cache hit)
+154 http cache ms@https://registry.npmjs.org/ms/-/ms-2.1.3.tgz 0ms (cache hit)
+155 http cache ws@https://registry.npmjs.org/ws/-/ws-8.20.1.tgz 0ms (cache hit)
+156 http cache engine.io-parser@https://registry.npmjs.org/engine.io-parser/-/engine.io-parser-5.2.3.tgz 0ms (cache hit)
+157 http cache engine.io-client@https://registry.npmjs.org/engine.io-client/-/engine.io-client-6.6.5.tgz 0ms (cache hit)
+158 http cache pusher-js@https://registry.npmjs.org/pusher-js/-/pusher-js-8.5.0.tgz 0ms (cache hit)
+159 http cache @socket.io/component-emitter@https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.2.tgz 0ms (cache hit)
+160 http cache tweetnacl@https://registry.npmjs.org/tweetnacl/-/tweetnacl-1.0.3.tgz 0ms (cache hit)
+161 http cache socket.io-client@https://registry.npmjs.org/socket.io-client/-/socket.io-client-4.8.3.tgz 0ms (cache hit)
+162 http cache debug@https://registry.npmjs.org/debug/-/debug-4.4.3.tgz 0ms (cache hit)
+163 http cache laravel-echo@https://registry.npmjs.org/laravel-echo/-/laravel-echo-2.3.4.tgz 0ms (cache hit)
+164 http cache @napi-rs/wasm-runtime@https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz 0ms (cache hit)
+165 http cache @emnapi/wasi-threads@https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-1.2.1.tgz 0ms (cache hit)
+166 http cache tslib@https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz 0ms (cache hit)
+167 http cache @emnapi/runtime@https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz 0ms (cache hit)
+168 http cache @emnapi/core@https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz 0ms (cache hit)
+169 http cache @tybys/wasm-util@https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.2.tgz 0ms (cache hit)
+170 silly tarball no local data for socket.io-parser@https://registry.npmjs.org/socket.io-parser/-/socket.io-parser-4.2.6.tgz. Extracting by manifest.
+171 silly tarball no local data for xmlhttprequest-ssl@https://registry.npmjs.org/xmlhttprequest-ssl/-/xmlhttprequest-ssl-2.1.2.tgz. Extracting by manifest.
+172 silly tarball no local data for ms@https://registry.npmjs.org/ms/-/ms-2.1.3.tgz. Extracting by manifest.
+173 silly tarball no local data for ws@https://registry.npmjs.org/ws/-/ws-8.20.1.tgz. Extracting by manifest.
+174 silly tarball no local data for engine.io-parser@https://registry.npmjs.org/engine.io-parser/-/engine.io-parser-5.2.3.tgz. Extracting by manifest.
+175 silly tarball no local data for pusher-js@https://registry.npmjs.org/pusher-js/-/pusher-js-8.5.0.tgz. Extracting by manifest.
+176 silly tarball no local data for @socket.io/component-emitter@https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.2.tgz. Extracting by manifest.
+177 silly tarball no local data for engine.io-client@https://registry.npmjs.org/engine.io-client/-/engine.io-client-6.6.5.tgz. Extracting by manifest.
+178 silly tarball no local data for tweetnacl@https://registry.npmjs.org/tweetnacl/-/tweetnacl-1.0.3.tgz. Extracting by manifest.
+179 silly tarball no local data for socket.io-client@https://registry.npmjs.org/socket.io-client/-/socket.io-client-4.8.3.tgz. Extracting by manifest.
+180 silly tarball no local data for debug@https://registry.npmjs.org/debug/-/debug-4.4.3.tgz. Extracting by manifest.
+181 silly tarball no local data for laravel-echo@https://registry.npmjs.org/laravel-echo/-/laravel-echo-2.3.4.tgz. Extracting by manifest.
+182 http fetch GET 200 https://registry.npmjs.org/ms/-/ms-2.1.3.tgz 248ms (cache miss)
+183 http fetch GET 200 https://registry.npmjs.org/xmlhttprequest-ssl/-/xmlhttprequest-ssl-2.1.2.tgz 309ms (cache miss)
+184 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 436ms
+185 silly audit report {}
+186 http fetch GET 200 https://registry.npmjs.org/debug/-/debug-4.4.3.tgz 494ms (cache miss)
+187 http fetch GET 200 https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.2.tgz 646ms (cache miss)
+188 http fetch GET 200 https://registry.npmjs.org/ws/-/ws-8.20.1.tgz 768ms (cache miss)
+189 http fetch GET 200 https://registry.npmjs.org/socket.io-parser/-/socket.io-parser-4.2.6.tgz 835ms (cache miss)
+190 http fetch GET 200 https://registry.npmjs.org/engine.io-parser/-/engine.io-parser-5.2.3.tgz 1022ms (cache miss)
+191 http fetch GET 200 https://registry.npmjs.org/tweetnacl/-/tweetnacl-1.0.3.tgz 1248ms (cache miss)
+192 http fetch GET 200 https://registry.npmjs.org/laravel-echo/-/laravel-echo-2.3.4.tgz 3798ms (cache miss)
+193 http fetch GET 200 https://registry.npmjs.org/socket.io-client/-/socket.io-client-4.8.3.tgz 5575ms (cache miss)
+194 http fetch GET 200 https://registry.npmjs.org/engine.io-client/-/engine.io-client-6.6.5.tgz 6431ms (cache miss)
+195 http fetch GET 200 https://registry.npmjs.org/pusher-js/-/pusher-js-8.5.0.tgz 14729ms (cache miss)
+196 silly ADD node_modules/xmlhttprequest-ssl
+197 silly ADD node_modules/ws
+198 silly ADD node_modules/engine.io-parser
+199 silly ADD node_modules/ms
+200 silly ADD node_modules/socket.io-parser
+201 silly ADD node_modules/engine.io-client
+202 silly ADD node_modules/debug
+203 silly ADD node_modules/@socket.io/component-emitter
+204 silly ADD node_modules/tweetnacl
+205 silly ADD node_modules/pusher-js
+206 silly ADD node_modules/socket.io-client
+207 silly ADD node_modules/laravel-echo
+208 silly ADD
+209 silly ADD
+210 silly ADD
+211 silly ADD
+212 silly ADD
+213 silly ADD
+214 silly ADD
+215 silly ADD
+216 silly ADD
+217 silly ADD
+218 silly ADD
+219 silly ADD
+220 silly ADD
+221 silly ADD
+222 silly ADD
+223 silly ADD
+224 silly ADD
+225 silly ADD
+226 silly ADD
+227 silly ADD
+228 silly ADD
+229 silly ADD
+230 silly ADD
+231 silly ADD
+232 silly ADD
+233 silly ADD
+234 silly ADD
+235 silly ADD
+236 silly ADD
+237 silly ADD
+238 silly ADD
+239 verbose cwd C:\xampp\htdocs\E-RESTO\e-resto-client
+240 verbose os Windows_NT 10.0.26200
+241 verbose node v24.10.0
+242 verbose npm  v11.0.0
+243 verbose exit 0
+244 info ok

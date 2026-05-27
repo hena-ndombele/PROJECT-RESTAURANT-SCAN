@@ -1,0 +1,54 @@
+.auth-wrapper {
+  background-color: #f8f9fa; /* Fond léger pour faire ressortir la carte */
+  padding: 15px;
+}
+
+/* Style de la partie Image */
+.otp-image-side {
+  background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)),
+  url('/assets/images/image7.jpg') no-repeat center center;
+  background-size: cover;
+  min-height: 500px;
+}
+
+/* Style du logo */
+.logo-style {
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  border: 2px solid white;
+}
+
+/* Style des inputs OTP */
+.otp-input {
+  height: 55px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border: 2px solid #eee;
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.otp-input:focus {
+  border-color: #F9A11B;
+  box-shadow: 0 0 0 0.25rem rgba(249, 161, 27, 0.15);
+  outline: none;
+}
+
+/* Bouton principal */
+.submit-btn {
+  background-color: #F9A11B;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  transition: transform 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: #e89516;
+  transform: translateY(-2px);
+}
+
+.submit-btn:disabled {
+  background-color: #fccb84;
+}

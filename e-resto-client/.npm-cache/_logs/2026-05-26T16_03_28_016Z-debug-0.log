@@ -1,0 +1,486 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Users\ndombeleh\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.0.0
+2 info using node@v24.10.0
+3 silly config load:file:C:\Users\ndombeleh\AppData\Roaming\npm\node_modules\npm\npmrc
+4 silly config load:file:C:\xampp\htdocs\E-RESTO\e-resto-client\.npmrc
+5 silly config load:file:C:\Users\ndombeleh\.npmrc
+6 silly config load:file:C:\Users\ndombeleh\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install jspdf
+8 verbose argv "install" "jspdf" "--cache" ".\\.npm-cache"
+9 verbose logfile logs-max:10 dir:C:\xampp\htdocs\E-RESTO\e-resto-client\.npm-cache\_logs\2026-05-26T16_03_28_016Z-
+10 verbose logfile C:\xampp\htdocs\E-RESTO\e-resto-client\.npm-cache\_logs\2026-05-26T16_03_28_016Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly fetch manifest jspdf@*
+15 silly packumentCache full:https://registry.npmjs.org/jspdf cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/jspdf 1436ms (cache miss)
+17 silly packumentCache full:https://registry.npmjs.org/jspdf set size:undefined disposed:false
+18 silly placeDep ROOT jspdf@4.2.1 OK for: e-resto-client@1.0.0 want: *
+19 silly fetch manifest @babel/runtime@^7.28.6
+20 silly packumentCache full:https://registry.npmjs.org/@babel%2fruntime cache-miss
+21 silly fetch manifest fflate@^0.8.1
+22 silly packumentCache full:https://registry.npmjs.org/fflate cache-miss
+23 silly fetch manifest fast-png@^6.2.0
+24 silly packumentCache full:https://registry.npmjs.org/fast-png cache-miss
+25 silly fetch manifest canvg@^3.0.11
+26 silly packumentCache full:https://registry.npmjs.org/canvg cache-miss
+27 silly fetch manifest core-js@^3.6.0
+28 silly packumentCache full:https://registry.npmjs.org/core-js cache-miss
+29 silly fetch manifest dompurify@^3.3.1
+30 silly packumentCache full:https://registry.npmjs.org/dompurify cache-miss
+31 silly fetch manifest html2canvas@^1.0.0-rc.5
+32 silly packumentCache full:https://registry.npmjs.org/html2canvas cache-miss
+33 http fetch GET 200 https://registry.npmjs.org/fflate 501ms (cache miss)
+34 silly packumentCache full:https://registry.npmjs.org/fflate set size:undefined disposed:false
+35 http fetch GET 200 https://registry.npmjs.org/core-js 994ms (cache miss)
+36 silly packumentCache full:https://registry.npmjs.org/core-js set size:undefined disposed:false
+37 http fetch GET 200 https://registry.npmjs.org/html2canvas 1131ms (cache miss)
+38 silly packumentCache full:https://registry.npmjs.org/html2canvas set size:undefined disposed:false
+39 http fetch GET 200 https://registry.npmjs.org/fast-png 1220ms (cache miss)
+40 silly packumentCache full:https://registry.npmjs.org/fast-png set size:undefined disposed:false
+41 http fetch GET 200 https://registry.npmjs.org/canvg 1370ms (cache miss)
+42 silly packumentCache full:https://registry.npmjs.org/canvg set size:undefined disposed:false
+43 http fetch GET 200 https://registry.npmjs.org/dompurify 1524ms (cache miss)
+44 silly packumentCache full:https://registry.npmjs.org/dompurify set size:undefined disposed:false
+45 http fetch GET 200 https://registry.npmjs.org/@babel%2fruntime 1558ms (cache revalidated)
+46 silly packumentCache full:https://registry.npmjs.org/@babel%2fruntime set size:3455431 disposed:false
+47 silly placeDep ROOT @babel/runtime@7.29.7 OK for: jspdf@4.2.1 want: ^7.28.6
+48 silly placeDep ROOT canvg@3.0.11 OK for: jspdf@4.2.1 want: ^3.0.11
+49 silly placeDep ROOT core-js@3.49.0 OK for: jspdf@4.2.1 want: ^3.6.0
+50 silly placeDep ROOT dompurify@3.4.6 OK for: jspdf@4.2.1 want: ^3.3.1
+51 silly placeDep ROOT fast-png@6.4.0 OK for: jspdf@4.2.1 want: ^6.2.0
+52 silly placeDep ROOT fflate@0.8.3 OK for: jspdf@4.2.1 want: ^0.8.1
+53 silly placeDep ROOT html2canvas@1.4.1 OK for: jspdf@4.2.1 want: ^1.0.0-rc.5
+54 silly fetch manifest raf@^3.4.1
+55 silly packumentCache full:https://registry.npmjs.org/raf cache-miss
+56 silly fetch manifest core-js@^3.8.3
+57 silly packumentCache full:https://registry.npmjs.org/core-js cache-miss
+58 silly fetch manifest rgbcolor@^1.0.1
+59 silly packumentCache full:https://registry.npmjs.org/rgbcolor cache-miss
+60 silly fetch manifest @types/raf@^3.4.0
+61 silly packumentCache full:https://registry.npmjs.org/@types%2fraf cache-miss
+62 silly fetch manifest svg-pathdata@^6.0.3
+63 silly packumentCache full:https://registry.npmjs.org/svg-pathdata cache-miss
+64 silly fetch manifest stackblur-canvas@^2.0.0
+65 silly packumentCache full:https://registry.npmjs.org/stackblur-canvas cache-miss
+66 silly fetch manifest regenerator-runtime@^0.13.7
+67 silly packumentCache full:https://registry.npmjs.org/regenerator-runtime cache-miss
+68 silly fetch manifest @types/trusted-types@^2.0.7
+69 silly packumentCache full:https://registry.npmjs.org/@types%2ftrusted-types cache-miss
+70 silly fetch manifest pako@^2.1.0
+71 silly packumentCache full:https://registry.npmjs.org/pako cache-miss
+72 silly fetch manifest iobuffer@^5.3.2
+73 silly packumentCache full:https://registry.npmjs.org/iobuffer cache-miss
+74 silly fetch manifest @types/pako@^2.0.3
+75 silly packumentCache full:https://registry.npmjs.org/@types%2fpako cache-miss
+76 http cache https://registry.npmjs.org/core-js 50ms (cache hit)
+77 silly packumentCache full:https://registry.npmjs.org/core-js set size:814557 disposed:false
+78 silly fetch manifest css-line-break@^2.1.0
+79 silly packumentCache full:https://registry.npmjs.org/css-line-break cache-miss
+80 http fetch GET 200 https://registry.npmjs.org/regenerator-runtime 353ms (cache miss)
+81 silly packumentCache full:https://registry.npmjs.org/regenerator-runtime set size:undefined disposed:false
+82 silly fetch manifest text-segmentation@^1.0.3
+83 silly packumentCache full:https://registry.npmjs.org/text-segmentation cache-miss
+84 http fetch GET 200 https://registry.npmjs.org/raf 363ms (cache miss)
+85 silly packumentCache full:https://registry.npmjs.org/raf set size:undefined disposed:false
+86 http fetch GET 200 https://registry.npmjs.org/svg-pathdata 362ms (cache miss)
+87 silly packumentCache full:https://registry.npmjs.org/svg-pathdata set size:undefined disposed:false
+88 http fetch GET 200 https://registry.npmjs.org/rgbcolor 443ms (cache miss)
+89 silly packumentCache full:https://registry.npmjs.org/rgbcolor set size:undefined disposed:false
+90 http fetch GET 200 https://registry.npmjs.org/@types%2ftrusted-types 531ms (cache miss)
+91 silly packumentCache full:https://registry.npmjs.org/@types%2ftrusted-types set size:undefined disposed:false
+92 http fetch GET 200 https://registry.npmjs.org/text-segmentation 451ms (cache miss)
+93 silly packumentCache full:https://registry.npmjs.org/text-segmentation set size:undefined disposed:false
+94 http fetch GET 200 https://registry.npmjs.org/@types%2fraf 814ms (cache miss)
+95 silly packumentCache full:https://registry.npmjs.org/@types%2fraf set size:undefined disposed:false
+96 http fetch GET 200 https://registry.npmjs.org/stackblur-canvas 895ms (cache miss)
+97 silly packumentCache full:https://registry.npmjs.org/stackblur-canvas set size:undefined disposed:false
+98 http fetch GET 200 https://registry.npmjs.org/iobuffer 1081ms (cache miss)
+99 silly packumentCache full:https://registry.npmjs.org/iobuffer set size:undefined disposed:false
+100 http fetch GET 200 https://registry.npmjs.org/pako 1089ms (cache miss)
+101 silly packumentCache full:https://registry.npmjs.org/pako set size:undefined disposed:false
+102 http fetch GET 200 https://registry.npmjs.org/css-line-break 1044ms (cache miss)
+103 silly packumentCache full:https://registry.npmjs.org/css-line-break set size:undefined disposed:false
+104 http fetch GET 200 https://registry.npmjs.org/@types%2fpako 1453ms (cache miss)
+105 silly packumentCache full:https://registry.npmjs.org/@types%2fpako set size:undefined disposed:false
+106 silly placeDep ROOT @types/raf@3.4.3 OK for: canvg@3.0.11 want: ^3.4.0
+107 silly placeDep ROOT raf@3.4.1 OK for: canvg@3.0.11 want: ^3.4.1
+108 silly placeDep ROOT regenerator-runtime@0.13.11 OK for: canvg@3.0.11 want: ^0.13.7
+109 silly placeDep ROOT rgbcolor@1.0.1 OK for: canvg@3.0.11 want: ^1.0.1
+110 silly placeDep ROOT stackblur-canvas@2.7.0 OK for: canvg@3.0.11 want: ^2.0.0
+111 silly placeDep ROOT svg-pathdata@6.0.3 OK for: canvg@3.0.11 want: ^6.0.3
+112 silly fetch manifest performance-now@^2.1.0
+113 silly packumentCache full:https://registry.npmjs.org/performance-now cache-miss
+114 http fetch GET 200 https://registry.npmjs.org/performance-now 309ms (cache miss)
+115 silly packumentCache full:https://registry.npmjs.org/performance-now set size:undefined disposed:false
+116 silly placeDep ROOT @types/trusted-types@2.0.7 OK for: dompurify@3.4.6 want: ^2.0.7
+117 silly placeDep ROOT @types/pako@2.0.4 OK for: fast-png@6.4.0 want: ^2.0.3
+118 silly placeDep ROOT iobuffer@5.4.0 OK for: fast-png@6.4.0 want: ^5.3.2
+119 silly placeDep ROOT pako@2.1.0 OK for: fast-png@6.4.0 want: ^2.1.0
+120 silly placeDep ROOT css-line-break@2.1.0 OK for: html2canvas@1.4.1 want: ^2.1.0
+121 silly placeDep ROOT text-segmentation@1.0.3 OK for: html2canvas@1.4.1 want: ^1.0.3
+122 silly fetch manifest utrie@^1.0.2
+123 silly packumentCache full:https://registry.npmjs.org/utrie cache-miss
+124 silly fetch manifest utrie@^1.0.2
+125 silly packumentCache full:https://registry.npmjs.org/utrie cache-miss
+126 http fetch GET 200 https://registry.npmjs.org/utrie 467ms (cache miss)
+127 silly packumentCache full:https://registry.npmjs.org/utrie set size:undefined disposed:false
+128 http fetch GET 200 https://registry.npmjs.org/utrie 475ms (cache miss)
+129 silly packumentCache full:https://registry.npmjs.org/utrie set size:undefined disposed:false
+130 silly placeDep ROOT utrie@1.0.2 OK for: css-line-break@2.1.0 want: ^1.0.2
+131 silly fetch manifest base64-arraybuffer@^1.0.2
+132 silly packumentCache full:https://registry.npmjs.org/base64-arraybuffer cache-miss
+133 http fetch GET 200 https://registry.npmjs.org/base64-arraybuffer 295ms (cache miss)
+134 silly packumentCache full:https://registry.npmjs.org/base64-arraybuffer set size:undefined disposed:false
+135 silly placeDep ROOT performance-now@2.1.0 OK for: raf@3.4.1 want: ^2.1.0
+136 silly placeDep ROOT base64-arraybuffer@1.0.2 OK for: utrie@1.0.2 want: ^1.0.2
+137 silly reify moves {}
+138 silly audit bulk request {
+138 silly audit   '@emnapi/core': [ '1.10.0' ],
+138 silly audit   '@emnapi/runtime': [ '1.10.0' ],
+138 silly audit   '@emnapi/wasi-threads': [ '1.2.1' ],
+138 silly audit   '@napi-rs/wasm-runtime': [ '1.1.4' ],
+138 silly audit   '@oxc-project/types': [ '0.132.0' ],
+138 silly audit   '@rolldown/binding-android-arm64': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-darwin-arm64': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-darwin-x64': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-freebsd-x64': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-linux-arm-gnueabihf': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-linux-arm64-gnu': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-linux-arm64-musl': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-linux-ppc64-gnu': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-linux-s390x-gnu': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-linux-x64-gnu': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-linux-x64-musl': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-openharmony-arm64': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-wasm32-wasi': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-win32-arm64-msvc': [ '1.0.2' ],
+138 silly audit   '@rolldown/binding-win32-x64-msvc': [ '1.0.2' ],
+138 silly audit   '@rolldown/pluginutils': [ '1.0.1' ],
+138 silly audit   '@socket.io/component-emitter': [ '3.1.2' ],
+138 silly audit   '@tybys/wasm-util': [ '0.10.2' ],
+138 silly audit   '@vitejs/plugin-react': [ '6.0.2' ],
+138 silly audit   debug: [ '4.4.3' ],
+138 silly audit   'detect-libc': [ '2.1.2' ],
+138 silly audit   'engine.io-client': [ '6.6.5' ],
+138 silly audit   'engine.io-parser': [ '5.2.3' ],
+138 silly audit   fdir: [ '6.5.0' ],
+138 silly audit   fsevents: [ '2.3.3' ],
+138 silly audit   'laravel-echo': [ '2.3.4' ],
+138 silly audit   lightningcss: [ '1.32.0' ],
+138 silly audit   'lightningcss-android-arm64': [ '1.32.0' ],
+138 silly audit   'lightningcss-darwin-arm64': [ '1.32.0' ],
+138 silly audit   'lightningcss-darwin-x64': [ '1.32.0' ],
+138 silly audit   'lightningcss-freebsd-x64': [ '1.32.0' ],
+138 silly audit   'lightningcss-linux-arm-gnueabihf': [ '1.32.0' ],
+138 silly audit   'lightningcss-linux-arm64-gnu': [ '1.32.0' ],
+138 silly audit   'lightningcss-linux-arm64-musl': [ '1.32.0' ],
+138 silly audit   'lightningcss-linux-x64-gnu': [ '1.32.0' ],
+138 silly audit   'lightningcss-linux-x64-musl': [ '1.32.0' ],
+138 silly audit   'lightningcss-win32-arm64-msvc': [ '1.32.0' ],
+138 silly audit   'lightningcss-win32-x64-msvc': [ '1.32.0' ],
+138 silly audit   ms: [ '2.1.3' ],
+138 silly audit   nanoid: [ '3.3.12' ],
+138 silly audit   picocolors: [ '1.1.1' ],
+138 silly audit   picomatch: [ '4.0.4' ],
+138 silly audit   postcss: [ '8.5.15' ],
+138 silly audit   'pusher-js': [ '8.5.0' ],
+138 silly audit   react: [ '19.2.6' ],
+138 silly audit   'react-dom': [ '19.2.6' ],
+138 silly audit   rolldown: [ '1.0.2' ],
+138 silly audit   scheduler: [ '0.27.0' ],
+138 silly audit   'socket.io-client': [ '4.8.3' ],
+138 silly audit   'socket.io-parser': [ '4.2.6' ],
+138 silly audit   'source-map-js': [ '1.2.1' ],
+138 silly audit   tinyglobby: [ '0.2.16' ],
+138 silly audit   tslib: [ '2.8.1' ],
+138 silly audit   tweetnacl: [ '1.0.3' ],
+138 silly audit   vite: [ '8.0.14' ],
+138 silly audit   ws: [ '8.20.1' ],
+138 silly audit   'xmlhttprequest-ssl': [ '2.1.2' ],
+138 silly audit   jspdf: [ '4.2.1' ],
+138 silly audit   '@babel/runtime': [ '7.29.7' ],
+138 silly audit   canvg: [ '3.0.11' ],
+138 silly audit   'core-js': [ '3.49.0' ],
+138 silly audit   dompurify: [ '3.4.6' ],
+138 silly audit   'fast-png': [ '6.4.0' ],
+138 silly audit   fflate: [ '0.8.3' ],
+138 silly audit   html2canvas: [ '1.4.1' ],
+138 silly audit   '@types/raf': [ '3.4.3' ],
+138 silly audit   raf: [ '3.4.1' ],
+138 silly audit   'regenerator-runtime': [ '0.13.11' ],
+138 silly audit   rgbcolor: [ '1.0.1' ],
+138 silly audit   'stackblur-canvas': [ '2.7.0' ],
+138 silly audit   'svg-pathdata': [ '6.0.3' ],
+138 silly audit   '@types/trusted-types': [ '2.0.7' ],
+138 silly audit   '@types/pako': [ '2.0.4' ],
+138 silly audit   iobuffer: [ '5.4.0' ],
+138 silly audit   pako: [ '2.1.0' ],
+138 silly audit   'css-line-break': [ '2.1.0' ],
+138 silly audit   'text-segmentation': [ '1.0.3' ],
+138 silly audit   utrie: [ '1.0.2' ],
+138 silly audit   'performance-now': [ '2.1.0' ],
+138 silly audit   'base64-arraybuffer': [ '1.0.2' ]
+138 silly audit }
+139 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-win32-arm64-msvc
+140 silly reify mark deleted [
+140 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-win32-arm64-msvc'
+140 silly reify ]
+141 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-x64-musl
+142 silly reify mark deleted [
+142 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-x64-musl'
+142 silly reify ]
+143 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-x64-gnu
+144 silly reify mark deleted [
+144 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-x64-gnu'
+144 silly reify ]
+145 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-arm64-musl
+146 silly reify mark deleted [
+146 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-arm64-musl'
+146 silly reify ]
+147 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-arm64-gnu
+148 silly reify mark deleted [
+148 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-arm64-gnu'
+148 silly reify ]
+149 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-linux-arm-gnueabihf
+150 silly reify mark deleted [
+150 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-linux-arm-gnueabihf'
+150 silly reify ]
+151 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-freebsd-x64
+152 silly reify mark deleted [
+152 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-freebsd-x64'
+152 silly reify ]
+153 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-darwin-x64
+154 silly reify mark deleted [
+154 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-darwin-x64'
+154 silly reify ]
+155 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-darwin-arm64
+156 silly reify mark deleted [
+156 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-darwin-arm64'
+156 silly reify ]
+157 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\lightningcss-android-arm64
+158 silly reify mark deleted [
+158 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\lightningcss-android-arm64'
+158 silly reify ]
+159 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\fsevents
+160 silly reify mark deleted [
+160 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\fsevents'
+160 silly reify ]
+161 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-win32-arm64-msvc
+162 silly reify mark deleted [
+162 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-win32-arm64-msvc'
+162 silly reify ]
+163 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-wasm32-wasi
+164 silly reify mark deleted [
+164 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-wasm32-wasi'
+164 silly reify ]
+165 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@emnapi\core
+166 silly reify mark deleted [
+166 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@emnapi\\core'
+166 silly reify ]
+167 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@emnapi\runtime
+168 silly reify mark deleted [
+168 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@emnapi\\runtime'
+168 silly reify ]
+169 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@napi-rs\wasm-runtime
+170 silly reify mark deleted [
+170 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@napi-rs\\wasm-runtime'
+170 silly reify ]
+171 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@emnapi\wasi-threads
+172 silly reify mark deleted [
+172 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@emnapi\\wasi-threads'
+172 silly reify ]
+173 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\tslib
+174 silly reify mark deleted [ 'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\tslib' ]
+175 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@tybys\wasm-util
+176 silly reify mark deleted [
+176 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@tybys\\wasm-util'
+176 silly reify ]
+177 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-openharmony-arm64
+178 silly reify mark deleted [
+178 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-openharmony-arm64'
+178 silly reify ]
+179 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-x64-musl
+180 silly reify mark deleted [
+180 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-x64-musl'
+180 silly reify ]
+181 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-x64-gnu
+182 silly reify mark deleted [
+182 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-x64-gnu'
+182 silly reify ]
+183 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-s390x-gnu
+184 silly reify mark deleted [
+184 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-s390x-gnu'
+184 silly reify ]
+185 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-ppc64-gnu
+186 silly reify mark deleted [
+186 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-ppc64-gnu'
+186 silly reify ]
+187 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-arm64-musl
+188 silly reify mark deleted [
+188 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-arm64-musl'
+188 silly reify ]
+189 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-arm64-gnu
+190 silly reify mark deleted [
+190 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-arm64-gnu'
+190 silly reify ]
+191 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-linux-arm-gnueabihf
+192 silly reify mark deleted [
+192 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-linux-arm-gnueabihf'
+192 silly reify ]
+193 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-freebsd-x64
+194 silly reify mark deleted [
+194 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-freebsd-x64'
+194 silly reify ]
+195 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-darwin-x64
+196 silly reify mark deleted [
+196 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-darwin-x64'
+196 silly reify ]
+197 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-darwin-arm64
+198 silly reify mark deleted [
+198 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-darwin-arm64'
+198 silly reify ]
+199 verbose reify failed optional dependency C:\xampp\htdocs\E-RESTO\e-resto-client\node_modules\@rolldown\binding-android-arm64
+200 silly reify mark deleted [
+200 silly reify   'C:\\xampp\\htdocs\\E-RESTO\\e-resto-client\\node_modules\\@rolldown\\binding-android-arm64'
+200 silly reify ]
+201 http cache base64-arraybuffer@https://registry.npmjs.org/base64-arraybuffer/-/base64-arraybuffer-1.0.2.tgz 0ms (cache hit)
+202 http cache performance-now@https://registry.npmjs.org/performance-now/-/performance-now-2.1.0.tgz 0ms (cache hit)
+203 http cache utrie@https://registry.npmjs.org/utrie/-/utrie-1.0.2.tgz 1ms (cache hit)
+204 http cache text-segmentation@https://registry.npmjs.org/text-segmentation/-/text-segmentation-1.0.3.tgz 0ms (cache hit)
+205 http cache pako@https://registry.npmjs.org/pako/-/pako-2.1.0.tgz 0ms (cache hit)
+206 http cache css-line-break@https://registry.npmjs.org/css-line-break/-/css-line-break-2.1.0.tgz 0ms (cache hit)
+207 http cache svg-pathdata@https://registry.npmjs.org/svg-pathdata/-/svg-pathdata-6.0.3.tgz 0ms (cache hit)
+208 http cache iobuffer@https://registry.npmjs.org/iobuffer/-/iobuffer-5.4.0.tgz 0ms (cache hit)
+209 http cache rgbcolor@https://registry.npmjs.org/rgbcolor/-/rgbcolor-1.0.1.tgz 0ms (cache hit)
+210 http cache @types/trusted-types@https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz 0ms (cache hit)
+211 http cache @types/pako@https://registry.npmjs.org/@types/pako/-/pako-2.0.4.tgz 0ms (cache hit)
+212 http cache regenerator-runtime@https://registry.npmjs.org/regenerator-runtime/-/regenerator-runtime-0.13.11.tgz 0ms (cache hit)
+213 http cache stackblur-canvas@https://registry.npmjs.org/stackblur-canvas/-/stackblur-canvas-2.7.0.tgz 0ms (cache hit)
+214 http cache raf@https://registry.npmjs.org/raf/-/raf-3.4.1.tgz 1ms (cache hit)
+215 http cache @types/raf@https://registry.npmjs.org/@types/raf/-/raf-3.4.3.tgz 0ms (cache hit)
+216 http cache html2canvas@https://registry.npmjs.org/html2canvas/-/html2canvas-1.4.1.tgz 0ms (cache hit)
+217 http cache dompurify@https://registry.npmjs.org/dompurify/-/dompurify-3.4.6.tgz 0ms (cache hit)
+218 http cache canvg@https://registry.npmjs.org/canvg/-/canvg-3.0.11.tgz 0ms (cache hit)
+219 http cache fast-png@https://registry.npmjs.org/fast-png/-/fast-png-6.4.0.tgz 0ms (cache hit)
+220 http cache fflate@https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz 0ms (cache hit)
+221 http cache jspdf@https://registry.npmjs.org/jspdf/-/jspdf-4.2.1.tgz 0ms (cache hit)
+222 http cache @babel/runtime@https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.7.tgz 0ms (cache hit)
+223 http cache core-js@https://registry.npmjs.org/core-js/-/core-js-3.49.0.tgz 0ms (cache hit)
+224 http cache @tybys/wasm-util@https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.2.tgz 0ms (cache hit)
+225 http cache tslib@https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz 0ms (cache hit)
+226 http cache @emnapi/wasi-threads@https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-1.2.1.tgz 0ms (cache hit)
+227 silly tarball no local data for base64-arraybuffer@https://registry.npmjs.org/base64-arraybuffer/-/base64-arraybuffer-1.0.2.tgz. Extracting by manifest.
+228 silly tarball no local data for performance-now@https://registry.npmjs.org/performance-now/-/performance-now-2.1.0.tgz. Extracting by manifest.
+229 silly tarball no local data for utrie@https://registry.npmjs.org/utrie/-/utrie-1.0.2.tgz. Extracting by manifest.
+230 silly tarball no local data for text-segmentation@https://registry.npmjs.org/text-segmentation/-/text-segmentation-1.0.3.tgz. Extracting by manifest.
+231 silly tarball no local data for pako@https://registry.npmjs.org/pako/-/pako-2.1.0.tgz. Extracting by manifest.
+232 silly tarball no local data for css-line-break@https://registry.npmjs.org/css-line-break/-/css-line-break-2.1.0.tgz. Extracting by manifest.
+233 silly tarball no local data for svg-pathdata@https://registry.npmjs.org/svg-pathdata/-/svg-pathdata-6.0.3.tgz. Extracting by manifest.
+234 silly tarball no local data for iobuffer@https://registry.npmjs.org/iobuffer/-/iobuffer-5.4.0.tgz. Extracting by manifest.
+235 silly tarball no local data for rgbcolor@https://registry.npmjs.org/rgbcolor/-/rgbcolor-1.0.1.tgz. Extracting by manifest.
+236 silly tarball no local data for @types/trusted-types@https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz. Extracting by manifest.
+237 silly tarball no local data for @types/pako@https://registry.npmjs.org/@types/pako/-/pako-2.0.4.tgz. Extracting by manifest.
+238 silly tarball no local data for regenerator-runtime@https://registry.npmjs.org/regenerator-runtime/-/regenerator-runtime-0.13.11.tgz. Extracting by manifest.
+239 silly tarball no local data for stackblur-canvas@https://registry.npmjs.org/stackblur-canvas/-/stackblur-canvas-2.7.0.tgz. Extracting by manifest.
+240 silly tarball no local data for raf@https://registry.npmjs.org/raf/-/raf-3.4.1.tgz. Extracting by manifest.
+241 http cache @napi-rs/wasm-runtime@https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz 0ms (cache hit)
+242 silly tarball no local data for @types/raf@https://registry.npmjs.org/@types/raf/-/raf-3.4.3.tgz. Extracting by manifest.
+243 http cache @emnapi/core@https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz 0ms (cache hit)
+244 http cache @emnapi/runtime@https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz 0ms (cache hit)
+245 silly tarball no local data for html2canvas@https://registry.npmjs.org/html2canvas/-/html2canvas-1.4.1.tgz. Extracting by manifest.
+246 silly tarball no local data for dompurify@https://registry.npmjs.org/dompurify/-/dompurify-3.4.6.tgz. Extracting by manifest.
+247 silly tarball no local data for canvg@https://registry.npmjs.org/canvg/-/canvg-3.0.11.tgz. Extracting by manifest.
+248 silly tarball no local data for fast-png@https://registry.npmjs.org/fast-png/-/fast-png-6.4.0.tgz. Extracting by manifest.
+249 silly tarball no local data for fflate@https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz. Extracting by manifest.
+250 silly tarball no local data for jspdf@https://registry.npmjs.org/jspdf/-/jspdf-4.2.1.tgz. Extracting by manifest.
+251 silly tarball no local data for @babel/runtime@https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.7.tgz. Extracting by manifest.
+252 silly tarball no local data for core-js@https://registry.npmjs.org/core-js/-/core-js-3.49.0.tgz. Extracting by manifest.
+253 http fetch GET 200 https://registry.npmjs.org/rgbcolor/-/rgbcolor-1.0.1.tgz 288ms (cache miss)
+254 http fetch GET 200 https://registry.npmjs.org/@types/raf/-/raf-3.4.3.tgz 400ms (cache miss)
+255 http fetch GET 200 https://registry.npmjs.org/base64-arraybuffer/-/base64-arraybuffer-1.0.2.tgz 418ms (cache miss)
+256 http fetch GET 200 https://registry.npmjs.org/text-segmentation/-/text-segmentation-1.0.3.tgz 618ms (cache miss)
+257 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 735ms
+258 silly audit report {}
+259 http fetch GET 200 https://registry.npmjs.org/iobuffer/-/iobuffer-5.4.0.tgz 677ms (cache miss)
+260 http fetch GET 200 https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz 715ms (cache miss)
+261 http fetch GET 200 https://registry.npmjs.org/utrie/-/utrie-1.0.2.tgz 907ms (cache miss)
+262 http fetch GET 200 https://registry.npmjs.org/svg-pathdata/-/svg-pathdata-6.0.3.tgz 917ms (cache miss)
+263 http fetch GET 200 https://registry.npmjs.org/performance-now/-/performance-now-2.1.0.tgz 1046ms (cache miss)
+264 http fetch GET 200 https://registry.npmjs.org/css-line-break/-/css-line-break-2.1.0.tgz 1130ms (cache miss)
+265 http fetch GET 200 https://registry.npmjs.org/@types/pako/-/pako-2.0.4.tgz 1426ms (cache miss)
+266 http fetch GET 200 https://registry.npmjs.org/dompurify/-/dompurify-3.4.6.tgz 1778ms (cache miss)
+267 http fetch GET 200 https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz 1796ms (cache miss)
+268 http fetch GET 200 https://registry.npmjs.org/regenerator-runtime/-/regenerator-runtime-0.13.11.tgz 1935ms (cache miss)
+269 http fetch GET 200 https://registry.npmjs.org/fast-png/-/fast-png-6.4.0.tgz 1945ms (cache miss)
+270 http fetch GET 200 https://registry.npmjs.org/pako/-/pako-2.1.0.tgz 2167ms (cache miss)
+271 http fetch GET 200 https://registry.npmjs.org/stackblur-canvas/-/stackblur-canvas-2.7.0.tgz 3901ms (cache miss)
+272 http fetch GET 200 https://registry.npmjs.org/raf/-/raf-3.4.1.tgz 4568ms (cache miss)
+273 http fetch GET 200 https://registry.npmjs.org/canvg/-/canvg-3.0.11.tgz 4883ms (cache miss)
+274 http fetch GET 200 https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.7.tgz 5245ms (cache miss)
+275 http fetch GET 200 https://registry.npmjs.org/html2canvas/-/html2canvas-1.4.1.tgz 6543ms (cache miss)
+276 http fetch GET 200 https://registry.npmjs.org/jspdf/-/jspdf-4.2.1.tgz 10229ms (cache miss)
+277 http fetch GET 200 https://registry.npmjs.org/core-js/-/core-js-3.49.0.tgz 38894ms (cache miss)
+278 info run core-js@3.49.0 postinstall node_modules/core-js node -e "try{require('./postinstall')}catch(e){}"
+279 info run core-js@3.49.0 postinstall { code: 0, signal: null }
+280 silly ADD node_modules/base64-arraybuffer
+281 silly ADD node_modules/performance-now
+282 silly ADD node_modules/utrie
+283 silly ADD node_modules/text-segmentation
+284 silly ADD node_modules/css-line-break
+285 silly ADD node_modules/pako
+286 silly ADD node_modules/iobuffer
+287 silly ADD node_modules/@types/pako
+288 silly ADD node_modules/@types/trusted-types
+289 silly ADD node_modules/svg-pathdata
+290 silly ADD node_modules/stackblur-canvas
+291 silly ADD node_modules/rgbcolor
+292 silly ADD node_modules/regenerator-runtime
+293 silly ADD node_modules/raf
+294 silly ADD node_modules/@types/raf
+295 silly ADD node_modules/html2canvas
+296 silly ADD node_modules/fflate
+297 silly ADD node_modules/fast-png
+298 silly ADD node_modules/dompurify
+299 silly ADD node_modules/core-js
+300 silly ADD node_modules/canvg
+301 silly ADD node_modules/@babel/runtime
+302 silly ADD node_modules/jspdf
+303 silly ADD
+304 silly ADD
+305 silly ADD
+306 silly ADD
+307 silly ADD
+308 silly ADD
+309 silly ADD
+310 silly ADD
+311 silly ADD
+312 silly ADD
+313 silly ADD
+314 silly ADD
+315 silly ADD
+316 silly ADD
+317 silly ADD
+318 silly ADD
+319 silly ADD
+320 silly ADD
+321 silly ADD
+322 silly ADD
+323 silly ADD
+324 silly ADD
+325 silly ADD
+326 silly ADD
+327 silly ADD
+328 silly ADD
+329 silly ADD
+330 silly ADD
+331 silly ADD
+332 silly ADD
+333 silly ADD
+334 verbose cwd C:\xampp\htdocs\E-RESTO\e-resto-client
+335 verbose os Windows_NT 10.0.26200
+336 verbose node v24.10.0
+337 verbose npm  v11.0.0
+338 verbose exit 0
+339 info ok

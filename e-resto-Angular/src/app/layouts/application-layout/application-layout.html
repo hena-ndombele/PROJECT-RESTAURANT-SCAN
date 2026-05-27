@@ -1,0 +1,9 @@
+<div id="overlay" class="overlay" [class.show]="isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>
+
+<app-header></app-header>
+
+<app-sidebare></app-sidebare>
+
+<main id="content" class="content py-10" [class.full]="isSidebarCollapsed">
+    <router-outlet></router-outlet>
+</main>

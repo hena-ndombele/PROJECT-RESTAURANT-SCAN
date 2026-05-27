@@ -1,0 +1,91 @@
+<div class="container-fluid py-4 bg-light min-vh-100 position-relative">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark mb-0">Room plan</h3>
+        <button (click)="loadTables()"
+                [disabled]="isLoading()"
+                class="btn btn-white shadow-sm border rounded-pill px-4 d-inline-flex align-items-center fw-bold transition-all">
+            <i class="bi bi-arrow-clockwise me-2" [class.spinner-border-sm]="isLoading()"></i>
+            {{ isLoading() ? 'Update...' : 'Update plan' }}
+        </button>
+    </div>
+
+    <div class="row g-5 floor-plan-grid row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 position-relative">
+
+        @if (isLoading()) {
+            <div class="col-12 d-flex flex-column align-items-center justify-content-center"
+                 style="min-height: 70vh; width: 100%;">
+
+                <div class="loader-3d-container mb-4">
+                    <div class="spinner-border text-primary"
+                         style="width: 4rem; height: 4rem; border-width: 0.4em;"
+                         role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-muted animate-pulse mb-1">Loading the seating plan...</h5>
+                <p class="small text-muted">Please wait while the data is being retrieved.</p>
+            </div>
+        } @else {
+
+            @for (table of tables(); track table.id) {
+                <div class="col 3d-table-container">
+                    <div class="table-3d-wrapper" [attr.title]="table.status">
+                        <div class="table-top shadow-3d-lg" [ngClass]="getStatusClass(table.status)">
+                            <div class="table-surface-gradient"></div>
+                            <div class="p-3 text-center position-relative">
+                                <div class="mb-2">
+                                    <span class="badge px-3 py-1 rounded-pill fw-bold text-uppercase"
+                                          [ngClass]="{
+                                            'bg-success-subtle text-success border-success': table.status === 'Libre',
+                                            'bg-danger-subtle text-danger border-danger': table.status === 'Occupée',
+                                            'bg-primary-subtle text-primary border-primary': table.status === 'Réservée'
+                                          }"
+                                          style="font-size: 9px; letter-spacing: 1px;">
+                                        {{ table.status }}
+                                    </span>
+                                </div>
+
+                                <h2 class="display-5 fw-black mb-0 table-id"
+                                    [class.text-white]="table.status === 'Occupée'"
+                                    [class.text-dark]="table.status !== 'Occupée'"
+                                    style="font-size: 30px;">
+                                    {{ table.name }}
+                                </h2>
+                                <p class="small mb-0" [class.text-white-50]="table.status === 'Occupée'" [class.text-muted]="table.status !== 'Occupée'">
+                                    <i class="ti ti-users me-1"></i> {{ table.capacity }} P.
+                                </p>
+
+                                @if (table.status === 'Occupée') {
+                                    <div class="d-flex align-items-center justify-content-center mt-2 p-1 rounded-pill bg-danger border border-danger shadow-inner">
+                                        <span class="spinner-grow spinner-grow-sm text-white me-2" role="status"></span>
+                                        <span class="small fw-medium text-white" style="font-size: 11px;">En salle</span>
+                                    </div>
+                                } @else if (table.status === 'Commande en cours') {
+                                    <button class="btn btn-primary btn-sm w-100 rounded-pill text-black fw-bold mt-2 shadow-sm fs-7">
+                                        Voir Panier
+                                    </button>
+                                } @else {
+                                    <div class="d-flex justify-content-center gap-1 mt-2 action-buttons">
+                                        <button class="btn btn-light-glass btn-sm rounded-circle"><i class="ti ti-eye"></i></button>
+                                        <button class="btn btn-light-glass btn-sm rounded-circle"><i class="ti ti-qrcode"></i></button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="table-leg shadow-3d-sm"></div>
+                        <div class="table-shadow-floor"></div>
+                    </div>
+                </div>
+            } @empty {
+                <div class="col-12 text-center py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-inbox text-muted display-1"></i>
+                    </div>
+                    <h5 class="text-muted fw-normal">No tables are configured in the system.</h5>
+                </div>
+            }
+        }
+    </div>
+</div>

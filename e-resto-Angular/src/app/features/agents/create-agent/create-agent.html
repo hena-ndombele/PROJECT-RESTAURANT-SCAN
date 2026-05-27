@@ -1,0 +1,102 @@
+<button type="button" class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#createAgentModal">
+    <i class="ti ti-plus me-1"></i> Create Employee
+</button>
+
+<div class="modal fade" id="createAgentModal" tabindex="-1" aria-labelledby="createAgentModal" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow text-start">
+
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fs-3 mb-1" id="createTableModal" style="font-weight: bolder">Create Employee</h5>
+                    <p class="mb-0 text-muted small">Manage your employee</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <form [formGroup]="agentForm" (ngSubmit)="onSubmit()" id="addProductForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="productName" class="form-label">First Name <span style="color:red">*</span></label>
+                            <input type="text" class="form-control" id="productName" formControlName="first_name" placeholder="First Name">
+                            @if (agentForm.get('first_name')?.invalid && agentForm.get('first_name')?.touched) {
+                                <small class="text-danger">First Name is required.</small>
+                            }
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="productName" class="form-label">Last Name <span style="color:red">*</span></label>
+                            <input type="text" class="form-control" id="lastName" formControlName="last_name" placeholder="Last Name">
+                            @if (agentForm.get('last_name')?.invalid && agentForm.get('last_name')?.touched) {
+                                <small class="text-danger">Last Name is required.</small>
+                            }
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="productName" class="form-label">Email <span style="color:red">*</span></label>
+                            <input type="text" class="form-control" id="email" formControlName="email" placeholder="Email">
+                            @if (agentForm.get('email')?.invalid && agentForm.get('email')?.touched) {
+                                <small class="text-danger">Email is required.</small>
+                            }
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="phone_number" class="form-label">Phone Number <span style="color:red">*</span></label>
+                            <input type="text" class="form-control" id="phone_number" formControlName="phone_number" placeholder="Phone Number">
+                            @if (agentForm.get('phone_number')?.invalid && agentForm.get('phone_number')?.touched) {
+                                <small class="text-danger">Phone Numberis required.</small>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="productName" class="form-label">Education Level </label>
+                            <input type="text" class="form-control" id="education_level" formControlName="education_level" placeholder="Education Level">
+                            @if (agentForm.get('education_level')?.invalid && agentForm.get('education_level')?.touched) {
+                                <small class="text-danger">Education Level is required.</small>
+                            }
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="productName" class="form-label">Function <span style="color:red">*</span></label>
+                            <input type="text" class="form-control" id="function" formControlName="fonction" placeholder="Function">
+                            @if (agentForm.get('fonction')?.invalid && agentForm.get('fonction')?.touched) {
+                                <small class="text-danger">Function is required.</small>
+                            }
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address <span style="color:red">*</span></label>
+                        <textarea class="form-control" id="address" formControlName="address" rows="4"
+                                  placeholder="Enter Address "></textarea>
+                        @if (agentForm.get('address')?.invalid && agentForm.get('address')?.touched) {
+                            <small class="text-danger">Description is required.</small>
+                        }
+                    </div>
+
+
+                </form>
+            </div>
+
+            <div class="modal-footer d-flex gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">    <i class="bi bi-x-circle me-1"></i> Cancel</button>
+
+                <button type="submit"
+                        form="addProductForm"
+                        class="btn btn-primary text-black"
+                        [disabled]="agentForm.invalid  || isLoading">
+                    @if (isLoading) {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Create Employee
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

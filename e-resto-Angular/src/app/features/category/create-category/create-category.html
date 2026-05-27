@@ -1,0 +1,75 @@
+<button type="button" class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#addInventoryModal">
+    <i class="ti ti-plus me-1"></i> Create Category
+</button>
+
+<div class="modal fade" id="addInventoryModal" tabindex="-1" aria-labelledby="addInventoryModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow text-start">
+
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">Create
+                        Category</h5>
+                    <p class="mb-0 text-muted small">Manage your category</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()" id="addProductForm">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="productName" class="form-label">Category Name <span
+                                    style="color:red">*</span></label>
+                            <input type="text" class="form-control" id="productName" formControlName="name"
+                                   placeholder="Enter category name">
+                            @if (categoryForm.get('name')?.invalid && categoryForm.get('name')?.touched) {
+                                <small class="text-danger">Name is required.</small>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Category Image <span style="color:red">*</span></label>
+                        <input type="file" class="form-control" id="image" accept="image/*"
+                               (change)="onFileSelected($event)">
+
+                        @if (!selectedFile && categoryForm.get('name')?.touched) {
+                            <small class="text-danger d-block">Please select an image.</small>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="categoryDescription" class="form-label">Description <span style="color:red">*</span></label>
+                        <textarea class="form-control" id="categoryDescription" formControlName="description" rows="4"
+                                  placeholder="Enter category description"></textarea>
+                        @if (categoryForm.get('description')?.invalid && categoryForm.get('description')?.touched) {
+                            <small class="text-danger">Description is required.</small>
+                        }
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer d-flex gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </button>
+
+                <button type="submit"
+                        form="addProductForm"
+                        class="btn btn-primary text-black"
+                        [disabled]="categoryForm.invalid || !selectedFile || isLoading">
+
+                    @if (isLoading) {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    } @else {
+                        <i class="bi bi-plus-circle me-1"></i>
+                    }
+
+                    Create Category
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

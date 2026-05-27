@@ -1,0 +1,49 @@
+{
+  "hash": "9de518d9",
+  "configHash": "a3d17321",
+  "lockfileHash": "843d447c",
+  "browserHash": "f5a5da5e",
+  "optimized": {
+    "@angular/core": {
+      "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
+      "file": "@angular_core.js",
+      "fileHash": "6491a008",
+      "needsInterop": false
+    },
+    "@angular/platform-browser": {
+      "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
+      "file": "@angular_platform-browser.js",
+      "fileHash": "2b9eed76",
+      "needsInterop": false
+    },
+    "@angular/router": {
+      "src": "../../../../../../node_modules/@angular/router/fesm2022/router.mjs",
+      "file": "@angular_router.js",
+      "fileHash": "7f183238",
+      "needsInterop": false
+    },
+    "apexcharts": {
+      "src": "../../../../../../node_modules/apexcharts/dist/apexcharts.esm.js",
+      "file": "apexcharts.js",
+      "fileHash": "34d9231d",
+      "needsInterop": false
+    },
+    "bootstrap": {
+      "src": "../../../../../../node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "file": "bootstrap.js",
+      "fileHash": "638bde60",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-2A2NOS26": {
+      "file": "chunk-2A2NOS26.js"
+    },
+    "chunk-XJPKLMMD": {
+      "file": "chunk-XJPKLMMD.js"
+    },
+    "chunk-653SOEEV": {
+      "file": "chunk-653SOEEV.js"
+    }
+  }
+}

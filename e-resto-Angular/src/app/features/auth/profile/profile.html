@@ -1,0 +1,138 @@
+<div class="container-fluid py-5" style="background-color: #f4f5f7; min-height: 100vh;">
+    <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-end mb-5">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-2">
+                        <li class="breadcrumb-item small text-uppercase fw-bold text-muted">AGENTS</li>
+                        <li class="breadcrumb-item small text-uppercase fw-bold text-primary active">Profile</li>
+                    </ol>
+                </nav>
+                <h2 class="fw-bold text-dark m-0">Profil </h2>
+            </div>
+
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card border-0 rounded-4 overflow-hidden shadow-sm">
+                    <div class="position-relative"
+                         style="height: 200px; background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)), url('assets/images/image11.jpeg') center/cover;">
+
+                        <div class="position-absolute top-100 start-50 translate-middle">
+                            <img [src]="userData.avatar ? userData.avatar : 'assets/images/default-user.png'"
+                                 class="rounded-circle border border-4 border-white shadow-sm"
+                                 style="width: 120px; height: 120px; object-fit: cover; background-color: white;">
+                        </div>
+                    </div>
+
+                    <div class="card-body text-center pt-5 mt-4">
+                        <h4 class="fw-bold mb-1" style="margin-top:20px;">
+                            {{ userData.firstName }} {{ userData.lastName }}
+                        </h4>
+                        <p class="text-muted small mb-3">MATRICULE : {{ userData.id }}</p>
+
+                        <div class="d-flex justify-content-center gap-2 mb-4">
+                <span class="badge px-3 py-2 rounded-pill border"
+                      style="background-color: #fff9f0; color: #F9A11B; border-color: #F9A11B !important;">
+                    <i class="bi bi-patch-check-fill me-1"></i> {{ userData.roleLabel || 'Agent' }}
+                </span>
+                        </div>
+
+                        <div class="row g-2 mt-2">
+                            <div class="col-6">
+                                <div class="p-2 border rounded-3 bg-light">
+                                    <small class="d-block text-muted">Service</small>
+                                    <span class="fw-bold small">Midi / Soir</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 border rounded-3 bg-light">
+                                    <small class="d-block text-muted">Statut</small>
+                                    <span class="text-success fw-bold small">En Poste</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-header bg-transparent border-0 pt-4 px-4">
+                        <ul class="nav nav-tabs card-header-tabs border-0" id="myTab" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active fw-bold border-0 bg-transparent text-dark" href="#">Détails du Profil</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-4 bg-light-soft d-flex align-items-center">
+                                    <div class="icon-resto bg-white shadow-sm me-3">
+                                        <i class="ti ti-mail-opened text-dark fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <label class="d-block x-small text-muted fw-bold text-uppercase">Contact</label>
+                                        <span class="text-dark fw-semibold">{{ userData.email }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-4 bg-light-soft d-flex align-items-center">
+                                    <div class="icon-resto bg-white shadow-sm me-3">
+                                        <i class="ti ti-phone-call text-dark fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <label class="d-block x-small text-muted fw-bold text-uppercase">Téléphone</label>
+                                        <span class="text-dark fw-semibold">{{ userData.phone }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-12">
+                                <div class="p-3 rounded-4 bg-light-soft d-flex align-items-center">
+                                    <div class="icon-resto bg-white shadow-sm me-3">
+                                        <i class="ti ti-home text-dark fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <label class="d-block x-small text-muted fw-bold text-uppercase">Address</label>
+                                        <span class="text-dark fw-semibold">{{userData.address}}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            <div class="col-12 mt-6">
+                                <div class="p-3 rounded-3 text-white" style="background-color: #1a1a1a;">
+                                    <div class="row text-center">
+                                        <div class="col-4 border-end border-secondary">
+                                            <h4 class="fw-bold m-0 text-amber" style="color: #F9A11B;">
+                                                {{ userData.created_at | date:'dd/MM/yyyy' }}
+                                            </h4>
+                                            <small class="text-secondary text-uppercase x-small">Profil Créer</small>
+                                        </div>
+                                        <div class="col-4 border-end border-secondary">
+                                            <h4 class="fw-bold m-0 text-amber" style="color: #F9A11B;">
+                                                {{ userData.updated_at | date:'dd/MM/yyyy' }}
+                                            </h4>
+                                            <small class="text-secondary text-uppercase x-small">Profil Modifier</small>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
