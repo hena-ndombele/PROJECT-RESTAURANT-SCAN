@@ -1,0 +1,16 @@
+<main class="login-page">
+  <a class="brand" routerLink="/"><img src="assets/logo/e-resto-logo.png" alt="">E-RESTO</a>
+  <section>
+    <span>Restaurant sign in</span>
+    <h1>Connectez-vous a votre espace</h1>
+    <button class="google" type="button" (click)="googleLogin()"><i class="bi bi-google"></i> Continuer avec Google</button>
+    <div class="divider">ou</div>
+    <form (ngSubmit)="login()">
+      <input [(ngModel)]="email" name="email" type="email" placeholder="Email">
+      <input [(ngModel)]="password" name="password" type="password" placeholder="Mot de passe">
+      <button>Se connecter</button>
+      <p *ngIf="message">{{ message }}</p>
+    </form>
+    <a routerLink="/pricing">Pas encore de compte ? Choisir un plan</a>
+  </section>
+</main>

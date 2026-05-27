@@ -4,6 +4,7 @@ namespace App\Http\Controllers\order;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Table;
 use App\Models\Plat;
 use App\Events\OrderPlaced;
@@ -22,6 +23,8 @@ class OrderController extends Controller
         $validated = $request->validate([
             'table_id' => 'required|uuid|exists:tables,id',
             'note' => 'nullable|string',
+            'payment_method' => 'nullable|string|in:cash,orange_money,mpesa,airtel_money',
+            'payment_provider' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.plat_id' => 'required|uuid|exists:plats,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -33,6 +36,9 @@ class OrderController extends Controller
                     'table_id' => $validated['table_id'],
                     'note' => $validated['note'] ?? null,
                     'status' => 'pending',
+                    'payment_method' => $validated['payment_method'] ?? 'cash',
+                    'payment_provider' => $validated['payment_provider'] ?? null,
+                    'payment_status' => 'pending',
                 ]);
 
                 $total = 0;
@@ -62,6 +68,23 @@ class OrderController extends Controller
 
                 // LA TABLE DEVIENT OCCUPÉE
                 $table = Table::findOrFail($validated['table_id']);
+
+                Payment::create([
+                    'restaurant_id' => $table->restaurant_id ?? null,
+                    'order_id' => $order->id,
+                    'type' => 'order',
+                    'method' => $order->payment_method,
+                    'provider' => $order->payment_provider,
+                    'status' => 'pending',
+                    'amount' => $total,
+                    'currency' => $mainCurrency,
+                    'reference' => 'ORD-' . substr($order->id, 0, 8),
+                    'metadata' => [
+                        'message' => $order->payment_method === 'cash'
+                            ? 'Paiement cash a confirmer par le restaurant.'
+                            : 'Paiement mobile money initie en mode interface test.',
+                    ],
+                ]);
                 $table->update(['status' => 'Occupée']);
 
                 broadcast(new OrderPlaced($order->load(['table', 'items.plat'])))->toOthers();

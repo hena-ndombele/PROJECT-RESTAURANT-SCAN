@@ -1,0 +1,100 @@
+.checkout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: linear-gradient(135deg, #111 0%, #111 44%, #fff4ea 44%, #fff4ea 100%);
+}
+
+.brand {
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 950;
+}
+
+.brand img {
+  width: 40px;
+  height: 40px;
+}
+
+.checkout-card {
+  width: min(100%, 860px);
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  gap: 24px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 34px;
+  box-shadow: 0 28px 80px rgba(0,0,0,.25);
+}
+
+span {
+  color: #d71920;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 950;
+}
+
+h1 {
+  font-size: 44px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+p, small {
+  color: #666;
+  line-height: 1.6;
+}
+
+form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  font-weight: 850;
+}
+
+input {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 14px 15px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #ff7a1a, #d71920);
+  color: #fff;
+  font-weight: 950;
+}
+
+.message {
+  color: #d71920;
+  font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  .checkout-card, .row {
+    grid-template-columns: 1fr;
+  }
+
+  .brand {
+    color: #111;
+  }
+}

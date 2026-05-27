@@ -602,8 +602,15 @@ function MenuModal({ plat, onClose, onAdd }) {
 
 function CartDrawer({ open, tableId, cart, onClose, onOrderCreated }) {
   const [note, setNote] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [status, setStatus] = useState({ type: '', message: '' });
   const canSubmit = tableId && cart.items.length > 0;
+  const paymentMethods = [
+    { key: 'cash', name: 'Cash', icon: 'fa-money-bill-wave', available: true, hint: 'Payez a table ou a la caisse.' },
+    { key: 'orange_money', name: 'Orange Money', icon: 'fa-mobile-screen', available: true, hint: 'Interface de paiement mobile money.' },
+    { key: 'mpesa', name: 'M-Pesa', icon: 'fa-mobile-screen-button', available: true, hint: 'Interface de paiement mobile money.' },
+    { key: 'airtel_money', name: 'Airtel Money', icon: 'fa-sim-card', available: true, hint: 'Interface de paiement mobile money.' },
+  ];
 
   const submitOrder = async () => {
     if (!canSubmit) return;
@@ -612,6 +619,8 @@ function CartDrawer({ open, tableId, cart, onClose, onOrderCreated }) {
       const response = await createOrder({
         table_id: tableId,
         note,
+        payment_method: paymentMethod,
+        payment_provider: paymentMethod === 'cash' ? null : paymentMethod,
         items: cart.items.map((item) => ({ plat_id: item.plat.id, quantity: item.quantity })),
       });
       cart.clearCart();
@@ -643,6 +652,36 @@ function CartDrawer({ open, tableId, cart, onClose, onOrderCreated }) {
           </div>
         ))}
         <textarea className="fctrl" rows="3" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note pour la cuisine..." />
+        <div className="payment-box">
+          <div className="payment-title">
+            <strong>Moyen de paiement</strong>
+            <span>Cash et mobile money pour le client du restaurant.</span>
+          </div>
+          <div className="payment-options">
+            {paymentMethods.map((method) => (
+              <button
+                className={`payment-option clean-btn ${paymentMethod === method.key ? 'active' : ''}`}
+                key={method.key}
+                type="button"
+                onClick={() => setPaymentMethod(method.key)}
+                title={method.hint}
+              >
+                <i className={`fas ${method.icon}`}></i>
+                <span>{method.name}</span>
+                <small>{method.key === 'cash' ? 'A table' : 'Mobile money'}</small>
+              </button>
+            ))}
+          </div>
+          {paymentMethod === 'cash' ? (
+            <p className="payment-note success">Votre commande sera envoyee maintenant. Le paiement cash sera confirme par le restaurant.</p>
+          ) : (
+            <div className="mobile-money-form">
+              <label>Numero mobile money</label>
+              <input className="fctrl" type="tel" placeholder="+243 8XX XXX XXX" />
+              <p className="payment-note">Interface de test : la commande part avec le moyen choisi, l'API fournisseur sera branchee ensuite.</p>
+            </div>
+          )}
+        </div>
         <div className="cart-total">
           <span>Total</span>
           <strong>{formatMoney(cart.totals.totalAmount, cart.totals.currency)}</strong>

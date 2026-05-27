@@ -1,0 +1,49 @@
+<main class="restaurant-space">
+  <aside>
+    <a class="brand" routerLink="/"><img [src]="restaurant.logo" alt=""><span>{{ restaurant.name }}</span></a>
+    <a class="active"><i class="bi bi-speedometer2"></i> Accueil</a>
+    <a routerLink="/dashboard"><i class="bi bi-shop"></i> Ouvrir l'admin complet</a>
+    <a routerLink="/"><i class="bi bi-arrow-left"></i> Retour landing</a>
+  </aside>
+
+  <section class="content">
+    <header>
+      <div>
+        <span>Espace restaurant</span>
+        <h1>Bienvenue dans votre back-office {{ restaurant.name }}</h1>
+        <p>Personnalisez votre app, gerez votre menu, vos tables, vos commandes et votre abonnement.</p>
+      </div>
+      <button><i class="bi bi-credit-card"></i> Plan {{ plan.name }}</button>
+    </header>
+
+    <div class="kpis">
+      <article><small>Commandes aujourd'hui</small><strong>24</strong><span>+12% vs hier</span></article>
+      <article><small>Revenu cash/mobile</small><strong>428K</strong><span>{{ restaurant.currency }}</span></article>
+      <article><small>Tables actives</small><strong>18/{{ plan.tables }}</strong><span>Selon abonnement</span></article>
+      <article><small>Equipe</small><strong>6/{{ plan.users }}</strong><span>Comptes autorises</span></article>
+    </div>
+
+    <section class="brand-panel">
+      <div>
+        <span>Personnalisation</span>
+        <h2>Marque et application client</h2>
+      </div>
+      <form>
+        <label>Nom restaurant<input [(ngModel)]="restaurant.name" name="name"></label>
+        <label>Nom application<input [(ngModel)]="restaurant.appName" name="appName"></label>
+        <label>Logo URL<input [(ngModel)]="restaurant.logo" name="logo"></label>
+        <label>Devise<select [(ngModel)]="restaurant.currency" name="currency"><option>CDF</option><option>USD</option></select></label>
+        <label>Orange<input [(ngModel)]="restaurant.primary" name="primary"></label>
+        <label>Rouge<input [(ngModel)]="restaurant.secondary" name="secondary"></label>
+      </form>
+    </section>
+
+    <section class="modules">
+      <article *ngFor="let module of modules">
+        <i class="bi {{ module[0] }}"></i>
+        <h3>{{ module[1] }}</h3>
+        <p>{{ module[2] }}</p>
+      </article>
+    </section>
+  </section>
+</main>

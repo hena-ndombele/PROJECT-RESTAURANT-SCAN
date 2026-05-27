@@ -24,10 +24,22 @@ import {Reservation} from "./features/tables/reservation/reservation";
 import {ShowDish} from "./features/dish/show-dish/show-dish";
 import {UpdateDish} from "./features/dish/update-dish/update-dish";
 import {ListUser} from "./features/identity/users/list-user/list-user";
+import {SaasLanding} from "./pages/saas-landing/saas-landing";
+import {RestaurantDashboard} from "./pages/restaurant-dashboard/restaurant-dashboard";
+import {PricingPage} from "./pages/pricing/pricing-page";
+import {RestaurantSignup} from "./pages/restaurant-signup/restaurant-signup";
+import {RestaurantCheckout} from "./pages/restaurant-checkout/restaurant-checkout";
+import {RestaurantLogin} from "./pages/restaurant-login/restaurant-login";
+import {restaurantSessionGuard} from "./guards/restaurant-session.guard";
 
 export const routes: Routes = [
 
-  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
+  { path: '', component: SaasLanding, title: 'E-RESTO SaaS - Plateforme restaurant' },
+  { path: 'pricing', component: PricingPage, title: 'Pricing E-RESTO' },
+  { path: 'restaurant/signup', component: RestaurantSignup, title: 'Creation compte restaurant - E-Resto' },
+  { path: 'restaurant/checkout', component: RestaurantCheckout, title: 'Paiement abonnement - E-Resto' },
+  { path: 'restaurant/login', component: RestaurantLogin, title: 'Connexion restaurant - E-Resto' },
+  { path: 'restaurant/dashboard', component: RestaurantDashboard, title: 'Espace restaurant - E-Resto', canActivate: [restaurantSessionGuard] },
 
   {
     path: '',

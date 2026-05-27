@@ -11,6 +11,7 @@ use App\Http\Controllers\permissions\PermissionController;
 use App\Http\Controllers\Public\ContactController;
 use App\Http\Controllers\Public\MenuController;
 use App\Http\Controllers\Public\ReservationController;
+use App\Http\Controllers\Saas\SaasController;
 
 //*****************************************ADMIN****************************************************************
 //users
@@ -19,6 +20,17 @@ Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/otp/request', [AuthController::class, 'requestOtp']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/account-request', [AccountRequestController::class, 'store']);
+
+//*****************************************SAAS PLATFORM***************************************************************
+Route::prefix('saas')->group(function () {
+    Route::get('/overview', [SaasController::class, 'overview']);
+    Route::get('/plans', [SaasController::class, 'plans']);
+    Route::post('/register-interest', [SaasController::class, 'registerInterest']);
+    Route::get('/restaurants', [SaasController::class, 'restaurants']);
+    Route::post('/restaurants', [SaasController::class, 'storeRestaurant']);
+    Route::put('/restaurants/{restaurant}', [SaasController::class, 'updateRestaurant']);
+    Route::delete('/restaurants/{restaurant}', [SaasController::class, 'destroyRestaurant']);
+});
 
 //*****************************************CLIENT PUBLIC***************************************************************
 Route::get('/public/menu', [MenuController::class, 'index']);

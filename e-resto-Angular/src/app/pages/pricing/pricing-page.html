@@ -1,0 +1,59 @@
+<main class="pricing-page">
+  <nav class="topnav">
+    <a class="brand" routerLink="/"><img src="assets/logo/e-resto-logo.png" alt="E-RESTO">E-RESTO</a>
+    <div>
+      <a routerLink="/">Accueil</a>
+      <a routerLink="/pricing">Pricing</a>
+      <a routerLink="/restaurant/login">Sign in</a>
+    </div>
+  </nav>
+
+  <section class="pricing-hero">
+    <span>PRICING</span>
+    <h1>Votre toolkit restaurant complet, a partir de $0</h1>
+    <p>Choisissez un plan riche en valeur. Pas de frais caches, pas de contrat bloque. Changez ou annulez quand vous voulez.</p>
+  </section>
+
+  <section class="plans-shell">
+    <div class="billing-toggle">
+      <button [class.active]="billingCycle === 'monthly'" type="button" (click)="billingCycle = 'monthly'">Mensuel</button>
+      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="billingCycle = 'yearly'">Annuel -25%</button>
+    </div>
+
+    <div class="plans-grid">
+      <article class="plan-card" *ngFor="let plan of overview?.plans" [class.popular]="plan.is_popular">
+        <div class="card-head">
+          <h2>{{ plan.name }}</h2>
+          <span *ngIf="plan.is_popular">BEST VALUE</span>
+        </div>
+        <p>{{ plan.description }}</p>
+        <div class="separator"></div>
+        <div class="price">
+          <strong>${{ displayPrice(plan) }}</strong><em>/mo.</em>
+        </div>
+        <small>{{ billingCycle === 'yearly' ? 'facture annuellement apres essai gratuit' : 'facture mensuellement apres essai gratuit' }}</small>
+        <button (click)="choosePlan(plan)">Start free trial</button>
+        <a (click)="choosePlan(plan)">Creer un compte restaurant</a>
+        <div class="features">
+          <h3>Inclus</h3>
+          <p><i class="bi bi-check2"></i>{{ plan.max_tables }} tables QR</p>
+          <p><i class="bi bi-check2"></i>{{ plan.max_users }} utilisateurs equipe</p>
+          <p *ngFor="let feature of plan.features"><i class="bi bi-check2"></i>{{ feature }}</p>
+        </div>
+        <div class="rates">
+          <b>Frais carte</b>
+          <span>{{ plan.is_popular ? '1.8%' : '1.95%' }} + $0.20 online</span>
+          <span>{{ plan.slug === 'enterprise' ? '0.6%' : '1%' }} paiement externe</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="compare">
+    <h2>Comparez ce que chaque restaurant obtient</h2>
+    <div class="compare-row"><span>Menu QR responsive</span><b>Tous les plans</b></div>
+    <div class="compare-row"><span>Commandes temps reel</span><b>Pro et Enterprise</b></div>
+    <div class="compare-row"><span>Rapports avances</span><b>Pro et Enterprise</b></div>
+    <div class="compare-row"><span>Multi-restaurants</span><b>Enterprise</b></div>
+  </section>
+</main>

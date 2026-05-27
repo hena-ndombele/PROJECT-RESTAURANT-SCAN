@@ -17,10 +17,12 @@ class Table extends Model
     const STATUS_ORDERING = 'Commande en cours';
 
     protected $fillable = [
+        'restaurant_id',
         'name',
         'capacity',    // Ajouté
         'status',      // Ajouté
         'qr_code',
+        'server_phone',
 
     ];
 protected $keyType = 'string';

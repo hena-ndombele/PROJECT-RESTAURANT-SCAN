@@ -1,0 +1,22 @@
+<main class="checkout">
+  <a class="brand" routerLink="/"><img src="assets/logo/e-resto-logo.png" alt="">E-RESTO</a>
+  <section class="checkout-card">
+    <div>
+      <span>Etape 2 sur 2</span>
+      <h1>Activez votre abonnement</h1>
+      <p>Plan choisi : <strong>{{ selectedPlan.name || 'Plan E-RESTO' }}</strong></p>
+      <p>Montant : <strong>${{ selectedPlan.price || 0 }}/mois</strong> - {{ selectedPlan.cycle === 'yearly' ? 'facturation annuelle' : 'facturation mensuelle' }}</p>
+      <small>Votre essai gratuit commence maintenant. La carte Visa/Mastercard securise votre abonnement.</small>
+    </div>
+    <form (ngSubmit)="pay()">
+      <label>Numero carte<input [(ngModel)]="card.number" name="number" placeholder="4242 4242 4242 4242"></label>
+      <label>Nom sur la carte<input [(ngModel)]="card.name" name="name" placeholder="Nom complet"></label>
+      <div class="row">
+        <label>Expiration<input [(ngModel)]="card.expiry" name="expiry" placeholder="MM/AA"></label>
+        <label>CVC<input [(ngModel)]="card.cvc" name="cvc" placeholder="123"></label>
+      </div>
+      <button [disabled]="paying">{{ paying ? 'Traitement...' : 'Payer par carte et ouvrir mon dashboard' }}</button>
+      <p class="message" *ngIf="message">{{ message }}</p>
+    </form>
+  </section>
+</main>

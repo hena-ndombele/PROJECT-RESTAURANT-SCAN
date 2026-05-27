@@ -1,0 +1,19 @@
+<main class="auth-flow">
+  <a class="brand" routerLink="/"><img src="assets/logo/e-resto-logo.png" alt="">E-RESTO</a>
+  <section class="auth-card">
+    <span>Etape 1 sur 2</span>
+    <h1>Creer votre compte restaurant</h1>
+    <p>Comme sur un SaaS professionnel, vous creez d'abord votre compte. Ensuite seulement vous activez l'abonnement par carte.</p>
+    <form (ngSubmit)="createAccount()">
+      <input [(ngModel)]="account.restaurant_name" name="restaurant_name" placeholder="Nom du restaurant">
+      <input [(ngModel)]="account.owner_name" name="owner_name" placeholder="Nom du proprietaire">
+      <input [(ngModel)]="account.email" name="email" type="email" placeholder="Email professionnel">
+      <input [(ngModel)]="account.phone" name="phone" placeholder="Telephone">
+      <input [(ngModel)]="account.password" name="password" type="password" placeholder="Mot de passe">
+      <input [(ngModel)]="account.password_confirmation" name="password_confirmation" type="password" placeholder="Confirmer le mot de passe">
+      <button>Continuer vers le paiement</button>
+      <p class="message" *ngIf="message">{{ message }}</p>
+    </form>
+    <a routerLink="/restaurant/login">J'ai deja un compte</a>
+  </section>
+</main>

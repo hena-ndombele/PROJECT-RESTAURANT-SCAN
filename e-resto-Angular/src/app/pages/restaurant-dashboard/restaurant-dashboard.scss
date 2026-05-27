@@ -1,0 +1,142 @@
+.restaurant-space {
+  --orange: #ff7a1a;
+  --red: #d71920;
+  --black: #111;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  background: #f7f7f7;
+}
+
+aside {
+  background: #111;
+  padding: 22px;
+}
+
+aside a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,.78);
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  font-weight: 850;
+}
+
+aside a.active, aside a:hover {
+  color: #fff;
+  background: linear-gradient(135deg, var(--orange), var(--red));
+}
+
+.brand {
+  color: #fff;
+  margin-bottom: 26px;
+}
+
+.brand img {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.content {
+  padding: clamp(20px, 4vw, 44px);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+header span, .brand-panel span {
+  color: var(--red);
+  font-weight: 950;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+h1, h2, h3 {
+  font-weight: 950;
+}
+
+header p, article p, article span {
+  color: #666;
+}
+
+header button {
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 18px;
+  color: #fff;
+  background: #111;
+  font-weight: 950;
+}
+
+.kpis, .modules {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.kpis article, .brand-panel, .modules article {
+  background: #fff;
+  border: 1px solid rgba(17,17,17,.08);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 18px 45px rgba(0,0,0,.05);
+}
+
+.kpis strong {
+  display: block;
+  font-size: 34px;
+}
+
+.brand-panel {
+  margin: 18px 0;
+}
+
+.brand-panel form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  color: #555;
+  font-weight: 850;
+}
+
+input, select {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 13px;
+}
+
+.modules {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.modules i {
+  font-size: 28px;
+  color: var(--orange);
+}
+
+@media (max-width: 1000px) {
+  .restaurant-space, .kpis, .brand-panel form, .modules {
+    grid-template-columns: 1fr;
+  }
+
+  header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

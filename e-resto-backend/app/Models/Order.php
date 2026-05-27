@@ -8,7 +8,17 @@ class Order extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['table_id', 'total_amount', 'currency', 'status', 'note'];
+    protected $fillable = [
+        'restaurant_id',
+        'table_id',
+        'total_amount',
+        'currency',
+        'payment_method',
+        'payment_provider',
+        'payment_status',
+        'status',
+        'note',
+    ];
 
     /**
      * AJOUTE CETTE FONCTION ICI 👇
