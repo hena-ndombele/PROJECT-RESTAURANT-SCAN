@@ -1,4 +1,4 @@
-import {Component, signal} from "@angular/core";
+import {Component, Input, signal} from "@angular/core";
 import {FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 import {TableService} from "../../../services/table/table-service";
 import Swal from "sweetalert2";
@@ -14,6 +14,9 @@ import Swal from "sweetalert2";
     standalone: true
 })
 export class CreateTable {
+    @Input() disabled = false;
+    @Input() limitMessage = '';
+
     isLoading = false;
 
     // Utilisation de signaux pour les états si nécessaire (optionnel selon votre logique de template)
@@ -28,6 +31,17 @@ export class CreateTable {
     });
 
     onSubmit() {
+        if (this.disabled) {
+            Swal.fire({
+                title: 'Forfait atteint',
+                text: this.limitMessage || 'Votre forfait ne permet pas de creer plus de tables.',
+                icon: 'warning',
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Compris'
+            });
+            return;
+        }
+
         if (this.tableForm.valid) {
             this.isLoading = true;
             const formData = new FormData();

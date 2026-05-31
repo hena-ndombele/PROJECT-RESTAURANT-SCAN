@@ -31,6 +31,7 @@ import {RestaurantSignup} from "./pages/restaurant-signup/restaurant-signup";
 import {RestaurantCheckout} from "./pages/restaurant-checkout/restaurant-checkout";
 import {RestaurantLogin} from "./pages/restaurant-login/restaurant-login";
 import {restaurantSessionGuard} from "./guards/restaurant-session.guard";
+import {RestaurantSettings} from "./pages/restaurant-settings/restaurant-settings";
 
 export const routes: Routes = [
 
@@ -52,6 +53,7 @@ export const routes: Routes = [
       { path: 'auth/profile', component: Profile, title: 'Profile', canActivate: [AuthGuard] },
       { path: 'feedback/list', component: ListFeedback, title: 'FeedBack', canActivate: [AuthGuard] },
       { path: 'orders/list', component: ListOrders, title: 'Orders', canActivate: [AuthGuard] },
+      { path: 'restaurant/settings', component: RestaurantSettings, title: 'Parametres restaurant - E-Resto', canActivate: [AuthGuard] },
       { path: 'auth/account-request/list', component: AccountRequestList, title: 'Account Request', canActivate: [AuthGuard] },
       { path: 'dish/list-dish', component: ListDish, title: 'Dish - E-Resto', canActivate: [AuthGuard] },
       { path: 'dish/show/:id', component: ShowDish, title: 'Dish - E-Resto', canActivate: [AuthGuard] },

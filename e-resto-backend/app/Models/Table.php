@@ -42,6 +42,11 @@ protected $keyType = 'string';
         return $this->hasMany(Order::class);
     }
 
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
+
     /**
      * Helper pour vérifier si la table est disponible
      */

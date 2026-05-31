@@ -4,19 +4,24 @@
     <div>
       <span>Etape 2 sur 2</span>
       <h1>Activez votre abonnement</h1>
-      <p>Plan choisi : <strong>{{ selectedPlan.name || 'Plan E-RESTO' }}</strong></p>
-      <p>Montant : <strong>${{ selectedPlan.price || 0 }}/mois</strong> - {{ selectedPlan.cycle === 'yearly' ? 'facturation annuelle' : 'facturation mensuelle' }}</p>
-      <small>Votre essai gratuit commence maintenant. La carte Visa/Mastercard securise votre abonnement.</small>
+      <p>Restaurant : <strong>{{ restaurant.name || 'Votre restaurant' }}</strong></p>
+      <p>Plan choisi : <strong>{{ restaurant.plan?.name || selectedPlan.name || 'Plan E-RESTO' }}</strong></p>
+      <p>Montant : <strong>{{ restaurant.plan?.monthly_price || selectedPlan.price || 0 }} {{ restaurant.plan?.currency || 'USD' }}/mois</strong></p>
+      <small>Le paiement Mobile Money active automatiquement votre espace restaurant.</small>
     </div>
     <form (ngSubmit)="pay()">
-      <label>Numero carte<input [(ngModel)]="card.number" name="number" placeholder="4242 4242 4242 4242"></label>
-      <label>Nom sur la carte<input [(ngModel)]="card.name" name="name" placeholder="Nom complet"></label>
-      <div class="row">
-        <label>Expiration<input [(ngModel)]="card.expiry" name="expiry" placeholder="MM/AA"></label>
-        <label>CVC<input [(ngModel)]="card.cvc" name="cvc" placeholder="123"></label>
-      </div>
-      <button [disabled]="paying">{{ paying ? 'Traitement...' : 'Payer par carte et ouvrir mon dashboard' }}</button>
+      <label>Operateur
+        <select [(ngModel)]="mobile.provider" name="provider">
+          <option value="MPESA">M-Pesa</option>
+          <option value="ORANGE">Orange Money</option>
+          <option value="AIRTEL">Airtel Money</option>
+          <option value="MTN">MTN Money</option>
+        </select>
+      </label>
+      <label>Numero wallet<input [(ngModel)]="mobile.wallet_id" name="wallet_id" placeholder="+243830376004"></label>
+      <button [disabled]="paying">{{ paying ? 'Traitement...' : 'Payer par Mobile Money et ouvrir mon dashboard' }}</button>
       <p class="message" *ngIf="message">{{ message }}</p>
+      <pre class="message" *ngIf="paymentResponse">{{ paymentResponse | json }}</pre>
     </form>
   </section>
 </main>

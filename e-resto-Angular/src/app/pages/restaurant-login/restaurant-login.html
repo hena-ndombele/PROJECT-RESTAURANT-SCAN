@@ -8,7 +8,7 @@
     <form (ngSubmit)="login()">
       <input [(ngModel)]="email" name="email" type="email" placeholder="Email">
       <input [(ngModel)]="password" name="password" type="password" placeholder="Mot de passe">
-      <button>Se connecter</button>
+      <button [disabled]="loading">{{ loading ? 'Connexion...' : 'Se connecter' }}</button>
       <p *ngIf="message">{{ message }}</p>
     </form>
     <a routerLink="/pricing">Pas encore de compte ? Choisir un plan</a>

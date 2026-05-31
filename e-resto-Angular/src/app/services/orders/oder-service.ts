@@ -2,12 +2,13 @@ import { Injectable } from "@angular/core";
 import {HttpClient, HttpParams} from "@angular/common/http";
 import {map, Observable} from "rxjs";
 import {Order} from "../../models/orders/OrderDto";
+import { API_ROOT } from "../api-url";
 
 @Injectable({
   providedIn: "root",
 })
 export class OderService {
-    private apiUrl = "http://localhost:8000/api/orders";
+    private apiUrl = `${API_ROOT}/orders`;
 
     constructor(private http: HttpClient) {
     }
@@ -33,8 +34,22 @@ export class OderService {
         );
     }
 
-    updateStatus(id: string, status: Order["status"]): Observable<Order> {
-        return this.http.patch<any>(`${this.apiUrl}/${id}/status`, { status }).pipe(
+    updateStatus(id: string, status: Order["status"], cancellationReason?: string): Observable<Order> {
+        return this.http.patch<any>(`${this.apiUrl}/${id}/status`, {
+            status,
+            cancellation_reason: cancellationReason
+        }).pipe(
+            map(response => response.order ? response.order : response)
+        );
+    }
+
+    updatePaymentStatus(id: string, payload: {
+        payment_status: Order["payment_status"];
+        method?: string;
+        received_amount?: number;
+        note?: string;
+    }): Observable<Order> {
+        return this.http.patch<any>(`${this.apiUrl}/${id}/payment`, payload).pipe(
             map(response => response.order ? response.order : response)
         );
     }

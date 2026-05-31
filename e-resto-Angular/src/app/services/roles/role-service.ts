@@ -4,12 +4,13 @@ import { Observable } from "rxjs";
 import { ApiPagination } from "../../models/shared/ApiPagination";
 import { RoleDto } from "../../models/roles/RoleDto";
 import { RoleInput } from "../../models/roles/RoleInput";
+import { API_ROOT } from "../api-url";
 
 @Injectable({
   providedIn: "root",
 })
 export class RoleService {
-  private apiUrl = "http://localhost:8000/api";
+  private apiUrl = API_ROOT;
 
   constructor(private http: HttpClient) {}
 

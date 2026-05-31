@@ -18,7 +18,10 @@
         </div>
         <div class="col-md-5 text-md-end mt-3 mt-md-0">
             <div class="d-flex gap-2 justify-content-md-end">
-                <app-create-table></app-create-table>
+                <app-create-table
+                        [disabled]="tableLimitReached()"
+                        [limitMessage]="tableLimitMessage()">
+                </app-create-table>
                 <a routerLink="/table/floor-table"
                    class="btn d-inline-flex align-items-center"
                    style="background: red; color: white;">
@@ -26,6 +29,12 @@
                 </a>
 
             </div>
+            @if (planUsage()) {
+                <div class="small text-muted mt-2">
+                    Plan {{ planUsage()?.plan?.name || 'non configure' }} :
+                    {{ planUsage()?.usage?.tables }} / {{ planUsage()?.limits?.tables }} tables
+                </div>
+            }
 
         </div>
     </header>

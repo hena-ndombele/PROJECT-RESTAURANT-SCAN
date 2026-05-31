@@ -10,7 +10,9 @@ class Order extends Model
 
     protected $fillable = [
         'restaurant_id',
+        'tracking_code',
         'table_id',
+        'order_type',
         'total_amount',
         'currency',
         'payment_method',
@@ -18,6 +20,18 @@ class Order extends Model
         'payment_status',
         'status',
         'note',
+        'customer_name',
+        'customer_phone',
+        'customer_email',
+        'pickup_name',
+        'pickup_phone',
+        'cancellation_reason',
+        'cancelled_by',
+        'cancelled_at',
+    ];
+
+    protected $casts = [
+        'cancelled_at' => 'datetime',
     ];
 
     /**
@@ -35,5 +49,15 @@ class Order extends Model
     public function table()
     {
         return $this->belongsTo(Table::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function latestPayment()
+    {
+        return $this->hasOne(Payment::class)->latestOfMany();
     }
 }

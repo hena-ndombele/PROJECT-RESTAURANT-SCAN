@@ -1,0 +1,240 @@
+.dashboard-shell {
+    background: #f6f7fb;
+    min-height: 100vh;
+}
+
+.dashboard-hero {
+    align-items: center;
+    background: linear-gradient(135deg, #111827 0%, #1f2937 48%, #0f766e 100%);
+    border-radius: 8px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    padding: 28px;
+}
+
+.dashboard-hero h1 {
+    font-size: 2rem;
+    font-weight: 800;
+}
+
+.dashboard-hero p {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.eyebrow {
+    color: #7dd3fc;
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.hero-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+}
+
+.last-sync {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    display: inline-flex;
+    gap: 6px;
+    padding: 8px 12px;
+}
+
+.dashboard-loading,
+.empty-state {
+    align-items: center;
+    color: #64748b;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 42px 16px;
+}
+
+.metric-card,
+.summary-card,
+.panel-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.metric-card {
+    align-items: center;
+    display: flex;
+    gap: 16px;
+    min-height: 128px;
+    padding: 20px;
+}
+
+.metric-icon {
+    align-items: center;
+    border-radius: 8px;
+    display: flex;
+    flex: 0 0 48px;
+    height: 48px;
+    justify-content: center;
+    width: 48px;
+}
+
+.metric-icon i {
+    font-size: 1.5rem;
+}
+
+.metric-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.metric-content span,
+.summary-label {
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.metric-content strong {
+    color: #111827;
+    font-size: 1.75rem;
+    line-height: 1.2;
+}
+
+.metric-content small,
+.summary-card small,
+.panel-header p,
+.top-item small {
+    color: #64748b;
+}
+
+.tone-primary .metric-icon {
+    background: #dbeafe;
+    color: #0d6efd;
+}
+
+.tone-success .metric-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.tone-info .metric-icon {
+    background: #e0f2fe;
+    color: #0284c7;
+}
+
+.tone-warning .metric-icon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.summary-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 116px;
+    padding: 20px;
+}
+
+.summary-card strong {
+    color: #111827;
+    font-size: 1.55rem;
+}
+
+.panel-card {
+    padding: 20px;
+}
+
+.panel-header {
+    align-items: flex-start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.panel-header h2 {
+    color: #111827;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.panel-header p {
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.chart-box {
+    min-height: 320px;
+}
+
+.chart-small {
+    min-height: 250px;
+}
+
+.status-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.status-item {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+}
+
+.top-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.top-item {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+}
+
+.top-item div {
+    display: flex;
+    flex-direction: column;
+}
+
+.table th {
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+@media (max-width: 767.98px) {
+    .dashboard-hero,
+    .panel-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hero-actions {
+        justify-content: space-between;
+    }
+
+    .dashboard-hero h1 {
+        font-size: 1.55rem;
+    }
+}

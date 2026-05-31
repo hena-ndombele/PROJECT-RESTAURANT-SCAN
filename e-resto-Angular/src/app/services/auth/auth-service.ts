@@ -4,6 +4,7 @@ import {BehaviorSubject, fromEvent, merge, Observable, Subscription, switchMap, 
 import {AccountRequestInput} from "../../models/users/AccountRequestInput";
 import {AccountRequestDto} from "../../models/users/AccountRequestDto";
 import {Router} from "@angular/router";
+import { API_ROOT } from "../api-url";
 
 @Injectable({
   providedIn: "root",
@@ -21,7 +22,7 @@ export class AuthService {
   currentEmail = this.emailSource.asObservable();
   private loggedIn = new BehaviorSubject<boolean>(this.hasToken());
 
-  private apiUrl = 'http://localhost:8000/api';
+  private apiUrl = API_ROOT;
   constructor() {
     if (this.hasToken()) {
    //   this.initListener();

@@ -1,10 +1,10 @@
-import { Component, inject, OnInit, signal } from "@angular/core";
-import { Router } from "@angular/router";
 import { CommonModule } from "@angular/common";
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from "@angular/forms";
-import { DishService } from "../../../services/dish/dish-service";
-import { CategoryService } from "../../../services/category/category-service";
+import { Component, OnInit, inject, signal } from "@angular/core";
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
+import { Router } from "@angular/router";
 import { CategoryDto } from "../../../models/category/CategoryDto";
+import { CategoryService } from "../../../services/category/category-service";
+import { DishService } from "../../../services/dish/dish-service";
 
 @Component({
     selector: "app-create-dish",
@@ -14,39 +14,36 @@ import { CategoryDto } from "../../../models/category/CategoryDto";
     styleUrl: "./create-dish.scss",
 })
 export class CreateDish implements OnInit {
-    // Formulaire et état
     dishForm!: FormGroup;
     ingredients: string[] = [];
     isLoading = signal<boolean>(false);
+    submitAttempted = signal<boolean>(false);
+    formError = signal<string>("");
 
-    // Fichiers (Blob) pour l'envoi FormData
     selectedFile: File | null = null;
     thumb1File: File | null = null;
     thumb2File: File | null = null;
 
-    // URLs pour l'affichage immédiat (Previews)
     previewUrl: string | null = null;
     thumb1Preview: string | null = null;
     thumb2Preview: string | null = null;
 
-    // Injection des services
+    categories = signal<CategoryDto[]>([]);
+
     private categoryService = inject(CategoryService);
     private dishService = inject(DishService);
     private fb = inject(FormBuilder);
     private router = inject(Router);
 
-    // Signal pour les catégories (E-Resto Admin)
-    categories = signal<CategoryDto[]>([]);
-
     ngOnInit(): void {
         this.dishForm = this.fb.group({
-            name: ['', [Validators.required, Validators.minLength(3)]],
-            description: ['', [Validators.required, Validators.minLength(10)]],
+            name: ["", [Validators.required, Validators.minLength(3)]],
+            description: ["", [Validators.required, Validators.minLength(10)]],
             price: [0, [Validators.required, Validators.min(0)]],
-            currency: ['CDF', Validators.required],
-            category_id: ['', Validators.required],
+            currency: ["CDF", Validators.required],
+            category_id: ["", Validators.required],
             preparation_time: [30, [Validators.required, Validators.min(1)]],
-            is_available: [true]
+            is_available: [true],
         });
 
         this.loadCategories();
@@ -54,39 +51,47 @@ export class CreateDish implements OnInit {
 
     loadCategories(): void {
         this.categoryService.list().subscribe({
-            next: (data) => this.categories.set(data),
-            error: (err) => console.error("Erreur chargement catégories", err)
+            next: (data) => {
+                this.categories.set(data);
+                if (!data.length) {
+                    this.formError.set("Creez d'abord une categorie avant d'ajouter un plat.");
+                }
+            },
+            error: (err) => {
+                console.error("Erreur chargement categories", err);
+                this.formError.set("Impossible de charger les categories de ce restaurant. Reconnectez-vous puis reessayez.");
+            },
         });
     }
 
-    onFileChange(event: any, type: string): void {
-        const file = event.target.files[0];
+    onFileChange(event: Event, type: "main" | "thumb1" | "thumb2"): void {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
         if (!file) return;
 
-        // 1. Assigner le fichier pour la validation immédiate
-        if (type === 'main') this.selectedFile = file;
-        else if (type === 'thumb1') this.thumb1File = file;
-        else if (type === 'thumb2') this.thumb2File = file;
+        if (type === "main") this.selectedFile = file;
+        if (type === "thumb1") this.thumb1File = file;
+        if (type === "thumb2") this.thumb2File = file;
 
-        // 2. Générer l'aperçu visuel sans attendre
         const reader = new FileReader();
-        reader.onload = (e: any) => {
-            const result = e.target.result;
-            if (type === 'main') this.previewUrl = result;
-            else if (type === 'thumb1') this.thumb1Preview = result;
-            else if (type === 'thumb2') this.thumb2Preview = result;
+        reader.onload = () => {
+            const result = reader.result as string;
+            if (type === "main") this.previewUrl = result;
+            if (type === "thumb1") this.thumb1Preview = result;
+            if (type === "thumb2") this.thumb2Preview = result;
         };
         reader.readAsDataURL(file);
     }
 
-    addIngredient(event: any): void {
+    addIngredient(event: Event): void {
+        event.preventDefault();
         const input = event.target as HTMLInputElement;
         const value = input.value.trim();
+
         if (value && !this.ingredients.includes(value)) {
             this.ingredients.push(value);
-            input.value = '';
+            input.value = "";
         }
-        event.preventDefault();
     }
 
     removeIngredient(index: number): void {
@@ -94,43 +99,76 @@ export class CreateDish implements OnInit {
     }
 
     onSubmit(): void {
-        if (this.dishForm.valid && this.selectedFile) {
-            this.isLoading.set(true);
+        this.submitAttempted.set(true);
+        this.formError.set("");
 
-            const formData = new FormData();
-            const formValue = this.dishForm.value;
-
-            // Mapping des données textuelles
-            formData.append('name', formValue.name);
-            formData.append('description', formValue.description);
-            formData.append('price', formValue.price.toString());
-            formData.append('currency', formValue.currency);
-            formData.append('category_id', formValue.category_id);
-            formData.append('preparation_time', formValue.preparation_time.toString());
-            formData.append('is_available', formValue.is_available ? '1' : '0');
-
-            // Ingrédients
-            this.ingredients.forEach(ing => formData.append('ingredients[]', ing));
-
-            // Fichiers (Clés synchronisées avec Laravel)
-            formData.append('image_principale', this.selectedFile);
-            if (this.thumb1File) formData.append('image_secondaire_1', this.thumb1File);
-            if (this.thumb2File) formData.append('image_secondaire_2', this.thumb2File);
-
-            this.dishService.create(formData).subscribe({
-                next: () => {
-                    this.isLoading.set(false);
-                    this.router.navigate(['/dish/list-dish']);
-                },
-                error: (err) => {
-                    this.isLoading.set(false);
-                    if (err.status === 422) {
-                        alert("Erreur validation : " + JSON.stringify(err.error.errors));
-                    } else {
-                        alert("Une erreur est survenue lors de la création.");
-                    }
-                }
-            });
+        if (this.dishForm.invalid) {
+            this.dishForm.markAllAsTouched();
+            this.formError.set("Completez les champs obligatoires avant de publier le plat.");
+            return;
         }
+
+        if (!this.selectedFile) {
+            this.formError.set("Ajoutez une image principale pour ce plat.");
+            return;
+        }
+
+        this.isLoading.set(true);
+        this.dishService.create(this.buildFormData()).subscribe({
+            next: () => {
+                this.isLoading.set(false);
+                this.router.navigate(["/dish/list-dish"]);
+            },
+            error: (err) => {
+                this.isLoading.set(false);
+                if (err.status === 422) {
+                    this.formError.set("Erreur validation : " + JSON.stringify(err.error.errors));
+                    return;
+                }
+                this.formError.set(err.error?.message || "Une erreur est survenue lors de la creation du plat.");
+            },
+        });
+    }
+
+    resetForm(): void {
+        this.dishForm.reset({
+            name: "",
+            description: "",
+            price: 0,
+            currency: "CDF",
+            category_id: "",
+            preparation_time: 30,
+            is_available: true,
+        });
+        this.ingredients = [];
+        this.selectedFile = null;
+        this.thumb1File = null;
+        this.thumb2File = null;
+        this.previewUrl = null;
+        this.thumb1Preview = null;
+        this.thumb2Preview = null;
+        this.submitAttempted.set(false);
+        this.formError.set("");
+    }
+
+    private buildFormData(): FormData {
+        const formValue = this.dishForm.value;
+        const formData = new FormData();
+
+        formData.append("name", formValue.name);
+        formData.append("description", formValue.description);
+        formData.append("price", formValue.price.toString());
+        formData.append("currency", formValue.currency);
+        formData.append("category_id", formValue.category_id);
+        formData.append("preparation_time", formValue.preparation_time.toString());
+        formData.append("is_available", formValue.is_available ? "1" : "0");
+
+        this.ingredients.forEach((ingredient) => formData.append("ingredients[]", ingredient));
+
+        if (this.selectedFile) formData.append("image_principale", this.selectedFile);
+        if (this.thumb1File) formData.append("image_secondaire_1", this.thumb1File);
+        if (this.thumb2File) formData.append("image_secondaire_2", this.thumb2File);
+
+        return formData;
     }
 }

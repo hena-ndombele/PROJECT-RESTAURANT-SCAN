@@ -6,6 +6,8 @@ import {CreateTable} from "../create-table/create-table";
 import {DeleteTable} from "../delete-table/delete-table";
 import {ShowTable} from "../show-table/show-table";
 import {RouterLink} from "@angular/router";
+import {SaasService} from "../../../services/saas/saas-service";
+import {RestaurantPlanUsage} from "../../../models/saas/saas.models";
 
 
 @Component({
@@ -23,14 +25,18 @@ import {RouterLink} from "@angular/router";
 })
 export class ListTable implements OnInit {
     private tableService = inject(TableService);
+    private saasService = inject(SaasService);
     isLoading = signal<boolean>(true);
 
     // Signaux d'état
     tables = signal<TableDto[]>([]);
+    planUsage = signal<RestaurantPlanUsage | null>(null);
     searchTerm = signal<string>('');
     currentPage = signal<number>(1);
     pageSize = 10;
     totalTableCount = computed(() => this.tables().length);
+    tableLimitReached = computed(() => this.planUsage()?.permissions?.can_create_table === false);
+    tableLimitMessage = computed(() => this.planUsage()?.messages?.tables ?? '');
 
     parseDate(dateStr: string): Date {
         const [datePart, timePart] = dateStr.split(' ');
@@ -89,6 +95,7 @@ export class ListTable implements OnInit {
 
     ngOnInit(): void {
         this.loadTables();
+        this.loadPlanUsage();
     }
 
     pagesArray = computed(() => {
@@ -114,6 +121,16 @@ export class ListTable implements OnInit {
             error: (err) => {
                 console.error(err);
                 this.isLoading.set(false);
+            }
+        });
+    }
+
+    loadPlanUsage(): void {
+        this.saasService.restaurantUsage().subscribe({
+            next: (usage) => this.planUsage.set(usage),
+            error: (err) => {
+                console.error(err);
+                this.planUsage.set(null);
             }
         });
     }

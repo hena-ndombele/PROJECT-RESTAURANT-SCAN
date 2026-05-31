@@ -5,12 +5,13 @@ import {DishDto} from "../../models/dish/DishDto";
 import {DishInput} from "../../models/dish/DishInput";
 import {CategoryInput} from "../../models/category/CategoryInput";
 import {CategoryDto} from "../../models/category/CategoryDto";
+import { API_ROOT } from "../api-url";
 
 @Injectable({
   providedIn: "root",
 })
 export class DishService {
-    private apiUrl = "http://localhost:8000/api";
+    private apiUrl = API_ROOT;
 
     constructor(private http: HttpClient) {
     }

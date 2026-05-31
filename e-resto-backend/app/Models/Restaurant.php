@@ -44,4 +44,19 @@ class Restaurant extends Model
     {
         return $this->hasOne(RestaurantSubscription::class)->latestOfMany();
     }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function tables()
+    {
+        return $this->hasMany(Table::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }

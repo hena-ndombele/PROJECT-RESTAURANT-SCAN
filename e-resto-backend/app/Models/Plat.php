@@ -15,6 +15,7 @@ class Plat extends Model
      * Ajout de la devise, du temps de préparation, des ingrédients et de la disponibilité.
      */
     protected $fillable = [
+        'restaurant_id',
         'name', 
         'description', 
         'price', 
@@ -62,5 +63,10 @@ class Plat extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
     }
 }

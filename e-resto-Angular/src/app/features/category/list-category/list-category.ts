@@ -5,6 +5,7 @@ import { CategoryService } from "../../../services/category/category-service";
 import { CategoryDto } from "../../../models/category/CategoryDto";
 import { DeleteCategory } from "../delete-category/delete-category";
 import { UpdateCategory } from "../update-category/update-category";
+import { STORAGE_ROOT } from "../../../services/api-url";
 
 @Component({
   selector: "app-list-category",
@@ -15,6 +16,7 @@ import { UpdateCategory } from "../update-category/update-category";
 })
 export class ListCategory implements OnInit {
   private categoryService = inject(CategoryService);
+  readonly storageRoot = STORAGE_ROOT;
   isLoading = signal<boolean>(true);
 
   // Signaux d'état

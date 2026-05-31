@@ -1,6 +1,15 @@
 import { jsPDF } from 'jspdf';
 import { formatMoney } from '../../shared/lib/money';
 
+function paymentMethodLabel(order) {
+  if (order.payment_method === 'mobile_money') {
+    const provider = String(order.payment_provider || '').replace('_', ' ').trim();
+    return provider ? provider.toUpperCase() : 'Mobile Money';
+  }
+
+  return order.payment_method === 'cash' ? 'Cash' : (order.payment_method || 'Non renseigne');
+}
+
 export function buildReceiptPdf(order) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -8,6 +17,7 @@ export function buildReceiptPdf(order) {
   const receiptNumber = `ER-${String(order.id).slice(0, 8).toUpperCase()}`;
   const paidAt = order.updated_at ? new Date(order.updated_at) : new Date();
   const items = order.items ?? [];
+  const paymentMethod = paymentMethodLabel(order);
 
   doc.setFillColor(17, 17, 17);
   doc.rect(0, 0, pageWidth, 118, 'F');
@@ -49,7 +59,7 @@ export function buildReceiptPdf(order) {
     ['Table', order.table?.name ?? 'N/A'],
     ['Date', paidAt.toLocaleDateString('fr-FR')],
     ['Heure', paidAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })],
-    ['Statut', 'Paiement confirme'],
+    ['Paiement', paymentMethod],
   ];
   const metaWidth = (pageWidth - margin * 2) / 4;
   meta.forEach(([label, value], index) => {

@@ -16,10 +16,10 @@
 
         <div class="d-none d-sm-flex flex-column border-start ps-3 ms-1 branding-wrapper">
             <h6 class="m
-            b-0 logo-title">E-RESTO<span class="text-primary">.</span>
+            b-0 logo-title">{{ restaurantData.name }}<span class="text-primary">.</span>
             </h6>
             <div class="d-flex align-items-center gap-1">
-                <span class="badge-admin">ADMIN PANEL</span>
+                <span class="badge-admin">{{ restaurantData.city || 'RESTAURANT' }}</span>
             </div>
         </div>
     </div>
@@ -40,20 +40,52 @@
                 </div>
             </li>
 
+            <li class="nav-item">
+                <button class="btn btn-icon btn-sm rounded-circle shadow-sm theme-toggle-btn"
+                        type="button"
+                        (click)="toggleTheme()"
+                        [title]="theme.mode() === 'dark' ? 'Mode clair' : 'Mode sombre'">
+                    <i class="ti fs-5" [ngClass]="theme.mode() === 'dark' ? 'ti-sun' : 'ti-moon'"></i>
+                </button>
+            </li>
+
             <li class="dropdown">
                 <a class="position-relative btn btn-icon btn-sm  rounded-circle shadow-sm" data-bs-toggle="dropdown"
-                   href="#" role="button" style="background: #F9A11B">
+                   href="#" role="button" style="background: #F9A11B" (click)="openNotifications()">
                     <i class="ti ti-bell fs-5"></i>
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
-                          style="font-size: 0.65rem;">
-                        2
-                    </span>
+                    @if (orderRealtime.notifications().length > 0) {
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
+                              style="font-size: 0.65rem;">
+                            {{ orderRealtime.notifications().length }}
+                        </span>
+                    }
                 </a>
-                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-0 mt-3" style="width: 300px;">
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-0 mt-3 notification-menu" style="width: 330px;">
                     <div class="p-3 border-bottom bg-light">
-                        <h6 class="mb-0 fw-bold small text-uppercase">Notifications</h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold small text-uppercase">Notifications</h6>
+                            <span class="badge rounded-pill"
+                                  [ngClass]="orderRealtime.connectionState() === 'connected' ? 'bg-success' : 'bg-secondary'">
+                                {{ orderRealtime.connectionState() === 'connected' ? 'Live' : 'Offline' }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="p-4 text-center text-muted small">Aucune nouvelle alerte</div>
+                    @if (orderRealtime.notifications().length === 0) {
+                        <div class="p-4 text-center text-muted small">Aucune nouvelle alerte</div>
+                    } @else {
+                        <div class="notification-list">
+                            @for (notification of orderRealtime.notifications(); track notification.id) {
+                                <a routerLink="/orders/list" class="notification-item dropdown-item">
+                                    <div class="notification-icon"><i class="ti ti-bell-ringing"></i></div>
+                                    <div>
+                                        <strong>{{ notification.title }}</strong>
+                                        <span>{{ notification.message }}</span>
+                                        <small>{{ notification.createdAt | date:'HH:mm:ss' }}</small>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    }
                 </div>
             </li>
 
@@ -70,7 +102,7 @@
                 <a href="javascript:void(0)" role="button" id="profileIcon" data-bs-toggle="dropdown"
                    class="d-flex align-items-center gap-2 text-decoration-none p-1 rounded-pill hover-bg-light">
                     <div class="avatar-container position-relative">
-                        <img src="assets/logo/e-resto-logo.png" alt="Profile"
+                        <img [src]="restaurantData.logo" alt="Profile"
                              class="avatar avatar-sm rounded-circle border border-2 border-dark bg-white">
                         <span class="status-indicator bg-success position-absolute bottom-0 end-0 border border-2 border-white rounded-circle"></span>
                     </div>
@@ -84,11 +116,11 @@
                      style="min-width: 230px;">
                     <div class="p-3 text-white" style="background: #1a1a1a">
                         <div class="d-flex gap-3 align-items-center">
-                            <img src="assets/logo/e-resto-logo.png" alt=""
+                            <img [src]="restaurantData.logo" alt=""
                                  class="avatar avatar-md rounded-circle border border-2 border-white-50 bg-white">
                             <div class="overflow-hidden">
                                 <h6 class="mb-0 text-truncate text-white">{{ userData.firstName }} {{ userData.lastName }}</h6>
-                                <p class="mb-0 small text-white-50 text-truncate">Manager</p>
+                                <p class="mb-0 small text-white-50 text-truncate">{{ restaurantData.name }}</p>
                             </div>
                         </div>
                     </div>
@@ -173,9 +205,11 @@
                     <i class="ti ti-shopping-cart"></i>
                     <span class="nav-text ms-2">Orders</span>
 
-                    <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
-        12
-    </span>
+                    @if (orderRealtime.activeOrdersCount() > 0) {
+                        <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
+                            {{ orderRealtime.activeOrdersCount() }}
+                        </span>
+                    }
                 </a>
             </li>
 
@@ -190,6 +224,13 @@
                 <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-table-alias"></i><span class="nav-text">Reservations</span>
+                </a>
+            </li>
+
+            <li>
+                <a routerLink="/restaurant/settings" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-settings"></i><span class="nav-text">Parametres</span>
                 </a>
             </li>
 

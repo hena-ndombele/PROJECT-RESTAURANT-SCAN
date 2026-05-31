@@ -1,10 +1,160 @@
-import { Component } from "@angular/core";
+import { CommonModule, DatePipe } from "@angular/common";
+import { Component, OnInit, computed, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
+import { ReservationDto, ReservationService, ReservationStatus } from "../../../services/reservation/reservation-service";
 
 @Component({
   selector: "app-reservation",
-  imports: [],
+  imports: [CommonModule, FormsModule, DatePipe],
   templateUrl: "./reservation.html",
   styleUrl: "./reservation.scss",
   standalone:true
 })
-export class Reservation {}
+export class Reservation implements OnInit {
+  reservations = signal<ReservationDto[]>([]);
+  selectedReservation = signal<ReservationDto | null>(null);
+  loading = signal(false);
+  errorMessage = signal("");
+  successMessage = signal("");
+  updatingId = signal<string | null>(null);
+  statusFilter = signal<ReservationStatus | "all">("all");
+  dateFilter = signal("");
+  searchTerm = signal("");
+  internalNote = signal("");
+  cancellationReason = signal("");
+
+  readonly statusOptions: { value: ReservationStatus; label: string; icon: string }[] = [
+    { value: "pending", label: "En attente", icon: "bi-hourglass" },
+    { value: "confirmed", label: "Confirmee", icon: "bi-calendar-check" },
+    { value: "seated", label: "Installee", icon: "bi-person-check" },
+    { value: "completed", label: "Terminee", icon: "bi-check2-circle" },
+    { value: "cancelled", label: "Annulee", icon: "bi-x-circle" },
+    { value: "no_show", label: "No-show", icon: "bi-person-x" },
+  ];
+
+  filteredReservations = computed(() => {
+    const term = this.searchTerm().trim().toLowerCase();
+    const status = this.statusFilter();
+
+    return this.reservations().filter((reservation) => {
+      const matchesStatus = status === "all" || reservation.status === status;
+      const haystack = [
+        reservation.name,
+        reservation.phone,
+        reservation.email,
+        reservation.table?.name,
+        reservation.status,
+      ].join(" ").toLowerCase();
+
+      return matchesStatus && (!term || haystack.includes(term));
+    });
+  });
+
+  statusTabs = computed(() => [
+    { value: "all" as const, label: "Toutes", count: this.reservations().length },
+    ...this.statusOptions.map((item) => ({
+      ...item,
+      count: this.reservations().filter((reservation) => reservation.status === item.value).length
+    }))
+  ]);
+
+  constructor(private reservationService: ReservationService) {}
+
+  ngOnInit(): void {
+    this.loadReservations();
+  }
+
+  loadReservations(): void {
+    this.loading.set(true);
+    this.errorMessage.set("");
+    this.successMessage.set("");
+
+    this.reservationService.list({
+      status: this.statusFilter(),
+      date: this.dateFilter(),
+    }).subscribe({
+      next: (reservations) => {
+        this.reservations.set(reservations);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.errorMessage.set("Impossible de charger les reservations.");
+        this.reservations.set([]);
+        this.loading.set(false);
+      }
+    });
+  }
+
+  openReservation(reservation: ReservationDto): void {
+    this.selectedReservation.set(reservation);
+    this.internalNote.set(reservation.internal_note || "");
+    this.cancellationReason.set("");
+  }
+
+  closeReservation(): void {
+    this.selectedReservation.set(null);
+    this.internalNote.set("");
+    this.cancellationReason.set("");
+  }
+
+  updateStatus(reservation: ReservationDto, status: ReservationStatus): void {
+    if (!reservation.id || this.updatingId() === reservation.id) return;
+    if (status === "cancelled" && !this.cancellationReason().trim()) {
+      this.cancellationReason.set(window.prompt("Motif d'annulation ?") || "");
+      if (!this.cancellationReason().trim()) {
+        this.errorMessage.set("Le motif d'annulation est obligatoire.");
+        return;
+      }
+    }
+
+    this.updatingId.set(reservation.id);
+    this.errorMessage.set("");
+    this.successMessage.set("");
+
+    this.reservationService.updateStatus(reservation.id, {
+      status,
+      internal_note: this.internalNote() || undefined,
+      cancellation_reason: status === "cancelled" ? this.cancellationReason() : undefined,
+    }).subscribe({
+      next: (updated) => {
+        this.reservations.update((list) => list.map((item) => item.id === updated.id ? updated : item));
+        this.selectedReservation.set(updated);
+        this.internalNote.set(updated.internal_note || "");
+        this.cancellationReason.set("");
+        this.successMessage.set("Reservation mise a jour.");
+        this.updatingId.set(null);
+      },
+      error: (err) => {
+        this.errorMessage.set(err?.error?.message || "Impossible de modifier la reservation.");
+        this.updatingId.set(null);
+      }
+    });
+  }
+
+  deleteReservation(reservation: ReservationDto): void {
+    if (!window.confirm("Supprimer cette reservation ?")) return;
+    this.reservationService.delete(reservation.id).subscribe({
+      next: () => {
+        this.reservations.update((list) => list.filter((item) => item.id !== reservation.id));
+        this.closeReservation();
+        this.successMessage.set("Reservation supprimee.");
+      },
+      error: () => this.errorMessage.set("Impossible de supprimer la reservation.")
+    });
+  }
+
+  statusLabel(status: ReservationStatus): string {
+    return this.statusOptions.find((item) => item.value === status)?.label || status;
+  }
+
+  statusClass(status: ReservationStatus): string {
+    return {
+      pending: "bg-warning text-dark",
+      confirmed: "bg-primary",
+      seated: "bg-info text-dark",
+      completed: "bg-success",
+      cancelled: "bg-danger",
+      no_show: "bg-secondary",
+    }[status] || "bg-secondary";
+  }
+}

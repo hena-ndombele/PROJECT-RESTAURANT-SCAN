@@ -1,1 +1,104 @@
-<p>list-feedback works!</p>
+<div class="feedback-page container-fluid py-4 bg-light min-vh-100">
+  <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div class="d-flex align-items-center">
+      <div class="page-icon me-3"><i class="bi bi-star-fill"></i></div>
+      <div>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
+            <li class="breadcrumb-item">E-RESTO</li>
+            <li class="breadcrumb-item active text-primary">FEEDBACK</li>
+          </ol>
+        </nav>
+        <h1 class="h3 mb-0 fw-bold text-dark">Avis clients</h1>
+      </div>
+    </div>
+    <button class="btn btn-outline-secondary" type="button" (click)="loadFeedbacks()">
+      <i class="bi bi-arrow-clockwise me-1"></i> Actualiser
+    </button>
+  </header>
+
+  <section class="feedback-summary mb-4">
+    <article>
+      <span>Avis recus</span>
+      <strong>{{ filteredFeedbacks().length }}</strong>
+      <small>Selon les filtres actifs</small>
+    </article>
+    <article>
+      <span>Note moyenne</span>
+      <strong>{{ averageScore() | number:'1.1-1' }}/5</strong>
+      <small>Plats, service et commande</small>
+    </article>
+    <article>
+      <span>Recommandation</span>
+      <strong>{{ recommendRate() }}%</strong>
+      <small>Clients qui recommandent</small>
+    </article>
+  </section>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label small fw-bold text-muted text-uppercase">Recommandation</label>
+          <select class="form-select bg-transparent" [ngModel]="recommendationFilter()" (ngModelChange)="recommendationFilter.set($event)">
+            <option value="all">Tous</option>
+            <option value="yes">Recommande</option>
+            <option value="no">Ne recommande pas</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold text-muted text-uppercase">Note minimale</label>
+          <select class="form-select bg-transparent" [ngModel]="minRating()" (ngModelChange)="minRating.set(+$event)">
+            <option [value]="0">Toutes</option>
+            <option [value]="3">3 etoiles et plus</option>
+            <option [value]="4">4 etoiles et plus</option>
+            <option [value]="5">5 etoiles</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-danger border-0 shadow-sm" *ngIf="errorMessage()">{{ errorMessage() }}</div>
+
+  @if (loading()) {
+    <div class="feedback-loading">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted fw-medium">Chargement des avis...</p>
+    </div>
+  } @else {
+    <section class="feedback-grid">
+      @for (feedback of filteredFeedbacks(); track feedback.id) {
+        <article class="feedback-card">
+          <div class="feedback-card-head">
+            <div>
+              <strong>{{ tableName(feedback) }}</strong>
+              <span>{{ orderRef(feedback) }} · {{ feedback.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <span class="rating-pill">{{ averageRating(feedback) | number:'1.1-1' }}/5</span>
+          </div>
+
+          <div class="rating-lines">
+            <div><span>Plats</span><strong>{{ feedback.food_rating }}/5</strong></div>
+            <div><span>Service</span><strong>{{ feedback.service_rating }}/5</strong></div>
+            <div><span>Commande</span><strong>{{ feedback.ordering_rating }}/5</strong></div>
+          </div>
+
+          <div class="recommend-badge" [class.no]="feedback.recommended === false">
+            <i class="bi" [ngClass]="feedback.recommended === false ? 'bi-hand-thumbs-down-fill' : 'bi-hand-thumbs-up-fill'"></i>
+            {{ feedback.recommended === false ? 'Ne recommande pas' : 'Recommande' }}
+          </div>
+
+          @if (feedback.comment) {
+            <p class="feedback-comment">{{ feedback.comment }}</p>
+          }
+        </article>
+      } @empty {
+        <div class="empty-feedback">
+          <i class="bi bi-chat-square-heart"></i>
+          <h5>Aucun avis pour le moment</h5>
+        </div>
+      }
+    </section>
+  }
+</div>

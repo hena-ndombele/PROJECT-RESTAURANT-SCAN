@@ -24,7 +24,7 @@ export interface Restaurant {
   city?: string;
   country: string;
   currency: string;
-  status: 'trial' | 'active' | 'suspended' | 'cancelled';
+  status: 'pending_payment' | 'trial' | 'active' | 'past_due' | 'suspended' | 'cancelled';
   saas_plan_id?: string;
   trial_ends_at?: string;
   subscription_ends_at?: string;
@@ -37,6 +37,7 @@ export interface SaasOverview {
     restaurants: number;
     active_restaurants: number;
     trial_restaurants: number;
+    past_due_restaurants: number;
     monthly_revenue: number;
   };
   plans: SaasPlan[];
@@ -47,4 +48,25 @@ export interface SaasOverview {
     status: 'active' | 'coming_soon';
     description: string;
   }>;
+}
+
+export interface RestaurantPlanUsage {
+  plan: SaasPlan | null;
+  restaurant_status: Restaurant['status'];
+  limits: {
+    tables: number;
+    users: number;
+  };
+  usage: {
+    tables: number;
+    users: number;
+  };
+  permissions: {
+    can_create_table: boolean;
+    can_create_user: boolean;
+  };
+  messages: {
+    tables: string;
+    users: string;
+  };
 }

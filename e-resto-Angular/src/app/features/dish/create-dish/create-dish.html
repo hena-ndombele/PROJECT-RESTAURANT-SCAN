@@ -132,14 +132,18 @@
                 </div>
 
                 <div class="d-grid gap-2">
+                    <div *ngIf="formError()" class="alert alert-danger rounded-0 border-2 fw-bold">
+                        {{ formError() }}
+                    </div>
+
                     <button type="submit"
                             class="btn btn-warning py-3 fw-black rounded-0 text-black shadow-sm d-flex align-items-center justify-content-center"
-                            [disabled]="dishForm.invalid || !selectedFile || isLoading()" style="color:black">
+                            [disabled]="isLoading()" style="color:black">
                         <span *ngIf="isLoading()" class="spinner-border spinner-border-sm me-2"></span>
                         <i class="bi bi-x-circle me-1"></i>  {{ isLoading() ? 'IN PROGRESS...' : 'PUBLISH THE DISH' }}
                     </button>
                     <button type="button" class="btn btn-secondary py-2 fw-bold rounded-0 border border-2"
-                            (click)="dishForm.reset(); previewUrl=null; thumb1Preview=null; thumb2Preview=null;">
+                            (click)="resetForm()">
                         <i class="bi bi-x-circle me-1"></i>    CANCEL
                     </button>
                 </div>

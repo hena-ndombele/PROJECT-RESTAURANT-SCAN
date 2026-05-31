@@ -1,0 +1,156 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>E-RESTO SaaS - Documentation</title>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.45; color: #111827; }
+h1 { color: #0f766e; }
+h2 { color: #111827; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
+h3 { color: #374151; }
+pre { background: #f3f4f6; padding: 10px; border-radius: 4px; }
+code { background: #f3f4f6; padding: 1px 4px; }
+ul { margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>E-RESTO SaaS - Documentation fonctionnelle et technique</h1>
+<p>Ce document est une version Word-compatible de la documentation du projet. La version principale est disponible dans le fichier <strong>README.md</strong> a la racine du workspace.</p>
+
+<h2>1. Objectif du projet</h2>
+<p>E-RESTO est une plateforme SaaS pour restaurants. Elle permet a un restaurant de creer son compte, payer son abonnement, acceder a son dashboard, gerer ses plats, categories, tables, agents et commandes, puis permettre aux clients de commander via QR code.</p>
+<p>Applications du projet :</p>
+<ul>
+<li><strong>e-resto-backend</strong> : API Laravel.</li>
+<li><strong>e-resto-Angular</strong> : dashboard restaurant/admin.</li>
+<li><strong>e-resto-client</strong> : application client QR code.</li>
+<li><strong>e-resto-platform-Angular</strong> : console plateforme interne.</li>
+</ul>
+
+<h2>2. Flow SaaS restaurant</h2>
+<p>Le restaurant choisit un plan, cree son compte, puis paie son abonnement si le plan est payant. Le backend cree le restaurant, le proprietaire, la subscription, la session et envoie un email de bienvenue.</p>
+<pre>Restaurant choisit un plan
+=> checkout Mobile Money
+=> backend appelle MaishaPay
+=> paiement confirme
+=> subscription active
+=> restaurant actif
+=> acces dashboard</pre>
+
+<h2>3. Isolation multi-restaurant</h2>
+<p>Chaque restaurant possede ses propres donnees via <code>restaurant_id</code>. Les tables, plats, categories, commandes, paiements, agents et utilisateurs sont filtres selon le restaurant connecte.</p>
+<pre>Restaurant A ne voit jamais les donnees du Restaurant B.</pre>
+
+<h2>4. Flow QR code client</h2>
+<p>Chaque table possede une URL QR code avec un <code>table_id</code>. Le client scanne, le frontend lit ce <code>table_id</code>, puis appelle le menu public.</p>
+<pre>GET /api/public/menu?table_id=UUID_TABLE</pre>
+<p>Le backend retrouve le restaurant de cette table et retourne uniquement les categories et plats de ce restaurant.</p>
+
+<h2>5. Creation de commande</h2>
+<p>Le client choisit ses plats et son moyen de paiement. Le backend cree la commande, les lignes de commande, une ligne de paiement et marque la table comme occupee.</p>
+
+<h2>6. Separation commande et paiement</h2>
+<p>Le projet separe le statut de commande du statut de paiement.</p>
+<pre>orders.status = pending | preparing | ready | delivered | cancelled
+orders.payment_status = unpaid | pending | paid | failed | refunded</pre>
+<p>Cette separation permet d'avoir une commande en preparation deja payee, ou une commande servie mais pas encore payee.</p>
+
+<h2>7. Paiement cash</h2>
+<pre>Client commande
+=> payment_method = cash
+=> payment_status = unpaid
+=> restaurant encaisse
+=> bouton Encaisser cash
+=> payment_status = paid
+=> revenu comptabilise</pre>
+<p>Le cash est comptabilise dans l'application meme si l'argent est donne physiquement.</p>
+
+<h2>8. Paiement Mobile Money</h2>
+<pre>Client choisit Mobile Money
+=> saisit son numero wallet
+=> backend cree commande + payment
+=> payment_status = pending
+=> backend appelle MaishaPay
+=> client valide sur son telephone
+=> callback/reponse MaishaPay
+=> payment_status = paid ou failed</pre>
+<p>La commande existe meme si le paiement est encore en attente.</p>
+
+<h2>9. Ou va l'argent Mobile Money ?</h2>
+<p>L'application ne recoit pas l'argent. L'argent va vers le compte marchand associe aux cles MaishaPay utilisees.</p>
+<pre>Wallet client
+=> operateur Mobile Money
+=> MaishaPay / compte marchand configure
+=> settlement vers compte bancaire ou wallet marchand</pre>
+<p>Pour un SaaS professionnel, les abonnements utilisent les cles MaishaPay de la plateforme, et les commandes clients devraient utiliser les cles MaishaPay du restaurant.</p>
+
+<h2>10. Annulation de commande</h2>
+<p>Le client peut annuler uniquement si la commande est encore <code>pending</code> et pas deja payee. Le restaurant peut annuler une commande non servie avec raison obligatoire.</p>
+<pre>pending   => annulation autorisee
+preparing => annulation restaurant avec raison
+ready     => annulation restaurant avec raison
+delivered => annulation bloquee</pre>
+<p>Si paiement en attente : <code>payment_status = failed</code>. Si deja paye : <code>payment_status = refunded</code>.</p>
+<p>Audit ajoute : <code>cancellation_reason</code>, <code>cancelled_by</code>, <code>cancelled_at</code>.</p>
+
+<h2>11. Dashboard restaurant</h2>
+<p>Le dashboard Angular affiche commandes du jour, chiffre du jour, plats disponibles, occupation des tables, revenu du mois, revenu de l'annee, equipe, performance 7 jours, etat du service, commandes recentes et top plats.</p>
+<p>L'actualisation garde les anciennes donnees visibles pendant le refresh.</p>
+
+<h2>12. Gestion des commandes</h2>
+<p>La liste des commandes affiche deux colonnes separees : Commande et Paiement. Le restaurant peut changer le statut cuisine/service, encaisser le cash ou annuler avec raison.</p>
+
+<h2>13. Recu client</h2>
+<p>Le recu s'affiche quand <code>payment_status = paid</code>. Il contient le numero de recu, table, date, heure, moyen de paiement, articles, quantites, prix, total et note client.</p>
+<pre>Paiement : Cash
+Paiement : MPESA
+Paiement : ORANGE_MONEY</pre>
+
+<h2>14. Emails</h2>
+<p>Un email de bienvenue est envoye quand un restaurant cree son compte. Les secrets SMTP ne doivent jamais etre exposes.</p>
+
+<h2>15. Securite</h2>
+<p>Ne jamais exposer dans le frontend : secret MaishaPay, mot de passe SMTP, tokens serveur ou cles privees. Les secrets restent dans le backend ou en base chiffree.</p>
+
+<h2>16. Endpoints importants</h2>
+<pre>GET  /api/saas/plans
+POST /api/saas/signup
+POST /api/saas/checkout/mobile-money
+POST /api/saas/login
+GET  /api/public/menu?table_id=UUID_TABLE
+POST /api/orders
+GET  /api/orders/{id}
+PATCH /api/orders/{id}/cancel
+PATCH /api/orders/{id}/status
+PATCH /api/orders/{id}/payment
+POST /api/orders/payment-callback</pre>
+
+<h2>17. Tests effectues</h2>
+<pre>php artisan migrate
+php artisan route:list --path=orders
+npm.cmd run build dans e-resto-Angular
+npm.cmd run build dans e-resto-client</pre>
+
+<h2>18. Prochaines ameliorations</h2>
+<ul>
+<li>Ajouter les parametres MaishaPay par restaurant.</li>
+<li>Chiffrer les cles secretes restaurant.</li>
+<li>Ajouter une page Parametres > Paiements.</li>
+<li>Ajouter fermeture de caisse.</li>
+<li>Ajouter rapports cash / Mobile Money.</li>
+<li>Ajouter remboursement reel Mobile Money si MaishaPay le supporte.</li>
+<li>Ajouter audit complet des actions.</li>
+</ul>
+<h2>Commande a emporter et feedback client</h2>
+<p>Le client qui scanne une table peut choisir le mode de service avant d'envoyer son panier : Sur place ou A emporter.</p>
+<p>Si le client choisit A emporter, la commande reste liee a la table scannee pour le suivi et le restaurant voit le badge A emporter dans la liste des commandes, le modal nouvelle commande, le modal detail et le modal addition. Le telephone du client est demande pour que le restaurant puisse identifier la commande a recuperer.</p>
+<p>Pour une commande sur place, apres le statut Servie, l'application client affiche automatiquement un modal de feedback. Pour une commande A emporter, le feedback peut s'afficher des que la commande passe a Prete, car le client vient recuperer sa commande et peut evaluer l'experience de commande/retrait.</p>
+<p>Le feedback est accepte uniquement si la commande est servie, ou si elle est prete avec order_type = takeaway. Une meme commande ne cree pas plusieurs avis : l'avis existant est mis a jour.</p>
+<p>Dans e-resto-Angular, le menu Feedbacks affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.</p>
+<h2>Reservations professionnelles</h2>
+<p>Le client ouvre le menu QR ou le menu public, remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale. Le backend cree une reservation en statut pending.</p>
+<p>Le restaurant voit la demande dans le dashboard Reservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
+<p>Statuts : pending, confirmed, seated, completed, cancelled, no_show.</p>
+<p>Dans e-resto-client, le client voit que sa demande est envoyee au restaurant et qu'elle doit etre confirmee. Une reference courte est affichee apres envoi.</p>
+<p>Dans e-resto-Angular, le restaurant peut filtrer par date/statut, rechercher, voir le detail, ajouter une note interne et changer le statut.</p>
+</body>
+</html>

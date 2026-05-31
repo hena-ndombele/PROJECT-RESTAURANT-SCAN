@@ -3,12 +3,13 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 import { ApiPagination } from "../../models/shared/ApiPagination";
 import { PermissionDto } from "../../models/permissions/PermissionDto";
+import { API_ROOT } from "../api-url";
 
 @Injectable({
   providedIn: "root",
 })
 export class PermissionService {
-  private apiUrl = "http://localhost:8000/api";
+  private apiUrl = API_ROOT;
 
   constructor(private http: HttpClient) {}
 

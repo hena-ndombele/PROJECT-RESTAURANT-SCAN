@@ -2,12 +2,13 @@ import {Injectable} from "@angular/core";
 import {HttpClient} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {TableDto} from "../../models/table/TableDto";
+import { API_ROOT } from "../api-url";
 
 @Injectable({
     providedIn: "root",
 })
 export class TableService {
-    private apiUrl = "http://localhost:8000/api";
+    private apiUrl = API_ROOT;
 
     constructor(private http: HttpClient) {
     }

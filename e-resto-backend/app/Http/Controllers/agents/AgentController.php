@@ -37,7 +37,7 @@ class AgentController extends Controller
                 // 2. Création de l'utilisateur (remplit 'users')
                 // Note : On inclut first_name et last_name ici pour éviter l'erreur SQL 1364
                 $user = User::create([
-                    'name'       => $request->first_name . ' ' . $request->last_name,
+                    'restaurant_id' => $request->user()?->restaurant_id,
                     'email'      => $request->email,
                     'password'   => Hash::make($plainPassword),
                     'first_name' => $request->first_name,
@@ -46,6 +46,7 @@ class AgentController extends Controller
 
                 // 3. Création de l'agent lié (remplit 'agents')
                 Agent::create([
+                    'restaurant_id'    => $request->user()?->restaurant_id,
                     'user_id'         => $user->id,
                     'first_name'      => $request->first_name,
                     'last_name'       => $request->last_name,
@@ -82,7 +83,9 @@ class AgentController extends Controller
     {
         try {
             // On récupère tous les agents
-            $agents = Agent::all();
+            $agents = Agent::query()
+                ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+                ->get();
 
             // On retourne une réponse JSON propre
             return response()->json([
@@ -102,7 +105,9 @@ class AgentController extends Controller
 
     public function show($id)
     {
-        $agent = Agent::find($id);
+        $agent = Agent::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->find($id);
 
         if (!$agent) {
             return response()->json(['message' => 'Agent non trouvé'], 404);
@@ -115,7 +120,9 @@ class AgentController extends Controller
 
     public function update(Request $request, $id)
     {
-        $agent = Agent::find($id);
+        $agent = Agent::query()
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->find($id);
 
         if (!$agent) {
             return response()->json(['message' => 'Agent non trouvé'], 404);
@@ -138,7 +145,9 @@ class AgentController extends Controller
 
     public function destroy($id)
     {
-        $agent = Agent::find($id);
+        $agent = Agent::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->find($id);
 
         if (!$agent) {
             return response()->json(['message' => 'Agent non trouvé'], 404);

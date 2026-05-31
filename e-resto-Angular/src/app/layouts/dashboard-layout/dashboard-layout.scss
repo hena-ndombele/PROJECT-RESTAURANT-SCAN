@@ -133,6 +133,63 @@
   transform: translateY(-1px);
 }
 
+.theme-toggle-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #edf2f7;
+}
+
+.notification-list {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  white-space: normal;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.notification-item:hover {
+  background: #f8fafc;
+}
+
+.notification-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #f97316;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+}
+
+.notification-item strong,
+.notification-item span,
+.notification-item small {
+  display: block;
+}
+
+.notification-item span {
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.notification-item small {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
 /* --- Sélecteur de Langue (Switch) --- */
 .language-toggle {
   width: 80px;
@@ -348,5 +405,55 @@ $text-light: #f8fafc;
     // OU
     background-color: #1a1c23; // On met explicitement la même couleur
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
+
+:host-context(.dashboard-dark-theme) {
+  .topbar {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #e5e7eb;
+  }
+
+  .logo-title,
+  .topbar h6,
+  .topbar small {
+    color: #e5e7eb !important;
+  }
+
+  .btn-sidebar-toggle,
+  .theme-toggle-btn,
+  .dropdown-menu,
+  .modal-content {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+  }
+
+  .dropdown-item,
+  .notification-item span,
+  .notification-item small,
+  .modal-content p,
+  .modal-content label {
+    color: #d1d5db !important;
+  }
+
+  .dropdown-item:hover,
+  .notification-item:hover {
+    background: #111827 !important;
+  }
+
+  .bg-light,
+  .input-group-text,
+  .form-control,
+  .form-select {
+    background-color: #111827 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+  }
+
+  .content {
+    background: #0f172a;
+    color: #e5e7eb;
   }
 }

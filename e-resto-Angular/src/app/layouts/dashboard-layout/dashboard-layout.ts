@@ -1,26 +1,30 @@
-import {ChangeDetectorRef, Component, inject, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import {Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
-import {NgClass} from "@angular/common";
+import {DatePipe, NgClass} from "@angular/common";
 import {AuthService} from "../../services/auth/auth-service";
 import Swal from "sweetalert2";
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
 import introJs from 'intro.js';
 import {TranslateModule} from "@ngx-translate/core";
+import {OrderRealtimeService} from "../../services/realtime/order-realtime-service";
+import {ThemeService} from "../../services/theme/theme-service";
 
 @Component({
     selector: 'app-dashboard-layout',
-    imports: [RouterLink, RouterLinkActive, RouterOutlet, NgClass, ReactiveFormsModule, TranslateModule],
+    imports: [RouterLink, RouterLinkActive, RouterOutlet, NgClass, ReactiveFormsModule, TranslateModule, DatePipe],
     styleUrl: "./dashboard-layout.scss",
     templateUrl: './dashboard-layout.html',
     standalone:true
 })
-export class DashboardLayoutComponent implements OnInit {
+export class DashboardLayoutComponent implements OnInit, OnDestroy {
     isLoading = false;
 
     private authService = inject(AuthService);
     private fb = inject(FormBuilder);
     private router = inject(Router);
     private cdref = inject(ChangeDetectorRef);
+    protected orderRealtime = inject(OrderRealtimeService);
+    protected theme = inject(ThemeService);
 
 
     passwordForm: FormGroup;
@@ -37,23 +41,46 @@ export class DashboardLayoutComponent implements OnInit {
         lastName: '',
         fonction: '',
     };
+    restaurantData: any = {
+        name: 'E-RESTO',
+        logo: 'assets/logo/e-resto-logo.png',
+        city: '',
+        owner_phone: '',
+    };
 
     ngOnInit(): void {
+        this.orderRealtime.start();
         const userData = this.authService.getUserData();
+        const restaurantSession = localStorage.getItem('restaurant_session');
+        const restaurant = restaurantSession ? JSON.parse(restaurantSession) : userData?.restaurant;
         if (userData) {
             this.userData = {
                 firstName: userData.first_name || 'Non renseigné',
                 lastName: userData.last_name || '',
                 fonction: userData.fonction || ''
             };
-            this.cdref.detectChanges();
         }
+
+        if (restaurant) {
+            this.restaurantData = {
+                name: restaurant.name || 'E-RESTO',
+                logo: restaurant.logo_url || (restaurant.logo ? `http://127.0.0.1:8000/storage/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
+                city: restaurant.city || '',
+                owner_phone: restaurant.owner_phone || '',
+            };
+        }
+
+        this.cdref.detectChanges();
 
         if (userData && userData.is_first_login) {
             setTimeout(() => {
                 this.startFirstLoginGuide();
             }, 500);
         }
+    }
+
+    ngOnDestroy(): void {
+        this.orderRealtime.stop();
     }
 
     currentLang = 'fr';
@@ -81,6 +108,14 @@ export class DashboardLayoutComponent implements OnInit {
         console.log('Langue changée en :', this.currentLang);
     }
 
+
+    protected toggleTheme(): void {
+        this.theme.toggle();
+    }
+
+    protected openNotifications(): void {
+        setTimeout(() => this.orderRealtime.markNotificationsRead(), 1200);
+    }
 
     passwordMatchValidator(g: FormGroup) {
         return g.get('new_password')?.value === g.get('new_password_confirmation')?.value

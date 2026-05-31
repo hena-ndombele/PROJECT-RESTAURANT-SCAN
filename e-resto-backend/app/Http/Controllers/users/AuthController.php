@@ -137,6 +137,17 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+
+        if ($restaurant && $restaurant->plan) {
+            $limit = (int) $restaurant->plan->max_users;
+            if ($limit > 0 && $restaurant->users()->count() >= $limit) {
+                return response()->json([
+                    'message' => "Limite d'utilisateurs atteinte pour le plan {$restaurant->plan->name}.",
+                ], 422);
+            }
+        }
+
         $validated = $request->validate([
             'first_name'   => 'required|string|max:100',
             'last_name'    => 'required|string|max:100',
@@ -155,6 +166,7 @@ class AuthController extends Controller
             'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'],
             'address'      => $validated['address'] ?? null,
+            'restaurant_id' => $request->user()?->restaurant_id,
             'password'     => Hash::make($validated['password'] ?? '12345678'),
         ]);
 
@@ -187,7 +199,9 @@ class AuthController extends Controller
      */
     public function index()
     {
-        $users = User::with('roles')->paginate(10);
+        $users = User::with('roles')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->paginate(10);
         return response()->json($users);
     }
 
@@ -217,14 +231,18 @@ class AuthController extends Controller
 
     public function show($id)
     {
-        $user = User::with('roles')->findOrFail($id);
+        $user = User::with('roles')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         return response()->json($user);
     }
 
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::query()
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         $validated = $request->validate([
             'first_name' => 'sometimes|string|max:100',
@@ -265,7 +283,9 @@ class AuthController extends Controller
 
     public function destroy($id)
     {
-        $user = User::findOrFail($id);
+        $user = User::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
         $user->tokens()->delete();
         $user->delete();
 
@@ -285,10 +305,13 @@ class AuthController extends Controller
         }
 
         $users = User::with('roles')
-            ->where('first_name', 'LIKE', "%{$query}%")
-            ->orWhere('last_name', 'LIKE', "%{$query}%")
-            ->orWhere('email', 'LIKE', "%{$query}%")
-            ->orWhere('phone_number', 'LIKE', "%{$query}%")
+            ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
+            ->where(function ($builder) use ($query) {
+                $builder->where('first_name', 'LIKE', "%{$query}%")
+                    ->orWhere('last_name', 'LIKE', "%{$query}%")
+                    ->orWhere('email', 'LIKE', "%{$query}%")
+                    ->orWhere('phone_number', 'LIKE', "%{$query}%");
+            })
             ->paginate(10);
 
         return response()->json($users);

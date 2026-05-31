@@ -29,4 +29,14 @@ class Payment extends Model
         'metadata' => 'array',
         'paid_at' => 'datetime',
     ];
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
 }

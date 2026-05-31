@@ -1,19 +1,136 @@
-<main class="auth-flow">
-  <a class="brand" routerLink="/"><img src="assets/logo/e-resto-logo.png" alt="">E-RESTO</a>
-  <section class="auth-card">
-    <span>Etape 1 sur 2</span>
-    <h1>Creer votre compte restaurant</h1>
-    <p>Comme sur un SaaS professionnel, vous creez d'abord votre compte. Ensuite seulement vous activez l'abonnement par carte.</p>
-    <form (ngSubmit)="createAccount()">
-      <input [(ngModel)]="account.restaurant_name" name="restaurant_name" placeholder="Nom du restaurant">
-      <input [(ngModel)]="account.owner_name" name="owner_name" placeholder="Nom du proprietaire">
-      <input [(ngModel)]="account.email" name="email" type="email" placeholder="Email professionnel">
-      <input [(ngModel)]="account.phone" name="phone" placeholder="Telephone">
-      <input [(ngModel)]="account.password" name="password" type="password" placeholder="Mot de passe">
-      <input [(ngModel)]="account.password_confirmation" name="password_confirmation" type="password" placeholder="Confirmer le mot de passe">
-      <button>Continuer vers le paiement</button>
-      <p class="message" *ngIf="message">{{ message }}</p>
+<main class="signup-flow">
+  <a class="brand" routerLink="/">
+    <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+    <span>E-RESTO</span>
+  </a>
+
+  <section class="signup-card">
+    <div class="signup-head">
+      <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+      <span class="eyebrow">Compte restaurant</span>
+      <h1>Creer votre espace</h1>
+      <p>Configurez le proprietaire puis les informations du restaurant.</p>
+
+      <div class="stepper" aria-label="Progression inscription">
+        <button type="button" [class.active]="currentStep === 1" [class.done]="currentStep > 1" (click)="goBack()">1</button>
+        <span></span>
+        <button type="button" [class.active]="currentStep === 2" [disabled]="currentStep === 1">2</button>
+      </div>
+    </div>
+
+    <form (ngSubmit)="currentStep === 1 ? goNext() : createAccount()">
+      @if (currentStep === 1) {
+        <div class="form-section">
+          <div class="section-title">
+            <strong>Informations personnelles</strong>
+            <small>Ces informations servent a creer le compte proprietaire.</small>
+          </div>
+
+          <label>
+            <span>Adresse email *</span>
+            <input [(ngModel)]="account.owner_email" name="owner_email" type="email" placeholder="nom@email.com" autocomplete="email">
+          </label>
+
+          <label>
+            <span>Mot de passe *</span>
+            <div class="password-field">
+              <input [(ngModel)]="account.password"
+                     name="password"
+                     [type]="showPassword ? 'text' : 'password'"
+                     placeholder="Minimum 6 caracteres"
+                     autocomplete="new-password">
+              <button type="button" (click)="showPassword = !showPassword" [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'"></i>
+              </button>
+            </div>
+            <div class="password-strength" [ngClass]="passwordStrengthClass()">
+              @for (bar of [1, 2, 3, 4]; track bar) {
+                <span [class.active]="passwordStrengthScore() >= bar"></span>
+              }
+            </div>
+            <small class="strength-label" [ngClass]="passwordStrengthClass()">{{ passwordStrengthLabel() }}</small>
+          </label>
+
+          <label>
+            <span>Confirmer le mot de passe *</span>
+            <div class="password-field">
+              <input [(ngModel)]="account.password_confirmation"
+                     name="password_confirmation"
+                     [type]="showPasswordConfirmation ? 'text' : 'password'"
+                     placeholder="Repetez votre mot de passe"
+                     autocomplete="new-password">
+              <button type="button" (click)="showPasswordConfirmation = !showPasswordConfirmation" [attr.aria-label]="showPasswordConfirmation ? 'Masquer la confirmation' : 'Afficher la confirmation'">
+                <i class="bi" [ngClass]="showPasswordConfirmation ? 'bi-eye-slash-fill' : 'bi-eye-fill'"></i>
+              </button>
+            </div>
+          </label>
+
+          <button class="primary-action" type="submit">
+            Continuer <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      } @else {
+        <div class="form-section">
+          <div class="section-title">
+            <strong>Informations restaurant</strong>
+            <small>Ces informations personnalisent votre espace et vos factures.</small>
+          </div>
+
+          <label>
+            <span>Nom du restaurant *</span>
+            <input [(ngModel)]="account.restaurant_name" name="restaurant_name" placeholder="Ex: Chez Tantine Adjoua">
+          </label>
+
+          <label>
+            <span>Nom du proprietaire *</span>
+            <input [(ngModel)]="account.owner_name" name="owner_name" placeholder="Ex: Hena Ndombele" autocomplete="name">
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Telephone</span>
+              <input [(ngModel)]="account.owner_phone" name="owner_phone" placeholder="+243830000000" autocomplete="tel">
+            </label>
+
+            <label>
+              <span>Ville</span>
+              <input [(ngModel)]="account.city" name="city" placeholder="Kinshasa">
+            </label>
+          </div>
+
+          <label>
+            <span>Devise par defaut</span>
+            <select [(ngModel)]="account.currency" name="currency">
+              <option value="CDF">CDF - Franc congolais</option>
+              <option value="USD">USD - Dollar americain</option>
+            </select>
+          </label>
+
+          <div class="actions-row">
+            <button class="secondary-action" type="button" (click)="goBack()">
+              <i class="bi bi-arrow-left"></i> Retour
+            </button>
+            <button class="primary-action" type="submit" [disabled]="creating">
+              @if (creating) {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Creation...
+              } @else {
+                <i class="bi bi-rocket-takeoff me-1"></i>
+                Creer mon compte
+              }
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (message) {
+        <p class="message">{{ message }}</p>
+      }
     </form>
-    <a routerLink="/restaurant/login">J'ai deja un compte</a>
+
+    <div class="signin-link">
+      Deja un compte ?
+      <a routerLink="/restaurant/login">Se connecter</a>
+    </div>
   </section>
 </main>

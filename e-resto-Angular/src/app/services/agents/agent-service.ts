@@ -2,6 +2,7 @@ import { Injectable } from "@angular/core";
 import {HttpClient} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {AgentDto} from "../../models/agents/AgentDto";
+import { API_ROOT } from "../api-url";
 
 
 @Injectable({
@@ -9,7 +10,7 @@ import {AgentDto} from "../../models/agents/AgentDto";
 })
 export class AgentService
 {
-  private apiUrl = "http://localhost:8000/api";
+  private apiUrl = API_ROOT;
 
   constructor(private http: HttpClient) {}
 

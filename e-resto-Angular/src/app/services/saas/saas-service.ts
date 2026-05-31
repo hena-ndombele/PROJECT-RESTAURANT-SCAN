@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Restaurant, SaasOverview, SaasPlan } from '../../models/saas/saas.models';
+import { Restaurant, RestaurantPlanUsage, SaasOverview, SaasPlan } from '../../models/saas/saas.models';
+import { API_ROOT } from '../api-url';
 
 @Injectable({ providedIn: 'root' })
 export class SaasService {
-  private apiUrl = 'http://localhost:8000/api/saas';
+  private apiUrl = `${API_ROOT}/saas`;
 
   constructor(private http: HttpClient) {}
 
@@ -35,5 +36,33 @@ export class SaasService {
 
   registerInterest(payload: Partial<Restaurant>): Observable<Restaurant> {
     return this.http.post<Restaurant>(`${this.apiUrl}/register-interest`, payload);
+  }
+
+  signup(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/signup`, payload);
+  }
+
+  checkoutMobileMoney(payload: { restaurant_id: string; provider: string; wallet_id: string }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/checkout/mobile-money`, payload);
+  }
+
+  login(payload: { email: string; password: string }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/login`, payload);
+  }
+
+  currentRestaurant(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/me`);
+  }
+
+  restaurantDashboard(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/restaurant/dashboard`);
+  }
+
+  restaurantUsage(): Observable<RestaurantPlanUsage> {
+    return this.http.get<RestaurantPlanUsage>(`${this.apiUrl}/restaurant/usage`);
+  }
+
+  updateRestaurantProfile(payload: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/restaurant/profile`, payload);
   }
 }

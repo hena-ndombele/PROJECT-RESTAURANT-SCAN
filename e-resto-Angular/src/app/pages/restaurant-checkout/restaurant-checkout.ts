@@ -13,39 +13,47 @@ import { SaasService } from '../../services/saas/saas-service';
 })
 export class RestaurantCheckout {
   selectedPlan = JSON.parse(localStorage.getItem('selected_plan') || '{}');
-  account = JSON.parse(localStorage.getItem('restaurant_account') || '{}');
-  card = { number: '', name: '', expiry: '', cvc: '' };
+  restaurant = JSON.parse(localStorage.getItem('pending_restaurant') || localStorage.getItem('restaurant_session') || '{}');
+  mobile = { provider: 'MPESA', wallet_id: '' };
   message = '';
   paying = false;
+  paymentResponse: any = null;
 
   constructor(private router: Router, private saas: SaasService) {}
 
   pay(): void {
-    if (!this.account.email) {
+    if (!this.restaurant.id) {
       this.router.navigate(['/restaurant/signup']);
       return;
     }
 
-    if (!this.card.number || !this.card.name || !this.card.expiry || !this.card.cvc) {
-      this.message = 'Entrez les informations Visa/Mastercard pour activer le plan.';
+    if (!this.mobile.wallet_id) {
+      this.message = 'Entrez le numero Mobile Money qui va payer l abonnement.';
       return;
     }
 
     this.paying = true;
-    this.saas.registerInterest({
-      name: this.account.restaurant_name,
-      owner_name: this.account.owner_name,
-      owner_email: this.account.email,
-      owner_phone: this.account.phone,
-      saas_plan_id: this.selectedPlan.id,
+    this.saas.checkoutMobileMoney({
+      restaurant_id: this.restaurant.id,
+      provider: this.mobile.provider,
+      wallet_id: this.mobile.wallet_id,
     }).subscribe({
-      next: () => {
-        localStorage.setItem('restaurant_session', JSON.stringify({ email: this.account.email, plan: this.selectedPlan, paid: true }));
-        this.message = 'Paiement accepte. Ouverture de votre espace restaurant...';
+      next: (response) => {
+        this.paymentResponse = response.maishapay;
+        if (response.session?.token) {
+          localStorage.setItem('restaurant_token', response.session.token);
+          localStorage.setItem('auth_token', response.session.token);
+          localStorage.setItem('user_data', JSON.stringify(response.session.user));
+          localStorage.setItem('restaurant_session', JSON.stringify(response.session.restaurant));
+          localStorage.removeItem('pending_restaurant');
+        }
+        this.message = response.payment?.status === 'paid'
+          ? 'Paiement confirme. Ouverture de votre espace restaurant...'
+          : 'Paiement envoye. Votre espace sera active apres confirmation.';
         setTimeout(() => this.router.navigate(['/restaurant/dashboard']), 700);
       },
       error: () => {
-        this.message = 'Le paiement de test a echoue. Reessayez.';
+        this.message = 'Le paiement Mobile Money a echoue. Verifiez le numero et reessayez.';
         this.paying = false;
       },
     });

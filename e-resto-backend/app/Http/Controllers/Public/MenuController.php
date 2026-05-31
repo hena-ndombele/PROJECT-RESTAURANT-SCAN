@@ -5,14 +5,58 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Plat;
+use App\Models\Restaurant;
+use App\Models\Table;
 use Illuminate\Http\Request;
 
 class MenuController extends Controller
 {
     public function index(Request $request)
     {
-        $categories = Category::withCount(['plats' => function ($query) {
+        $restaurantId = null;
+        if ($request->filled('table_id')) {
+            $table = Table::find($request->table_id);
+            if (!$table || !$table->restaurant_id) {
+                return response()->json([
+                    'message' => 'Cette table QR n est pas rattachee a un restaurant actif.',
+                    'categories' => [],
+                    'plats' => [],
+                ], 404);
+            }
+            $restaurantId = $table->restaurant_id;
+        }
+        if ($request->filled('restaurant_id')) {
+            $restaurantId = $request->restaurant_id;
+        }
+        if ($request->filled('restaurant_slug')) {
+            $restaurantId = Restaurant::where('slug', $request->restaurant_slug)->value('id');
+            if (!$restaurantId) {
+                return response()->json([
+                    'message' => 'Restaurant introuvable.',
+                    'categories' => [],
+                    'plats' => [],
+                ], 404);
+            }
+        }
+
+        if ($restaurantId) {
+            $restaurant = Restaurant::find($restaurantId);
+            if (!$restaurant || !in_array($restaurant->status, ['active', 'trial'], true)) {
+                return response()->json([
+                    'message' => 'Ce restaurant est temporairement indisponible.',
+                    'categories' => [],
+                    'plats' => [],
+                ], 402);
+            }
+        }
+
+        $categories = Category::query()
+            ->when($restaurantId, fn ($query) => $query->where('restaurant_id', $restaurantId))
+            ->withCount(['plats' => function ($query) use ($restaurantId) {
             $query->where('is_available', true);
+            if ($restaurantId) {
+                $query->where('restaurant_id', $restaurantId);
+            }
         }])->orderBy('name')->get()->map(fn ($category) => [
             'id' => $category->id,
             'name' => $category->name,
@@ -23,6 +67,7 @@ class MenuController extends Controller
         ]);
 
         $platsQuery = Plat::with('category')
+            ->when($restaurantId, fn ($query) => $query->where('restaurant_id', $restaurantId))
             ->where('is_available', true)
             ->orderBy('name');
 
@@ -57,8 +102,34 @@ class MenuController extends Controller
         ]);
 
         return response()->json([
+            'restaurant_id' => $restaurantId,
+            'restaurant' => $restaurantId ? $this->publicRestaurantPayload(Restaurant::find($restaurantId)) : null,
             'categories' => $categories,
             'plats' => $plats,
         ]);
+    }
+
+    private function publicRestaurantPayload(?Restaurant $restaurant): ?array
+    {
+        if (!$restaurant) {
+            return null;
+        }
+
+        $settings = $restaurant->settings ?? [];
+
+        return [
+            'id' => $restaurant->id,
+            'name' => $restaurant->name,
+            'slug' => $restaurant->slug,
+            'owner_phone' => $restaurant->owner_phone,
+            'address' => $restaurant->address,
+            'city' => $restaurant->city,
+            'currency' => $restaurant->currency,
+            'logo_url' => $restaurant->logo ? asset("storage/{$restaurant->logo}") : null,
+            'settings' => $settings,
+            'app_name' => $settings['app_name'] ?? $restaurant->name,
+            'slogan' => $settings['slogan'] ?? null,
+            'theme' => $settings['theme'] ?? [],
+        ];
     }
 }

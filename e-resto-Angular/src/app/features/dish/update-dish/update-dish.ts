@@ -7,6 +7,7 @@ import { CategoryDto } from "../../../models/category/CategoryDto";
 import { DishDto } from "../../../models/dish/DishDto";
 import { CategoryService } from "../../../services/category/category-service";
 import { DishService } from "../../../services/dish/dish-service";
+import { STORAGE_ROOT } from "../../../services/api-url";
 
 @Component({
     selector: "app-update-dish",
@@ -34,7 +35,7 @@ export class UpdateDish implements OnInit {
     thumb1Preview: string | null = null;
     thumb2Preview: string | null = null;
 
-    readonly IMAGE_URL = "http://localhost:8000/storage/";
+    readonly IMAGE_URL = `${STORAGE_ROOT}/`;
 
     private fb = inject(FormBuilder);
     private route = inject(ActivatedRoute);

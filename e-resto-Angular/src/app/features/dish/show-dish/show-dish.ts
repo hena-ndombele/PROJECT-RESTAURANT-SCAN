@@ -3,6 +3,7 @@ import { Component, Input, OnInit, signal } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { DishDto } from "../../../models/dish/DishDto";
 import { DishService } from "../../../services/dish/dish-service";
+import { STORAGE_ROOT } from "../../../services/api-url";
 
 @Component({
     selector: "app-show-dish",
@@ -63,7 +64,7 @@ export class ShowDish implements OnInit {
     imageUrl(path?: string | null): string | null {
         if (!path) return null;
         if (path.startsWith("http")) return path;
-        return `http://localhost:8000/storage/${path}`;
+        return `${STORAGE_ROOT}/${path}`;
     }
 
     private normalizeIngredients(value: string[] | string | undefined): string[] {

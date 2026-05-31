@@ -6,9 +6,14 @@
                     <h1 class="fs-3 mb-1 fw-black text-uppercase" style="letter-spacing: 1px;">Digital Menu ({{totalCount()}})</h1>
                     <p class="mb-0 text-muted small">E-RESTO ADMIN > DISH MANAGEMENT</p>
                 </div>
-                <a routerLink="/dish/create" class="btn btn-warning fw-black rounded-0 px-4 shadow-sm">
-                    <i class="ti ti-plus me-1"></i>ADD A DISH
-                </a>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-success fw-black rounded-0 px-4 shadow-sm" type="button" (click)="exportExcel()">
+                        <i class="ti ti-file-spreadsheet me-1"></i>EXPORT EXCEL
+                    </button>
+                    <a routerLink="/dish/create" class="btn btn-warning fw-black rounded-0 px-4 shadow-sm">
+                        <i class="ti ti-plus me-1"></i>ADD A DISH
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -20,6 +25,12 @@
                     <i class="ti ti-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                     <input type="text" class="form-control ps-5 rounded-0 border-2" placeholder="Search for a dish..." (input)="onSearch($event)">
                 </div>
+                <select class="form-select rounded-0 border-2" style="width: 260px;" [ngModel]="categoryFilter()" (ngModelChange)="onCategoryChange($event)">
+                    <option value="all">Toutes les categories</option>
+                    @for (category of categories(); track category.id) {
+                        <option [value]="category.id">{{ category.name }}</option>
+                    }
+                </select>
             </div>
         </div>
     </div>
@@ -45,7 +56,7 @@
                         </div>
                         <div class="dish-image-container border-bottom border-2 bg-light" style="height: 180px; overflow: hidden;">
                             @if (dish.image) {
-                                <img [src]="'http://localhost:8000/storage/' + dish.image" class="img-fluid w-100 h-100 object-fit-cover">
+                                <img [src]="storageRoot + '/' + dish.image" class="img-fluid w-100 h-100 object-fit-cover">
                             } @else {
                                 <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
                                     <i class="ti ti-photo-off fs-1"></i>

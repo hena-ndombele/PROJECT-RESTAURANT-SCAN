@@ -1,0 +1,1498 @@
+# E-RESTO SaaS - Documentation fonctionnelle et technique
+
+## 1. Objectif du projet
+
+E-RESTO est une plateforme SaaS pour restaurants.
+
+Le but est de permettre a un restaurant de :
+
+- creer son compte SaaS ;
+- choisir un plan d'abonnement ;
+- payer son abonnement ;
+- acceder a son espace restaurant ;
+- gerer ses plats, categories, tables, agents et commandes ;
+- generer des QR codes par table ;
+- permettre aux clients de commander sans compte via QR code ;
+- encaisser les commandes en cash ou Mobile Money ;
+- suivre les paiements dans le dashboard ;
+- produire un recu client.
+
+Le projet est compose de plusieurs applications :
+
+- `e-resto-backend` : API Laravel.
+- `e-resto-Angular` : dashboard admin/restaurant.
+- `e-resto-client` : application client QR code.
+- `e-resto-platform-Angular` : console plateforme interne.
+
+## 2. Flow SaaS restaurant
+
+### 2.1 Inscription restaurant
+
+Le restaurant arrive sur la landing SaaS, choisit un plan, puis cree son compte.
+
+L'inscription est organisee en wizard en deux etapes :
+
+```txt
+Etape 1 : informations personnelles
+=> email proprietaire
+=> mot de passe
+=> confirmation du mot de passe
+=> bouton afficher/masquer le mot de passe
+=> indicateur de force du mot de passe avec 4 barres et libelle dynamique
+
+Etape 2 : informations restaurant
+=> nom du restaurant
+=> nom du proprietaire
+=> telephone
+=> ville
+=> devise par defaut
+```
+
+La devise reste la devise par defaut du restaurant. Les statistiques et rapports continuent de separer les revenus par devise quand des commandes existent en CDF et USD.
+
+Le backend cree :
+
+- un restaurant ;
+- un utilisateur proprietaire ;
+- une subscription ;
+- une session ;
+- un email de bienvenue.
+
+Selon le plan :
+
+- plan gratuit : restaurant actif directement ;
+- plan payant : restaurant en essai ou en attente de paiement selon le flow.
+
+### 2.1.1 Parametres restaurant et personnalisation client
+
+Dans le back-office Angular, le menu `Parametres` permet au restaurant de modifier :
+
+```txt
+=> logo du restaurant
+=> nom du restaurant
+=> nom du proprietaire
+=> telephone
+=> adresse et ville
+=> devise par defaut
+=> slogan affiche dans l'application client
+=> couleur principale du menu client
+=> couleur de fond du menu client
+=> slug public du menu
+=> lien Google Maps
+=> description courte affichee au client
+```
+
+Ces donnees sont sauvegardees dans le profil restaurant Laravel. Quand un client scanne le QR code ou ouvre l'URL publique du restaurant, l'API publique du menu renvoie aussi le branding. L'application client applique automatiquement le logo, le nom, le slogan, la description et les couleurs.
+
+La page `Parametres` respecte le design general du dashboard. Elle reste claire en mode normal et passe en fond sombre uniquement quand le theme sombre du dashboard est active.
+
+La personnalisation du menu client est reservee aux plans Pro et Business. Les restaurants en Free Demo ou Starter peuvent modifier les informations de base du restaurant, mais les champs suivants sont verrouilles :
+
+```txt
+=> logo
+=> couleurs du menu client
+=> slogan
+=> description du menu
+=> slug public
+=> lien Google Maps
+```
+
+Le backend applique aussi cette regle. Si un plan non autorise tente de modifier le branding, l'API retourne une erreur 403.
+
+### 2.2 Abonnement
+
+Le paiement d'abonnement utilise les cles MaishaPay globales du SaaS, configurees dans le `.env` backend.
+
+Flow :
+
+```txt
+Restaurant choisit un plan
+=> checkout Mobile Money
+=> backend appelle MaishaPay
+=> paiement confirme
+=> subscription active
+=> restaurant active
+=> acces dashboard
+```
+
+Important :
+
+- les cles globales du `.env` servent au SaaS ;
+- elles ne doivent pas etre exposees dans le frontend ;
+- elles ne doivent pas etre documentees en clair.
+
+## 3. Isolation multi-restaurant
+
+Chaque restaurant possede ses propres donnees.
+
+Les entites principales sont liees a `restaurant_id` :
+
+- users ;
+- agents ;
+- categories ;
+- plats ;
+- tables ;
+- commandes ;
+- paiements ;
+- reservations.
+
+Quand un restaurant se connecte, les endpoints authentifies filtrent les donnees par `restaurant_id`.
+
+Objectif :
+
+```txt
+Restaurant A ne voit jamais les plats, tables ou commandes du Restaurant B.
+```
+
+Le menu public utilise :
+
+```txt
+table_id
+```
+
+Le backend retrouve la table, puis le restaurant de cette table, puis affiche uniquement les categories et plats de ce restaurant.
+
+## 4. Flow QR code client
+
+### 4.1 Generation du QR code
+
+Dans le dashboard restaurant, le restaurant cree ses tables.
+
+Chaque table possede une URL QR code du type :
+
+```txt
+http://IP_DU_FRONTEND_CLIENT:5173/?table_id=UUID_TABLE
+```
+
+Quand le client scanne, l'application `e-resto-client` recupere `table_id` dans l'URL.
+
+### 4.2 Chargement du menu
+
+Le client appelle :
+
+```txt
+GET /api/public/menu?table_id=UUID_TABLE
+```
+
+Le backend :
+
+1. verifie que la table existe ;
+2. retrouve son restaurant ;
+3. verifie que le restaurant est actif ou en essai ;
+4. retourne les categories et plats du restaurant ;
+5. ne retourne rien si la table est invalide.
+
+## 5. Creation de commande
+
+Le client ajoute des plats au panier, puis choisit le moyen de paiement.
+
+Les moyens de paiement supportes :
+
+- cash ;
+- Mobile Money via MaishaPay : MPESA, Orange Money, Airtel Money.
+
+Quand le client envoie la commande, le backend cree :
+
+- une commande dans `orders` ;
+- les lignes de commande dans `order_items` ;
+- un paiement dans `payments` ;
+- la table passe en statut occupee.
+
+## 6. Separation commande et paiement
+
+Le projet utilise deux statuts differents.
+
+### 6.1 Statut de commande
+
+Champ :
+
+```txt
+orders.status
+```
+
+Valeurs :
+
+```txt
+pending
+preparing
+ready
+delivered
+cancelled
+```
+
+Signification :
+
+- `pending` : commande recue ;
+- `preparing` : en preparation ;
+- `ready` : prete ;
+- `delivered` : servie ;
+- `cancelled` : annulee.
+
+### 6.2 Statut de paiement
+
+Champ :
+
+```txt
+orders.payment_status
+```
+
+Valeurs :
+
+```txt
+unpaid
+pending
+paid
+failed
+refunded
+```
+
+Signification :
+
+- `unpaid` : pas encore paye ;
+- `pending` : paiement Mobile Money en attente ;
+- `paid` : paiement confirme ;
+- `failed` : paiement echoue ;
+- `refunded` : paiement rembourse/comptablement rembourse.
+
+Pourquoi cette separation est importante :
+
+```txt
+Une commande peut etre servie mais pas encore payee.
+Une commande peut etre en preparation mais deja payee.
+Une commande peut etre annulee et remboursee.
+```
+
+## 7. Flow paiement cash
+
+Le paiement cash est gere par le restaurant, pas par une API externe.
+
+Flow :
+
+```txt
+Client commande
+=> payment_method = cash
+=> payment_status = unpaid
+=> restaurant voit la commande
+=> client paie en cash
+=> caissier clique "Encaisser cash"
+=> payment_status = paid
+=> ligne payments mise a jour
+=> dashboard comptabilise le revenu
+```
+
+Le cash est donc comptabilise dans l'application meme si l'argent est donne physiquement.
+
+Le client peut aussi demander l'addition depuis le suivi de commande quand :
+
+```txt
+payment_method = cash
+payment_status != paid
+status = delivered
+```
+
+Le bouton n'apparait donc cote client qu'apres que le restaurant a marque la commande comme servie. Le backend marque ensuite le paiement avec `metadata.bill_requested = true` et diffuse la mise a jour en temps reel avec les informations fraiches du paiement. Dans le dashboard commandes, une notification modale s'ouvre automatiquement avec son, la table, le client, le numero de commande, les plats et le total. La carte et le modal detail affichent aussi `Addition demandee`.
+
+Donnees utiles :
+
+- montant attendu ;
+- montant recu ;
+- monnaie rendue ;
+- caissier ;
+- date d'encaissement.
+
+### 7.1 Modal caisse cash
+
+Dans le dashboard, le bouton `Cash` n'encaisse plus directement.
+
+Flow caisse :
+
+```txt
+Restaurant clique Cash
+=> modal caisse s'ouvre
+=> total a payer affiche
+=> caissier entre le montant recu
+=> application calcule la monnaie a rendre
+=> si montant recu < total, confirmation bloquee
+=> caissier confirme
+=> payment_status = paid
+=> payment metadata stocke received_amount et change_amount
+=> recu cash imprimable s'ouvre
+=> statistiques mises a jour
+```
+
+Le recu cash contient :
+
+- table ;
+- numero de commande ;
+- articles ;
+- quantites ;
+- prix ;
+- total ;
+- montant recu ;
+- monnaie rendue ;
+- moyen de paiement cash.
+
+## 8. Flow paiement Mobile Money
+
+Quand le client choisit Mobile Money, le paiement est lance immediatement au moment de la commande.
+
+Flow :
+
+```txt
+Client choisit ses plats
+=> choisit MPESA / Orange Money / Airtel Money
+=> saisit son numero wallet
+=> clique "Commander et payer"
+=> backend cree la commande
+=> payment_status = pending
+=> backend cree une ligne payment
+=> backend appelle MaishaPay
+=> MaishaPay envoie la demande au telephone du client
+=> client valide sur son telephone
+=> MaishaPay confirme ou echoue
+=> backend met payment_status = paid ou failed
+```
+
+La commande existe meme si le paiement est encore en attente.
+
+Exemple :
+
+```txt
+status = pending
+payment_status = pending
+payment_method = mobile_money
+payment_provider = MPESA
+```
+
+Apres confirmation :
+
+```txt
+status = pending ou preparing
+payment_status = paid
+```
+
+## 9. Ou va l'argent Mobile Money ?
+
+L'application ne recoit pas directement l'argent.
+
+Avec un gateway comme MaishaPay :
+
+```txt
+Wallet client
+=> operateur Mobile Money
+=> MaishaPay / compte marchand configure
+=> settlement vers compte bancaire ou wallet marchand selon contrat
+```
+
+L'argent va vers le compte marchand associe aux cles MaishaPay utilisees.
+
+### 9.1 Situation actuelle
+
+Actuellement, les commandes Mobile Money utilisent la configuration MaishaPay globale du backend.
+
+Donc :
+
+```txt
+Paiements clients
+=> compte marchand associe aux cles du backend
+```
+
+### 9.2 Recommandation SaaS professionnelle
+
+Pour un SaaS multi-restaurant, le meilleur modele est :
+
+```txt
+Abonnement SaaS
+=> cles MaishaPay du SaaS
+=> argent vers le proprietaire de la plateforme
+
+Commandes clients
+=> cles MaishaPay du restaurant
+=> argent vers le restaurant
+```
+
+Pour cela, il faut ajouter une configuration par restaurant.
+
+Table recommandee :
+
+```txt
+restaurant_payment_settings
+- id
+- restaurant_id
+- provider
+- gateway_mode
+- public_api_key
+- secret_api_key chiffree
+- default_mobile_provider
+- callback_url
+- is_active
+- created_at
+- updated_at
+```
+
+La cle secrete doit etre chiffree et jamais affichee en clair apres enregistrement.
+
+## 10. Annulation de commande
+
+Le projet applique maintenant des regles d'annulation.
+
+### 10.1 Cote client QR
+
+Le client peut annuler seulement si :
+
+```txt
+status = pending
+payment_status != paid
+```
+
+Donc le client peut annuler avant que le restaurant commence la preparation.
+
+Le client doit donner une raison d'annulation.
+
+### 10.2 Cote restaurant
+
+Le restaurant peut annuler une commande non servie avec une raison obligatoire.
+
+Regles :
+
+```txt
+pending   => annulation autorisee
+preparing => annulation restaurant autorisee avec raison
+ready     => annulation restaurant autorisee avec raison
+delivered => annulation bloquee
+```
+
+Si la commande est deja servie, on ne l'annule plus. On gere plutot un remboursement.
+
+### 10.3 Effet sur paiement
+
+Si commande annulee avec paiement en attente :
+
+```txt
+payment_status = failed
+```
+
+Si commande annulee avec paiement deja confirme :
+
+```txt
+payment_status = refunded
+```
+
+Si commande annulee avant paiement cash :
+
+```txt
+payment_status = unpaid
+```
+
+### 10.4 Audit d'annulation
+
+Les champs ajoutes :
+
+```txt
+cancellation_reason
+cancelled_by
+cancelled_at
+```
+
+Ils permettent de savoir :
+
+- pourquoi la commande a ete annulee ;
+- qui l'a annulee ;
+- quand elle a ete annulee.
+
+## 11. Dashboard restaurant Angular
+
+Le dashboard Angular a ete rendu reactif et connecte aux donnees reelles.
+
+Il affiche :
+
+- commandes du jour ;
+- chiffre du jour ;
+- plats disponibles ;
+- occupation des tables ;
+- revenu du mois ;
+- revenu de l'annee ;
+- equipe ;
+- performance 7 jours ;
+- etat du service ;
+- commandes recentes ;
+- top plats du mois.
+
+Le dashboard se rafraichit automatiquement.
+
+Important :
+
+Apres le premier chargement, l'actualisation ne vide plus l'ecran. Les anciennes donnees restent visibles pendant le refresh.
+
+## 12. Gestion des commandes dans Angular
+
+La liste des commandes affiche deux colonnes distinctes :
+
+- `Commande` : statut cuisine/service ;
+- `Paiement` : statut de paiement.
+
+Le restaurant peut :
+
+- passer une commande en preparation ;
+- la marquer prete ;
+- la marquer servie ;
+- l'annuler avec raison ;
+- encaisser le cash.
+
+Le bouton `Encaisser cash` :
+
+```txt
+payment_method = cash
+payment_status = paid
+```
+
+La commande n'est pas forcement terminee pour autant. Le statut commande reste separe.
+
+## 13. Recu client
+
+Le recu client s'affiche quand :
+
+```txt
+payment_status = paid
+```
+
+Il contient :
+
+- numero de recu ;
+- table ;
+- date ;
+- heure ;
+- moyen de paiement ;
+- articles ;
+- quantites ;
+- prix ;
+- total paye ;
+- note client si disponible.
+
+Le moyen de paiement est affiche dans :
+
+- le recu visible dans le navigateur ;
+- le PDF ;
+- le texte partage.
+
+Exemples :
+
+```txt
+Paiement : Cash
+Paiement : MPESA
+Paiement : ORANGE_MONEY
+```
+
+## 14. Emails
+
+Quand un restaurant cree son compte SaaS, un email de bienvenue est envoye.
+
+L'envoi utilise la configuration SMTP du backend.
+
+Les informations sensibles SMTP ne doivent pas etre documentees en clair.
+
+## 15. Securite et bonnes pratiques
+
+Ne jamais exposer dans le frontend :
+
+- secret API MaishaPay ;
+- mot de passe SMTP ;
+- tokens serveur ;
+- cles privees.
+
+Les cles sensibles doivent rester :
+
+```txt
+backend .env
+ou base de donnees chiffree
+```
+
+Pour les restaurants, les cles MaishaPay doivent etre chiffrees en base.
+
+## 16. Endpoints importants
+
+### SaaS
+
+```txt
+GET  /api/saas/plans
+POST /api/saas/signup
+POST /api/saas/checkout/mobile-money
+POST /api/saas/login
+GET  /api/saas/restaurant/dashboard
+GET  /api/saas/restaurant/usage
+```
+
+### Menu public
+
+```txt
+GET /api/public/menu?table_id=UUID_TABLE
+```
+
+### Commandes
+
+```txt
+POST  /api/orders
+GET   /api/orders/{id}
+PATCH /api/orders/{id}/cancel
+GET   /api/orders
+PATCH /api/orders/{id}/status
+PATCH /api/orders/{id}/payment
+POST  /api/orders/payment-callback
+```
+
+## 17. Tests effectues
+
+Les verifications suivantes ont ete executees pendant les modifications :
+
+```txt
+php artisan migrate
+php artisan route:list --path=orders
+npm.cmd run build dans e-resto-Angular
+npm.cmd run build dans e-resto-client
+```
+
+Les builds passent.
+
+Les warnings restants concernent surtout la taille des bundles frontend et ne bloquent pas l'application.
+
+## 18. Prochaines ameliorations recommandees
+
+Pour rendre le SaaS encore plus professionnel :
+
+- ajouter les parametres MaishaPay par restaurant ;
+- chiffrer les cles secretes restaurant ;
+- ajouter une page `Parametres > Paiements` ;
+- ajouter fermeture de caisse ;
+- ajouter rapports cash / Mobile Money ;
+- ajouter roles manager pour annulation apres preparation ;
+- ajouter remboursement reel Mobile Money via API si MaishaPay le supporte ;
+- ajouter historique/audit complet des actions ;
+- ajouter notifications email/SMS au restaurant.
+
+## 19. Temps reel dashboard Angular
+
+Le dashboard Angular utilise maintenant un websocket Reverb pour les commandes.
+
+Objectif :
+
+```txt
+Nouvelle commande client
+=> evenement Laravel broadcast
+=> Angular recoit l'evenement sans actualiser la page
+=> compteur commandes mis a jour
+=> notification header
+=> son de notification
+=> liste commandes mise a jour
+```
+
+### 19.1 Backend Reverb
+
+Le backend utilise Laravel Reverb.
+
+Configuration active dans `.env` :
+
+```txt
+BROADCAST_CONNECTION=reverb
+REVERB_APP_KEY=e-resto-key
+REVERB_HOST=127.0.0.1
+REVERB_PORT=8080
+REVERB_SCHEME=http
+REVERB_SERVER_HOST=0.0.0.0
+REVERB_SERVER_PORT=8080
+```
+
+Commande de demarrage du serveur websocket :
+
+```txt
+cd e-resto-backend
+php artisan reverb:start --host=0.0.0.0 --port=8080
+```
+
+Important : pour que le temps reel fonctionne, il faut lancer :
+
+```txt
+serveur Laravel API
+serveur Reverb
+serveur Angular dashboard
+serveur React client QR
+```
+
+### 19.2 Channels commandes
+
+Les evenements commandes sont diffuses sur :
+
+```txt
+orders
+orders.{restaurant_id}
+orders.{order_id}
+```
+
+Angular ecoute en priorite :
+
+```txt
+orders.{restaurant_id}
+```
+
+Cela evite qu'un restaurant recoive les notifications d'un autre restaurant.
+
+### 19.3 Notifications dashboard
+
+Dans `e-resto-Angular`, le service `OrderRealtimeService` gere :
+
+- connexion websocket ;
+- reconnexion automatique ;
+- chargement initial des commandes ;
+- reception des nouvelles commandes ;
+- mise a jour des commandes existantes ;
+- compteur des commandes non servies ;
+- notifications dans le header ;
+- son de notification.
+
+Une commande est compte comme active/non servie si :
+
+```txt
+status != delivered
+status != cancelled
+```
+
+### 19.4 Sidebar et header
+
+Le badge `Orders` dans la sidebar affiche maintenant le nombre reel de commandes non servies.
+
+Le header affiche :
+
+- une cloche de notification ;
+- le nombre de nouvelles commandes ;
+- une liste des messages entrants ;
+- l'etat websocket `Live` ou `Offline`.
+
+### 19.5 Dashboard sans polling
+
+Le dashboard garde un chargement initial API, puis les donnees commandes sont mises a jour via websocket.
+
+Les cartes et graphiques changent quand un evenement commande arrive, sans refresh complet.
+
+### 19.6 Theme clair/sombre
+
+Le dashboard Angular possede maintenant un bouton theme dans le header.
+
+Le theme est sauvegarde dans :
+
+```txt
+localStorage.dashboard_theme
+```
+
+Valeurs :
+
+```txt
+light
+dark
+```
+
+Le choix reste actif apres rechargement de la page.
+
+### 19.7 Tables en mode sombre
+
+Le theme sombre applique aussi les variables Bootstrap des tableaux.
+
+Elements couverts :
+
+- lignes de tableau ;
+- cellules ;
+- en-tetes ;
+- pieds ;
+- hover ;
+- bordures ;
+- pagination ;
+- badges clairs.
+
+Objectif :
+
+```txt
+Quand le theme dark est actif, les tableaux ne restent plus en fond blanc.
+```
+
+## 20. Modification de commande par le client
+
+Le client peut modifier sa commande uniquement avant le debut de la preparation.
+
+Regle appliquee :
+
+```txt
+Modification autorisee si :
+status = pending
+payment_status != paid
+```
+
+Modification bloquee si :
+
+```txt
+status = preparing
+status = ready
+status = delivered
+status = cancelled
+payment_status = paid
+```
+
+### 20.1 Flow client
+
+Dans le suivi de commande, le bouton `Modifier ma commande` apparait seulement si la commande est encore modifiable.
+
+Flow :
+
+```txt
+Client commande
+=> commande en status pending
+=> client clique Modifier ma commande
+=> les articles existants reviennent dans le panier
+=> client ajoute/retire/modifie les quantites
+=> client valide
+=> backend remplace les order_items
+=> backend recalcule total_amount
+=> dashboard restaurant recoit la mise a jour en temps reel
+```
+
+### 20.2 Paiement cash
+
+Si la commande est en cash :
+
+```txt
+payment_method = cash
+payment_status = unpaid
+```
+
+Quand le client modifie la commande :
+
+```txt
+total_amount est recalcule
+payment reste unpaid
+le restaurant encaisse le nouveau total
+```
+
+### 20.3 Paiement Mobile Money
+
+Si la commande est Mobile Money et que le paiement n'est pas confirme :
+
+```txt
+ancien paiement pending => failed
+nouvelle ligne payment creee
+MaishaPay est relance avec le nouveau montant
+payment_status devient pending / paid / failed selon la reponse
+```
+
+Si le paiement est deja confirme :
+
+```txt
+payment_status = paid
+=> modification bloquee
+```
+
+### 20.4 Endpoint
+
+Endpoint public utilise par le client QR :
+
+```txt
+PATCH /api/orders/{id}/items
+```
+
+Payload :
+
+```json
+{
+  "note": "Sans piment",
+  "wallet_id": "+243...",
+  "items": [
+    { "plat_id": "uuid", "quantity": 2 }
+  ]
+}
+```
+
+Le backend verifie toujours que :
+
+- la commande existe ;
+- la commande est encore `pending` ;
+- le paiement n'est pas deja `paid` ;
+- les plats appartiennent au meme restaurant ;
+- les plats sont disponibles.
+
+### 20.5 Protection contre doublons
+
+La modification de commande est protegee contre les doublons.
+
+Cote client :
+
+```txt
+un verrou local bloque le double clic pendant l'envoi
+```
+
+Cote backend :
+
+```txt
+la commande est verrouillee avec lockForUpdate pendant la modification
+les articles recus sont regroupes par plat_id
+les anciennes lignes sont supprimees
+les nouvelles lignes remplacent l'ancien contenu
+```
+
+Cela evite qu'une modification rapide soit enregistree deux fois.
+
+### 20.6 Suivi client apres modification
+
+Le suivi client detecte maintenant aussi :
+
+- changement de total ;
+- changement de note ;
+- changement d'articles ;
+- changement de quantite ;
+- changement de statut paiement ;
+- changement de statut commande.
+
+Avant, le suivi detectait surtout le changement de statut. Maintenant, une modification de commande sans changement de statut est aussi prise en compte.
+
+### 20.7 Notifications client avec son
+
+Dans l'application client QR, le suivi de commande notifie le client quand le statut change.
+
+Depuis cette mise a jour, si le statut devient `cancelled`, le client recoit aussi :
+
+```txt
+=> son de notification
+=> toast
+=> modal automatique
+=> details de la commande
+=> motif d'annulation
+```
+
+Quand le client modifie une commande encore en `pending`, il peut fermer le panier, ajouter d'autres plats depuis le menu, puis rouvrir le panier pour enregistrer la modification.
+
+Le client recoit :
+
+- une notification visuelle dans l'application ;
+- une notification navigateur si l'autorisation est accordee ;
+- un son court de notification.
+- une banniere persistante dans le suivi de commande quand le statut change.
+
+Au premier clic/toucher/clavier dans l'application, le client QR prepare :
+
+```txt
+permission Notification navigateur
+deverrouillage audio navigateur
+```
+
+Cela permet au son de fonctionner aussi quand l'onglet reste ouvert en arriere-plan, selon les limites du navigateur et du telephone.
+
+Dans le suivi de commande, un bouton est aussi affiche :
+
+```txt
+Activer les alertes
+```
+
+Quand le client appuie dessus :
+
+```txt
+le navigateur demande/prepare les notifications
+le son est deverrouille
+un son de test est joue
+les prochains changements de statut declenchent le son
+```
+
+Quand le statut change apres une reprise de commande, le client voit aussi :
+
+```txt
+Mise a jour visible dans le bloc Suivi de commande
+scroll automatique vers le suivi
+toast en bas de page
+son de notification
+notification navigateur si autorisee
+```
+
+Limite importante :
+
+```txt
+Si l'application est completement fermee,
+un navigateur ne permet pas de jouer librement un son JavaScript.
+```
+
+Pour recevoir une notification quand l'application est fermee, il faut ajouter un vrai systeme Web Push/PWA :
+
+```txt
+Service Worker
+Push subscription
+backend qui stocke les subscriptions
+backend qui envoie le push lors du changement de statut
+notification systeme affichee par le telephone
+```
+
+Le son dans ce cas depend souvent du systeme d'exploitation et du navigateur, pas directement du code de l'application.
+
+### 20.8 Reprise du suivi apres fermeture accidentelle
+
+Si le client quitte l'application par erreur puis rescane le QR code avec le meme telephone et le meme navigateur, l'application tente de restaurer automatiquement la commande en cours.
+
+Le client QR garde :
+
+```txt
+dernier order_id actif
+dernier status connu
+association table_id => order_id actif
+```
+
+Apres creation ou modification de commande, l'URL du client est aussi enrichie :
+
+```txt
+/?table_id=UUID_TABLE&order_id=UUID_COMMANDE
+```
+
+Au prochain chargement, l'application cherche dans cet ordre :
+
+```txt
+1. order_id present dans l'URL
+2. order_id memorise pour cette table
+3. dernier order_id actif global
+```
+
+Ensuite elle appelle :
+
+```txt
+GET /api/orders/{order_id}
+```
+
+Si la commande existe encore, le suivi se reactive et affiche le statut actuel.
+
+Limite :
+
+```txt
+Si le client change de telephone, change de navigateur,
+ou efface les donnees du navigateur, l'application ne peut pas deviner sa commande.
+```
+
+Pour ce cas, il faudra ajouter plus tard une recherche de commande par code court, numero de telephone ou lien envoye par SMS/WhatsApp.
+
+### 20.9 Reprise par code court, telephone et lien partageable
+
+Le backend genere maintenant un code court unique sur chaque commande.
+
+Exemple :
+
+```txt
+tracking_code = A7K92B
+```
+
+Le client QR affiche ce code dans le suivi de commande.
+
+Le client peut :
+
+- garder le code ;
+- partager le lien de suivi via le partage natif du telephone, par exemple WhatsApp ;
+- revenir plus tard et entrer son code ou son numero de telephone.
+
+Apres creation ou modification, l'URL contient :
+
+```txt
+/?table_id=UUID_TABLE&order_id=UUID_COMMANDE&tracking_code=A7K92B
+```
+
+Endpoint public de reprise :
+
+```txt
+GET /api/orders/track?code=A7K92B
+GET /api/orders/track?phone=+243...
+GET /api/orders/track?code=A7K92B&table_id=UUID_TABLE
+```
+
+Flow principal recommande et securise :
+
+```txt
+Client ferme l'application
+=> rescane le QR code avec le meme telephone/navigateur
+=> l'application retrouve order_id dans localStorage
+=> elle recharge la commande exacte
+=> suivi temps reel se reactive
+=> le client voit le statut actuel
+=> les prochains changements declenchent son + toast + banniere de suivi
+```
+
+Important :
+
+```txt
+Le QR de table seul ne restaure plus une commande existante.
+```
+
+Pourquoi :
+
+```txt
+Si une autre personne scanne le meme QR avec un autre telephone,
+elle ne doit pas voir la commande du premier client.
+```
+
+Le code court et le telephone servent de secours :
+
+```txt
+client change de telephone
+client change de navigateur
+donnees localStorage effacees
+besoin de retrouver une commande sans contexte fiable
+plusieurs commandes actives existent sur la meme table
+```
+
+Dans ces cas, le client scanne le QR puis entre son code de suivi ou son telephone dans `Retrouver ma commande`.
+
+Les commandes annulees ou deja servies ne sont pas restaurees par cet endpoint.
+
+### 20.9.1 Plusieurs commandes sur la meme table
+
+Si plusieurs clients commandent chacun avec son telephone sur la meme table, il peut y avoir plusieurs commandes actives avec le meme `table_id`.
+
+Dans ce cas, et meme s'il n'y a qu'une seule commande active, le backend ne restaure plus une commande avec `table_id` seul.
+
+Flow :
+
+```txt
+Client scanne le QR de la table avec un autre telephone
+=> l'application affiche le menu
+=> elle affiche aussi Retrouver ma commande
+=> le client doit entrer son code de suivi ou son telephone
+=> sa commande exacte est restauree
+```
+
+Message :
+
+```txt
+Pour proteger les clients, le QR de table seul ne restaure pas une commande existante.
+Entrez le code de suivi ou le numero de telephone.
+```
+
+Correction importante :
+
+```txt
+La reprise automatique par QR seul est desactivee pour eviter d'afficher
+la commande d'un autre client sur la meme table.
+```
+
+### 20.10 Statuts sans retour en arriere
+
+Le restaurant ne peut plus faire revenir une commande a un statut precedent.
+
+Ordre autorise :
+
+```txt
+pending
+=> preparing
+=> ready
+=> delivered
+```
+
+Exemples bloques :
+
+```txt
+preparing => pending
+ready => preparing
+delivered => ready
+delivered => preparing
+delivered => pending
+```
+
+Quand une commande est `delivered`, elle ne peut plus revenir en arriere.
+
+## 21. Limites des forfaits et actions bloquees
+
+Chaque plan SaaS possede des quotas.
+
+Exemple actuel :
+
+```txt
+Free Demo
+=> 3 tables
+=> 1 utilisateur
+```
+
+Le backend expose maintenant l'utilisation du forfait du restaurant connecte :
+
+```txt
+GET /api/saas/restaurant/usage
+```
+
+La reponse contient :
+
+- le plan actif ;
+- les limites du plan ;
+- l'utilisation actuelle ;
+- les permissions comme `can_create_table` et `can_create_user` ;
+- les messages a afficher dans l'interface.
+
+### 21.1 Tables
+
+Dans le dashboard Angular, l'ecran Tables affiche :
+
+```txt
+Plan Free Demo : 3 / 3 tables
+```
+
+Quand la limite est atteinte :
+
+```txt
+Create Table => bouton grise/desactive
+```
+
+Le modal ne s'ouvre plus et l'utilisateur voit pourquoi l'action est bloquee.
+
+Le backend garde aussi la protection :
+
+```txt
+POST /api/tables
+=> 422 Limite de tables atteinte pour le plan ...
+```
+
+Cela evite qu'un utilisateur contourne l'interface depuis Postman ou un autre client.
+
+### 21.2 Utilisateurs
+
+La creation d'employes est aussi protegee par le quota `max_users` du plan.
+
+Si le restaurant a deja atteint sa limite :
+
+```txt
+POST /api/auth/register
+=> 422 Limite d'utilisateurs atteinte pour le plan ...
+```
+
+Objectif professionnel :
+
+```txt
+Ce qui n'est plus autorise par le forfait doit etre visible mais desactive/grise,
+et le backend doit toujours refuser l'action si la limite est depassee.
+```
+
+## 22. Commandes dashboard, rapports PDF et devises
+
+La page commandes du dashboard Angular utilise maintenant une disposition en cartes.
+
+Objectif :
+
+```txt
+Nouvelle commande
+=> son de notification
+=> modal Nouvelle commande
+=> bouton Voir la commande
+=> detail complet dans un modal
+```
+
+Chaque commande affiche :
+
+- table ;
+- total ;
+- devise ;
+- statut commande ;
+- statut paiement ;
+- heure ;
+
+Le nom client, le nombre d'articles et la note cuisine ne sont plus affiches dans la card pour garder la liste lisible. Ils sont visibles dans le modal detail.
+
+Un bouton avec icone oeil permet d'ouvrir le detail complet :
+
+```txt
+client
+telephone
+email
+code de suivi
+articles
+quantites
+prix
+total
+paiement
+statut
+note
+```
+
+Le numero/nom de la table est affiche en gras dans chaque card pour etre le premier repere visuel.
+
+Le bouton oeil est fonce pour etre visible et ouvrir rapidement les informations completes.
+
+Le modal detail garde le meme design professionnel que le reste de la page :
+
+```txt
+en-tete commande/table
+badges statut commande et paiement
+infos client
+articles commandes
+note cuisine
+total
+```
+
+Le mode sombre couvre aussi la page commandes : cards, filtres, onglets, pagination, modals, encaissement cash et detail commande.
+
+### 22.1 Filtrage commandes
+
+La page commandes permet de filtrer par :
+
+- jour ;
+- mois ;
+- annee ;
+- statut commande ;
+- recherche rapide.
+
+Le filtre statut est aussi disponible sous forme d'onglets avec compteurs :
+
+```txt
+Toutes
+Nouvelles
+En preparation
+Pretes
+Servies
+Annulees
+```
+
+Chaque onglet liste uniquement les commandes de son statut.
+
+La liste affiche une pagination en bas des cards des qu'il y a des commandes, avec page courante, nombre total de pages et nombre de commandes filtrees.
+
+### 22.1.1 Modal nouvelle commande
+
+Quand une nouvelle commande arrive :
+
+```txt
+son de notification
+modal Nouvelle commande
+client
+table
+nombre d'articles
+total
+plats commandes
+bouton Voir la commande
+```
+
+Le bouton `Voir la commande` ouvre le modal detail complet.
+
+### 22.2 Statuts sans retour arriere dans le dashboard
+
+Le select de statut bloque les retours en arriere.
+
+Ordre autorise :
+
+```txt
+pending => preparing => ready => delivered
+```
+
+Une commande `delivered` ne peut plus revenir a un statut precedent.
+
+### 22.3 Rapports PDF selon le plan
+
+La generation de rapport PDF est disponible uniquement pour les plans qui ont le reporting avance.
+
+Plans autorises :
+
+```txt
+Pro
+Enterprise
+ou plan dont les features contiennent Rapport/Report
+```
+
+Si le plan ne donne pas droit au PDF, le bouton est grise avec un message.
+
+Le rapport contient :
+
+- commandes filtrees ;
+- table ;
+- statut ;
+- paiement ;
+- nombre d'articles ;
+- total ;
+- date ;
+- revenus payes groupes par devise.
+
+La generation utilise l'impression navigateur afin de sauvegarder en PDF.
+
+### 22.4 Statistiques par devise
+
+Le dashboard ne melange plus les revenus CDF et USD dans un seul montant.
+
+Les revenus sont affiches par devise :
+
+```txt
+Revenu CDF
+Revenu USD
+```
+
+Les cartes du dashboard affichent les revenus journaliers, mensuels et annuels separes par devise.
+
+## 23. Commande a emporter et feedback client
+
+Le client qui scanne une table peut choisir le mode de service avant d'envoyer son panier :
+
+```txt
+Sur place
+A emporter
+```
+
+Si le client choisit `A emporter`, la commande reste liee a la table scannee pour le suivi et le restaurant voit le badge `A emporter` dans la liste des commandes, le modal nouvelle commande, le modal detail et le modal addition. Le telephone du client est demande pour que le restaurant puisse identifier la commande a recuperer.
+
+Flow :
+
+```txt
+client scanne le QR code
+client ajoute des plats
+client choisit Sur place ou A emporter
+client envoie la commande
+dashboard recoit la commande en temps reel avec son + modal
+restaurant prepare
+restaurant passe les statuts jusqu'a Servie
+client recoit le suivi et peut donner son avis
+```
+
+Pour une commande sur place, apres le statut `Servie`, l'application client affiche automatiquement un modal de feedback.
+
+Pour une commande `A emporter`, le feedback peut s'afficher des que la commande passe a `Prete`, car le client vient recuperer sa commande et peut evaluer l'experience de commande/retrait.
+
+```txt
+Qualite des plats : 1 a 5 etoiles
+Rapidite du service : 1 a 5 etoiles
+Facilite de commande : 1 a 5 etoiles
+Recommanderiez-vous ce restaurant ? Oui / Non
+Commentaire optionnel
+```
+
+Le feedback est accepte uniquement si la commande est `delivered`, ou si elle est `ready` avec `order_type = takeaway`. Une meme commande ne cree pas plusieurs avis : si le client renvoie l'avis, il met a jour l'avis existant.
+
+Dans e-resto-Angular, le menu `Feedbacks` affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.
+
+## 24. Reservations professionnelles
+
+Le module reservation suit un flow SaaS professionnel :
+
+```txt
+client ouvre le menu QR ou le menu public
+client remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale
+backend cree une reservation en statut pending
+dashboard restaurant affiche la demande dans Reservations
+restaurant confirme ou annule
+si confirme, la table liee passe Reservee
+quand le client arrive, restaurant passe la reservation en seated
+la table passe Occupee
+en fin de service, restaurant passe completed
+la table redevient Disponible
+```
+
+Statuts disponibles :
+
+```txt
+pending     : demande recue, pas encore confirmee
+confirmed   : reservation acceptee, table bloquee
+seated      : client installe
+completed   : reservation terminee
+cancelled   : reservation annulee avec motif
+no_show     : client non venu
+```
+
+Dans e-resto-client, le client voit clairement que sa demande est envoyee au restaurant et qu'elle doit etre confirmee. Une reference courte est affichee apres envoi.
+
+Dans e-resto-Angular, le restaurant peut :
+
+- filtrer par date ;
+- filtrer par statut ;
+- rechercher par client, telephone, email ou table ;
+- voir les details dans un modal ;
+- ajouter une note interne ;
+- confirmer, installer, terminer, annuler ou marquer no-show ;
+- supprimer une reservation si necessaire.
+
+La reservation est rattachee au restaurant via la table scannee ou via le `restaurant_slug` du menu public.

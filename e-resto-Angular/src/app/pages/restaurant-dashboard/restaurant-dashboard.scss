@@ -121,6 +121,24 @@ input, select {
   padding: 13px;
 }
 
+.brand-panel button {
+  border: 0;
+  border-radius: 8px;
+  padding: 13px 16px;
+  background: #111;
+  color: #fff;
+  font-weight: 950;
+}
+
+.order-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 0;
+  border-top: 1px solid rgba(17,17,17,.08);
+}
+
 .modules {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }

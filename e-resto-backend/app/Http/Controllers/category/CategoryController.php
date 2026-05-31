@@ -23,7 +23,9 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::all();
+        $categories = Category::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->get();
         return response()->json($categories);
     }
 
@@ -49,7 +51,7 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|unique:categories,name',
+            'name' => 'required|string',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
@@ -67,6 +69,7 @@ class CategoryController extends Controller
         }
 
         $category = Category::create([
+            'restaurant_id' => $request->user()?->restaurant_id,
             'name' => $request->name,
             'description' => $request->description,
             'image' => $imagePath,
@@ -98,7 +101,9 @@ class CategoryController extends Controller
     public function show($id)
     {
         // FindOrFail fonctionne automatiquement avec les strings/UUID
-        $category = Category::findOrFail($id);
+        $category = Category::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
         return response()->json($category);
     }
 
@@ -125,10 +130,12 @@ class CategoryController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::query()
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         $request->validate([
-            'name' => 'sometimes|string|unique:categories,name,' . $category->id,
+            'name' => 'sometimes|string',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
@@ -170,7 +177,9 @@ class CategoryController extends Controller
      */
     public function destroy($id)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         // Nettoyage de l'image lors de la suppression
         if ($category->image) {
@@ -204,8 +213,12 @@ class CategoryController extends Controller
             return response()->json(['message' => 'Veuillez fournir un terme de recherche.'], 400);
         }
 
-        $categories = Category::where('name', 'LIKE', "%{$query}%")
-                            ->orWhere('description', 'LIKE', "%{$query}%")
+        $categories = Category::query()
+                            ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
+                            ->where(function ($builder) use ($query) {
+                                $builder->where('name', 'LIKE', "%{$query}%")
+                                    ->orWhere('description', 'LIKE', "%{$query}%");
+                            })
                             ->get();
 
         return response()->json([

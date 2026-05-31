@@ -4,6 +4,7 @@ import { CategoryService } from "../../../services/category/category-service";
 import Swal from 'sweetalert2';
 import { CategoryDto } from "../../../models/category/CategoryDto";
 import { CategoryInput } from "../../../models/category/CategoryInput";
+import { STORAGE_ROOT } from "../../../services/api-url";
 
 @Component({
     selector: "app-update-category",
@@ -22,7 +23,7 @@ export class UpdateCategory implements OnInit {
     selectedFile: File | null = null;
     isLoading = false;
 
-    readonly IMAGE_URL = 'http://localhost:8000/storage/';
+    readonly IMAGE_URL = `${STORAGE_ROOT}/`;
 
     categoryForm = new FormGroup({
         name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),

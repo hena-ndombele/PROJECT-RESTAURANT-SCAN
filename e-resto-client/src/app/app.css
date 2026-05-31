@@ -1,3 +1,14 @@
+.app-root,
+:root {
+  --primary: #F9A11B;
+  --secondary: #111111;
+  --client-bg: #fff7ef;
+}
+
+body {
+  background: var(--client-bg);
+}
+
 .brand-logo {
   gap: 10px;
 }
@@ -26,26 +37,33 @@
 
 #nav .bname span,
 .fnm span {
-  color: #F9A11B;
+  color: var(--primary);
 }
 
 #nav .bico,
 .btn-red,
 .nav-cta,
 .mpaddcart {
-  background: linear-gradient(135deg, #F9A11B, #111);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
 }
 
 .slbl,
 .mcat,
 .ftit {
-  color: #F9A11B;
+  color: var(--primary);
+}
+
+.restaurant-slogan {
+  margin: -4px 0 14px;
+  color: var(--primary);
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  font-weight: 900;
 }
 
 .sline,
 .fciico,
 .cticon {
-  background: #F9A11B;
+  background: var(--primary);
 }
 
 .track-order-link {
@@ -61,7 +79,7 @@
   border-radius: 999px;
   padding: 3px 8px;
   background: rgba(249, 161, 27, .18);
-  color: #F9A11B;
+  color: var(--primary);
   font-size: .68rem;
   font-weight: 800;
   line-height: 1;
@@ -213,6 +231,43 @@
   background: #fff8ed;
 }
 
+.order-type-box {
+  border: 1px solid rgba(17, 17, 17, .1);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  background: #fff;
+}
+
+.order-type-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.order-type-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 1px solid rgba(17, 17, 17, .12);
+  border-radius: 8px;
+  background: #fff8ed;
+  color: #111;
+  font-weight: 900;
+}
+
+.order-type-option i {
+  color: var(--primary);
+}
+
+.order-type-option.active {
+  border-color: var(--primary);
+  background: rgba(249, 161, 27, .14);
+  box-shadow: 0 10px 24px rgba(249, 161, 27, .16);
+}
+
 .payment-title {
   margin-bottom: 12px;
 }
@@ -285,8 +340,50 @@
   margin-bottom: 6px;
 }
 
+.reservation-flow-box {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.reservation-flow-box div {
+  min-height: 82px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  border: 1px solid rgba(17, 17, 17, .08);
+  border-radius: 12px;
+  background: #fff8ed;
+  text-align: center;
+  color: #111;
+}
+
+.reservation-flow-box i {
+  color: var(--primary);
+  font-size: 1.2rem;
+}
+
+.reservation-flow-box strong {
+  font-size: .86rem;
+}
+
+.reservation-ref {
+  margin: 12px 0 0;
+  color: #666;
+  text-align: center;
+}
+
+.reservation-ref strong {
+  color: var(--primary);
+}
+
 @media (max-width: 480px) {
   .payment-options {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-flow-box {
     grid-template-columns: 1fr;
   }
 
@@ -298,6 +395,40 @@
 .order-tracking-section {
   padding: 90px 0;
   background: linear-gradient(180deg, #fff 0%, #fff8ed 100%);
+}
+
+.order-recovery-section {
+  padding: 50px 0;
+  background: #fff8ed;
+}
+
+.order-recovery-card {
+  display: grid;
+  grid-template-columns: minmax(240px, .85fr) minmax(320px, 1.15fr);
+  gap: 24px;
+  align-items: center;
+  padding: 24px;
+  border: 1px solid #f1dfc0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 54px rgba(17, 17, 17, .08);
+}
+
+.order-recovery-card h2 {
+  margin: 6px 0 8px;
+  font-family: "Playfair Display", serif;
+  font-weight: 900;
+}
+
+.order-recovery-card p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.order-recovery-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
 }
 
 .order-tracker {
@@ -324,6 +455,7 @@
 
 .order-tracker-head,
 .order-tracker-meta,
+.order-alerts-box,
 .order-steps {
   position: relative;
   z-index: 1;
@@ -367,9 +499,103 @@
   box-shadow: 0 12px 32px rgba(249, 161, 27, .32);
 }
 
+.order-alerts-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  border: 1px solid rgba(249, 161, 27, .28);
+  border-radius: 14px;
+  background: rgba(249, 161, 27, .1);
+}
+
+.order-alerts-box strong,
+.order-alerts-box span {
+  display: block;
+}
+
+.order-alerts-box span {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, .66);
+  font-size: .86rem;
+}
+
+.order-alert-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #F9A11B;
+  color: #111;
+  font-weight: 900;
+}
+
+.order-status-banner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 46px 1fr 34px;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(249, 161, 27, .14);
+  border: 1px solid rgba(249, 161, 27, .42);
+  box-shadow: 0 16px 34px rgba(249, 161, 27, .14);
+}
+
+.order-status-banner.error {
+  background: rgba(232, 40, 26, .14);
+  border-color: rgba(232, 40, 26, .48);
+}
+
+.order-status-banner-icon {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #F9A11B;
+  color: #111;
+}
+
+.order-status-banner.error .order-status-banner-icon {
+  background: #e8281a;
+  color: #fff;
+}
+
+.order-status-banner strong,
+.order-status-banner span {
+  display: block;
+}
+
+.order-status-banner span {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, .72);
+  font-size: .88rem;
+}
+
+.order-status-banner button {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, .72);
+}
+
+.order-status-banner button:hover {
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+}
+
 .order-tracker-meta {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   gap: 14px;
   margin-bottom: 28px;
 }
@@ -443,6 +669,24 @@
   color: #fff;
 }
 
+.order-tracking-share {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .08);
+}
+
+.order-tracking-share span {
+  color: rgba(255, 255, 255, .72);
+  font-size: .88rem;
+}
+
 .order-snackbar {
   position: fixed;
   right: 22px;
@@ -511,6 +755,216 @@
 .order-snackbar button:hover {
   background: rgba(255, 255, 255, .08);
   color: #fff;
+}
+
+.order-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 7, 18, .72);
+  backdrop-filter: blur(6px);
+}
+
+.client-cancel-modal {
+  width: min(100%, 430px);
+  padding: 28px;
+  border: 1px solid rgba(239, 68, 68, .35);
+  border-radius: 18px;
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .35);
+}
+
+.cancel-modal-icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  background: rgba(239, 68, 68, .14);
+  color: #f87171;
+  font-size: 1.8rem;
+}
+
+.client-cancel-modal h2,
+.client-cancel-modal p {
+  text-align: center;
+}
+
+.client-cancel-modal p {
+  color: #cbd5e1;
+}
+
+.cancel-modal-summary,
+.cancel-modal-items {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.cancel-modal-summary div,
+.cancel-modal-items div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, .72);
+}
+
+.cancel-modal-summary span,
+.cancel-modal-items span {
+  color: #94a3b8;
+}
+
+.feedback-modal {
+  width: min(560px, calc(100% - 28px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border-radius: 22px;
+  padding: 30px;
+  background: #170f08;
+  color: #fff;
+  border: 1px solid rgba(249, 161, 27, .25);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .45);
+  text-align: center;
+}
+
+.feedback-icon {
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+  margin-bottom: 18px;
+  background: rgba(249, 161, 27, .16);
+  color: #ffd36b;
+  font-size: 2rem;
+}
+
+.feedback-icon.subtle {
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+
+.feedback-modal h2 {
+  margin: 0 0 8px;
+  font-family: "Playfair Display", serif;
+  font-weight: 900;
+  color: #d6a528;
+}
+
+.feedback-modal p {
+  color: rgba(255, 255, 255, .7);
+  margin-bottom: 22px;
+}
+
+.feedback-rating-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.feedback-rating-row {
+  display: grid;
+  grid-template-columns: minmax(145px, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  text-align: left;
+}
+
+.feedback-rating-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 900;
+}
+
+.feedback-rating-row span i {
+  color: #d6a528;
+}
+
+.feedback-stars {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.feedback-stars button {
+  color: rgba(255, 255, 255, .22);
+  font-size: 1.35rem;
+}
+
+.feedback-stars button.active {
+  color: #ffd36b;
+}
+
+.feedback-skip {
+  display: inline-flex;
+  margin-top: 14px;
+  color: rgba(255, 255, 255, .62);
+  font-weight: 800;
+}
+
+.recommend-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.recommend-options button {
+  min-height: 116px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .05);
+  color: rgba(255, 255, 255, .75);
+  font-weight: 900;
+}
+
+.recommend-options button i {
+  display: block;
+  margin-bottom: 10px;
+  color: #ffd36b;
+  font-size: 2rem;
+}
+
+.recommend-options button.active {
+  border-color: var(--primary);
+  background: rgba(249, 161, 27, .16);
+  color: #fff;
+}
+
+.feedback-modal .fctrl {
+  background: rgba(255, 255, 255, .06);
+  border-color: rgba(255, 255, 255, .14);
+  color: #fff;
+}
+
+.feedback-actions {
+  display: grid;
+  grid-template-columns: .8fr 1.2fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+@media (max-width: 520px) {
+  .feedback-rating-row,
+  .feedback-actions,
+  .recommend-options {
+    grid-template-columns: 1fr;
+  }
+
+  .feedback-stars {
+    justify-content: space-between;
+  }
 }
 
 .receipt-section {

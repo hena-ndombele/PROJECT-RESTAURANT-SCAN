@@ -24,7 +24,9 @@ class PlatController extends Controller
      */
     public function index()
     {
-        $plats = Plat::with('category')->paginate(10);
+        $plats = Plat::with('category')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->paginate(10);
         return response()->json($plats);
     }
 
@@ -70,9 +72,9 @@ public function store(Request $request)
         'preparation_time' => 'nullable|integer', // Temps en minutes
         'is_available' => 'nullable|boolean',     // Disponibilité
         'ingredients' => 'nullable|array',         // Tableau d'ingrédients
-        'image_principale' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image_principale' => 'required|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
     ]);
 
     // Extraction des données textuelles et numériques
@@ -84,6 +86,7 @@ public function store(Request $request)
         'category_id', 
         'preparation_time'
     ]);
+    $data['restaurant_id'] = $request->user()?->restaurant_id;
 
     // Gestion de la disponibilité (Force le boolean si envoyé via FormData)
     $data['is_available'] = $request->boolean('is_available', true);
@@ -133,7 +136,9 @@ public function store(Request $request)
      */
     public function show($id)
     {
-        $plat = Plat::with('category')->findOrFail($id);
+        $plat = Plat::with('category')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
         return response()->json($plat);
     }
 
@@ -174,7 +179,9 @@ public function store(Request $request)
      */
 public function update(Request $request, $id)
 {
-    $plat = Plat::findOrFail($id);
+    $plat = Plat::query()
+        ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+        ->findOrFail($id);
 
     $validatedData = $request->validate([
         'name' => 'sometimes|string|max:255',
@@ -185,9 +192,9 @@ public function update(Request $request, $id)
         'preparation_time' => 'nullable|integer',
         'is_available' => 'nullable|boolean',
         'ingredients' => 'nullable|array',
-        'image_principale' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image_principale' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
     ]);
 
     // On récupère les données validées
@@ -246,7 +253,9 @@ public function update(Request $request, $id)
      */
     public function destroy($id)
     {
-        $plat = Plat::findOrFail($id);
+        $plat = Plat::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         if ($plat->image && Storage::disk('public')->exists($plat->image)) {
             Storage::disk('public')->delete($plat->image);
@@ -282,8 +291,11 @@ public function update(Request $request, $id)
         $query = $request->input('query');
 
         $plats = Plat::with('category')
-            ->where('name', 'LIKE', "%{$query}%")
-            ->orWhere('description', 'LIKE', "%{$query}%")
+            ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
+            ->where(function ($builder) use ($query) {
+                $builder->where('name', 'LIKE', "%{$query}%")
+                    ->orWhere('description', 'LIKE', "%{$query}%");
+            })
             ->paginate(10);
 
         return response()->json($plats);

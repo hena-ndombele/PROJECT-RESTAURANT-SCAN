@@ -4,12 +4,13 @@ import { Observable } from "rxjs";
 import { ApiPagination } from "../../models/shared/ApiPagination";
 import { UserDto } from "../../models/users/UserDto";
 import { UserInput } from "../../models/users/UserInput";
+import { API_ROOT } from "../api-url";
 
 @Injectable({
   providedIn: "root",
 })
 export class UserService {
-  private apiUrl = "http://localhost:8000/api";
+  private apiUrl = API_ROOT;
 
   constructor(private http: HttpClient) {}
 
