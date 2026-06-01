@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Saas;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RestaurantAccountCreatedMail;
+use App\Models\AccountRequest;
+use App\Models\ContactMessage;
+use App\Models\Feedback;
 use App\Models\Payment;
+use App\Models\Reservation;
 use App\Models\Restaurant;
 use App\Models\RestaurantSubscription;
 use App\Models\SaasPlan;
@@ -50,6 +54,43 @@ class SaasController extends Controller
         $this->ensureDefaultPlans();
 
         return response()->json(SaasPlan::where('is_active', true)->orderBy('monthly_price')->get());
+    }
+
+    public function storePlan(Request $request)
+    {
+        $validated = $this->validatePlan($request);
+        $validated['slug'] = Str::slug($validated['slug'] ?? $validated['name']);
+        $validated['features'] = $this->normalizeFeatures($validated['features'] ?? []);
+
+        return response()->json(SaasPlan::create($validated), 201);
+    }
+
+    public function updatePlan(Request $request, SaasPlan $plan)
+    {
+        $validated = $this->validatePlan($request, $plan);
+        if (isset($validated['name']) && empty($validated['slug'])) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+        if (isset($validated['features'])) {
+            $validated['features'] = $this->normalizeFeatures($validated['features']);
+        }
+
+        $plan->update($validated);
+
+        return response()->json($plan->fresh());
+    }
+
+    public function destroyPlan(SaasPlan $plan)
+    {
+        if ($plan->restaurants()->exists()) {
+            return response()->json([
+                'message' => 'Ce plan est utilise par des restaurants et ne peut pas etre supprime.',
+            ], 422);
+        }
+
+        $plan->delete();
+
+        return response()->json(['message' => 'Plan supprime avec succes.']);
     }
 
     public function signup(Request $request)
@@ -357,7 +398,12 @@ class SaasController extends Controller
 
     public function restaurants(Request $request)
     {
-        $query = Restaurant::with(['plan', 'subscription'])->latest();
+        $query = Restaurant::with(['plan', 'subscription', 'users'])
+            ->withCount(['users', 'tables', 'orders'])
+            ->withSum(['payments as subscription_revenue' => function ($query) {
+                $query->where('type', 'subscription')->where('status', 'paid');
+            }], 'amount')
+            ->latest();
 
         if ($search = $request->query('search')) {
             $query->where(function ($builder) use ($search) {
@@ -369,6 +415,69 @@ class SaasController extends Controller
         }
 
         return response()->json($query->get());
+    }
+
+    public function payments(Request $request)
+    {
+        $query = Payment::with('restaurant')
+            ->where('type', 'subscription')
+            ->latest();
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($restaurantId = $request->query('restaurant_id')) {
+            $query->where('restaurant_id', $restaurantId);
+        }
+
+        return response()->json($query->limit(200)->get());
+    }
+
+    public function walletBalance()
+    {
+        return response()->json([
+            'wallet' => 'Transfert',
+            'balances' => [
+                'CDF' => $this->maishaPay->walletBalance('CDF'),
+                'USD' => $this->maishaPay->walletBalance('USD'),
+            ],
+        ]);
+    }
+
+    public function supportCenter()
+    {
+        return response()->json([
+            'contact_messages' => ContactMessage::latest()->take(50)->get(),
+            'account_requests' => AccountRequest::latest()->take(50)->get(),
+            'feedbacks' => Feedback::with(['restaurant', 'order.table'])->latest()->take(50)->get(),
+            'reservations' => Reservation::with(['restaurant', 'table'])->latest()->take(50)->get(),
+        ]);
+    }
+
+    public function auditTrail()
+    {
+        return response()->json([
+            'events' => collect()
+                ->merge(Restaurant::with('plan')->latest()->take(10)->get()->map(fn ($restaurant) => [
+                    'type' => 'restaurant',
+                    'title' => 'Restaurant inscrit ou modifie',
+                    'subject' => $restaurant->name,
+                    'status' => $restaurant->status,
+                    'created_at' => $restaurant->updated_at,
+                ]))
+                ->merge(Payment::with('restaurant')->latest()->take(10)->get()->map(fn ($payment) => [
+                    'type' => 'payment',
+                    'title' => 'Paiement abonnement',
+                    'subject' => $payment->restaurant?->name ?? $payment->reference,
+                    'status' => $payment->status,
+                    'amount' => $payment->amount,
+                    'currency' => $payment->currency,
+                    'created_at' => $payment->updated_at,
+                ]))
+                ->sortByDesc('created_at')
+                ->values(),
+        ]);
     }
 
     public function storeRestaurant(Request $request)
@@ -387,11 +496,15 @@ class SaasController extends Controller
             'currency' => 'nullable|string|in:USD,CDF',
             'saas_plan_id' => 'nullable|uuid|exists:saas_plans,id',
             'status' => 'nullable|string|in:pending_payment,trial,active,past_due,suspended,cancelled',
+            'owner_password' => 'nullable|string|min:6',
         ]);
 
         $plan = isset($validated['saas_plan_id'])
             ? SaasPlan::find($validated['saas_plan_id'])
             : SaasPlan::where('slug', 'starter')->first();
+
+        $ownerPassword = $validated['owner_password'] ?? 'Eresto@2026';
+        unset($validated['owner_password']);
 
         $restaurant = Restaurant::create([
             ...$validated,
@@ -414,6 +527,22 @@ class SaasController extends Controller
                 'amount' => $plan->monthly_price,
                 'currency' => $plan->currency,
             ]);
+        }
+
+        if (!empty($validated['owner_email'])) {
+            [$firstName, $lastName] = $this->splitName($validated['owner_name']);
+            User::firstOrCreate(
+                ['email' => $validated['owner_email']],
+                [
+                    'restaurant_id' => $restaurant->id,
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'phone_number' => $validated['owner_phone'] ?? null,
+                    'address' => $validated['address'] ?? null,
+                    'password' => Hash::make($ownerPassword),
+                    'is_first_login' => true,
+                ]
+            );
         }
 
         return response()->json($restaurant->load(['plan', 'subscription']), 201);
@@ -441,7 +570,63 @@ class SaasController extends Controller
 
         $restaurant->update($validated);
 
+        if (array_key_exists('saas_plan_id', $validated) || array_key_exists('status', $validated)) {
+            $plan = $restaurant->fresh()->plan;
+            if ($plan) {
+                $restaurant->subscription()->updateOrCreate(
+                    ['restaurant_id' => $restaurant->id],
+                    [
+                        'saas_plan_id' => $plan->id,
+                        'status' => match ($restaurant->fresh()->status) {
+                            'active' => 'active',
+                            'past_due' => 'past_due',
+                            'cancelled' => 'cancelled',
+                            default => 'trialing',
+                        },
+                        'starts_at' => Carbon::today(),
+                        'ends_at' => $restaurant->fresh()->status === 'active' ? Carbon::today()->addMonth() : null,
+                        'next_billing_at' => $restaurant->fresh()->status === 'active' ? Carbon::today()->addMonth() : Carbon::today()->addDays(14),
+                        'amount' => $plan->monthly_price,
+                        'currency' => $plan->currency,
+                    ]
+                );
+            }
+        }
+
         return response()->json($restaurant->fresh(['plan', 'subscription']));
+    }
+
+    public function resetOwnerPassword(Request $request, Restaurant $restaurant)
+    {
+        $validated = $request->validate([
+            'password' => 'required|string|min:6',
+        ]);
+
+        $owner = $restaurant->users()->where('email', $restaurant->owner_email)->first()
+            ?? $restaurant->users()->first();
+
+        if (!$owner) {
+            [$firstName, $lastName] = $this->splitName($restaurant->owner_name);
+            $owner = User::create([
+                'restaurant_id' => $restaurant->id,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email' => $restaurant->owner_email,
+                'phone_number' => $restaurant->owner_phone,
+                'password' => Hash::make($validated['password']),
+                'is_first_login' => true,
+            ]);
+        } else {
+            $owner->update([
+                'password' => Hash::make($validated['password']),
+                'is_first_login' => true,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Mot de passe proprietaire reinitialise.',
+            'owner' => $owner,
+        ]);
     }
 
     public function destroyRestaurant(Restaurant $restaurant)
@@ -577,6 +762,32 @@ class SaasController extends Controller
         };
     }
 
+    private function validatePlan(Request $request, ?SaasPlan $plan = null): array
+    {
+        return $request->validate([
+            'name' => ($plan ? 'sometimes' : 'required') . '|string|max:120',
+            'slug' => 'nullable|string|max:120|alpha_dash|unique:saas_plans,slug,' . ($plan?->id ?? 'NULL') . ',id',
+            'description' => 'nullable|string|max:500',
+            'monthly_price' => 'sometimes|numeric|min:0',
+            'currency' => 'sometimes|string|in:USD,CDF',
+            'max_restaurants' => 'sometimes|integer|min:1',
+            'max_tables' => 'sometimes|integer|min:1',
+            'max_users' => 'sometimes|integer|min:1',
+            'features' => 'nullable',
+            'is_popular' => 'sometimes|boolean',
+            'is_active' => 'sometimes|boolean',
+        ]);
+    }
+
+    private function normalizeFeatures(mixed $features): array
+    {
+        if (is_string($features)) {
+            return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $features))));
+        }
+
+        return is_array($features) ? array_values(array_filter($features)) : [];
+    }
+
     private function splitName(string $fullName): array
     {
         $parts = preg_split('/\s+/', trim($fullName), 2);
@@ -656,11 +867,12 @@ class SaasController extends Controller
         ];
 
         foreach ($plans as $plan) {
-            SaasPlan::updateOrCreate(
+            SaasPlan::firstOrCreate(
                 ['slug' => $plan['slug']],
                 [
                     'currency' => 'USD',
                     'is_active' => true,
+                    'is_popular' => $plan['is_popular'] ?? false,
                     'max_restaurants' => $plan['max_restaurants'] ?? 1,
                     ...$plan,
                 ]

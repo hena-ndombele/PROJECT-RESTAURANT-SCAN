@@ -30,4 +30,9 @@ class SaasPlan extends Model
         'is_popular' => 'boolean',
         'is_active' => 'boolean',
     ];
+
+    public function restaurants()
+    {
+        return $this->hasMany(Restaurant::class, 'saas_plan_id');
+    }
 }

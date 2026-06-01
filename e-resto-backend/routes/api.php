@@ -25,14 +25,22 @@ Route::post('/auth/account-request', [AccountRequestController::class, 'store'])
 Route::prefix('saas')->group(function () {
     Route::get('/overview', [SaasController::class, 'overview']);
     Route::get('/plans', [SaasController::class, 'plans']);
+    Route::post('/plans', [SaasController::class, 'storePlan']);
+    Route::put('/plans/{plan}', [SaasController::class, 'updatePlan']);
+    Route::delete('/plans/{plan}', [SaasController::class, 'destroyPlan']);
     Route::post('/signup', [SaasController::class, 'signup']);
     Route::post('/checkout/mobile-money', [SaasController::class, 'checkout']);
     Route::post('/login', [SaasController::class, 'login']);
     Route::post('/payment-callback', [SaasController::class, 'paymentCallback']);
     Route::post('/register-interest', [SaasController::class, 'registerInterest']);
+    Route::get('/wallet/balance', [SaasController::class, 'walletBalance']);
+    Route::get('/support', [SaasController::class, 'supportCenter']);
+    Route::get('/audit', [SaasController::class, 'auditTrail']);
+    Route::get('/payments', [SaasController::class, 'payments']);
     Route::get('/restaurants', [SaasController::class, 'restaurants']);
     Route::post('/restaurants', [SaasController::class, 'storeRestaurant']);
     Route::put('/restaurants/{restaurant}', [SaasController::class, 'updateRestaurant']);
+    Route::post('/restaurants/{restaurant}/reset-owner-password', [SaasController::class, 'resetOwnerPassword']);
     Route::delete('/restaurants/{restaurant}', [SaasController::class, 'destroyRestaurant']);
 
     Route::middleware('auth:sanctum')->group(function () {

@@ -1496,3 +1496,48 @@ Dans e-resto-Angular, le restaurant peut :
 - supprimer une reservation si necessaire.
 
 La reservation est rattachee au restaurant via la table scannee ou via le `restaurant_slug` du menu public.
+
+## 25. Console interne e-resto-admin
+
+`e-resto-admin` est maintenant l'application interne pour les developpeurs, administrateurs plateforme et support E-RESTO.
+
+Elle permet de gerer les restaurants inscrits dans la plateforme :
+
+- dashboard global avec total restaurants, actifs/essai, retards de paiement et MRR ;
+- liste des restaurants avec recherche et filtres par statut ;
+- creation manuelle d'un restaurant et du compte proprietaire initial ;
+- modification des informations restaurant ;
+- changement de statut : essai, actif, en retard, suspendu, annule ;
+- changement de plan SaaS ;
+- activation ou suspension rapide ;
+- gestion des plans SaaS : prix, devise, limites, fonctionnalites, plan populaire/actif ;
+- suivi des paiements d'abonnement avec filtre par statut.
+- wallet MaishaPay avec balance CDF et USD masquee par defaut ;
+- support plateforme : messages contact, demandes de compte, feedbacks ;
+- audit plateforme : derniers evenements restaurants et paiements ;
+- reinitialisation du mot de passe proprietaire.
+
+Endpoints backend ajoutes ou utilises :
+
+```txt
+GET    /api/saas/overview
+GET    /api/saas/restaurants
+POST   /api/saas/restaurants
+PUT    /api/saas/restaurants/{restaurant}
+DELETE /api/saas/restaurants/{restaurant}
+GET    /api/saas/plans
+POST   /api/saas/plans
+PUT    /api/saas/plans/{plan}
+DELETE /api/saas/plans/{plan}
+GET    /api/saas/payments
+GET    /api/saas/wallet/balance
+GET    /api/saas/support
+GET    /api/saas/audit
+POST   /api/saas/restaurants/{restaurant}/reset-owner-password
+```
+
+Quand le plan ou le statut d'un restaurant change depuis `e-resto-admin`, le backend synchronise aussi la subscription active du restaurant.
+
+Le wallet appelle MaishaPay via `POST /wallet/balance/report` avec les memes `MAISHAPAY_PUBLIC_KEY`, `MAISHAPAY_SECRET_KEY` et `MAISHAPAY_GATEWAY_MODE` que les paiements d'abonnement.
+
+Les plans par defaut `Free Demo`, `Starter`, `Pro` et `Enterprise` sont crees seulement s'ils n'existent pas encore. Les modifications faites depuis `e-resto-admin` ne sont donc plus ecrasees automatiquement au chargement de `/api/saas/overview` ou `/api/saas/plans`.

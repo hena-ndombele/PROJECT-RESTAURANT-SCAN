@@ -96,5 +96,59 @@ Le backend refuse toujours l'action si la limite est depassee.</pre>
 <p>Statuts : pending, confirmed, seated, completed, cancelled, no_show.</p>
 <p>Dans e-resto-client, le client voit que sa demande est envoyee au restaurant et qu'elle doit etre confirmee. Une reference courte est affichee apres envoi.</p>
 <p>Dans e-resto-Angular, le restaurant peut filtrer par date/statut, rechercher, voir le detail, ajouter une note interne et changer le statut.</p>
+<h2>Console interne e-resto-admin</h2>
+<p>L'application <code>e-resto-admin</code> devient la console interne reservee aux developpeurs, administrateurs plateforme et support E-RESTO. Elle reprend un design dashboard proche de <code>e-resto-Angular</code> avec sidebar sombre, cartes KPI, tableaux, formulaires et statuts colores.</p>
+<h3>Fonctionnalites ajoutees</h3>
+<pre>Dashboard global
+=> total restaurants
+=> restaurants actifs ou en essai
+=> restaurants en retard de paiement
+=> revenu mensuel SaaS
+
+Gestion restaurants
+=> liste, recherche et filtres par statut
+=> creation manuelle d'un restaurant
+=> creation du compte proprietaire initial
+=> modification des informations
+=> changement de statut
+=> changement de plan SaaS
+=> activation et suspension rapides
+
+Gestion plans SaaS
+=> liste des plans
+=> creation d'un plan
+=> modification prix, devise, limites et fonctionnalites
+
+Gestion paiements
+=> liste des paiements d'abonnement
+=> filtre par statut
+=> reference, methode, montant, date et restaurant concerne</pre>
+<h3>Endpoints backend utilises</h3>
+<pre>GET    /api/saas/overview
+GET    /api/saas/restaurants
+POST   /api/saas/restaurants
+PUT    /api/saas/restaurants/{restaurant}
+DELETE /api/saas/restaurants/{restaurant}
+GET    /api/saas/plans
+POST   /api/saas/plans
+PUT    /api/saas/plans/{plan}
+DELETE /api/saas/plans/{plan}
+GET    /api/saas/payments</pre>
+<p>Quand un administrateur change le plan ou le statut d'un restaurant, le backend met aussi a jour la subscription active pour garder le restaurant, son plan et son abonnement synchronises.</p>
+<h3>Wallet MaishaPay</h3>
+<p>La console interne affiche maintenant le wallet MaishaPay sous forme de cartes CDF et USD. Les montants sont masques par defaut et l'administrateur peut cliquer sur Afficher/Masquer pour proteger la balance.</p>
+<pre>GET /api/saas/wallet/balance
+
+Backend
+=> appelle MaishaPay POST /wallet/balance/report
+=> utilise gatewayMode, publicApiKey et secretApiKey deja configures
+=> interroge le wallet Transfert en CDF et USD</pre>
+<h3>Support et audit</h3>
+<p>Les onglets Support et Audit sont maintenant connectes au backend. Support regroupe les messages de contact, demandes de compte et feedbacks clients. Audit affiche les derniers evenements restaurants et paiements pour surveiller l'activite plateforme.</p>
+<pre>GET  /api/saas/support
+GET  /api/saas/audit
+POST /api/saas/restaurants/{restaurant}/reset-owner-password</pre>
+<h3>Persistance des plans modifies</h3>
+<p>Les plans SaaS par defaut sont maintenant crees uniquement s'ils n'existent pas encore. Le backend ne reecrit plus automatiquement les plans existants quand <code>/api/saas/overview</code> ou <code>/api/saas/plans</code> est appele. Les modifications faites depuis <code>e-resto-admin</code> restent donc visibles dans la page pricing cote client.</p>
 </body>
 </html>
