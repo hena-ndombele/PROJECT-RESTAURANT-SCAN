@@ -681,13 +681,14 @@ class SaasController extends Controller
         if (array_key_exists('saas_plan_id', $validated) || array_key_exists('status', $validated)) {
             $plan = $restaurant->fresh()->plan;
             if ($plan) {
-                $restaurant->subscription()->updateOrCreate(
+                RestaurantSubscription::updateOrCreate(
                     ['restaurant_id' => $restaurant->id],
                     [
                         'saas_plan_id' => $plan->id,
                         'status' => match ($restaurant->fresh()->status) {
                             'active' => 'active',
                             'past_due' => 'past_due',
+                            'suspended' => 'suspended',
                             'cancelled' => 'cancelled',
                             default => 'trialing',
                         },

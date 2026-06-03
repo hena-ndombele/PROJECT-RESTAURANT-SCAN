@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SaasPlan } from '../../models/saas/saas.models';
-import { SaasService } from '../../services/saas/saas-service';
 
 type PricingPlan = SaasPlan & {
   installation_fee: number;
@@ -68,41 +67,25 @@ export class PricingPage {
   selectingPlanSlug = '';
   billingCycle: 'monthly' | 'yearly' = 'monthly';
 
-  constructor(private saas: SaasService, private router: Router) {}
+  constructor(private router: Router) {}
 
   choosePlan(plan: PricingPlan): void {
     this.errorMessage = '';
     this.selectingPlanSlug = plan.slug;
 
-    this.saas.plans().subscribe({
-      next: (plans) => {
-        const backendPlan = plans.find((candidate) => candidate.slug === plan.slug);
+    localStorage.setItem('selected_plan', JSON.stringify({
+      id: plan.id,
+      name: plan.name,
+      slug: plan.slug,
+      price: this.paymentAmount(plan),
+      monthly_price: Number(plan.monthly_price),
+      currency: plan.currency,
+      installation_fee: plan.installation_fee,
+      cycle: this.billingCycle,
+    }));
 
-        if (!backendPlan) {
-          this.errorMessage = `Le plan ${plan.name} est temporairement indisponible.`;
-          this.selectingPlanSlug = '';
-          return;
-        }
-
-        localStorage.setItem('selected_plan', JSON.stringify({
-          id: backendPlan.id,
-          name: plan.name,
-          slug: backendPlan.slug,
-          price: this.paymentAmount(plan),
-          monthly_price: Number(backendPlan.monthly_price),
-          currency: backendPlan.currency,
-          installation_fee: plan.installation_fee,
-          cycle: this.billingCycle,
-        }));
-        const hasAccount = !!localStorage.getItem('restaurant_account');
-        this.router.navigate([hasAccount ? '/restaurant/checkout' : '/restaurant/signup'], {
-          queryParams: { plan: backendPlan.id, cycle: this.billingCycle },
-        });
-      },
-      error: () => {
-        this.errorMessage = 'Impossible de selectionner ce plan pour le moment. Reessayez dans quelques instants.';
-        this.selectingPlanSlug = '';
-      },
+    this.router.navigate(['/restaurant/signup'], {
+      queryParams: { plan: plan.slug, cycle: this.billingCycle },
     });
   }
 

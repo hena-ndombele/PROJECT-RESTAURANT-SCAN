@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SaasService } from '../../services/saas/saas-service';
 import { ThemeService } from '../../services/theme/theme-service';
@@ -21,11 +21,12 @@ export class RestaurantSettings implements OnInit {
   error = signal('');
   logoPreview = signal<string | null>(null);
   logoData: string | null = null;
-  canCustomize = computed(() => {
+
+  canCustomize(): boolean {
     const slug = String(this.restaurant?.plan?.slug || '').toLowerCase();
     const name = String(this.restaurant?.plan?.name || '').toLowerCase();
     return ['pro', 'business', 'enterprise'].some((plan) => slug.includes(plan) || name.includes(plan));
-  });
+  }
 
   restaurant: any = {
     name: '',

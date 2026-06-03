@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { timeout } from 'rxjs';
 import { SaasPlan } from '../../models/saas/saas.models';
 import { GoogleIdentityService } from '../../services/google/google-identity-service';
 import { SaasService } from '../../services/saas/saas-service';
@@ -48,14 +49,14 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
   ) {}
 
   ngOnInit(): void {
-    this.saas.plans().subscribe({
+    this.saas.plans().pipe(timeout(10000)).subscribe({
       next: (plans) => {
         this.resolveSelectedPlan(plans);
         this.planLoading = false;
       },
       error: () => {
         this.planLoading = false;
-        this.message = 'Impossible de charger les plans. Revenez depuis la page Tarifs.';
+        this.message = 'Impossible de charger les plans. Verifiez que le serveur et la base de donnees sont demarres.';
       },
     });
   }
@@ -143,7 +144,7 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
       ...this.account,
       saas_plan_id: planId,
       google_credential: this.googleCredential || undefined,
-    }).subscribe({
+    }).pipe(timeout(15000)).subscribe({
       next: (response) => {
         if (response.session?.token) {
           localStorage.setItem('restaurant_token', response.session.token);
@@ -246,6 +247,10 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
   }
 
   private validationMessage(error: any): string {
+    if (error?.name === 'TimeoutError') {
+      return 'Le serveur ne repond pas. Verifiez que le backend et la base de donnees sont demarres.';
+    }
+
     const errors = error?.error?.errors;
     if (errors && typeof errors === 'object') {
       const messages = Object.values(errors).flat().filter((message) => typeof message === 'string');

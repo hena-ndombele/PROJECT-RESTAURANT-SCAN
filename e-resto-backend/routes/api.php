@@ -18,6 +18,8 @@ use App\Http\Controllers\Saas\SaasController;
 //users
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/admin/auth/login', [AuthController::class, 'adminLogin']);
+Route::post('/admin/auth/verify-otp', [AuthController::class, 'adminVerifyOtp']);
 Route::post('/otp/request', [AuthController::class, 'requestOtp']);
 Route::post('/auth/account-request', [AccountRequestController::class, 'store']);
 
@@ -26,9 +28,6 @@ Route::prefix('saas')->group(function () {
     Route::get('/overview', [SaasController::class, 'overview']);
     Route::get('/plans', [SaasController::class, 'plans']);
     Route::post('/newsletter', [SaasController::class, 'newsletterSubscribe']);
-    Route::post('/plans', [SaasController::class, 'storePlan']);
-    Route::put('/plans/{plan}', [SaasController::class, 'updatePlan']);
-    Route::delete('/plans/{plan}', [SaasController::class, 'destroyPlan']);
     Route::post('/signup', [SaasController::class, 'signup']);
     Route::post('/checkout/mobile-money', [SaasController::class, 'checkout']);
     Route::post('/login', [SaasController::class, 'login']);
@@ -36,17 +35,23 @@ Route::prefix('saas')->group(function () {
     Route::post('/google/login', [SaasController::class, 'googleLogin']);
     Route::post('/payment-callback', [SaasController::class, 'paymentCallback']);
     Route::post('/register-interest', [SaasController::class, 'registerInterest']);
-    Route::get('/wallet/balance', [SaasController::class, 'walletBalance']);
-    Route::get('/support', [SaasController::class, 'supportCenter']);
-    Route::get('/audit', [SaasController::class, 'auditTrail']);
-    Route::get('/payments', [SaasController::class, 'payments']);
-    Route::get('/restaurants', [SaasController::class, 'restaurants']);
-    Route::post('/restaurants', [SaasController::class, 'storeRestaurant']);
-    Route::put('/restaurants/{restaurant}', [SaasController::class, 'updateRestaurant']);
-    Route::post('/restaurants/{restaurant}/reset-owner-password', [SaasController::class, 'resetOwnerPassword']);
-    Route::delete('/restaurants/{restaurant}', [SaasController::class, 'destroyRestaurant']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'admin.only'])->group(function () {
+        Route::post('/plans', [SaasController::class, 'storePlan']);
+        Route::put('/plans/{plan}', [SaasController::class, 'updatePlan']);
+        Route::delete('/plans/{plan}', [SaasController::class, 'destroyPlan']);
+        Route::get('/wallet/balance', [SaasController::class, 'walletBalance']);
+        Route::get('/support', [SaasController::class, 'supportCenter']);
+        Route::get('/audit', [SaasController::class, 'auditTrail']);
+        Route::get('/payments', [SaasController::class, 'payments']);
+        Route::get('/restaurants', [SaasController::class, 'restaurants']);
+        Route::post('/restaurants', [SaasController::class, 'storeRestaurant']);
+        Route::put('/restaurants/{restaurant}', [SaasController::class, 'updateRestaurant']);
+        Route::post('/restaurants/{restaurant}/reset-owner-password', [SaasController::class, 'resetOwnerPassword']);
+        Route::delete('/restaurants/{restaurant}', [SaasController::class, 'destroyRestaurant']);
+    });
+
+    Route::middleware(['auth:sanctum', 'restaurant.only'])->group(function () {
         Route::get('/me', [SaasController::class, 'me']);
         Route::get('/restaurant/dashboard', [SaasController::class, 'dashboard']);
         Route::get('/restaurant/usage', [SaasController::class, 'usage']);

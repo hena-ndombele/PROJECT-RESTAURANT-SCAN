@@ -43,7 +43,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !$user->restaurant_id || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Identifiants incorrects'], 401);
         }
 
@@ -90,7 +90,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
+        if (!$user || !$user->restaurant_id) {
             return response()->json(['message' => 'Utilisateur introuvable'], 404);
         }
 
@@ -110,10 +110,70 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Connexion réussie',
             'token'   => $token,
-            'user'    => $user,
+            'user'    => $user->load('roles'),
         ]);
     }
 
+
+    public function adminLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        $user = User::with('roles')->where('email', $request->email)->first();
+
+        if (!$user || $user->restaurant_id || !$user->hasRole('admin') || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Identifiants administrateur incorrects.'], 401);
+        }
+
+        $otpCode = rand(10000, 99999);
+        Otp::where('user_id', $user->id)->delete();
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => Carbon::now()->addMinutes(5),
+        ]);
+
+        Mail::to($user->email)->send(new SendOtpMail($otpCode));
+
+        return response()->json([
+            'message' => 'Un code OTP a ete envoye a votre adresse email.',
+        ]);
+    }
+
+    public function adminVerifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|digits:5',
+        ]);
+
+        $user = User::with('roles')->where('email', $request->email)->first();
+
+        if (!$user || $user->restaurant_id || !$user->hasRole('admin')) {
+            return response()->json(['message' => 'Administrateur introuvable.'], 404);
+        }
+
+        $otp = Otp::where('user_id', $user->id)
+            ->where('code', $request->otp)
+            ->where('expires_at', '>=', Carbon::now())
+            ->first();
+
+        if (!$otp) {
+            return response()->json(['message' => 'OTP invalide ou expire.'], 400);
+        }
+
+        $otp->delete();
+        $token = $user->createToken('Admin API Token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Connexion administrateur reussie.',
+            'token' => $token,
+            'user' => $user,
+        ]);
+    }
 
     /**
      * @OA\Post(
