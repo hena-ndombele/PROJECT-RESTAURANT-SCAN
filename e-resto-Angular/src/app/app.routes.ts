@@ -32,7 +32,7 @@ import {RestaurantSettings} from "./pages/restaurant-settings/restaurant-setting
 
 export const routes: Routes = [
 
-  { path: '', component: SaasLanding, title: 'E-RESTO SaaS - Plateforme restaurant' },
+  { path: '', component: SaasLanding, title: 'E-RESTO- Plateforme restaurant' },
   { path: 'pricing', component: PricingPage, title: 'Pricing E-RESTO' },
   { path: 'restaurant/signup', component: RestaurantSignup, title: 'Creation compte restaurant - E-Resto' },
   { path: 'restaurant/checkout', component: RestaurantCheckout, title: 'Paiement abonnement - E-Resto' },

@@ -19,6 +19,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -129,13 +130,35 @@ class SaasController extends Controller
             'owner_name' => 'required|string|max:255',
             'owner_email' => 'required|email|max:255|unique:users,email',
             'owner_phone' => 'required|string|max:30',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required_without:google_credential|nullable|string|min:6|confirmed',
+            'google_credential' => 'nullable|string',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
             'saas_plan_id' => 'required|uuid|exists:saas_plans,id',
+        ], [
+            'restaurant_name.required' => 'Le nom du restaurant est obligatoire.',
+            'owner_name.required' => 'Le nom du proprietaire est obligatoire.',
+            'owner_email.required' => 'L adresse email est obligatoire.',
+            'owner_email.email' => 'L adresse email est invalide.',
+            'owner_email.unique' => 'Cette adresse email possede deja un compte.',
+            'owner_phone.required' => 'Le numero de telephone est obligatoire.',
+            'password.required_without' => 'Le mot de passe est obligatoire.',
+            'password.min' => 'Le mot de passe doit contenir au moins 6 caracteres.',
+            'password.confirmed' => 'Les mots de passe ne correspondent pas.',
+            'saas_plan_id.required' => 'Choisissez un plan avant de creer le compte.',
+            'saas_plan_id.uuid' => 'Le plan selectionne est invalide. Revenez depuis la page Tarifs.',
+            'saas_plan_id.exists' => 'Le plan selectionne n existe plus. Revenez depuis la page Tarifs.',
         ]);
+
+        if (!empty($validated['google_credential'])) {
+            $googleProfile = $this->verifiedGoogleProfile($validated['google_credential']);
+
+            if (!$googleProfile || strcasecmp($googleProfile['email'], $validated['owner_email']) !== 0) {
+                return response()->json(['message' => 'Le compte Google ne correspond pas a cette adresse email.'], 422);
+            }
+        }
 
         return DB::transaction(function () use ($validated) {
             $plan = SaasPlan::findOrFail($validated['saas_plan_id']);
@@ -165,7 +188,7 @@ class SaasController extends Controller
                 'email' => $validated['owner_email'],
                 'phone_number' => $validated['owner_phone'],
                 'address' => $validated['address'] ?? null,
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($validated['password'] ?? Str::random(48)),
                 'is_first_login' => false,
             ]);
 
@@ -208,6 +231,7 @@ class SaasController extends Controller
             'restaurant_id' => 'required|uuid|exists:restaurants,id',
             'provider' => 'required|string|in:MPESA,AIRTEL,ORANGE,MTN,mpesa,airtel,orange,mtn',
             'wallet_id' => 'required|string|max:30',
+            'billing_cycle' => 'sometimes|string|in:monthly,yearly',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -216,6 +240,10 @@ class SaasController extends Controller
             $restaurant->refresh();
 
             $plan = $restaurant->plan ?: SaasPlan::where('slug', 'starter')->firstOrFail();
+            $billingCycle = $validated['billing_cycle'] ?? 'monthly';
+            $amount = $billingCycle === 'yearly'
+                ? (float) $plan->monthly_price * 10
+                : (float) $plan->monthly_price;
 
             $payment = Payment::create([
                 'restaurant_id' => $restaurant->id,
@@ -223,12 +251,13 @@ class SaasController extends Controller
                 'method' => 'mobile_money',
                 'provider' => Str::upper($validated['provider']),
                 'status' => 'pending',
-                'amount' => $plan->monthly_price,
+                'amount' => $amount,
                 'currency' => $plan->currency,
                 'reference' => 'SUB-' . Str::upper(Str::random(10)),
                 'metadata' => [
                     'plan_id' => $plan->id,
                     'wallet_id' => $validated['wallet_id'],
+                    'billing_cycle' => $billingCycle,
                 ],
             ]);
 
@@ -278,6 +307,50 @@ class SaasController extends Controller
 
         if (!$user || !$user->restaurant || !Hash::check($validated['password'], $user->password)) {
             return response()->json(['message' => 'Identifiants restaurant incorrects.'], 401);
+        }
+
+        $this->refreshBillingStatus($user->restaurant);
+        $user->restaurant->refresh();
+
+        if (!$this->canAccessWorkspace($user->restaurant)) {
+            return response()->json([
+                'message' => 'Votre essai ou abonnement est expire. Reglez votre abonnement pour continuer.',
+                'restaurant' => $this->restaurantPayload($user->restaurant),
+            ], 402);
+        }
+
+        return response()->json($this->sessionPayload($user));
+    }
+
+    public function googleConfig()
+    {
+        $clientId = config('services.google.client_id');
+
+        return response()->json([
+            'enabled' => filled($clientId),
+            'client_id' => $clientId,
+        ]);
+    }
+
+    public function googleLogin(Request $request)
+    {
+        $validated = $request->validate([
+            'credential' => 'required|string',
+        ]);
+
+        $profile = $this->verifiedGoogleProfile($validated['credential']);
+        if (!$profile) {
+            return response()->json(['message' => 'Connexion Google invalide ou expiree.'], 401);
+        }
+
+        $user = User::with('restaurant.plan', 'restaurant.subscription')
+            ->where('email', $profile['email'])
+            ->first();
+
+        if (!$user || !$user->restaurant) {
+            return response()->json([
+                'message' => 'Aucun espace restaurant n est associe a ce compte Google.',
+            ], 404);
         }
 
         $this->refreshBillingStatus($user->restaurant);
@@ -735,10 +808,14 @@ class SaasController extends Controller
     private function activateRestaurant(Restaurant $restaurant, Payment $payment): void
     {
         $plan = $restaurant->plan;
+        $paymentMetadata = $payment->metadata ?? [];
+        $billingCycle = $paymentMetadata['billing_cycle'] ?? 'monthly';
+        $subscriptionEnd = $billingCycle === 'yearly' ? now()->addYear() : now()->addMonth();
+        $billingDate = $billingCycle === 'yearly' ? Carbon::today()->addYear() : Carbon::today()->addMonth();
 
         $restaurant->update([
             'status' => 'active',
-            'subscription_ends_at' => now()->addMonth(),
+            'subscription_ends_at' => $subscriptionEnd,
         ]);
 
         $restaurant->subscription()->updateOrCreate(
@@ -747,8 +824,8 @@ class SaasController extends Controller
                 'saas_plan_id' => $plan?->id,
                 'status' => 'active',
                 'starts_at' => Carbon::today(),
-                'ends_at' => Carbon::today()->addMonth(),
-                'next_billing_at' => Carbon::today()->addMonth(),
+                'ends_at' => $billingDate,
+                'next_billing_at' => $billingDate,
                 'amount' => $payment->amount,
                 'currency' => $payment->currency,
             ]
@@ -830,6 +907,45 @@ class SaasController extends Controller
         return [$parts[0] ?: 'Owner', $parts[1] ?? 'Restaurant'];
     }
 
+    private function verifiedGoogleProfile(string $credential): ?array
+    {
+        $clientId = config('services.google.client_id');
+        if (!$clientId) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(8)->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $credential,
+            ]);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $profile = $response->json();
+            $issuer = $profile['iss'] ?? null;
+            $isVerified = filter_var($profile['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+            if (($profile['aud'] ?? null) !== $clientId
+                || !in_array($issuer, ['accounts.google.com', 'https://accounts.google.com'], true)
+                || !$isVerified
+                || empty($profile['email'])) {
+                return null;
+            }
+
+            return [
+                'email' => strtolower($profile['email']),
+                'name' => $profile['name'] ?? $profile['email'],
+                'picture' => $profile['picture'] ?? null,
+            ];
+        } catch (\Throwable $error) {
+            Log::warning('Verification Google impossible.', ['error' => $error->getMessage()]);
+
+            return null;
+        }
+    }
+
     private function sessionPayload(User $user): array
     {
         return [
@@ -862,47 +978,40 @@ class SaasController extends Controller
     {
         $plans = [
             [
-                'name' => 'Free Demo',
-                'slug' => 'free',
-                'description' => 'Pour tester le menu QR avec des limites strictes.',
-                'monthly_price' => 0,
-                'max_tables' => 3,
-                'max_users' => 1,
-                'features' => ['Menu QR', '3 tables', '10 plats', 'Support communautaire'],
-            ],
-            [
                 'name' => 'Starter',
                 'slug' => 'starter',
-                'description' => 'Pour lancer un restaurant avec menu QR, commandes et cash.',
-                'monthly_price' => 19,
-                'max_tables' => 20,
-                'max_users' => 3,
-                'features' => ['Menu QR', 'Commandes cash', 'Dashboard restaurant', 'Support standard'],
+                'description' => 'Pour lancer un service digital simple et professionnel.',
+                'monthly_price' => 15,
+                'max_tables' => 8,
+                'max_users' => 5,
+                'features' => ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Pro',
                 'slug' => 'pro',
-                'description' => 'Pour les restaurants qui veulent automatiser les operations.',
-                'monthly_price' => 49,
-                'max_tables' => 80,
-                'max_users' => 12,
+                'description' => 'Pour automatiser le service et piloter un restaurant en croissance.',
+                'monthly_price' => 25,
+                'max_tables' => 20,
+                'max_users' => 15,
                 'is_popular' => true,
-                'features' => ['Tout Starter', 'Reservations', 'Temps reel cuisine', 'Rapports avances', 'Mobile money pret'],
+                'features' => ['Commandes illimitees', 'Plats illimites', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire', 'Installation : 20 000 FC'],
             ],
             [
-                'name' => 'Enterprise',
-                'slug' => 'enterprise',
-                'description' => 'Pour groupes, franchises et besoins multi-sites.',
-                'monthly_price' => 129,
-                'max_restaurants' => 10,
-                'max_tables' => 500,
-                'max_users' => 60,
-                'features' => ['Tout Pro', 'Multi-restaurants', 'SLA prioritaire', 'Roles avances', 'Accompagnement onboarding'],
+                'name' => 'Business',
+                'slug' => 'business',
+                'description' => 'Pour les equipes structurees et les restaurants multi-sites.',
+                'monthly_price' => 30,
+                'max_restaurants' => 5,
+                'max_tables' => 20,
+                'max_users' => 15,
+                'features' => ['Tout le plan Pro', 'Statistiques avancees', 'Multi-utilisateurs et roles', 'Support dedie', 'Onboarding personnalise', 'Installation : 30 000 FC', 'Multi-restaurants'],
             ],
         ];
 
+        SaasPlan::whereIn('slug', ['free', 'enterprise'])->update(['is_active' => false]);
+
         foreach ($plans as $plan) {
-            SaasPlan::firstOrCreate(
+            SaasPlan::updateOrCreate(
                 ['slug' => $plan['slug']],
                 [
                     'currency' => 'USD',

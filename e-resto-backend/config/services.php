@@ -44,4 +44,8 @@ return [
         'mock' => env('MAISHAPAY_MOCK', false),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
 ];

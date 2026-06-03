@@ -1,71 +1,142 @@
-.signup-flow {
+.signup-page {
+  --orange: #ff7a1a;
+  --red: #d71920;
+  --ink: #111827;
+  --muted: #6b7280;
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: 32px 18px;
-  background:
-    radial-gradient(circle at 18% 12%, rgba(255, 122, 26, .18), transparent 28%),
-    radial-gradient(circle at 82% 18%, rgba(215, 25, 32, .12), transparent 30%),
-    #fff7ef;
+  grid-template-columns: minmax(400px, .9fr) minmax(560px, 1.1fr);
+  color: var(--ink);
+  background: #fffaf5;
 }
 
-.brand {
-  position: absolute;
-  top: 24px;
-  left: 28px;
+.signup-visual {
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  padding: 42px clamp(28px, 5vw, 76px);
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(4, 10, 22, .25), rgba(4, 10, 22, .9)),
+    url('/assets/landing/restaurant-auth-bg.png') center / cover no-repeat;
+}
+
+.visual-brand {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: 10px;
-  color: #111827;
+  color: #fff;
   text-decoration: none;
   font-weight: 950;
 }
 
-.brand img {
-  width: 40px;
-  height: 40px;
+.visual-brand img {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
 }
 
-.signup-card {
-  width: min(100%, 640px);
-  border: 1px solid rgba(17, 24, 39, .08);
-  border-radius: 8px;
-  padding: clamp(24px, 5vw, 42px);
-  background: rgba(255, 255, 255, .92);
-  box-shadow: 0 28px 90px rgba(17, 24, 39, .14);
+.visual-copy {
+  width: min(560px, 100%);
+  align-self: flex-end;
 }
 
-.signup-head {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.signup-head img {
-  width: 76px;
-  height: 76px;
-  object-fit: contain;
-  margin-bottom: 14px;
-}
-
+.visual-copy > span,
 .eyebrow {
-  display: block;
-  color: #d71920;
-  font-size: .74rem;
+  color: var(--orange);
+  font-size: 12px;
   font-weight: 950;
+  letter-spacing: .14em;
   text-transform: uppercase;
-  letter-spacing: .08em;
 }
 
-h1 {
-  margin: 8px 0 8px;
-  color: #111827;
-  font-size: clamp(2rem, 5vw, 3rem);
+.visual-copy h2 {
+  margin: 14px 0;
+  font-size: clamp(34px, 4.5vw, 58px);
   line-height: 1;
   font-weight: 950;
 }
 
-p {
-  color: #6b7280;
+.visual-copy p {
+  color: rgba(255, 255, 255, .74);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.visual-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 22px;
+}
+
+.visual-points span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, .9);
+  font-weight: 850;
+}
+
+.visual-points i {
+  color: var(--orange);
+}
+
+.signup-panel {
+  display: grid;
+  place-items: center;
+  padding: 34px 24px;
+}
+
+.signup-card {
+  width: min(100%, 650px);
+  padding: clamp(26px, 4vw, 42px);
+  border: 1px solid rgba(17, 24, 39, .08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 30px 90px rgba(17, 24, 39, .12);
+}
+
+.signup-head {
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.form-logo {
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.form-logo img {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+}
+
+h1 {
+  margin: 8px 0;
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+  line-height: 1.08;
+  font-weight: 950;
+}
+
+.signup-head p,
+.success-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.selected-plan {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: #9a3412;
+  background: rgba(255, 122, 26, .1);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .stepper {
@@ -81,66 +152,95 @@ p {
   height: 34px;
   border: 0;
   border-radius: 50%;
+  color: var(--muted);
   background: #e5e7eb;
-  color: #6b7280;
   font-weight: 900;
 }
 
 .stepper button.active,
 .stepper button.done {
-  background: #ff7a1a;
-  color: #111827;
+  color: #fff;
+  background: linear-gradient(135deg, var(--orange), var(--red));
 }
 
-.stepper span {
+.stepper > span {
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #ff7a1a 50%, #e5e7eb 50%);
+  background: linear-gradient(90deg, var(--orange) 50%, #e5e7eb 50%);
 }
 
-.form-section {
+.form-section,
+form {
   display: grid;
   gap: 16px;
 }
 
+.google-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.google-shell small {
+  display: block;
+  color: var(--muted);
+  text-align: center;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
 .section-title strong,
-label span {
+label > span {
   display: block;
 }
 
 .section-title strong {
-  color: #111827;
   font-size: 1.05rem;
 }
 
 .section-title small,
-label span {
-  color: #6b7280;
+label > span {
+  color: var(--muted);
 }
 
-label span {
+label > span {
   margin-bottom: 7px;
-  font-size: .78rem;
-  font-weight: 850;
+  font-size: 12px;
+  font-weight: 900;
   text-transform: uppercase;
 }
 
 input,
 select {
   width: 100%;
-  min-height: 54px;
+  min-height: 52px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0 16px;
+  color: var(--ink);
   background: #fff;
-  color: #111827;
   outline: none;
-  transition: .18s ease;
 }
 
 input:focus,
 select:focus {
-  border-color: #ff7a1a;
+  border-color: var(--orange);
   box-shadow: 0 0 0 4px rgba(255, 122, 26, .14);
 }
 
@@ -150,93 +250,68 @@ select:focus {
 
 .password-field input {
   padding-right: 54px;
-  background: #fff;
-  border-color: #d1d5db;
-  color: #111827;
-  font-weight: 650;
 }
 
 .password-field button {
   position: absolute;
   top: 50%;
-  right: 10px;
+  right: 9px;
   width: 38px;
   height: 38px;
   transform: translateY(-50%);
   border: 0;
   border-radius: 8px;
+  color: var(--orange);
   background: transparent;
-  color: #ff9f1a;
-  font-size: 1.05rem;
 }
 
 .password-strength {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 9px;
 }
 
 .password-strength span {
   height: 5px;
   border-radius: 999px;
   background: #d1d5db;
-  transition: .18s ease;
 }
 
-.password-strength.weak span.active {
-  background: #ef4444;
-}
-
-.password-strength.medium span.active {
-  background: #f59e0b;
-}
-
-.password-strength.strong span.active {
-  background: #10b981;
-}
+.password-strength.weak span.active { background: #ef4444; }
+.password-strength.medium span.active { background: #f59e0b; }
+.password-strength.strong span.active { background: #10b981; }
 
 .strength-label {
   display: block;
-  margin-top: 6px;
+  margin-top: 5px;
   font-weight: 900;
 }
 
-.strength-label.weak {
-  color: #ef4444;
-}
+.strength-label.weak { color: #ef4444; }
+.strength-label.medium { color: #f59e0b; }
+.strength-label.strong { color: #10b981; }
 
-.strength-label.medium {
-  color: #f59e0b;
-}
-
-.strength-label.strong {
-  color: #10b981;
-}
-
-.grid-2 {
+.grid-2,
+.actions-row,
+.success-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.actions-row {
-  display: grid;
-  grid-template-columns: .7fr 1fr;
   gap: 12px;
 }
 
 .primary-action,
 .secondary-action {
-  min-height: 56px;
-  border-radius: 8px;
+  min-height: 54px;
+  border-radius: 10px;
   font-weight: 950;
 }
 
 .primary-action {
   border: 0;
-  background: linear-gradient(135deg, #ff9f1a, #e87900);
-  color: #111827;
+  color: #fff;
+  background: linear-gradient(135deg, var(--orange), var(--red));
+  box-shadow: 0 16px 34px rgba(215, 25, 32, .18);
 }
 
 .primary-action:disabled {
@@ -245,17 +320,30 @@ select:focus {
 
 .secondary-action {
   border: 1px solid #d1d5db;
-  background: #fff;
   color: #374151;
+  background: #fff;
 }
 
 .message {
   margin: 0;
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
+  color: var(--red);
   background: rgba(215, 25, 32, .08);
-  color: #d71920;
   font-weight: 850;
+  text-align: center;
+}
+
+.signin-link {
+  margin-top: 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.signin-link a {
+  color: var(--red);
+  font-weight: 900;
+  text-decoration: none;
 }
 
 .success-panel {
@@ -267,42 +355,35 @@ select:focus {
 
 .success-icon {
   display: grid;
+  width: 70px;
+  height: 70px;
   place-items: center;
-  width: 72px;
-  height: 72px;
   border-radius: 18px;
   color: #fff;
-  background: linear-gradient(135deg, #ff7a1a, #d71920);
-  box-shadow: 0 18px 40px rgba(215, 25, 32, .24);
+  background: linear-gradient(135deg, var(--orange), var(--red));
   font-size: 2rem;
 }
 
 .success-panel h2 {
   margin: 0;
-  color: #111827;
-  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-size: 2rem;
   font-weight: 950;
-}
-
-.success-panel p {
-  margin: 0;
 }
 
 .menu-url {
   width: 100%;
   display: grid;
   grid-template-columns: 1fr 46px;
-  align-items: center;
   gap: 8px;
   padding: 8px;
-  border: 1px solid rgba(255, 122, 26, .2);
-  border-radius: 8px;
-  background: #111827;
+  border-radius: 10px;
+  background: var(--ink);
 }
 
 .menu-url span {
   min-width: 0;
   overflow: hidden;
+  align-self: center;
   padding: 0 10px;
   color: #34d399;
   text-overflow: ellipsis;
@@ -311,19 +392,14 @@ select:focus {
 }
 
 .menu-url button {
-  width: 46px;
-  height: 42px;
   border: 0;
   border-radius: 8px;
-  color: #111827;
-  background: #ff9f1a;
+  color: var(--ink);
+  background: var(--orange);
 }
 
 .success-actions {
   width: 100%;
-  display: grid;
-  grid-template-columns: .8fr 1.2fr;
-  gap: 12px;
 }
 
 .success-actions a {
@@ -334,31 +410,23 @@ select:focus {
 
 .success-message {
   width: 100%;
-  background: rgba(16, 185, 129, .12);
   color: #047857;
+  background: rgba(16, 185, 129, .12);
 }
 
-.signin-link {
-  margin-top: 20px;
-  text-align: center;
-  color: #6b7280;
-}
+@media (max-width: 980px) {
+  .signup-page {
+    grid-template-columns: 1fr;
+  }
 
-.signin-link a {
-  color: #d71920;
-  font-weight: 900;
-  text-decoration: none;
+  .signup-visual {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
-  .brand {
-    position: static;
-    justify-self: start;
-    margin-bottom: 18px;
-  }
-
-  .signup-flow {
-    place-items: start center;
+  .signup-panel {
+    padding: 18px 12px;
   }
 
   .grid-2,

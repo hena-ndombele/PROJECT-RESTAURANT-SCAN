@@ -8,6 +8,7 @@
   background: #fff;
   color: var(--ink);
   font-family: Inter, Poppins, system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
 .topnav {
@@ -62,19 +63,21 @@
 }
 
 .pricing-hero {
-  min-height: 430px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 16px;
-  text-align: center;
-  padding: 74px 18px 132px;
+  min-height: 540px;
+  display: flex;
+  align-items: center;
+  padding: 82px clamp(18px, 5vw, 76px) 150px;
   color: #fff;
   background:
-    linear-gradient(rgba(17, 19, 24, .72), rgba(17, 19, 24, .74)),
-    radial-gradient(circle at 18% 16%, rgba(255, 122, 26, .58), transparent 32%),
-    radial-gradient(circle at 84% 8%, rgba(215, 25, 32, .48), transparent 28%),
-    linear-gradient(135deg, #111318, #28120f 48%, #151515);
+    linear-gradient(90deg, rgba(5, 10, 22, .97) 0%, rgba(5, 10, 22, .88) 42%, rgba(5, 10, 22, .28) 78%, rgba(5, 10, 22, .2) 100%),
+    url('/assets/landing/pricing-menu-digital-bg.png') center / cover no-repeat;
+}
+
+.hero-copy {
+  width: min(690px, 100%);
+  display: grid;
+  gap: 18px;
+  animation: hero-enter .8s cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .eyebrow {
@@ -86,57 +89,99 @@
 }
 
 .pricing-hero h1 {
-  max-width: 920px;
   margin: 0;
-  font-size: clamp(44px, 7vw, 84px);
-  line-height: .96;
+  font-size: clamp(44px, 6vw, 78px);
+  line-height: .98;
   font-weight: 950;
 }
 
 .pricing-hero p {
-  max-width: 690px;
   margin: 0;
   color: rgba(255, 255, 255, .78);
   font-size: 18px;
   line-height: 1.65;
 }
 
-.pricing-hero strong {
-  padding: 11px 18px;
-  border: 1px solid rgba(255, 255, 255, .22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, .08);
+.hero-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 4px;
+}
+
+.hero-benefits span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, .9);
+  font-weight: 800;
+}
+
+.hero-benefits i {
+  color: var(--orange);
 }
 
 .plans-shell {
   padding: 0 clamp(18px, 5vw, 76px) 78px;
-  margin-top: -74px;
+  margin-top: -82px;
+}
+
+.plans-intro {
+  width: min(720px, 100%);
+  margin: 0 auto 24px;
+  padding: 24px 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 20px 55px rgba(17, 19, 24, .14);
+  text-align: center;
+  animation: card-rise .7s .1s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.plans-intro h2 {
+  margin: 8px 0;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.05;
+  font-weight: 950;
+}
+
+.plans-intro p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .billing-toggle {
   width: max-content;
   display: flex;
   gap: 4px;
-  margin: 0 auto 20px;
-  padding: 5px;
+  margin: 0 auto 18px;
+  padding: 4px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 20px 55px rgba(17, 19, 24, .16);
+  box-shadow: 0 14px 36px rgba(17, 19, 24, .12);
 }
 
 .billing-toggle button {
   border: 0;
   border-radius: 8px;
-  padding: 11px 18px;
-  background: transparent;
+  padding: 9px 14px;
   color: var(--ink);
+  background: transparent;
+  font-size: 13px;
   font-weight: 950;
 }
 
 .billing-toggle button.active {
   color: #fff;
   background: var(--ink);
+}
+
+.billing-toggle span {
+  margin-left: 4px;
+  color: var(--orange);
+  font-size: 11px;
 }
 
 .sync-note {
@@ -154,31 +199,57 @@
 .plans-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: 14px;
+  max-width: 1180px;
+  margin: 0 auto;
 }
 
 .plan-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 650px;
-  padding: 30px;
+  min-height: 500px;
+  padding: 20px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fff;
   box-shadow: 0 24px 70px rgba(17, 19, 24, .11);
+  opacity: 0;
+  animation: card-rise .7s cubic-bezier(.2, .8, .2, 1) forwards;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+
+.plan-card:nth-child(1) {
+  animation-delay: .18s;
+}
+
+.plan-card:nth-child(2) {
+  animation-delay: .3s;
+}
+
+.plan-card:nth-child(3) {
+  animation-delay: .42s;
+}
+
+.plan-card:hover {
+  border-color: rgba(255, 122, 26, .5);
+  box-shadow: 0 30px 80px rgba(17, 19, 24, .16);
+  transform: translateY(-8px);
 }
 
 .plan-card.popular {
   border-color: var(--orange);
   box-shadow: 0 26px 80px rgba(255, 122, 26, .19);
-  transform: translateY(-10px);
+}
+
+.plan-card.popular:hover {
+  transform: translateY(-12px);
 }
 
 .popular-badge {
   width: max-content;
-  margin-bottom: 18px;
-  padding: 8px 12px;
+  margin-bottom: 10px;
+  padding: 6px 9px;
   border-radius: 8px;
   color: #fff;
   background: var(--ink);
@@ -186,15 +257,26 @@
   font-weight: 950;
 }
 
+.plan-audience {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
 .plan-card h2 {
   margin: 0 0 8px;
-  font-size: 28px;
+  font-size: 23px;
   font-weight: 950;
 }
 
 .plan-card p {
-  min-height: 48px;
-  margin: 0 0 24px;
+  min-height: 40px;
+  margin: 0 0 14px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.55;
 }
@@ -207,31 +289,55 @@
 }
 
 .price strong {
-  font-size: clamp(50px, 6vw, 70px);
+  font-size: clamp(38px, 4vw, 50px);
   line-height: .88;
   font-weight: 950;
 }
 
 .price span {
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   color: var(--muted);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 950;
 }
 
 .plan-card small,
 .plan-card em {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--muted);
+  font-size: 13px;
   font-style: normal;
+}
+
+.installation-fee {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 11px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 122, 26, .18);
+  border-radius: 10px;
+  color: #9a3412;
+  background: rgba(255, 122, 26, .07);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.installation-fee i {
+  color: var(--orange);
+}
+
+.installation-fee strong {
+  color: var(--ink);
 }
 
 .plan-card ul {
   display: grid;
-  gap: 12px;
-  padding: 24px 0;
-  margin: 24px 0 0;
+  gap: 7px;
+  padding: 14px 0;
+  margin: 14px 0 0;
   border-top: 1px solid var(--line);
   list-style: none;
 }
@@ -241,6 +347,7 @@
   gap: 10px;
   align-items: flex-start;
   color: #2b3038;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -248,25 +355,48 @@
   color: var(--orange);
 }
 
+.plan-card li.limitation {
+  color: #98a2b3;
+}
+
+.plan-card li.limitation i {
+  color: #cbd5e1;
+}
+
 .plan-card button {
   width: 100%;
   margin-top: auto;
-  padding: 15px 18px;
+  padding: 11px 14px;
   border: 0;
   border-radius: 8px;
   color: #fff;
   background: linear-gradient(135deg, var(--orange), var(--red));
   font-weight: 950;
   box-shadow: 0 18px 36px rgba(215, 25, 32, .2);
+  transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+}
+
+.plan-card button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 42px rgba(215, 25, 32, .28);
+}
+
+.plan-card button:disabled {
+  opacity: .65;
+  cursor: wait;
 }
 
 .installation {
+  position: relative;
   display: grid;
-  grid-template-columns: .85fr 1.15fr;
-  gap: 28px;
-  padding: 70px clamp(18px, 5vw, 76px);
+  grid-template-columns: .9fr 1.1fr;
+  gap: clamp(34px, 6vw, 90px);
+  padding: 90px clamp(18px, 5vw, 76px);
+  overflow: hidden;
   color: #fff;
-  background: #111318;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(255, 122, 26, .2), transparent 28%),
+    linear-gradient(135deg, #080d18, #111827 58%, #17100e);
 }
 
 .installation h2 {
@@ -282,17 +412,79 @@
   line-height: 1.65;
 }
 
+.installation-copy > p {
+  max-width: 580px;
+  font-size: 17px;
+}
+
+.installation-proof {
+  display: grid;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.installation-proof article {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: transform .2s ease;
+}
+
+.installation-proof article:hover {
+  transform: translateX(6px);
+}
+
+.installation-proof strong {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 122, 26, .45);
+  border-radius: 50%;
+  color: var(--orange);
+  font-size: 12px;
+}
+
+.installation-proof span {
+  color: rgba(255, 255, 255, .88);
+  font-weight: 850;
+}
+
 .install-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  align-content: center;
 }
 
 .install-grid article {
-  padding: 22px;
+  min-height: 220px;
+  padding: 24px;
   border: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, .07);
+  backdrop-filter: blur(12px);
+  transition: transform .25s ease, background .25s ease, border-color .25s ease;
+}
+
+.install-grid article:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 122, 26, .45);
+  background: rgba(255, 255, 255, .1);
+}
+
+.install-grid article:last-child {
+  grid-column: 1 / -1;
+}
+
+.install-grid article > span {
+  display: block;
+  margin-bottom: 28px;
+  color: rgba(255, 255, 255, .45);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
 }
 
 .install-grid i {
@@ -304,15 +496,59 @@
   margin: 14px 0 8px;
 }
 
+@keyframes hero-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy,
+  .plans-intro,
+  .plan-card {
+    opacity: 1;
+    animation: none;
+  }
+
+  .plan-card,
+  .plan-card:hover,
+  .plan-card.popular:hover,
+  .plan-card button,
+  .installation-proof article,
+  .install-grid article {
+    transform: none;
+    transition: none;
+  }
+}
+
 @media (max-width: 980px) {
   .plans-grid,
-  .installation,
-  .install-grid {
+  .installation {
     grid-template-columns: 1fr;
   }
 
-  .plan-card.popular {
-    transform: none;
+  .install-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .install-grid article:last-child {
+    grid-column: auto;
   }
 
   .nav-actions a:not(.trial-link) {
@@ -327,10 +563,15 @@
 
   .pricing-hero {
     padding-top: 54px;
+    background-position: 62% center;
   }
 
   .plan-card {
     min-height: auto;
     padding: 22px;
+  }
+
+  .install-grid {
+    grid-template-columns: 1fr;
   }
 }

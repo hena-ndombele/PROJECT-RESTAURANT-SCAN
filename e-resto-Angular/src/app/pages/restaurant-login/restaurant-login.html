@@ -1,16 +1,48 @@
-<main class="login-page">
-  <a class="brand" routerLink="/"><img src="assets/logo/e-resto-logo.png" alt="">E-RESTO</a>
-  <section>
-    <span>Restaurant sign in</span>
-    <h1>Connectez-vous a votre espace</h1>
-    <button class="google" type="button" (click)="googleLogin()"><i class="bi bi-google"></i> Continuer avec Google</button>
-    <div class="divider">ou</div>
-    <form (ngSubmit)="login()">
-      <input [(ngModel)]="email" name="email" type="email" placeholder="Email">
-      <input [(ngModel)]="password" name="password" type="password" placeholder="Mot de passe">
-      <button [disabled]="loading">{{ loading ? 'Connexion...' : 'Se connecter' }}</button>
-      <p *ngIf="message">{{ message }}</p>
-    </form>
-    <a routerLink="/pricing">Pas encore de compte ? Choisir un plan</a>
+<main class="auth-page">
+  <aside class="auth-visual">
+    <a class="visual-brand" routerLink="/">
+      <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+      <span>E-RESTO</span>
+    </a>
+    <div class="visual-copy">
+      <span>Restaurant SaaS</span>
+      <h2>Le service reste fluide, meme aux heures de pointe.</h2>
+      <p>Retrouvez vos commandes, vos tables et vos rapports dans un espace pense pour votre equipe.</p>
+    </div>
+  </aside>
+
+  <section class="auth-panel">
+    <div class="auth-card">
+      <a class="form-logo" routerLink="/" aria-label="Retour a l'accueil">
+        <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+      </a>
+      <span class="eyebrow">Espace restaurant</span>
+      <h1>Heureux de vous revoir</h1>
+      <p class="intro">Connectez-vous pour reprendre le pilotage de votre restaurant.</p>
+
+      <div class="google-shell" [class.loading]="googleLoading">
+        <div #googleButton class="google-button"></div>
+        <small *ngIf="!googleEnabled">Configurez Google pour activer cette connexion.</small>
+      </div>
+
+      <div class="divider"><span>ou avec votre email</span></div>
+
+      <form (ngSubmit)="login()">
+        <label>
+          <span>Adresse email</span>
+          <input [(ngModel)]="email" name="email" type="email" placeholder="nom@email.com" autocomplete="email" required>
+        </label>
+        <label>
+          <span>Mot de passe</span>
+          <input [(ngModel)]="password" name="password" type="password" placeholder="Votre mot de passe" autocomplete="current-password" required>
+        </label>
+        <button class="primary-action" type="submit" [disabled]="loading || googleLoading">
+          {{ loading ? 'Connexion...' : 'Se connecter' }}
+        </button>
+        <p class="message" *ngIf="message">{{ message }}</p>
+      </form>
+
+      <p class="switch-link">Pas encore de compte ? <a routerLink="/pricing">Choisir un plan</a></p>
+    </div>
   </section>
 </main>

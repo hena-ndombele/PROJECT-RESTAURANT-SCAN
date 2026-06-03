@@ -49,12 +49,20 @@ export class SaasService {
     return this.http.post<any>(`${this.apiUrl}/signup`, payload);
   }
 
-  checkoutMobileMoney(payload: { restaurant_id: string; provider: string; wallet_id: string }): Observable<any> {
+  checkoutMobileMoney(payload: { restaurant_id: string; provider: string; wallet_id: string; billing_cycle: 'monthly' | 'yearly' }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/checkout/mobile-money`, payload);
   }
 
   login(payload: { email: string; password: string }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/login`, payload);
+  }
+
+  googleConfig(): Observable<{ enabled: boolean; client_id: string | null }> {
+    return this.http.get<{ enabled: boolean; client_id: string | null }>(`${this.apiUrl}/google/config`);
+  }
+
+  googleLogin(credential: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/google/login`, { credential });
   }
 
   currentRestaurant(): Observable<any> {

@@ -21,6 +21,35 @@ export class RestaurantCheckout {
 
   constructor(private router: Router, private saas: SaasService) {}
 
+  get planName(): string {
+    return this.restaurant.plan?.name || this.selectedPlan.name || 'Plan E-RESTO';
+  }
+
+  get monthlyPrice(): number {
+    return Number(this.restaurant.plan?.monthly_price ?? this.selectedPlan.monthly_price ?? this.selectedPlan.price ?? 0);
+  }
+
+  get currency(): string {
+    return this.restaurant.plan?.currency || this.selectedPlan.currency || 'USD';
+  }
+
+  get billingCycle(): 'monthly' | 'yearly' {
+    return this.selectedPlan.cycle === 'yearly' ? 'yearly' : 'monthly';
+  }
+
+  get paymentAmount(): number {
+    return this.billingCycle === 'yearly' ? this.monthlyPrice * 10 : this.monthlyPrice;
+  }
+
+  get monthlyEquivalent(): number {
+    return this.billingCycle === 'yearly' ? this.paymentAmount / 12 : this.monthlyPrice;
+  }
+
+  get installationFee(): number {
+    const slug = String(this.restaurant.plan?.slug || this.planName).toLowerCase();
+    return Number(this.selectedPlan.installation_fee ?? (slug.includes('business') ? 30_000 : 20_000));
+  }
+
   pay(): void {
     if (!this.restaurant.id) {
       this.router.navigate(['/restaurant/signup']);
@@ -33,10 +62,12 @@ export class RestaurantCheckout {
     }
 
     this.paying = true;
+    this.message = '';
     this.saas.checkoutMobileMoney({
       restaurant_id: this.restaurant.id,
       provider: this.mobile.provider,
       wallet_id: this.mobile.wallet_id,
+      billing_cycle: this.billingCycle,
     }).subscribe({
       next: (response) => {
         this.paymentResponse = response.maishapay;

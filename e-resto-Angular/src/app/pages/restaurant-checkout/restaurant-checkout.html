@@ -5,9 +5,18 @@
       <span>Etape 2 sur 2</span>
       <h1>Activez votre abonnement</h1>
       <p>Restaurant : <strong>{{ restaurant.name || 'Votre restaurant' }}</strong></p>
-      <p>Plan choisi : <strong>{{ restaurant.plan?.name || selectedPlan.name || 'Plan E-RESTO' }}</strong></p>
-      <p>Montant : <strong>{{ restaurant.plan?.monthly_price || selectedPlan.price || 0 }} {{ restaurant.plan?.currency || 'USD' }}/mois</strong></p>
-      <small>Le paiement Mobile Money active automatiquement votre espace restaurant.</small>
+      <p>Plan choisi : <strong>{{ planName }}</strong></p>
+      <div class="amount-summary">
+        <span>Cycle de facturation</span>
+        <strong>{{ billingCycle === 'yearly' ? 'Annuel' : 'Mensuel' }}</strong>
+        <span>{{ billingCycle === 'yearly' ? 'Equivalent mensuel' : 'Abonnement mensuel' }}</span>
+        <strong>{{ monthlyEquivalent | number:'1.0-2' }} {{ currency }}</strong>
+        <span>Montant debite maintenant</span>
+        <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
+        <span>Installation unique</span>
+        <strong>{{ installationFee | number:'1.0-0' }} FC</strong>
+      </div>
+      <small>{{ billingCycle === 'yearly' ? 'Vous profitez de 12 mois d acces pour le prix de 10 mois.' : 'Le paiement active un mois d acces.' }} Les frais d'installation sont factures separement.</small>
     </div>
     <form (ngSubmit)="pay()">
       <label>Operateur

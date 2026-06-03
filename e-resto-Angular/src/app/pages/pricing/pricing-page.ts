@@ -1,8 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { SaasOverview, SaasPlan } from '../../models/saas/saas.models';
+import { SaasPlan } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
+
+type PricingPlan = SaasPlan & {
+  installation_fee: number;
+  limitations: string[];
+};
 
 @Component({
   selector: 'app-pricing-page',
@@ -11,100 +16,104 @@ import { SaasService } from '../../services/saas/saas-service';
   templateUrl: './pricing-page.html',
   styleUrl: './pricing-page.scss',
 })
-export class PricingPage implements OnInit {
-  overview?: SaasOverview;
-  plans: SaasPlan[] = [
+export class PricingPage {
+  plans: PricingPlan[] = [
     {
-      id: 'starter-preview',
+      id: 'starter',
       name: 'Starter',
       slug: 'starter',
-      description: 'Ideal pour les petits restaurants qui demarrent',
-      monthly_price: 9_900,
-      currency: 'FCFA',
+      description: 'Pour lancer un service digital simple, rapide et professionnel.',
+      monthly_price: 15,
+      currency: 'USD',
       max_restaurants: 1,
-      max_tables: 10,
-      max_users: 2,
-      features: ['Menu digital QR code', "Jusqu'a 30 plats", '200 commandes/mois', 'Gestion des commandes', 'Sur place / Emporter'],
+      max_tables: 8,
+      max_users: 5,
+      features: ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Sur place / Emporter', 'Support standard'],
+      installation_fee: 20_000,
+      limitations: ['Pas de statistiques', 'Pas de personnalisation', 'Pas de multi-restaurant'],
       is_popular: false,
     },
     {
-      id: 'pro-preview',
+      id: 'pro',
       name: 'Pro',
       slug: 'pro',
-      description: 'Le plan complet pour les restaurants etablis',
-      monthly_price: 14_900,
-      currency: 'FCFA',
+      description: 'Pour automatiser le service et piloter un restaurant en croissance.',
+      monthly_price: 25,
+      currency: 'USD',
       max_restaurants: 1,
-      max_tables: 40,
-      max_users: 6,
-      features: ['Tout le plan Starter', 'Plats illimites', 'Commandes illimitees', 'Statistiques detaillees', 'Couleurs personnalisees', 'Feedback clients'],
+      max_tables: 20,
+      max_users: 15,
+      features: ['Commandes illimitees', 'Plats illimites', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire'],
+      installation_fee: 20_000,
+      limitations: ['Pas de multi-etablissement'],
       is_popular: true,
     },
     {
-      id: 'business-preview',
+      id: 'business',
       name: 'Business',
       slug: 'business',
-      description: 'Pour les restaurants qui veulent une equipe performante',
-      monthly_price: 19_900,
-      currency: 'FCFA',
-      max_restaurants: 1,
-      max_tables: 100,
-      max_users: 12,
-      features: ['Tout le plan Pro', 'Analytiques avancees', 'Multi-utilisateurs et roles', 'Rapports PDF et Excel', 'Support dedie'],
+      description: 'Pour les equipes structurees et les restaurants multi-sites.',
+      monthly_price: 30,
+      currency: 'USD',
+      max_restaurants: 5,
+      max_tables: 20,
+      max_users: 15,
+      features: ['Tout le plan Pro', 'Statistiques avancees', 'Multi-utilisateurs et roles', 'Support dedie', 'Onboarding personnalise', 'Multi-restaurants'],
+      installation_fee: 30_000,
+      limitations: [],
       is_popular: false,
     },
   ];
-  loadingPlans = false;
   errorMessage = '';
-  billingCycle: 'monthly' | 'yearly' = 'yearly';
+  selectingPlanSlug = '';
+  billingCycle: 'monthly' | 'yearly' = 'monthly';
 
   constructor(private saas: SaasService, private router: Router) {}
 
-  ngOnInit(): void {
-    this.loadPlans();
-    this.saas.overview().subscribe({
-      next: (overview) => {
-        this.overview = overview;
-        if (!this.plans.length) {
-          this.plans = overview.plans ?? [];
-        }
-      },
-      error: () => undefined,
-    });
-  }
-
-  loadPlans(): void {
-    this.loadingPlans = false;
+  choosePlan(plan: PricingPlan): void {
     this.errorMessage = '';
+    this.selectingPlanSlug = plan.slug;
 
     this.saas.plans().subscribe({
       next: (plans) => {
-        if (plans.length) {
-          this.plans = plans;
+        const backendPlan = plans.find((candidate) => candidate.slug === plan.slug);
+
+        if (!backendPlan) {
+          this.errorMessage = `Le plan ${plan.name} est temporairement indisponible.`;
+          this.selectingPlanSlug = '';
+          return;
         }
-        this.loadingPlans = false;
+
+        localStorage.setItem('selected_plan', JSON.stringify({
+          id: backendPlan.id,
+          name: plan.name,
+          slug: backendPlan.slug,
+          price: this.paymentAmount(plan),
+          monthly_price: Number(backendPlan.monthly_price),
+          currency: backendPlan.currency,
+          installation_fee: plan.installation_fee,
+          cycle: this.billingCycle,
+        }));
+        const hasAccount = !!localStorage.getItem('restaurant_account');
+        this.router.navigate([hasAccount ? '/restaurant/checkout' : '/restaurant/signup'], {
+          queryParams: { plan: backendPlan.id, cycle: this.billingCycle },
+        });
       },
       error: () => {
-        this.errorMessage = "Les plans exacts seront synchronises des que l'API sera disponible.";
-        this.loadingPlans = false;
+        this.errorMessage = 'Impossible de selectionner ce plan pour le moment. Reessayez dans quelques instants.';
+        this.selectingPlanSlug = '';
       },
     });
   }
 
-  choosePlan(plan: SaasPlan): void {
-    if (plan.id.endsWith('-preview')) {
-      this.errorMessage = "Demarrez l'API backend pour selectionner ce plan.";
-      return;
-    }
-
-    localStorage.setItem('selected_plan', JSON.stringify({ id: plan.id, name: plan.name, price: this.displayPrice(plan), cycle: this.billingCycle }));
-    const hasAccount = !!localStorage.getItem('restaurant_account');
-    this.router.navigate([hasAccount ? '/restaurant/checkout' : '/restaurant/signup'], { queryParams: { plan: plan.id, cycle: this.billingCycle } });
+  displayPrice(plan: SaasPlan): number {
+    const monthlyPrice = Number(plan.monthly_price ?? 0);
+    return this.billingCycle === 'yearly' ? monthlyPrice * 10 / 12 : monthlyPrice;
   }
 
-  displayPrice(plan: SaasPlan): number {
-    const price = Number(plan.monthly_price ?? 0);
-    return this.billingCycle === 'yearly' ? Math.round(price * 0.75) : price;
+  paymentAmount(plan: SaasPlan): number {
+    const monthlyPrice = Number(plan.monthly_price ?? 0);
+    return this.billingCycle === 'yearly' ? monthlyPrice * 10 : monthlyPrice;
   }
 
   displayCurrency(plan: SaasPlan): string {
