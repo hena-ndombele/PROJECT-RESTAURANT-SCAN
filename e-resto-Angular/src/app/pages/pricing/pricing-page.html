@@ -1,59 +1,65 @@
 <main class="pricing-page">
   <nav class="topnav">
-    <a class="brand" routerLink="/"><img src="assets/logo/e-resto-logo.png" alt="E-RESTO">E-RESTO</a>
-    <div>
+    <a class="brand" routerLink="/">
+      <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+      <span>E-RESTO</span>
+    </a>
+    <div class="nav-actions">
       <a routerLink="/">Accueil</a>
-      <a routerLink="/pricing">Pricing</a>
-      <a routerLink="/restaurant/login">Sign in</a>
+      <a routerLink="/restaurant/login">Connexion</a>
+      <a class="trial-link" routerLink="/restaurant/signup">Essai gratuit →</a>
     </div>
   </nav>
 
   <section class="pricing-hero">
-    <span>PRICING</span>
-    <h1>Votre toolkit restaurant complet, a partir de $0</h1>
-    <p>Choisissez un plan riche en valeur. Pas de frais caches, pas de contrat bloque. Changez ou annulez quand vous voulez.</p>
+    <span class="eyebrow">Tarifs</span>
+    <h1>Un menu digital pro pour chaque restaurant</h1>
+    <p>Choisissez le plan adapte a votre etablissement. Votre menu QR, vos commandes, vos paiements et vos rapports restent connectes au meme espace.</p>
+    <strong>14 jours d'essai gratuit — sans carte bancaire</strong>
   </section>
 
   <section class="plans-shell">
-    <div class="billing-toggle">
+    <div class="billing-toggle" aria-label="Choisir le cycle de facturation">
       <button [class.active]="billingCycle === 'monthly'" type="button" (click)="billingCycle = 'monthly'">Mensuel</button>
-      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="billingCycle = 'yearly'">Annuel -25%</button>
+      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="billingCycle = 'yearly'">Annuel</button>
     </div>
 
+    <p class="sync-note" *ngIf="errorMessage">{{ errorMessage }}</p>
+
     <div class="plans-grid">
-      <article class="plan-card" *ngFor="let plan of overview?.plans" [class.popular]="plan.is_popular">
-        <div class="card-head">
-          <h2>{{ plan.name }}</h2>
-          <span *ngIf="plan.is_popular">BEST VALUE</span>
-        </div>
+      <article class="plan-card" *ngFor="let plan of plans" [class.popular]="plan.is_popular">
+        <span class="popular-badge" *ngIf="plan.is_popular">⭐ Le plus populaire</span>
+        <h2>{{ plan.name }}</h2>
         <p>{{ plan.description }}</p>
-        <div class="separator"></div>
+
         <div class="price">
-          <strong>${{ displayPrice(plan) }}</strong><em>/mo.</em>
+          <strong>{{ displayPrice(plan) | number:'1.0-0' }}</strong>
+          <span>{{ displayCurrency(plan) }}</span>
         </div>
-        <small>{{ billingCycle === 'yearly' ? 'facture annuellement apres essai gratuit' : 'facture mensuellement apres essai gratuit' }}</small>
-        <button (click)="choosePlan(plan)">Start free trial</button>
-        <a (click)="choosePlan(plan)">Creer un compte restaurant</a>
-        <div class="features">
-          <h3>Inclus</h3>
-          <p><i class="bi bi-check2"></i>{{ plan.max_tables }} tables QR</p>
-          <p><i class="bi bi-check2"></i>{{ plan.max_users }} utilisateurs equipe</p>
-          <p *ngFor="let feature of plan.features"><i class="bi bi-check2"></i>{{ feature }}</p>
-        </div>
-        <div class="rates">
-          <b>Frais carte</b>
-          <span>{{ plan.is_popular ? '1.8%' : '1.95%' }} + $0.20 online</span>
-          <span>{{ plan.slug === 'enterprise' ? '0.6%' : '1%' }} paiement externe</span>
-        </div>
+        <small>{{ billingCycle === 'yearly' ? 'par mois, facture annuellement' : 'par mois' }}</small>
+        <em>soit {{ (displayPrice(plan) / 30) | number:'1.0-0' }} {{ displayCurrency(plan) }}/jour</em>
+
+        <ul>
+          <li><i class="bi bi-check-circle-fill"></i>{{ plan.max_tables }} tables QR</li>
+          <li><i class="bi bi-check-circle-fill"></i>{{ plan.max_users }} utilisateurs equipe</li>
+          <li *ngFor="let feature of plan.features"><i class="bi bi-check-circle-fill"></i>{{ feature }}</li>
+        </ul>
+
+        <button type="button" (click)="choosePlan(plan)">Commencer gratuitement →</button>
       </article>
     </div>
   </section>
 
-  <section class="compare">
-    <h2>Comparez ce que chaque restaurant obtient</h2>
-    <div class="compare-row"><span>Menu QR responsive</span><b>Tous les plans</b></div>
-    <div class="compare-row"><span>Commandes temps reel</span><b>Pro et Enterprise</b></div>
-    <div class="compare-row"><span>Rapports avances</span><b>Pro et Enterprise</b></div>
-    <div class="compare-row"><span>Multi-restaurants</span><b>Enterprise</b></div>
+  <section class="installation">
+    <div>
+      <span class="eyebrow">Installation offerte</span>
+      <h2>Votre restaurant devient operationnel rapidement</h2>
+      <p>Configurez vos tables, ajoutez vos plats, imprimez vos QR codes et recevez les commandes en temps reel depuis le dashboard.</p>
+    </div>
+    <div class="install-grid">
+      <article><i class="bi bi-qr-code"></i><h3>QR codes</h3><p>Un QR code propre par table.</p></article>
+      <article><i class="bi bi-bell"></i><h3>Notifications</h3><p>Commande, addition et annulation en temps reel.</p></article>
+      <article><i class="bi bi-bar-chart"></i><h3>Rapports</h3><p>PDF, Excel et stats par devise.</p></article>
+    </div>
   </section>
 </main>

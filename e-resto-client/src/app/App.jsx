@@ -248,12 +248,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!activeOrder?.id || !canShowFeedbackForOrder(activeOrder)) return;
+    if (!brand.can_feedback || !activeOrder?.id || !canShowFeedbackForOrder(activeOrder)) return;
     if (localStorage.getItem(`${FEEDBACK_STORAGE_PREFIX}${activeOrder.id}`)) return;
 
     const feedbackTimer = window.setTimeout(() => setFeedbackOrder(activeOrder), 600);
     return () => window.clearTimeout(feedbackTimer);
-  }, [activeOrder?.id, activeOrder?.status, activeOrder?.order_type]);
+  }, [brand.can_feedback, activeOrder?.id, activeOrder?.status, activeOrder?.order_type]);
 
   const filteredPlats = menu.plats.filter((plat) => {
     const matchesCategory = selectedCategory === 'all' || plat.category?.id === selectedCategory;
@@ -310,7 +310,7 @@ export function App() {
       <GallerySection />
       <ChefsSection />
       <TestimonialsSection />
-      <ReservationSection tableId={tableId} restaurantSlug={restaurantSlug} brand={brand} />
+      <ReservationSection tableId={tableId} restaurantSlug={restaurantSlug || brand.slug} brand={brand} />
       <OrderRecoverySection
         tableId={tableId}
         activeOrder={activeOrder}
@@ -413,7 +413,7 @@ export function App() {
       />
       <CancelledOrderModal order={cancelledOrderModal} onClose={() => setCancelledOrderModal(null)} />
       <FeedbackModal
-        order={feedbackOrder}
+        order={brand.can_feedback ? feedbackOrder : null}
         restaurantName={brand.name}
         onClose={(submitted = false) => {
           if (feedbackOrder?.id) {
@@ -1803,12 +1803,14 @@ function buildClientBrand(restaurant) {
 
   return {
     name: hasCustomBranding ? (customName || restaurant.name || 'E-RESTO') : 'E-RESTO',
+    slug: restaurant.slug || '',
     logo_url: restaurant.logo_url || '/img/logo/e-resto-logo.png',
     slogan: hasCustomBranding ? (settings.slogan || restaurant.slogan || '') : 'Menu digital pour restaurant',
     description: hasCustomBranding ? (settings.description || restaurant.description || 'Menu digital QR code') : 'Scannez, commandez et suivez votre commande avec E-RESTO.',
     owner_phone: restaurant.owner_phone || '',
     address: restaurant.address || '',
     city: restaurant.city || '',
+    can_feedback: Boolean(restaurant.can_feedback),
     theme: {
       primary: theme.primary || '#F9A11B',
       secondary: theme.secondary || '#111111',
@@ -1985,6 +1987,7 @@ function OrderSnackbar({ snackbar, onClose }) {
 
 function ReservationSection({ tableId, restaurantSlug, brand }) {
   const today = new Date().toISOString().slice(0, 10);
+  const canReserve = Boolean(tableId || restaurantSlug);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -2036,7 +2039,12 @@ function ReservationSection({ tableId, restaurantSlug, brand }) {
                 <div className="col-sm-6"><label className="flbl">Date *</label><input className="fctrl" type="date" min={today} value={form.reservation_date} onChange={(event) => setForm({ ...form, reservation_date: event.target.value })} required /></div>
                 <FormInput label="Time *" type="time" value={form.reservation_time} onChange={(reservation_time) => setForm({ ...form, reservation_time })} required />
                 <div className="col-12"><label className="flbl">Special Requests</label><textarea className="fctrl" rows="3" value={form.special_requests} onChange={(event) => setForm({ ...form, special_requests: event.target.value })} placeholder="Anniversaire, terrasse, allergies, chaise enfant..." /></div>
-                <div className="col-12"><button className="btn-red w-100 justify-content-center" disabled={status.type === 'loading'}><i className="fas fa-calendar-check"></i>{status.type === 'loading' ? 'Envoi...' : 'Demander la reservation'}</button></div>
+                {!canReserve && (
+                  <div className="col-12">
+                    <div className="client-alert">Ouvrez le lien public du restaurant ou scannez un QR code pour envoyer une reservation au bon restaurant.</div>
+                  </div>
+                )}
+                <div className="col-12"><button className="btn-red w-100 justify-content-center" disabled={!canReserve || status.type === 'loading'}><i className="fas fa-calendar-check"></i>{status.type === 'loading' ? 'Envoi...' : 'Demander la reservation'}</button></div>
               </div>
               {status.message && <div className={`sucmsg visible ${status.type}`}><i className="fas fa-check-circle"></i><p>{status.message}</p></div>}
               {reservationRef && <p className="reservation-ref">Reference reservation : <strong>#{reservationRef}</strong></p>}

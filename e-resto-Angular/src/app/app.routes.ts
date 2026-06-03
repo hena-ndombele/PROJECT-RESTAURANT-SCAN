@@ -10,15 +10,12 @@ import {ListCategory} from "./features/category/list-category/list-category";
 import {ListRole} from "./features/identity/roles/list-role/list-role";
 import {Dashboard} from "./features/dashboard/dashboard";
 import {AuthGuard} from "./guards/auth/auth-guard-guard";
-import {Login} from "./features/auth/login/login";
-import {Otp} from "./features/auth/otp/otp";
 import {ListTable} from "./features/tables/list-table/list-table";
 import {CreateDish} from "./features/dish/create-dish/create-dish";
 import {ListFeedback} from "./features/feedback/list-feedback/list-feedback";
 import {AccountRequestList} from "./features/account-request/account-request-list/account-request-list";
 import {ListOrders} from "./features/orders/list-orders/list-orders";
 import {Profile} from "./features/auth/profile/profile";
-import {guestGuard} from "./guards/auth/guest-guard";
 import {FloorTable} from "./features/tables/floor-table/floor-table";
 import {Reservation} from "./features/tables/reservation/reservation";
 import {ShowDish} from "./features/dish/show-dish/show-dish";
@@ -69,10 +66,8 @@ export const routes: Routes = [
     ]
   },
 
-
-  { path: 'auth/login', component: Login, title: 'Login - E-Resto', canActivate:[guestGuard] },
-  { path: 'auth/otp', component: Otp, title: 'Otp - E-Resto', canActivate:[guestGuard] },
-
+  { path: 'auth/login', redirectTo: '/restaurant/login' },
+  { path: 'auth/otp', redirectTo: '/restaurant/login' },
 
 
   { path: '404-error', component: NotFoundPageComponent, title: '404 Error' },

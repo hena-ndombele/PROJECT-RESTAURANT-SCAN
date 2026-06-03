@@ -7,6 +7,7 @@ use App\Mail\RestaurantAccountCreatedMail;
 use App\Models\AccountRequest;
 use App\Models\ContactMessage;
 use App\Models\Feedback;
+use App\Models\NewsletterSubscriber;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Restaurant;
@@ -18,6 +19,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -54,6 +56,30 @@ class SaasController extends Controller
         $this->ensureDefaultPlans();
 
         return response()->json(SaasPlan::where('is_active', true)->orderBy('monthly_price')->get());
+    }
+
+    public function newsletterSubscribe(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|max:190',
+            'source' => 'nullable|string|max:80',
+        ]);
+
+        $subscriber = NewsletterSubscriber::updateOrCreate(
+            ['email' => strtolower($validated['email'])],
+            [
+                'source' => $validated['source'] ?? 'saas_landing',
+                'status' => 'subscribed',
+                'subscribed_at' => now(),
+                'ip_address' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Inscription newsletter confirmee.',
+            'subscriber' => $subscriber,
+        ], $subscriber->wasRecentlyCreated ? 201 : 200);
     }
 
     public function storePlan(Request $request)
@@ -154,10 +180,19 @@ class SaasController extends Controller
                 'currency' => $plan->currency,
             ]);
 
-            Mail::to($user->email)->send(new RestaurantAccountCreatedMail(
-                $user,
-                $restaurant->fresh(['plan', 'subscription'])
-            ));
+            try {
+                Mail::to($user->email)->send(new RestaurantAccountCreatedMail(
+                    $user,
+                    $restaurant->fresh(['plan', 'subscription'])
+                ));
+            } catch (\Throwable $mailError) {
+                Log::warning('Email de bienvenue non envoye pendant le signup SaaS.', [
+                    'restaurant_id' => $restaurant->id,
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $mailError->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'restaurant' => $restaurant->load(['plan', 'subscription']),

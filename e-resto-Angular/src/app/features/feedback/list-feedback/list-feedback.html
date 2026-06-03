@@ -17,28 +17,38 @@
     </button>
   </header>
 
-  <section class="feedback-summary mb-4">
-    <article>
-      <span>Avis recus</span>
-      <strong>{{ filteredFeedbacks().length }}</strong>
-      <small>Selon les filtres actifs</small>
-    </article>
-    <article>
-      <span>Note moyenne</span>
-      <strong>{{ averageScore() | number:'1.1-1' }}/5</strong>
-      <small>Plats, service et commande</small>
-    </article>
-    <article>
-      <span>Recommandation</span>
-      <strong>{{ recommendRate() }}%</strong>
-      <small>Clients qui recommandent</small>
-    </article>
-  </section>
+  @if (upgradeRequired()) {
+    <section class="upgrade-card mb-4">
+      <div class="upgrade-icon"><i class="bi bi-lock-fill"></i></div>
+      <div>
+        <h2>Feedback reserve aux plans Pro et Business</h2>
+        <p>Les avis clients font partie des outils de qualite et fidelisation avances. Passez sur Pro ou Business pour collecter, analyser et suivre les retours clients.</p>
+      </div>
+    </section>
+  } @else {
+    <section class="feedback-summary mb-4">
+      <article>
+        <span>Avis recus</span>
+        <strong>{{ filteredFeedbacks().length }}</strong>
+        <small>Selon les filtres actifs</small>
+      </article>
+      <article>
+        <span>Note moyenne</span>
+        <strong>{{ averageScore() | number:'1.1-1' }}/5</strong>
+        <small>Plats, service et commande</small>
+      </article>
+      <article>
+        <span>Recommandation</span>
+        <strong>{{ recommendRate() }}%</strong>
+        <small>Clients qui recommandent</small>
+      </article>
+    </section>
+  }
 
-  <div class="card border-0 shadow-sm mb-4">
+  <div class="card border-0 shadow-sm mb-4" *ngIf="!upgradeRequired()">
     <div class="card-body">
       <div class="row g-3 align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label small fw-bold text-muted text-uppercase">Recommandation</label>
           <select class="form-select bg-transparent" [ngModel]="recommendationFilter()" (ngModelChange)="recommendationFilter.set($event)">
             <option value="all">Tous</option>
@@ -46,7 +56,7 @@
             <option value="no">Ne recommande pas</option>
           </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label small fw-bold text-muted text-uppercase">Note minimale</label>
           <select class="form-select bg-transparent" [ngModel]="minRating()" (ngModelChange)="minRating.set(+$event)">
             <option [value]="0">Toutes</option>
@@ -55,50 +65,113 @@
             <option [value]="5">5 etoiles</option>
           </select>
         </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold text-muted text-uppercase">Recherche</label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+            <input class="form-control bg-transparent" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Table, client, commentaire...">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-outline-secondary w-100" type="button" (click)="recommendationFilter.set('all'); minRating.set(0); searchTerm.set('')">Reset</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="alert alert-danger border-0 shadow-sm" *ngIf="errorMessage()">{{ errorMessage() }}</div>
+  <div class="alert alert-danger border-0 shadow-sm" *ngIf="errorMessage() && !upgradeRequired()">{{ errorMessage() }}</div>
 
-  @if (loading()) {
-    <div class="feedback-loading">
-      <div class="spinner-border text-primary" role="status"></div>
-      <p class="mt-2 text-muted fw-medium">Chargement des avis...</p>
-    </div>
-  } @else {
-    <section class="feedback-grid">
-      @for (feedback of filteredFeedbacks(); track feedback.id) {
-        <article class="feedback-card">
-          <div class="feedback-card-head">
-            <div>
-              <strong>{{ tableName(feedback) }}</strong>
-              <span>{{ orderRef(feedback) }} · {{ feedback.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
-            </div>
-            <span class="rating-pill">{{ averageRating(feedback) | number:'1.1-1' }}/5</span>
-          </div>
-
-          <div class="rating-lines">
-            <div><span>Plats</span><strong>{{ feedback.food_rating }}/5</strong></div>
-            <div><span>Service</span><strong>{{ feedback.service_rating }}/5</strong></div>
-            <div><span>Commande</span><strong>{{ feedback.ordering_rating }}/5</strong></div>
-          </div>
-
-          <div class="recommend-badge" [class.no]="feedback.recommended === false">
-            <i class="bi" [ngClass]="feedback.recommended === false ? 'bi-hand-thumbs-down-fill' : 'bi-hand-thumbs-up-fill'"></i>
-            {{ feedback.recommended === false ? 'Ne recommande pas' : 'Recommande' }}
-          </div>
-
-          @if (feedback.comment) {
-            <p class="feedback-comment">{{ feedback.comment }}</p>
-          }
-        </article>
-      } @empty {
-        <div class="empty-feedback">
-          <i class="bi bi-chat-square-heart"></i>
-          <h5>Aucun avis pour le moment</h5>
+  @if (!upgradeRequired()) {
+    @if (loading()) {
+      <div class="feedback-loading">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted fw-medium">Chargement des avis...</p>
+      </div>
+    } @else {
+      <div class="card border-0 shadow-sm feedback-table-card">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0 feedback-table">
+            <thead>
+              <tr>
+                <th>Table</th>
+                <th>Commande</th>
+                <th>Note moyenne</th>
+                <th>Plats</th>
+                <th>Service</th>
+                <th>Commande QR</th>
+                <th>Recommandation</th>
+                <th>Date</th>
+                <th class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (feedback of filteredFeedbacks(); track feedback.id) {
+                <tr>
+                  <td><strong>{{ tableName(feedback) }}</strong></td>
+                  <td>{{ orderRef(feedback) }}</td>
+                  <td><span class="rating-pill">{{ averageRating(feedback) | number:'1.1-1' }}/5</span></td>
+                  <td>{{ feedback.food_rating }}/5</td>
+                  <td>{{ feedback.service_rating }}/5</td>
+                  <td>{{ feedback.ordering_rating }}/5</td>
+                  <td>
+                    <span class="recommend-badge" [class.no]="feedback.recommended === false">
+                      {{ recommendationLabel(feedback) }}
+                    </span>
+                  </td>
+                  <td>{{ feedback.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="text-end">
+                    <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="selectedFeedback.set(feedback)" title="Voir le detail">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="9" class="text-center py-5">
+                    <i class="bi bi-chat-square-heart empty-icon"></i>
+                    <h5>Aucun avis pour le moment</h5>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
-      }
-    </section>
+      </div>
+    }
+  }
+
+  @if (selectedFeedback(); as feedback) {
+    <div class="feedback-modal-backdrop">
+      <div class="feedback-detail-modal">
+        <div class="feedback-modal-hero">
+          <div>
+            <span>{{ orderRef(feedback) }}</span>
+            <h2>{{ tableName(feedback) }}</h2>
+            <p>{{ feedback.created_at | date:'dd MMM yyyy HH:mm' }}</p>
+          </div>
+          <button class="btn btn-light" type="button" (click)="closeModal()"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-grid">
+            <div><span>Note moyenne</span><strong>{{ averageRating(feedback) | number:'1.1-1' }}/5</strong></div>
+            <div><span>Recommandation</span><strong>{{ recommendationLabel(feedback) }}</strong></div>
+            <div><span>Qualite plats</span><strong>{{ feedback.food_rating }}/5</strong></div>
+            <div><span>Rapidite service</span><strong>{{ feedback.service_rating }}/5</strong></div>
+            <div><span>Facilite commande</span><strong>{{ feedback.ordering_rating }}/5</strong></div>
+            <div><span>Total commande</span><strong>{{ feedback.order?.total_amount || 0 }} {{ feedback.order?.currency || '' }}</strong></div>
+          </div>
+
+          <div class="feedback-comment mt-3">
+            <strong>Commentaire client</strong>
+            <p>{{ feedback.comment || 'Aucun commentaire.' }}</p>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 justify-content-end">
+          <button class="btn btn-secondary" type="button" (click)="closeModal()">Fermer</button>
+        </div>
+      </div>
+    </div>
   }
 </div>

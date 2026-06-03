@@ -34,14 +34,18 @@ export class ListFeedback implements OnInit {
   private readonly http = inject(HttpClient);
 
   feedbacks = signal<Feedback[]>([]);
+  selectedFeedback = signal<Feedback | null>(null);
   loading = signal(false);
   errorMessage = signal("");
+  upgradeRequired = signal(false);
   recommendationFilter = signal<"all" | "yes" | "no">("all");
   minRating = signal<number>(0);
+  searchTerm = signal("");
 
   filteredFeedbacks = computed(() => {
     const recommendation = this.recommendationFilter();
     const min = Number(this.minRating() || 0);
+    const term = this.searchTerm().trim().toLowerCase();
 
     return this.feedbacks().filter((feedback) => {
       const avg = this.averageRating(feedback);
@@ -49,8 +53,15 @@ export class ListFeedback implements OnInit {
       const matchesRecommendation = recommendation === "all"
         || (recommendation === "yes" && feedback.recommended === true)
         || (recommendation === "no" && feedback.recommended === false);
+      const haystack = [
+        this.tableName(feedback),
+        this.orderRef(feedback),
+        feedback.customer_name,
+        feedback.customer_phone,
+        feedback.comment,
+      ].join(" ").toLowerCase();
 
-      return matchesRating && matchesRecommendation;
+      return matchesRating && matchesRecommendation && (!term || haystack.includes(term));
     });
   });
 
@@ -73,6 +84,7 @@ export class ListFeedback implements OnInit {
   loadFeedbacks(): void {
     this.loading.set(true);
     this.errorMessage.set("");
+    this.upgradeRequired.set(false);
 
     this.http.get<any>(`${API_ROOT}/feedbacks`).subscribe({
       next: (response) => {
@@ -80,8 +92,13 @@ export class ListFeedback implements OnInit {
         this.feedbacks.set(list);
         this.loading.set(false);
       },
-      error: () => {
-        this.errorMessage.set("Impossible de charger les feedbacks clients.");
+      error: (error) => {
+        if (error?.status === 403 || error?.error?.requires_upgrade) {
+          this.upgradeRequired.set(true);
+          this.errorMessage.set(error?.error?.message || "Les avis clients sont reserves aux plans Pro et Business.");
+        } else {
+          this.errorMessage.set("Impossible de charger les feedbacks clients.");
+        }
         this.feedbacks.set([]);
         this.loading.set(false);
       }
@@ -102,5 +119,15 @@ export class ListFeedback implements OnInit {
 
   orderRef(feedback: Feedback): string {
     return feedback.order?.id ? `#${feedback.order.id.slice(0, 8).toUpperCase()}` : "Sans commande";
+  }
+
+  recommendationLabel(feedback: Feedback): string {
+    if (feedback.recommended === true) return "Recommande";
+    if (feedback.recommended === false) return "Ne recommande pas";
+    return "Non renseigne";
+  }
+
+  closeModal(): void {
+    this.selectedFeedback.set(null);
   }
 }

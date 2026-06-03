@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Feedback;
 use App\Models\Order;
+use App\Models\Restaurant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class FeedbackController extends Controller
 {
@@ -21,6 +23,13 @@ class FeedbackController extends Controller
         ]);
 
         $order = Order::with('table')->findOrFail($validated['order_id']);
+        $restaurant = Restaurant::with('plan')->find($order->restaurant_id);
+
+        if (!$this->feedbackAllowed($restaurant)) {
+            return response()->json([
+                'message' => 'Les avis clients sont reserves aux plans Pro et Business.',
+            ], 403);
+        }
 
         $canGiveFeedback = $order->status === 'delivered'
             || ($order->order_type === 'takeaway' && $order->status === 'ready');
@@ -56,6 +65,14 @@ class FeedbackController extends Controller
     public function index(Request $request)
     {
         $restaurantId = $request->user()?->restaurant_id;
+        $restaurant = $restaurantId ? Restaurant::with('plan')->find($restaurantId) : null;
+
+        if (!$this->feedbackAllowed($restaurant)) {
+            return response()->json([
+                'message' => 'Les avis clients sont reserves aux plans Pro et Business.',
+                'requires_upgrade' => true,
+            ], 403);
+        }
 
         return response()->json(
             Feedback::with(['order.table', 'table'])
@@ -63,5 +80,19 @@ class FeedbackController extends Controller
                 ->latest()
                 ->get()
         );
+    }
+
+    private function feedbackAllowed(?Restaurant $restaurant): bool
+    {
+        if (!$restaurant) {
+            return false;
+        }
+
+        $restaurant->loadMissing('plan');
+        $slug = Str::lower((string) $restaurant->plan?->slug);
+        $name = Str::lower((string) $restaurant->plan?->name);
+
+        return Str::contains($slug, ['pro', 'business', 'enterprise'])
+            || Str::contains($name, ['pro', 'business', 'enterprise']);
     }
 }

@@ -172,8 +172,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     modalInstance?.hide();
                 }
                 this.isLoading = false;
-                window.location.reload();
-                this.router.navigate(['/auth/login']);
+                this.router.navigate(['/restaurant/login']);
             },
             error: (err) => {
                 console.error('Erreur logout', err);
@@ -187,7 +186,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                 });
                 localStorage.clear();
                 this.isLoading = false;
-                this.router.navigate(['/auth/login']);
+                this.router.navigate(['/restaurant/login']);
             }
         });
     }

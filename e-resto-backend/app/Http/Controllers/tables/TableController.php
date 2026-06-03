@@ -34,7 +34,7 @@ class TableController extends Controller
             'server_phone' => $validated['server_phone'] ?? null,
         ]);
 
-        $frontendUrl = rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.67:5173'), '/');
+        $frontendUrl = rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.64:5173'), '/');
         $url = "{$frontendUrl}/?table_id={$table->id}";
 
         $qrImage = QrCode::format('svg')

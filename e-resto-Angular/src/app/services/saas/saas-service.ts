@@ -18,6 +18,13 @@ export class SaasService {
     return this.http.get<SaasPlan[]>(`${this.apiUrl}/plans`);
   }
 
+  subscribeNewsletter(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/newsletter`, {
+      email,
+      source: 'saas_landing',
+    });
+  }
+
   restaurants(): Observable<Restaurant[]> {
     return this.http.get<Restaurant[]>(`${this.apiUrl}/restaurants`);
   }

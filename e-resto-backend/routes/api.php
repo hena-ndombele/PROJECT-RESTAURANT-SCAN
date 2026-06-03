@@ -25,6 +25,7 @@ Route::post('/auth/account-request', [AccountRequestController::class, 'store'])
 Route::prefix('saas')->group(function () {
     Route::get('/overview', [SaasController::class, 'overview']);
     Route::get('/plans', [SaasController::class, 'plans']);
+    Route::post('/newsletter', [SaasController::class, 'newsletterSubscribe']);
     Route::post('/plans', [SaasController::class, 'storePlan']);
     Route::put('/plans/{plan}', [SaasController::class, 'updatePlan']);
     Route::delete('/plans/{plan}', [SaasController::class, 'destroyPlan']);

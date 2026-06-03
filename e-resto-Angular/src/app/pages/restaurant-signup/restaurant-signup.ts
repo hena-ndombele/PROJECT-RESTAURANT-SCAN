@@ -28,6 +28,9 @@ export class RestaurantSignup {
   };
   message = '';
   creating = false;
+  accountCreated = false;
+  createdRestaurant: any = null;
+  publicMenuUrl = '';
   selectedPlan = JSON.parse(localStorage.getItem('selected_plan') || '{}');
 
   constructor(private router: Router, private route: ActivatedRoute, private saas: SaasService) {}
@@ -114,12 +117,33 @@ export class RestaurantSignup {
         }
         localStorage.setItem('pending_restaurant', JSON.stringify(response.restaurant));
         localStorage.setItem('restaurant_owner_email', this.account.owner_email);
-        this.router.navigate(['/restaurant/dashboard']);
+        this.createdRestaurant = response.restaurant;
+        this.publicMenuUrl = this.buildMenuUrl(response.restaurant);
+        this.accountCreated = true;
+        this.creating = false;
       },
       error: (error) => {
         this.message = error?.error?.message || 'Creation impossible. Verifiez les informations.';
         this.creating = false;
       },
     });
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/restaurant/dashboard']);
+  }
+
+  copyMenuUrl(): void {
+    if (!this.publicMenuUrl) {
+      return;
+    }
+
+    navigator.clipboard?.writeText(this.publicMenuUrl);
+    this.message = 'URL du menu copiee.';
+  }
+
+  private buildMenuUrl(restaurant: any): string {
+    const base = window.location.origin.replace(':4200', ':5173');
+    return `${base}/?restaurant_slug=${restaurant?.slug || 'mon-restaurant'}`;
   }
 }

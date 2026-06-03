@@ -146,11 +146,16 @@ npm.cmd run build dans e-resto-client</pre>
 <p>Pour une commande sur place, apres le statut Servie, l'application client affiche automatiquement un modal de feedback. Pour une commande A emporter, le feedback peut s'afficher des que la commande passe a Prete, car le client vient recuperer sa commande et peut evaluer l'experience de commande/retrait.</p>
 <p>Le feedback est accepte uniquement si la commande est servie, ou si elle est prete avec order_type = takeaway. Une meme commande ne cree pas plusieurs avis : l'avis existant est mis a jour.</p>
 <p>Dans e-resto-Angular, le menu Feedbacks affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.</p>
+<p>Le module Feedback est reserve aux plans Pro, Business et Enterprise. Si le restaurant est sur Free Demo ou Starter, le backend refuse l'envoi, le dashboard affiche un message d'upgrade et le client ne declenche pas le modal feedback.</p>
 <h2>Reservations professionnelles</h2>
 <p>Le client ouvre le menu QR ou le menu public, remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale. Le backend cree une reservation en statut pending.</p>
 <p>Le restaurant voit la demande dans le dashboard Reservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
 <p>Statuts : pending, confirmed, seated, completed, cancelled, no_show.</p>
 <p>Dans e-resto-client, le client voit que sa demande est envoyee au restaurant et qu'elle doit etre confirmee. Une reference courte est affichee apres envoi.</p>
 <p>Dans e-resto-Angular, le restaurant peut filtrer par date/statut, rechercher, voir le detail, ajouter une note interne et changer le statut.</p>
+<p>Un client peut reserver depuis la maison avec le lien public du restaurant : https://votre-domaine-client/?restaurant_slug=slug-du-restaurant. Sans table_id et sans restaurant_slug, l'application ne sait pas a quel restaurant envoyer la reservation, donc le bouton est bloque.</p>
+<h2>Support client SaaS</h2>
+<p>Le support doit etre gere en deux niveaux : support du restaurant vers E-RESTO et support du client final vers le restaurant. Le restaurant cree un ticket pour technique, paiement, abonnement, bug ou configuration. Le client final contacte le restaurant, puis le restaurant escalade vers E-RESTO si le probleme est technique.</p>
+<p>Free/Starter : support email ou communautaire. Pro : support standard avec tickets. Business/Enterprise : support prioritaire, onboarding et SLA.</p>
 </body>
 </html>

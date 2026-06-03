@@ -9,15 +9,44 @@
       <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
       <span class="eyebrow">Compte restaurant</span>
       <h1>Creer votre espace</h1>
-      <p>Configurez le proprietaire puis les informations du restaurant.</p>
+      <p>{{ accountCreated ? 'Votre restaurant est pret.' : 'Configurez le proprietaire puis les informations du restaurant.' }}</p>
 
-      <div class="stepper" aria-label="Progression inscription">
+      <div class="stepper" aria-label="Progression inscription" *ngIf="!accountCreated">
         <button type="button" [class.active]="currentStep === 1" [class.done]="currentStep > 1" (click)="goBack()">1</button>
         <span></span>
         <button type="button" [class.active]="currentStep === 2" [disabled]="currentStep === 1">2</button>
       </div>
     </div>
 
+    <div class="success-panel" *ngIf="accountCreated; else signupForm">
+      <div class="success-icon">
+        <i class="bi bi-party-popper"></i>
+      </div>
+      <h2>Compte cree !</h2>
+      <p>Votre menu digital est accessible ici :</p>
+
+      <div class="menu-url">
+        <span>{{ publicMenuUrl }}</span>
+        <button type="button" (click)="copyMenuUrl()" aria-label="Copier l'URL du menu">
+          <i class="bi bi-copy"></i>
+        </button>
+      </div>
+
+      <div class="success-actions">
+        <a class="secondary-action" [href]="publicMenuUrl" target="_blank" rel="noopener">
+          Ouvrir le menu
+        </a>
+        <button class="primary-action" type="button" (click)="goToDashboard()">
+          Acceder a mon dashboard <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+
+      @if (message) {
+        <p class="message success-message">{{ message }}</p>
+      }
+    </div>
+
+    <ng-template #signupForm>
     <form (ngSubmit)="currentStep === 1 ? goNext() : createAccount()">
       @if (currentStep === 1) {
         <div class="form-section">
@@ -132,5 +161,6 @@
       Deja un compte ?
       <a routerLink="/restaurant/login">Se connecter</a>
     </div>
+    </ng-template>
   </section>
 </main>

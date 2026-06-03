@@ -65,7 +65,7 @@ export class AuthService {
         this.ngZone.run(() => {
           console.warn("Inactivité détectée : déconnexion automatique.");
           this.logout().subscribe(() => {
-            this.router.navigate(['/auth/login']);
+            this.router.navigate(['/restaurant/login']);
           });
         });
       });
@@ -122,6 +122,8 @@ export class AuthService {
 
   private clearLocalSession() {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('restaurant_token');
+    localStorage.removeItem('restaurant_session');
     localStorage.removeItem('user_data');
     this.loggedIn.next(false);
    // this.stopListener(); // Arrête le timer

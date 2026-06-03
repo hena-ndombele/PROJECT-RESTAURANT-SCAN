@@ -1,5 +1,13 @@
 @import "./assets/scss/style.scss";
 
+button,
+.btn,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  border-radius: 8px !important;
+}
+
 body.dashboard-dark-theme {
   background: #0f172a;
   color: #e5e7eb;

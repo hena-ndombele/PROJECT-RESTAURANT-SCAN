@@ -587,6 +587,8 @@ Paiement : ORANGE_MONEY
 
 Quand un restaurant cree son compte SaaS, un email de bienvenue est envoye.
 
+Cet email est non bloquant : si Gmail, le SMTP ou le cache Blade rencontre une erreur, le compte du restaurant reste cree et l'erreur est journalisee cote backend.
+
 L'envoi utilise la configuration SMTP du backend.
 
 Les informations sensibles SMTP ne doivent pas etre documentees en clair.
@@ -1453,6 +1455,14 @@ Commentaire optionnel
 
 Le feedback est accepte uniquement si la commande est `delivered`, ou si elle est `ready` avec `order_type = takeaway`. Une meme commande ne cree pas plusieurs avis : si le client renvoie l'avis, il met a jour l'avis existant.
 
+Le module Feedback est reserve aux plans Pro, Business et Enterprise. Si le restaurant est sur Free Demo ou Starter :
+
+```txt
+le backend refuse POST /api/public/feedbacks
+le dashboard /feedback/list affiche un message d'upgrade
+le client ne declenche pas le modal feedback
+```
+
 Dans e-resto-Angular, le menu `Feedbacks` affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.
 
 ## 24. Reservations professionnelles
@@ -1496,6 +1506,151 @@ Dans e-resto-Angular, le restaurant peut :
 - supprimer une reservation si necessaire.
 
 La reservation est rattachee au restaurant via la table scannee ou via le `restaurant_slug` du menu public.
+
+Pour un client a la maison, il faut partager le lien public du restaurant :
+
+```txt
+https://votre-domaine-client/?restaurant_slug=slug-du-restaurant
+```
+
+Le client n'a pas besoin de scanner une table. Il ouvre le lien, va dans Reservation, remplit le formulaire et le restaurant voit la demande dans e-resto-Angular.
+
+Sans `table_id` et sans `restaurant_slug`, l'application client ne peut pas savoir a quel restaurant envoyer la reservation, donc le bouton est bloque.
+
+## 25. Support client dans un vrai SaaS
+
+Le support client doit etre gere en deux niveaux.
+
+Support du restaurant vers E-RESTO :
+
+```txt
+restaurant ouvre Support
+restaurant cree un ticket : technique, paiement, abonnement, bug, configuration
+E-RESTO voit le ticket dans la plateforme admin
+statuts : open, in_progress, waiting_customer, resolved, closed
+priorites selon plan : standard, prioritaire, SLA business
+```
+
+Support du client final vers le restaurant :
+
+```txt
+client final a un souci sur commande/reservation
+client utilise Contact ou appelle le restaurant
+restaurant gere la reponse directement
+si le probleme est technique, restaurant escalade vers E-RESTO
+```
+
+Recommandation SaaS :
+
+- Free/Starter : support email ou communautaire ;
+- Pro : support standard avec suivi ticket ;
+- Business/Enterprise : support prioritaire, onboarding et SLA ;
+- chaque ticket doit contenir restaurant, utilisateur, categorie, priorite, message, pieces jointes, statut et historique.
+
+## 26. Chargement immediat des plans Pricing
+
+La page Pricing charge maintenant les plans via l'endpoint leger :
+
+```txt
+GET /api/saas/plans
+```
+
+L'endpoint complet `/api/saas/overview` reste charge en arriere-plan pour les metriques et informations globales.
+
+Cela evite une page Pricing vide au clic, car les cartes de plans n'attendent plus le calcul des statistiques SaaS.
+
+La page Pricing affiche aussi des plans de secours instantanes. Des que le backend repond, les plans reels remplacent ces donnees sans afficher de spinner ni donner l'impression que la page actualise.
+
+La landing SaaS garde les couleurs E-RESTO et reprend une disposition premium de menu digital QR : hero photo plein ecran, CTA, statistiques rapides, fonctionnalites, section scan QR complete en fond noir avec image generee, logo E-RESTO au centre du QR code et texte overlay, puis etapes operationnelles.
+
+La section finale `Pret a moderniser votre restaurant ?` affiche trois statistiques marketing fixes avec prefixe `+` : +20 restaurants inscrits, +800 commandes traitees et +60 QR codes generes. Les valeurs ont un effet count-up rapide quand la section devient visible.
+
+Cette section utilise un background image premium `assets/landing/cta-chef-bg.png` avec un chef et un overlay sombre pour garder les statistiques et le CTA lisibles.
+
+La landing contient aussi une section `Tout ce que vous devez savoir pour demarrer avec E-RESTO` sans bloc video demo. Elle explique le demarrage en trois etapes : creation de l'espace restaurant, configuration du menu/tables/QR codes et reception des commandes.
+
+Un footer SaaS professionnel est ajoute avec adresse, contact, liens produit/ressources et formulaire newsletter.
+
+Les boutons principaux de `e-resto-angular` sont forces a un rayon de 8px afin d'eviter les formes trop rondes dans l'application.
+
+Le budget Angular `anyComponentStyle` est augmente a 8kB en warning et 12kB en erreur pour accepter la landing SaaS complete sans casser le build.
+
+## 27. Flow Newsletter SaaS
+
+La newsletter de la landing `e-resto-angular` fonctionne avec le backend Laravel.
+
+Endpoint :
+
+```txt
+POST /api/saas/newsletter
+```
+
+Payload :
+
+```json
+{
+  "email": "client@example.com",
+  "source": "saas_landing"
+}
+```
+
+Flow :
+
+1. Le visiteur entre son email dans le footer SaaS.
+2. Angular valide que le champ n'est pas vide et appelle `/api/saas/newsletter`.
+3. Laravel valide le format email.
+4. Si l'email n'existe pas, il cree une ligne dans `newsletter_subscribers`.
+5. Si l'email existe deja, il reactive l'abonnement sans creer de doublon.
+6. Le frontend affiche le message de confirmation.
+
+Les informations conservees sont : email, source, statut, date d'inscription, adresse IP et user-agent.
+
+La landing ajoute un feedback visuel sur le formulaire newsletter : message de succes ou d'erreur, bouton desactive pendant l'envoi, et aucun doublon en base grace a `updateOrCreate`.
+
+Le footer affiche aussi la mention legale : `© 2026 E-RESTO. Tous droits reserves.`
+
+Des animations professionnelles sont appliquees a la landing : apparition progressive des sections au scroll, hover subtil sur les cards, boutons et statistiques, avec respect de `prefers-reduced-motion`.
+
+## 28. Flow apres creation du compte restaurant
+
+Apres `POST /api/saas/signup`, `e-resto-angular` ne redirige plus immediatement vers le dashboard.
+
+Flow :
+
+1. Le restaurant cree son compte.
+2. Le backend retourne le restaurant cree avec son `slug`.
+3. Angular stocke la session et construit l'URL publique du menu :
+
+```txt
+http://localhost:5173/?restaurant_slug=slug-du-restaurant
+```
+
+4. L'utilisateur voit une carte `Compte cree !` avec :
+- l'URL publique du menu ;
+- un bouton copier ;
+- un bouton ouvrir le menu ;
+- un bouton acceder au dashboard.
+
+Cela permet au restaurant de voir directement le lien client qu'il pourra partager ou utiliser pour ses QR codes.
+
+## 29. Authentification restaurant uniquement
+
+Dans `e-resto-angular`, l'ancien flux `/auth/login` + `/auth/otp` n'est plus utilise pour les restaurants.
+
+Routes :
+
+```txt
+/auth/login -> redirige vers /restaurant/login
+/auth/otp   -> redirige vers /restaurant/login
+```
+
+Le login principal reste donc le login SaaS restaurant :
+
+```txt
+/restaurant/login
+```
+
+Si un utilisateur se deconnecte depuis le dashboard ou si une session expire, il revient toujours sur `/restaurant/login`.
 
 ## 25. Console interne e-resto-admin
 
