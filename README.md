@@ -1652,7 +1652,102 @@ Le login principal reste donc le login SaaS restaurant :
 
 Si un utilisateur se deconnecte depuis le dashboard ou si une session expire, il revient toujours sur `/restaurant/login`.
 
-## 30. Formulaire Contact Restaurant
+## 30. Flow affichage abonnement et connexion dans l'administration
+
+Dans l'administration `e-resto-angular`, le layout du dashboard affiche maintenant les informations de session SaaS du restaurant connecte.
+
+Objectif :
+
+```txt
+Restaurant connecte
+=> lecture de restaurant_session
+=> calcul des jours restants selon le statut
+=> affichage dans la topbar et le menu profil
+=> affichage de la date et heure de connexion
+```
+
+### 30.1 Jours restants d'abonnement
+
+Angular lit les champs du restaurant stocke en session :
+
+```txt
+restaurant.status
+restaurant.trial_ends_at
+restaurant.subscription_ends_at
+restaurant.subscription.status
+restaurant.subscription.ends_at
+restaurant.subscription.current_period_end
+restaurant.plan.name
+```
+
+Regles d'affichage :
+
+```txt
+status = trial
+=> affiche les jours restants d'essai
+
+status = active
+=> affiche les jours restants d'abonnement paye
+
+status = pending_payment
+=> affiche Paiement en attente
+
+status = past_due ou expired
+=> affiche Abonnement expire
+
+status = suspended ou cancelled
+=> affiche Abonnement suspendu/annule
+```
+
+Le calcul utilise la difference entre la date de fin et la date actuelle :
+
+```txt
+jours_restants = ceil((date_fin - maintenant) / 1 jour)
+minimum = 0
+```
+
+L'information est visible :
+
+- dans la topbar, avec un badge compact ;
+- dans le menu profil, avec le detail du plan et la date de fin prevue.
+
+### 30.2 Date et heure de connexion
+
+Quand une session restaurant est creee, Angular enregistre :
+
+```txt
+localStorage.restaurant_login_at = date ISO actuelle
+```
+
+Cette date est enregistree dans les flows suivants :
+
+```txt
+/restaurant/login
+creation de compte restaurant
+checkout Mobile Money apres activation de session
+```
+
+Le menu profil affiche ensuite :
+
+```txt
+Connecte le dd/MM/yyyy HH:mm
+```
+
+A la deconnexion, `restaurant_login_at` est supprime avec le token et la session restaurant.
+
+Fichiers concernes :
+
+```txt
+e-resto-Angular/src/app/layouts/dashboard-layout/dashboard-layout.ts
+e-resto-Angular/src/app/layouts/dashboard-layout/dashboard-layout.html
+e-resto-Angular/src/app/layouts/dashboard-layout/dashboard-layout.scss
+e-resto-Angular/src/app/pages/restaurant-login/restaurant-login.ts
+e-resto-Angular/src/app/pages/restaurant-signup/restaurant-signup.ts
+e-resto-Angular/src/app/pages/restaurant-checkout/restaurant-checkout.ts
+e-resto-Angular/src/app/services/auth/auth-service.ts
+```
+
+## 31. Formulaire Contact Restaurant
 
 La landing `e-resto-angular` contient un formulaire de contact sous la section `Pret a moderniser votre restaurant ?`.
 
@@ -1683,6 +1778,233 @@ Flow :
 5. Le SMTP utilise un timeout court via `MAIL_TIMEOUT=5` pour eviter que le formulaire reste bloque trop longtemps.
 6. Si l'envoi mail echoue, le message reste en base et l'erreur est journalisee sans bloquer l'utilisateur.
 7. Angular affiche un message de succes ou d'erreur.
+
+## 32. Assistant Intelligent, chatbot et fidelite client
+
+E-RESTO peut evoluer vers une plateforme SaaS plus professionnelle avec deux modules de croissance :
+
+```txt
+Assistant Intelligent E-RESTO
+Programme de fidelite client
+```
+
+L'objectif n'est pas seulement de digitaliser le menu, mais aussi d'aider le restaurant a vendre plus, conseiller ses clients et les faire revenir.
+
+### 32.1 Disponibilite selon les plans
+
+Le chatbot est reserve uniquement aux plans :
+
+```txt
+Pro
+Business
+```
+
+Les plans Free Demo et Starter ne doivent pas afficher le chatbot dans le menu client ni dans le dashboard restaurant.
+
+Regle produit :
+
+```txt
+Plan Free Demo / Starter
+=> pas de chatbot
+=> message upgrade si le restaurant tente d'activer l'assistant
+
+Plan Pro
+=> chatbot client
+=> recommandations de plats
+=> aide au client final
+
+Plan Business
+=> chatbot client
+=> assistant dashboard restaurant
+=> recommandations avancees et aide a la decision
+```
+
+### 32.2 Flow chatbot cote client
+
+Le chatbot cote client apparait dans `e-resto-client`, sur le menu QR du restaurant, uniquement si le restaurant est sur un plan Pro ou Business.
+
+Flow :
+
+```txt
+Client scanne le QR code
+=> le menu du restaurant s'ouvre
+=> l'application verifie les features du plan
+=> si plan Pro ou Business, bouton Assistant disponible
+=> le client pose une question
+=> le chatbot utilise le contexte du restaurant
+=> il recommande, explique ou guide le client
+=> le client ajoute au panier
+=> la commande suit le flow normal
+```
+
+Questions possibles :
+
+```txt
+Quel plat est populaire ?
+Je veux quelque chose pas trop cher.
+Quels plats sont disponibles maintenant ?
+Je suis allergique aux arachides.
+Comment retrouver ma commande ?
+Est-ce que je peux reserver une table ?
+```
+
+Contexte autorise pour le chatbot client :
+
+```txt
+restaurant
+categories
+plats disponibles
+prix
+devise
+description des plats
+plats populaires si la statistique est disponible
+horaires et adresse si configures
+statut de commande du client si une commande est en cours
+```
+
+Le chatbot client ne doit pas executer d'action sensible tout seul. Il peut preparer ou suggerer, mais la validation reste faite par le client :
+
+```txt
+recommandation de plat => client clique Ajouter
+retrouver commande => client confirme son code ou telephone
+reservation => client remplit et confirme le formulaire
+```
+
+### 32.3 Flow Assistant Intelligent cote restaurant
+
+L'Assistant Intelligent cote restaurant apparait dans `e-resto-Angular`, dans le dashboard ou la topbar, uniquement pour les plans Business.
+
+Flow :
+
+```txt
+Restaurant ouvre le dashboard
+=> bouton Assistant E-RESTO visible si plan Business
+=> le restaurant pose une question
+=> l'assistant lit le contexte autorise
+=> il explique, analyse ou recommande une action
+=> le restaurant decide quoi faire
+```
+
+Questions possibles :
+
+```txt
+Quels plats se vendent le mieux cette semaine ?
+Pourquoi mes revenus ont baisse aujourd'hui ?
+Comment creer un QR code ?
+Que me manque-t-il pour mieux vendre ?
+Mon plan actuel permet-il les reservations ?
+Quels plats dois-je mettre en avant ?
+```
+
+Contexte autorise pour l'assistant restaurant :
+
+```txt
+plan actuel
+features autorisees
+commandes agregees
+plats les plus commandes
+revenus par devise
+reservations
+feedbacks
+etat des tables
+utilisation des quotas
+```
+
+L'assistant restaurant doit rester un copilote. Il peut recommander une action mais ne doit pas modifier le menu, les prix ou les statuts sans confirmation explicite.
+
+### 32.4 Flow fidelite client
+
+Le module fidelite permet au restaurant de recompenser les clients qui reviennent.
+
+Flow principal :
+
+```txt
+Client commande via QR code
+=> il renseigne telephone ou email
+=> la commande est confirmee
+=> si paiement confirme ou commande servie, des points sont ajoutes
+=> le client voit son solde fidelite
+=> quand un seuil est atteint, une recompense est debloquee
+=> la recompense peut etre utilisee sur une prochaine commande
+```
+
+Regles possibles :
+
+```txt
+1 000 CDF depenses = 1 point
+1 USD depense = 1 point
+1 commande servie = 1 tampon
+10 tampons = 1 boisson offerte
+50 points = 10% de reduction
+```
+
+Flow cote restaurant :
+
+```txt
+Restaurant ouvre Fidelite
+=> choisit le mode : points, tampons ou coupons
+=> definit les regles
+=> active la fidelite
+=> suit les clients fideles
+=> voit les recompenses utilisees
+=> lance des campagnes
+```
+
+Campagnes possibles :
+
+```txt
+10 commandes = 1 plat offert
+-10% apres 5 visites
+Happy hour entre 15h et 17h
+Coupon anniversaire
+Offre clients inactifs depuis 30 jours
+```
+
+### 32.5 Parcours client ideal
+
+```txt
+Client scanne le QR code
+=> consulte le menu
+=> demande conseil au chatbot
+=> commande
+=> gagne des points fidelite
+=> recoit une recompense
+=> revient commander
+```
+
+### 32.6 Parcours restaurant ideal
+
+```txt
+Restaurant configure son menu
+=> active le chatbot selon son plan
+=> active la fidelite
+=> recoit les commandes
+=> suit les clients reguliers
+=> lance des campagnes
+=> augmente ses ventes
+```
+
+### 32.7 Positionnement marketing
+
+Avec ces modules, E-RESTO devient :
+
+```txt
+un menu digital QR code
+un systeme de commande
+un assistant intelligent
+un outil de fidelisation
+un tableau de bord de croissance
+```
+
+Proposition de valeur :
+
+```txt
+Digitalisez votre restaurant.
+Recevez vos commandes par QR code.
+Conseillez vos clients avec un assistant intelligent.
+Fidelisez vos clients.
+Augmentez vos ventes.
+```
 
 ## 25. Console interne e-resto-admin
 

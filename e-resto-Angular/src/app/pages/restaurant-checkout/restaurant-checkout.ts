@@ -14,7 +14,7 @@ import { SaasService } from '../../services/saas/saas-service';
 export class RestaurantCheckout {
   selectedPlan = JSON.parse(localStorage.getItem('selected_plan') || '{}');
   restaurant = JSON.parse(localStorage.getItem('pending_restaurant') || localStorage.getItem('restaurant_session') || '{}');
-  mobile = { provider: 'MPESA', wallet_id: '' };
+  mobile = { provider: 'MPESA', wallet_id: '24383' };
   message = '';
   paying = false;
   paymentResponse: any = null;
@@ -50,14 +50,53 @@ export class RestaurantCheckout {
     return Number(this.selectedPlan.installation_fee ?? (slug.includes('business') ? 30_000 : 20_000));
   }
 
+  get walletHint(): string {
+    if (this.mobile.provider === 'AIRTEL') {
+      return 'Airtel Money doit commencer par 2439';
+    }
+
+    if (this.mobile.provider === 'ORANGE') {
+      return 'Orange Money doit commencer par 24384 ou 24385';
+    }
+
+    return 'M-Pesa doit commencer par 24381, 24382 ou 24383';
+  }
+
+  onProviderChange(provider: string): void {
+    this.mobile.provider = provider;
+    const normalized = this.normalizedWalletId(this.mobile.wallet_id);
+
+    if (!this.isValidWalletForProvider(normalized)) {
+      this.mobile.wallet_id = this.defaultWalletPrefix(provider);
+      return;
+    }
+
+    this.mobile.wallet_id = normalized;
+  }
+
+  onWalletChange(value: string): void {
+    this.mobile.wallet_id = this.normalizedWalletId(value);
+    if (this.mobile.wallet_id.length < 3) {
+      this.mobile.wallet_id = '243';
+    }
+  }
+
   pay(): void {
     if (!this.restaurant.id) {
       this.router.navigate(['/restaurant/signup']);
       return;
     }
 
-    if (!this.mobile.wallet_id) {
+    const walletId = this.normalizedWalletId(this.mobile.wallet_id);
+    this.mobile.wallet_id = walletId;
+
+    if (!walletId || walletId === '243') {
       this.message = 'Entrez le numero Mobile Money qui va payer l abonnement.';
+      return;
+    }
+
+    if (!this.isValidWalletForProvider(walletId)) {
+      this.message = this.walletHint + '. Verifiez le numero avant de continuer.';
       return;
     }
 
@@ -66,7 +105,7 @@ export class RestaurantCheckout {
     this.saas.checkoutMobileMoney({
       restaurant_id: this.restaurant.id,
       provider: this.mobile.provider,
-      wallet_id: this.mobile.wallet_id,
+      wallet_id: walletId,
       billing_cycle: this.billingCycle,
     }).subscribe({
       next: (response) => {
@@ -76,6 +115,7 @@ export class RestaurantCheckout {
           localStorage.setItem('auth_token', response.session.token);
           localStorage.setItem('user_data', JSON.stringify(response.session.user));
           localStorage.setItem('restaurant_session', JSON.stringify(response.session.restaurant));
+          localStorage.setItem('restaurant_login_at', new Date().toISOString());
           localStorage.removeItem('pending_restaurant');
         }
         this.message = response.payment?.status === 'paid'
@@ -88,5 +128,41 @@ export class RestaurantCheckout {
         this.paying = false;
       },
     });
+  }
+
+  private defaultWalletPrefix(provider: string): string {
+    if (provider === 'AIRTEL') return '2439';
+    if (provider === 'ORANGE') return '24385';
+    return '24383';
+  }
+
+  private normalizedWalletId(value: string): string {
+    let digits = String(value || '').replace(/\D/g, '');
+
+    if (digits.startsWith('00')) {
+      digits = digits.slice(2);
+    }
+
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1);
+    }
+
+    if (!digits.startsWith('243')) {
+      digits = `243${digits}`;
+    }
+
+    return digits.slice(0, 12);
+  }
+
+  private isValidWalletForProvider(walletId: string): boolean {
+    if (this.mobile.provider === 'AIRTEL') {
+      return /^2439\d{8}$/.test(walletId);
+    }
+
+    if (this.mobile.provider === 'ORANGE') {
+      return /^243(84|85)\d{7}$/.test(walletId);
+    }
+
+    return /^243(81|82|83)\d{7}$/.test(walletId);
   }
 }

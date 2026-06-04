@@ -23,9 +23,13 @@ export class RestaurantSettings implements OnInit {
   logoData: string | null = null;
 
   canCustomize(): boolean {
+    if (this.restaurant?.features) {
+      return this.restaurant.features.customization === true;
+    }
+
     const slug = String(this.restaurant?.plan?.slug || '').toLowerCase();
     const name = String(this.restaurant?.plan?.name || '').toLowerCase();
-    return ['pro', 'business', 'enterprise'].some((plan) => slug.includes(plan) || name.includes(plan));
+    return ['pro', 'business'].some((plan) => slug.includes(plan) || name.includes(plan));
   }
 
   restaurant: any = {

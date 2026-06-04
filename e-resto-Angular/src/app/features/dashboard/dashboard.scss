@@ -223,6 +223,202 @@
     text-transform: uppercase;
 }
 
+.onboarding-backdrop {
+    align-items: center;
+    background:
+        linear-gradient(rgba(255, 250, 245, 0.9), rgba(255, 255, 255, 0.94)),
+        url('/assets/landing/pricing-menu-digital-bg.png') center / cover no-repeat;
+    backdrop-filter: blur(10px);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 24px;
+    position: fixed;
+    z-index: 1060;
+}
+
+.onboarding-modal {
+    --guide-color: #f97316;
+    background:
+        radial-gradient(circle at 12% 10%, rgba(255, 122, 26, 0.12), transparent 30%),
+        #fff;
+    border: 1px solid rgba(17, 19, 24, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 30px 90px rgba(17, 19, 24, 0.18);
+    color: #111318;
+    overflow: hidden;
+    position: relative;
+    width: min(100%, 520px);
+}
+
+.onboarding-modal.tone-indigo { --guide-color: #6366f1; }
+.onboarding-modal.tone-violet { --guide-color: #8b5cf6; }
+.onboarding-modal.tone-emerald { --guide-color: #10b981; }
+.onboarding-modal.tone-pink { --guide-color: #ec4899; }
+
+.onboarding-progress {
+    background: #eef2f7;
+    height: 4px;
+    width: 100%;
+}
+
+.onboarding-progress span {
+    background: linear-gradient(90deg, var(--guide-color), #f59e0b);
+    display: block;
+    height: 100%;
+    transition: width 0.2s ease;
+}
+
+.onboarding-top {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    padding: 22px 24px 0;
+}
+
+.onboarding-top span {
+    color: #667085;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.onboarding-top button,
+.onboarding-secondary,
+.onboarding-primary {
+    align-items: center;
+    border-radius: 8px;
+    display: inline-flex;
+    font-weight: 800;
+    gap: 6px;
+    justify-content: center;
+}
+
+.onboarding-top button {
+    background: #fff;
+    border: 1px solid rgba(17, 19, 24, 0.12);
+    color: #667085;
+    font-size: 0.78rem;
+    min-height: 34px;
+    padding: 0 12px;
+}
+
+.onboarding-content {
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+    padding: 28px 24px 22px;
+    text-align: center;
+}
+
+.onboarding-icon {
+    align-items: center;
+    color: var(--guide-color);
+    display: flex;
+    font-size: 3.1rem;
+    height: 68px;
+    justify-content: center;
+    width: 68px;
+}
+
+.onboarding-eyebrow {
+    color: var(--guide-color);
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.onboarding-content h2 {
+    color: #111318;
+    font-size: 1.45rem;
+    font-weight: 900;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.onboarding-content p {
+    color: #667085;
+    line-height: 1.7;
+    margin: 0;
+    max-width: 440px;
+}
+
+.onboarding-list {
+    background: #fffaf5;
+    border: 1px solid rgba(255, 122, 26, 0.18);
+    border-radius: 8px;
+    display: grid;
+    margin-top: 6px;
+    padding: 10px 16px;
+    text-align: left;
+    width: 100%;
+}
+
+.onboarding-list div {
+    align-items: center;
+    border-bottom: 1px solid rgba(17, 19, 24, 0.08);
+    display: flex;
+    gap: 10px;
+    min-height: 38px;
+}
+
+.onboarding-list div:last-child {
+    border-bottom: 0;
+}
+
+.onboarding-list i {
+    color: var(--guide-color);
+}
+
+.onboarding-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.onboarding-dots span {
+    background: #d8dee8;
+    border-radius: 999px;
+    height: 6px;
+    width: 6px;
+}
+
+.onboarding-dots span.active {
+    background: var(--guide-color);
+    width: 18px;
+}
+
+.onboarding-actions {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 96px 1fr;
+    padding: 0 24px 24px;
+}
+
+.onboarding-secondary,
+.onboarding-primary {
+    border: 0;
+    min-height: 46px;
+    padding: 0 14px;
+}
+
+.onboarding-secondary {
+    background: #fff;
+    border: 1px solid rgba(17, 19, 24, 0.12);
+    color: #667085;
+}
+
+.onboarding-secondary:disabled {
+    opacity: 0.45;
+}
+
+.onboarding-primary {
+    background: linear-gradient(135deg, var(--guide-color), #f59e0b);
+    color: #fff;
+    box-shadow: 0 16px 36px rgba(215, 25, 32, 0.18);
+}
+
 @media (max-width: 767.98px) {
     .dashboard-hero,
     .panel-header {
@@ -236,5 +432,17 @@
 
     .dashboard-hero h1 {
         font-size: 1.55rem;
+    }
+
+    .onboarding-backdrop {
+        padding: 14px;
+    }
+
+    .onboarding-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .onboarding-secondary {
+        order: 2;
     }
 }

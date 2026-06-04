@@ -8,7 +8,6 @@ use App\Models\Plat;
 use App\Models\Restaurant;
 use App\Models\Table;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class MenuController extends Controller
 {
@@ -116,6 +115,7 @@ class MenuController extends Controller
             return null;
         }
 
+        $restaurant->loadMissing('plan');
         $settings = $restaurant->settings ?? [];
 
         return [
@@ -131,17 +131,11 @@ class MenuController extends Controller
             'app_name' => $settings['app_name'] ?? $restaurant->name,
             'slogan' => $settings['slogan'] ?? null,
             'theme' => $settings['theme'] ?? [],
-            'can_feedback' => $this->feedbackAllowed($restaurant),
+            'can_feedback' => (bool) $restaurant->plan?->allows('feedback'),
+            'can_reservations' => (bool) $restaurant->plan?->allows('reservations'),
+            'can_mobile_money' => (bool) $restaurant->plan?->allows('mobile_money'),
+            'can_chatbot' => (bool) $restaurant->plan?->allows('chatbot'),
+            'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
         ];
-    }
-
-    private function feedbackAllowed(Restaurant $restaurant): bool
-    {
-        $restaurant->loadMissing('plan');
-        $slug = Str::lower((string) $restaurant->plan?->slug);
-        $name = Str::lower((string) $restaurant->plan?->name);
-
-        return Str::contains($slug, ['pro', 'business', 'enterprise'])
-            || Str::contains($name, ['pro', 'business', 'enterprise']);
     }
 }

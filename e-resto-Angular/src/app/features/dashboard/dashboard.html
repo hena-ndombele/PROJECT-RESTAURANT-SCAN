@@ -26,6 +26,11 @@
     @if (errorMessage()) {
         <div class="alert alert-danger border-0 shadow-sm">{{ errorMessage() }}</div>
     }
+    @if (!canViewAnalytics()) {
+        <div class="alert alert-warning border-0 shadow-sm">
+            Les statistiques detaillees sont reservees aux plans Pro et Business. Le plan Starter garde le suivi operationnel du jour.
+        </div>
+    }
 
     @if (loading()) {
         <div class="dashboard-loading">
@@ -183,6 +188,50 @@
                     </div>
                 </div>
             </div>
+        </div>
+    }
+
+    @if (onboardingOpen()) {
+        <div class="onboarding-backdrop">
+            <section class="onboarding-modal tone-{{ currentOnboardingStep().tone }}" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+                <div class="onboarding-progress">
+                    <span [style.width.%]="((onboardingStepIndex() + 1) / onboardingSteps.length) * 100"></span>
+                </div>
+                <div class="onboarding-top">
+                    <span>{{ onboardingStepIndex() + 1 }} / {{ onboardingSteps.length }}</span>
+                    <button type="button" (click)="skipOnboarding()">Passer <i class="ti ti-x"></i></button>
+                </div>
+                <div class="onboarding-content">
+                    <div class="onboarding-icon">
+                        <i [class]="currentOnboardingStep().icon"></i>
+                    </div>
+                    <span class="onboarding-eyebrow">{{ currentOnboardingStep().eyebrow }}</span>
+                    <h2 id="onboardingTitle">{{ currentOnboardingStep().title }}</h2>
+                    <p>{{ currentOnboardingStep().description }}</p>
+                    <div class="onboarding-list">
+                        @for (bullet of currentOnboardingStep().bullets; track bullet) {
+                            <div>
+                                <i class="ti ti-check"></i>
+                                <span>{{ bullet }}</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="onboarding-dots" aria-hidden="true">
+                        @for (step of onboardingSteps; track step.title; let index = $index) {
+                            <span [class.active]="index === onboardingStepIndex()"></span>
+                        }
+                    </div>
+                </div>
+                <div class="onboarding-actions">
+                    <button class="onboarding-secondary" type="button" [disabled]="onboardingStepIndex() === 0" (click)="previousOnboardingStep()">
+                        <i class="ti ti-arrow-left"></i> Retour
+                    </button>
+                    <button class="onboarding-primary" type="button" (click)="nextOnboardingStep()">
+                        {{ onboardingStepIndex() === onboardingSteps.length - 1 ? 'Commencer maintenant' : 'Suivant' }}
+                        <i class="ti" [ngClass]="onboardingStepIndex() === onboardingSteps.length - 1 ? 'ti-rocket' : 'ti-arrow-right'"></i>
+                    </button>
+                </div>
+            </section>
         </div>
     }
 

@@ -3,7 +3,7 @@ import {Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/route
 import {DatePipe, NgClass} from "@angular/common";
 import {AuthService} from "../../services/auth/auth-service";
 import Swal from "sweetalert2";
-import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
+import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 import introJs from 'intro.js';
 import {TranslateModule} from "@ngx-translate/core";
 import {OrderRealtimeService} from "../../services/realtime/order-realtime-service";
@@ -11,7 +11,7 @@ import {ThemeService} from "../../services/theme/theme-service";
 
 @Component({
     selector: 'app-dashboard-layout',
-    imports: [RouterLink, RouterLinkActive, RouterOutlet, NgClass, ReactiveFormsModule, TranslateModule, DatePipe],
+    imports: [RouterLink, RouterLinkActive, RouterOutlet, NgClass, ReactiveFormsModule, FormsModule, TranslateModule, DatePipe],
     styleUrl: "./dashboard-layout.scss",
     templateUrl: './dashboard-layout.html',
     standalone:true
@@ -46,7 +46,27 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         logo: 'assets/logo/e-resto-logo.png',
         city: '',
         owner_phone: '',
+        features: {},
     };
+    protected subscriptionInfo = {
+        label: 'Abonnement non renseigne',
+        shortLabel: 'Abonnement',
+        detail: 'Statut indisponible',
+        tone: 'neutral',
+        expiresAt: null as Date | null,
+        daysRemaining: null as number | null,
+    };
+    protected loginInfo = {
+        connectedAt: new Date(),
+    };
+    protected assistantOpen = false;
+    protected assistantInput = '';
+    protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
+        {
+            from: 'bot',
+            text: 'Bonjour, je suis votre Assistant E-RESTO. Je peux vous aider avec les commandes, les statistiques, les QR codes, les reservations et votre plan.',
+        },
+    ];
 
     ngOnInit(): void {
         this.orderRealtime.start();
@@ -67,8 +87,17 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                 logo: restaurant.logo_url || (restaurant.logo ? `http://127.0.0.1:8000/storage/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
                 city: restaurant.city || '',
                 owner_phone: restaurant.owner_phone || '',
+                features: {
+                    ...this.featuresFromPlan(restaurant.plan),
+                    ...(restaurant.features || {}),
+                },
             };
         }
+
+        this.subscriptionInfo = this.buildSubscriptionInfo(restaurant);
+        this.loginInfo = {
+            connectedAt: this.resolveLoginDate(),
+        };
 
         this.cdref.detectChanges();
 
@@ -115,6 +144,194 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
     protected openNotifications(): void {
         setTimeout(() => this.orderRealtime.markNotificationsRead(), 1200);
+    }
+
+    protected canUse(feature: string): boolean {
+        return Boolean(this.restaurantData.features?.[feature]);
+    }
+
+    private featuresFromPlan(plan: any): Record<string, boolean> {
+        const slug = String(plan?.slug || plan?.name || '').toLowerCase();
+        const isBusiness = slug.includes('business');
+        const isPro = isBusiness || slug.includes('pro');
+
+        return {
+            reservations: isPro,
+            feedback: isPro,
+            analytics: isPro,
+            customization: isPro,
+            mobile_money: isPro,
+            roles: isBusiness,
+            multi_restaurant: isBusiness,
+            chatbot: isPro,
+        };
+    }
+
+    protected toggleAssistant(): void {
+        this.assistantOpen = !this.assistantOpen;
+    }
+
+    protected askAssistant(question?: string): void {
+        const text = (question || this.assistantInput || '').trim();
+        if (!text) return;
+
+        this.assistantMessages = [
+            ...this.assistantMessages,
+            { from: 'user', text },
+            { from: 'bot', text: this.dashboardAssistantReply(text) },
+        ];
+        this.assistantInput = '';
+    }
+
+    private dashboardAssistantReply(question: string): string {
+        const normalized = question.toLowerCase();
+        const restaurantName = this.restaurantData.name || 'votre restaurant';
+        const planName = this.subscriptionInfo.detail.replace('Paiement confirme - ', '').replace('Essai gratuit - ', '') || 'votre plan';
+
+        if (normalized.includes('commande')) {
+            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en temps reel avec son, badge et notification. Pour accelerer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
+        }
+
+        if (normalized.includes('stat') || normalized.includes('revenu') || normalized.includes('vente')) {
+            return this.canUse('analytics')
+                ? `Votre plan permet les statistiques. Regardez le dashboard pour suivre les revenus par devise, les commandes du jour et les plats les plus commandes.`
+                : `Les statistiques detaillees sont reservees aux plans Pro et Business. Passez sur Pro pour voir les analyses avancees.`;
+        }
+
+        if (normalized.includes('qr') || normalized.includes('table')) {
+            return `Pour ${restaurantName}, creez vos tables puis imprimez leurs QR codes. Chaque QR ouvre le menu client et rattache la commande a la bonne table.`;
+        }
+
+        if (normalized.includes('reservation')) {
+            return this.canUse('reservations')
+                ? `Les reservations sont actives sur ${planName}. Vos clients peuvent reserver depuis le menu public et vous confirmez ensuite dans Reservations.`
+                : `Les reservations sont reservees aux plans Pro et Business.`;
+        }
+
+        if (normalized.includes('plan') || normalized.includes('abonnement') || normalized.includes('jour')) {
+            return `${this.subscriptionInfo.label}. ${this.subscriptionInfo.expiresAt ? 'Fin prevue le ' + this.subscriptionInfo.expiresAt.toLocaleString() + '.' : this.subscriptionInfo.detail + '.'}`;
+        }
+
+        if (normalized.includes('plat') || normalized.includes('menu')) {
+            return `Gardez votre menu court, clair et visuel. Mettez les plats populaires en avant, ajoutez des photos nettes et marquez rapidement les plats epuises.`;
+        }
+
+        if (normalized.includes('fidel')) {
+            return `Le module fidelite peut recompenser les clients apres plusieurs commandes : points, tampons ou coupons. C'est ideal pour faire revenir les clients reguliers.`;
+        }
+
+        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, reservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
+    }
+
+    private buildSubscriptionInfo(restaurant: any): {
+        label: string;
+        shortLabel: string;
+        detail: string;
+        tone: string;
+        expiresAt: Date | null;
+        daysRemaining: number | null;
+    } {
+        const status = String(restaurant?.status || restaurant?.subscription?.status || '').toLowerCase();
+        const planName = restaurant?.plan?.name || 'Plan';
+        const isTrial = status === 'trial';
+        const expiresAt = this.parseDate(
+            isTrial
+                ? restaurant?.trial_ends_at
+                : restaurant?.subscription_ends_at || restaurant?.subscription?.ends_at || restaurant?.subscription?.current_period_end
+        ) || this.parseDate(restaurant?.trial_ends_at);
+        const daysRemaining = expiresAt ? this.daysUntil(expiresAt) : null;
+        const hasExpired = daysRemaining !== null && daysRemaining <= 0;
+
+        if (hasExpired || status === 'past_due' || status === 'expired') {
+            return {
+                label: 'Abonnement expire',
+                shortLabel: 'Expire',
+                detail: expiresAt ? 'Date limite atteinte' : 'Paiement requis',
+                tone: 'danger',
+                expiresAt,
+                daysRemaining: 0,
+            };
+        }
+
+        if (status === 'pending_payment') {
+            return {
+                label: 'Paiement en attente',
+                shortLabel: 'En attente',
+                detail: 'Votre espace sera active apres confirmation',
+                tone: 'warning',
+                expiresAt,
+                daysRemaining,
+            };
+        }
+
+        if (status === 'suspended' || status === 'cancelled') {
+            return {
+                label: status === 'cancelled' ? 'Abonnement annule' : 'Abonnement suspendu',
+                shortLabel: status === 'cancelled' ? 'Annule' : 'Suspendu',
+                detail: 'Contactez le support pour reactiver le compte',
+                tone: 'danger',
+                expiresAt,
+                daysRemaining,
+            };
+        }
+
+        if (isTrial) {
+            return {
+                label: `${daysRemaining ?? 0} jour${daysRemaining === 1 ? '' : 's'} d'essai restant${daysRemaining === 1 ? '' : 's'}`,
+                shortLabel: `${daysRemaining ?? 0}j essai`,
+                detail: `Essai gratuit - ${planName}`,
+                tone: daysRemaining !== null && daysRemaining <= 3 ? 'warning' : 'trial',
+                expiresAt,
+                daysRemaining,
+            };
+        }
+
+        if (status === 'active') {
+            return {
+                label: daysRemaining === null
+                    ? 'Abonnement actif'
+                    : `${daysRemaining} jour${daysRemaining === 1 ? '' : 's'} d'abonnement restant${daysRemaining === 1 ? '' : 's'}`,
+                shortLabel: daysRemaining === null ? 'Actif' : `${daysRemaining}j actif`,
+                detail: `Paiement confirme - ${planName}`,
+                tone: 'success',
+                expiresAt,
+                daysRemaining,
+            };
+        }
+
+        return {
+            label: daysRemaining === null
+                ? 'Aucun abonnement actif'
+                : `${daysRemaining} jour${daysRemaining === 1 ? '' : 's'} restant${daysRemaining === 1 ? '' : 's'}`,
+            shortLabel: daysRemaining === null ? 'Non paye' : `${daysRemaining}j`,
+            detail: 'Abonnement non paye ou statut inconnu',
+            tone: daysRemaining === null ? 'warning' : 'neutral',
+            expiresAt,
+            daysRemaining,
+        };
+    }
+
+    private resolveLoginDate(): Date {
+        const storedLoginAt = localStorage.getItem('restaurant_login_at');
+        const parsed = this.parseDate(storedLoginAt);
+        if (parsed) {
+            return parsed;
+        }
+
+        const now = new Date();
+        localStorage.setItem('restaurant_login_at', now.toISOString());
+        return now;
+    }
+
+    private parseDate(value: any): Date | null {
+        if (!value) return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    private daysUntil(date: Date): number {
+        const millisecondsPerDay = 24 * 60 * 60 * 1000;
+        return Math.max(0, Math.ceil((date.getTime() - Date.now()) / millisecondsPerDay));
     }
 
     passwordMatchValidator(g: FormGroup) {

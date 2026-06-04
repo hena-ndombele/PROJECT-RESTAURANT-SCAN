@@ -17,6 +17,13 @@
     </button>
   </header>
 
+  @if (upgradeRequired()) {
+    <div class="alert alert-warning border-0 shadow-sm">
+      <strong>Fonctionnalite Pro.</strong>
+      Les reservations sont disponibles avec les plans Pro et Business.
+    </div>
+  }
+
   <section class="reservation-summary mb-4">
     <article>
       <span>Demandes</span>

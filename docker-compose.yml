@@ -28,11 +28,11 @@ services:
     networks:
       - e_resto_network
 
-  client:
+  e_resto_angular:
     build:
       context: ./e-resto-Angular
       dockerfile: Dockerfile
-    container_name: e_resto_client
+    container_name: e_resto_Angular
     restart: unless-stopped
     ports:
       - "4200:4200"
@@ -42,7 +42,7 @@ services:
     networks:
       - e_resto_network
 
-  admin:
+  e_resto_admin:
     build:
       context: ./e-resto-admin
       dockerfile: Dockerfile
@@ -56,25 +56,12 @@ services:
     networks:
       - e_resto_network
 
-  platform:
-    build:
-      context: ./e-resto-platform-Angular
-      dockerfile: Dockerfile
-    container_name: e_resto_platform
-    restart: unless-stopped
-    ports:
-      - "4202:4200"
-    volumes:
-      - ./e-resto-platform-Angular:/app
-      - /app/node_modules
-    networks:
-      - e_resto_network
 
-  resto_client:
+  e_resto_client:
     build:
       context: ./e-resto-client
       dockerfile: Dockerfile
-    container_name: e_resto_react_client
+    container_name: e_resto_client
     restart: unless-stopped
     ports:
       - "3000:3000"

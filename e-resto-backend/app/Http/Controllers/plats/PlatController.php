@@ -63,6 +63,15 @@ class PlatController extends Controller
      */
 public function store(Request $request)
 {
+    $restaurant = $request->user()?->restaurant()->with('plan')->first();
+    $dishLimit = $restaurant?->plan?->maxDishes();
+    if ($restaurant && $dishLimit !== null && $restaurant->plats()->count() >= $dishLimit) {
+        return response()->json([
+            'message' => "Limite de {$dishLimit} plats atteinte pour le plan {$restaurant->plan?->name}.",
+            'requires_upgrade' => true,
+        ], 422);
+    }
+
     $validatedData = $request->validate([
         'name' => 'required|string',
         'description' => 'required|string',

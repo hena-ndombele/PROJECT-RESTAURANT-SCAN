@@ -33,22 +33,7 @@
         </div>
       </div>
 
-      <div class="success-panel" *ngIf="accountCreated; else signupForm">
-        <div class="success-icon"><i class="bi bi-check-lg"></i></div>
-        <h2>Compte cree !</h2>
-        <p>Votre menu digital est accessible ici :</p>
-        <div class="menu-url">
-          <span>{{ publicMenuUrl }}</span>
-          <button type="button" (click)="copyMenuUrl()" aria-label="Copier l'URL du menu"><i class="bi bi-copy"></i></button>
-        </div>
-        <div class="success-actions">
-          <a class="secondary-action" [href]="publicMenuUrl" target="_blank" rel="noopener">Ouvrir le menu</a>
-          <button class="primary-action" type="button" (click)="goToCheckout()">Continuer vers Mobile Money <i class="bi bi-arrow-right"></i></button>
-        </div>
-        <p class="message success-message" *ngIf="message">{{ message }}</p>
-      </div>
-
-      <ng-template #signupForm>
+      <ng-container *ngIf="!accountCreated">
         <form (ngSubmit)="currentStep === 1 ? goNext() : createAccount()">
           @if (currentStep === 1) {
             <div class="form-section">
@@ -140,7 +125,33 @@
         </form>
 
         <div class="signin-link">Deja un compte ? <a routerLink="/restaurant/login">Se connecter</a></div>
-      </ng-template>
+      </ng-container>
     </div>
   </section>
+
+  <div class="success-modal-backdrop" *ngIf="accountCreated">
+    <section class="success-modal" role="dialog" aria-modal="true" aria-labelledby="signupSuccessTitle">
+      <a class="modal-logo" routerLink="/">
+        <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+      </a>
+      <span class="modal-subtitle">E-RESTO - Menu digital QR code</span>
+      <div class="modal-icon"><i class="bi bi-stars"></i></div>
+      <h2 id="signupSuccessTitle">Compte cree !</h2>
+      <p>Ton restaurant est pret. Ton menu digital est accessible ici :</p>
+      <div class="menu-url modal-menu-url">
+        <span>{{ publicMenuUrl }}</span>
+        <button type="button" (click)="copyMenuUrl()" aria-label="Copier l'URL du menu"><i class="bi bi-copy"></i></button>
+      </div>
+      <div class="success-actions">
+        <a class="secondary-action" [href]="publicMenuUrl" target="_blank" rel="noopener">
+          Ouvrir le menu <i class="bi bi-arrow-up-right"></i>
+        </a>
+        <button class="primary-action" type="button" (click)="goToDashboard()">
+          Acceder a mon dashboard <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+      <button class="checkout-link" type="button" (click)="goToCheckout()">Configurer le paiement Mobile Money</button>
+      <p class="message success-message" *ngIf="message">{{ message }}</p>
+    </section>
+  </div>
 </main>

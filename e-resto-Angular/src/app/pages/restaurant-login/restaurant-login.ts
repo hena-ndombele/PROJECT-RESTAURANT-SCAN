@@ -61,6 +61,7 @@ export class RestaurantLogin implements AfterViewInit {
     localStorage.setItem('auth_token', response.token);
     localStorage.setItem('user_data', JSON.stringify(response.user));
     localStorage.setItem('restaurant_session', JSON.stringify(response.restaurant));
+    localStorage.setItem('restaurant_login_at', new Date().toISOString());
     this.router.navigate(['/restaurant/dashboard']);
   }
 

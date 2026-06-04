@@ -124,6 +124,7 @@ export class AuthService {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('restaurant_token');
     localStorage.removeItem('restaurant_session');
+    localStorage.removeItem('restaurant_login_at');
     localStorage.removeItem('user_data');
     this.loggedIn.next(false);
    // this.stopListener(); // Arrête le timer

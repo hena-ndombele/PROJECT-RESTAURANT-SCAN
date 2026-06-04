@@ -108,6 +108,11 @@ export function App() {
     logo_url: '/img/logo/e-resto-logo.png',
     slogan: 'Fast Food & Restaurant',
     description: 'Fast Food & Restaurant',
+    can_feedback: false,
+    can_reservations: false,
+    can_mobile_money: false,
+    can_chatbot: false,
+    payment_methods: ['cash'],
     theme: {
       primary: '#F9A11B',
       secondary: '#111111',
@@ -371,10 +376,18 @@ export function App() {
       <NewsletterSection />
       <ContactSection />
       <Footer />
+      <ClientChatbot
+        brand={brand}
+        menu={menu}
+        cart={cart}
+        activeOrder={activeOrder}
+        onOpenMenu={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      />
       <MenuModal plat={selectedPlat} onClose={() => setSelectedPlat(null)} onAdd={cart.addItem} />
       <CartDrawer
         open={cartOpen}
         tableId={tableId}
+        brand={brand}
         cart={cart}
         onOrderCreated={(order) => {
           rememberActiveOrder(order, tableId, true);
@@ -795,7 +808,7 @@ function MenuModal({ plat, onClose, onAdd }) {
   );
 }
 
-function CartDrawer({ open, tableId, cart, onClose, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping }) {
+function CartDrawer({ open, tableId, brand, cart, onClose, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping }) {
   const [note, setNote] = useState('');
   const [orderType, setOrderType] = useState('dine_in');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -811,12 +824,20 @@ function CartDrawer({ open, tableId, cart, onClose, onOrderCreated, editingOrder
     && (!isMobileMoney || mobileWallet.trim())
     && (orderType !== 'takeaway' || customerPhone.trim() || mobileWallet.trim());
   const isEditing = Boolean(editingOrder?.id);
+  const allowedPaymentMethods = brand?.payment_methods?.length ? brand.payment_methods : ['cash'];
   const paymentMethods = [
     { key: 'cash', name: 'Cash', icon: 'fa-money-bill-wave', available: true, hint: 'Payez a table ou a la caisse.' },
     { key: 'orange_money', name: 'Orange Money', icon: 'fa-mobile-screen', available: true, hint: 'Interface de paiement mobile money.' },
     { key: 'mpesa', name: 'M-Pesa', icon: 'fa-mobile-screen-button', available: true, hint: 'Interface de paiement mobile money.' },
     { key: 'airtel_money', name: 'Airtel Money', icon: 'fa-sim-card', available: true, hint: 'Interface de paiement mobile money.' },
-  ];
+  ].filter((method) => allowedPaymentMethods.includes(method.key));
+
+  useEffect(() => {
+    if (!paymentMethods.some((method) => method.key === paymentMethod)) {
+      setPaymentMethod('cash');
+      setMobileWallet('');
+    }
+  }, [paymentMethod, paymentMethods]);
 
   useEffect(() => {
     if (!editingOrder) return;
@@ -935,7 +956,7 @@ function CartDrawer({ open, tableId, cart, onClose, onOrderCreated, editingOrder
         <div className="payment-box">
           <div className="payment-title">
             <strong>Moyen de paiement</strong>
-            <span>Cash et mobile money pour le client du restaurant.</span>
+            <span>{brand?.can_mobile_money ? 'Cash et mobile money pour le client du restaurant.' : 'Paiement cash disponible avec ce plan.'}</span>
           </div>
           <div className="payment-options">
             {paymentMethods.map((method) => (
@@ -1811,6 +1832,10 @@ function buildClientBrand(restaurant) {
     address: restaurant.address || '',
     city: restaurant.city || '',
     can_feedback: Boolean(restaurant.can_feedback),
+    can_reservations: Boolean(restaurant.can_reservations),
+    can_mobile_money: Boolean(restaurant.can_mobile_money),
+    can_chatbot: Boolean(restaurant.can_chatbot),
+    payment_methods: Array.isArray(restaurant.payment_methods) ? restaurant.payment_methods : ['cash'],
     theme: {
       primary: theme.primary || '#F9A11B',
       secondary: theme.secondary || '#111111',
@@ -1987,7 +2012,7 @@ function OrderSnackbar({ snackbar, onClose }) {
 
 function ReservationSection({ tableId, restaurantSlug, brand }) {
   const today = new Date().toISOString().slice(0, 10);
-  const canReserve = Boolean(tableId || restaurantSlug);
+  const canReserve = Boolean(brand?.can_reservations && (tableId || restaurantSlug));
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -2021,7 +2046,7 @@ function ReservationSection({ tableId, restaurantSlug, brand }) {
   return (
     <section id="reservation">
       <div className="container">
-        <SectionTitle eyebrow="Reservation" title="Reserver chez" highlight={brand?.name || 'E-RESTO'} description="Envoyez une demande de reservation. Le restaurant confirme ensuite la table et l'heure." />
+        <SectionTitle eyebrow="Reservation" title="Reserver chez" highlight={brand?.name || 'E-RESTO'} description={brand?.can_reservations ? "Envoyez une demande de reservation. Le restaurant confirme ensuite la table et l'heure." : "Les reservations sont disponibles avec les plans Pro et Business."} />
         <div className="row g-4 align-items-start">
           <InfoPanel />
           <div className="col-lg-8">
@@ -2039,7 +2064,12 @@ function ReservationSection({ tableId, restaurantSlug, brand }) {
                 <div className="col-sm-6"><label className="flbl">Date *</label><input className="fctrl" type="date" min={today} value={form.reservation_date} onChange={(event) => setForm({ ...form, reservation_date: event.target.value })} required /></div>
                 <FormInput label="Time *" type="time" value={form.reservation_time} onChange={(reservation_time) => setForm({ ...form, reservation_time })} required />
                 <div className="col-12"><label className="flbl">Special Requests</label><textarea className="fctrl" rows="3" value={form.special_requests} onChange={(event) => setForm({ ...form, special_requests: event.target.value })} placeholder="Anniversaire, terrasse, allergies, chaise enfant..." /></div>
-                {!canReserve && (
+                {!brand?.can_reservations && (
+                  <div className="col-12">
+                    <div className="client-alert">Ce restaurant n'a pas active les reservations sur son plan actuel.</div>
+                  </div>
+                )}
+                {brand?.can_reservations && !canReserve && (
                   <div className="col-12">
                     <div className="client-alert">Ouvrez le lien public du restaurant ou scannez un QR code pour envoyer une reservation au bon restaurant.</div>
                   </div>
@@ -2181,4 +2211,136 @@ function NewsletterSection() {
 
 function Footer() {
   return <footer><div className="container"><div className="row g-5"><div className="col-lg-4"><div className="footer-brand"><img src="/img/logo/e-resto-logo.png" alt="E-RESTO" /><div className="fnm">E-<span>RESTO</span></div></div><p className="fdesc">We bring the world's finest flavors together in a fast, friendly, and affordable experience.</p></div><div className="col-sm-6 col-lg-2"><div className="ftit">Quick Links</div><ul className="flinks ps-0"><li><a href="#hero"><i className="fas fa-chevron-right"></i>Home</a></li><li><a href="#menu"><i className="fas fa-chevron-right"></i>Our Menu</a></li><li><a href="#reservation"><i className="fas fa-chevron-right"></i>Reservation</a></li></ul></div><div className="col-lg-4"><div className="ftit">Get In Touch</div><div className="fci"><div className="fciico"><i className="fas fa-map-marker-alt"></i></div><div className="fciinfo"><strong>Address</strong>42 Flavor Street, Manhattan, NY 10001</div></div></div></div></div><div className="fbot"><div className="container"><p>&copy; 2026 <span>E-RESTO Restaurant</span>. All Rights Reserved.</p></div></div></footer>;
+}
+
+function ClientChatbot({ brand, menu, cart, activeOrder, onOpenMenu }) {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([
+    {
+      from: 'bot',
+      text: `Bonjour, je suis l'assistant de ${brand.name}. Je peux vous conseiller un plat, expliquer le menu ou vous aider a suivre votre commande.`,
+    },
+  ]);
+
+  useEffect(() => {
+    setMessages((current) => current.length > 1 ? current : [
+      {
+        from: 'bot',
+        text: `Bonjour, je suis l'assistant de ${brand.name}. Je peux vous conseiller un plat, expliquer le menu ou vous aider a suivre votre commande.`,
+      },
+    ]);
+  }, [brand.name]);
+
+  if (!brand.can_chatbot) return null;
+
+  const ask = (question) => {
+    const text = (question || input).trim();
+    if (!text) return;
+
+    setMessages((current) => [
+      ...current,
+      { from: 'user', text },
+      { from: 'bot', text: buildClientChatbotReply(text, brand, menu, cart, activeOrder) },
+    ]);
+    setInput('');
+  };
+
+  return (
+    <div className={`client-chatbot ${open ? 'open' : ''}`}>
+      {open && (
+        <div className="client-chatbot-panel">
+          <div className="client-chatbot-head">
+            <div>
+              <span>Assistant intelligent</span>
+              <strong>{brand.name}</strong>
+            </div>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Fermer l'assistant">
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <div className="client-chatbot-actions">
+            <button type="button" onClick={() => ask('Quel plat me recommandes-tu ?')}>Recommandation</button>
+            <button type="button" onClick={() => ask('Je veux un plat pas cher')}>Petit budget</button>
+            <button type="button" onClick={() => ask('Ou en est ma commande ?')}>Ma commande</button>
+          </div>
+          <div className="client-chatbot-messages">
+            {messages.map((message, index) => (
+              <div className={`client-chatbot-message ${message.from === 'user' ? 'user' : ''}`} key={`${message.from}-${index}`}>
+                {message.text}
+              </div>
+            ))}
+          </div>
+          <div className="client-chatbot-form">
+            <input
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') ask();
+              }}
+              placeholder="Demandez un conseil..."
+            />
+            <button type="button" onClick={() => ask()} aria-label="Envoyer">
+              <i className="fas fa-paper-plane"></i>
+            </button>
+          </div>
+          <button className="client-chatbot-menu" type="button" onClick={onOpenMenu}>
+            Voir le menu
+          </button>
+        </div>
+      )}
+      <button className="client-chatbot-toggle" type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <i className="fas fa-sparkles"></i>
+        <span>Assistant</span>
+      </button>
+    </div>
+  );
+}
+
+function buildClientChatbotReply(question, brand, menu, cart, activeOrder) {
+  const normalized = question.toLowerCase();
+  const plats = Array.isArray(menu?.plats) ? menu.plats : [];
+  const availablePlats = plats.filter((plat) => plat.is_available !== false);
+  const cheapest = [...availablePlats].sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0))[0];
+  const recommended = availablePlats.find((plat) => {
+    const content = `${plat.name} ${plat.description} ${(plat.ingredients ?? []).join(' ')}`.toLowerCase();
+    return content.includes('popular') || content.includes('bestseller') || content.includes('chef');
+  }) || availablePlats[0];
+
+  if (normalized.includes('pas cher') || normalized.includes('budget') || normalized.includes('moins cher')) {
+    return cheapest
+      ? `Pour un petit budget, je vous conseille ${cheapest.name} a ${formatMoney(cheapest.price, cheapest.currency || 'CDF')}.`
+      : 'Je ne vois pas encore les prix du menu. Ouvrez la section Menu pour choisir selon votre budget.';
+  }
+
+  if (normalized.includes('recommande') || normalized.includes('populaire') || normalized.includes('meilleur')) {
+    return recommended
+      ? `Je vous recommande ${recommended.name}. ${recommended.description || 'C est un bon choix pour decouvrir le menu.'}`
+      : 'Le menu est en cours de chargement. Revenez dans un instant et je pourrai vous conseiller.';
+  }
+
+  if (normalized.includes('commande') || normalized.includes('suivi') || normalized.includes('statut')) {
+    if (activeOrder) {
+      return `Votre commande est actuellement : ${statusLabels[activeOrder.status] ?? activeOrder.status}. Gardez cette page ouverte pour le suivi en temps reel.`;
+    }
+    return 'Vous n avez pas encore de commande active sur cette page. Ajoutez des plats au panier puis envoyez la commande.';
+  }
+
+  if (normalized.includes('panier')) {
+    return cart.totals.totalQuantity > 0
+      ? `Votre panier contient ${cart.totals.totalQuantity} article(s), total ${formatMoney(cart.totals.totalAmount, cart.totals.currency)}.`
+      : 'Votre panier est vide. Je peux vous recommander un plat pour commencer.';
+  }
+
+  if (normalized.includes('reservation') || normalized.includes('reserver')) {
+    return brand.can_reservations
+      ? 'Les reservations sont disponibles. Descendez a la section Reservation pour envoyer votre demande au restaurant.'
+      : 'Ce restaurant n a pas active les reservations sur son plan actuel.';
+  }
+
+  if (normalized.includes('allerg')) {
+    return 'Pour les allergies, verifiez la description du plat et precisez votre contrainte dans la note de commande. En cas de doute, appelez le restaurant avant de valider.';
+  }
+
+  return `Je peux vous aider a choisir un plat chez ${brand.name}, suivre votre commande, comprendre le menu ou trouver une option adaptee a votre budget.`;
 }

@@ -3,8 +3,10 @@ import { Component, OnInit, computed, inject, signal } from "@angular/core";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import Swal from "sweetalert2";
 import { RoleDto } from "../../../../models/roles/RoleDto";
+import { RestaurantPlanUsage } from "../../../../models/saas/saas.models";
 import { UserDto } from "../../../../models/users/UserDto";
 import { RoleService } from "../../../../services/roles/role-service";
+import { SaasService } from "../../../../services/saas/saas-service";
 import { UserService } from "../../../../services/users/user-service";
 
 @Component({
@@ -17,6 +19,7 @@ import { UserService } from "../../../../services/users/user-service";
 export class ListUser implements OnInit {
   private userService = inject(UserService);
   private roleService = inject(RoleService);
+  private saasService = inject(SaasService);
 
   isLoading = signal(true);
   isSaving = signal(false);
@@ -27,6 +30,7 @@ export class ListUser implements OnInit {
   pageSize = 10;
   selectedUser = signal<UserDto | null>(null);
   selectedRoles = signal<string[]>([]);
+  planUsage = signal<RestaurantPlanUsage | null>(null);
 
   userForm = new FormGroup({
     first_name: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
@@ -38,6 +42,9 @@ export class ListUser implements OnInit {
   });
 
   totalUserCount = computed(() => this.users().length);
+  userLimitReached = computed(() => this.planUsage()?.permissions?.can_create_user === false);
+  userLimitMessage = computed(() => this.planUsage()?.messages?.users ?? "");
+  canManageRoles = computed(() => this.planUsage()?.permissions?.can_manage_roles === true);
 
   filteredUsers = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -60,7 +67,15 @@ export class ListUser implements OnInit {
 
   ngOnInit(): void {
     this.loadUsers();
+    this.loadUsage();
     this.loadRoles();
+  }
+
+  loadUsage(): void {
+    this.saasService.restaurantUsage().subscribe({
+      next: (usage) => this.planUsage.set(usage),
+      error: () => this.planUsage.set(null),
+    });
   }
 
   loadUsers(): void {
@@ -78,10 +93,16 @@ export class ListUser implements OnInit {
   loadRoles(): void {
     this.roleService.list().subscribe({
       next: (response) => this.roles.set(response.data ?? []),
+      error: () => this.roles.set([]),
     });
   }
 
   openCreate(): void {
+    if (this.userLimitReached()) {
+      Swal.fire("Plan limite", this.userLimitMessage() || "Votre plan ne permet pas de creer plus d'utilisateurs.", "warning");
+      return;
+    }
+
     this.selectedUser.set(null);
     this.selectedRoles.set([]);
     this.userForm.reset({
@@ -112,6 +133,7 @@ export class ListUser implements OnInit {
   }
 
   onRoleChange(roleName: string, event: Event): void {
+    if (!this.canManageRoles()) return;
     const checked = (event.target as HTMLInputElement).checked;
     const current = this.selectedRoles();
     this.selectedRoles.set(checked ? [...current, roleName] : current.filter((name) => name !== roleName));
@@ -145,6 +167,7 @@ export class ListUser implements OnInit {
         this.isSaving.set(false);
         Swal.fire("Success", selected ? "User updated successfully." : "User created successfully.", "success");
         this.loadUsers();
+        this.loadUsage();
       },
       error: (err) => {
         this.isSaving.set(false);
@@ -169,6 +192,7 @@ export class ListUser implements OnInit {
       this.userService.delete(user.id).subscribe({
         next: () => {
           this.users.update((users) => users.filter((item) => item.id !== user.id));
+          this.loadUsage();
           Swal.fire("Deleted", "User deleted successfully.", "success");
         },
         error: (err) => Swal.fire("Error", err.error?.message || "Unable to delete user.", "error"),

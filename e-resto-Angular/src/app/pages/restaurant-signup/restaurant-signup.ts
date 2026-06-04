@@ -146,16 +146,32 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
       google_credential: this.googleCredential || undefined,
     }).pipe(timeout(15000)).subscribe({
       next: (response) => {
-        if (response.session?.token) {
-          localStorage.setItem('restaurant_token', response.session.token);
-          localStorage.setItem('auth_token', response.session.token);
-          localStorage.setItem('user_data', JSON.stringify(response.session.user));
-          localStorage.setItem('restaurant_session', JSON.stringify(response.session.restaurant));
+        const token = response.session?.token || response.token || response.access_token;
+        const restaurant = response.session?.restaurant || response.restaurant;
+        const user = response.session?.user || response.user || {
+          name: this.account.owner_name,
+          email: this.account.owner_email,
+          restaurant,
+        };
+
+        if (token) {
+          localStorage.setItem('restaurant_token', token);
+          localStorage.setItem('auth_token', token);
+          localStorage.setItem('restaurant_login_at', new Date().toISOString());
         }
-        localStorage.setItem('pending_restaurant', JSON.stringify(response.restaurant));
+
+        if (user) {
+          localStorage.setItem('user_data', JSON.stringify(user));
+        }
+
+        if (restaurant) {
+          localStorage.setItem('restaurant_session', JSON.stringify(restaurant));
+          localStorage.setItem('pending_restaurant', JSON.stringify(restaurant));
+        }
+
         localStorage.setItem('restaurant_owner_email', this.account.owner_email);
-        this.createdRestaurant = response.restaurant;
-        this.publicMenuUrl = this.buildMenuUrl(response.restaurant);
+        this.createdRestaurant = restaurant;
+        this.publicMenuUrl = this.buildMenuUrl(restaurant);
         this.accountCreated = true;
         this.creating = false;
       },
@@ -170,6 +186,10 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
     this.router.navigate(['/restaurant/checkout']);
   }
 
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
+  }
+
   copyMenuUrl(): void {
     if (!this.publicMenuUrl) {
       return;
@@ -181,7 +201,18 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
 
   private buildMenuUrl(restaurant: any): string {
     const base = window.location.origin.replace(':4200', ':5173');
-    return `${base}/?restaurant_slug=${restaurant?.slug || 'mon-restaurant'}`;
+    const slug = restaurant?.slug || this.slugify(this.account.restaurant_name) || 'mon-restaurant';
+    return `${base}/?restaurant_slug=${slug}`;
+  }
+
+  private slugify(value: string): string {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
 
   private renderGoogleButton(): void {

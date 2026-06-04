@@ -437,15 +437,24 @@ class SaasController extends Controller
         $limits = [
             'tables' => (int) ($restaurant->plan?->max_tables ?? 0),
             'users' => (int) ($restaurant->plan?->max_users ?? 0),
+            'dishes' => $restaurant->plan?->maxDishes(),
+            'orders_month' => $restaurant->plan?->maxOrdersPerMonth(),
         ];
 
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd = Carbon::now()->endOfMonth();
         $usage = [
             'tables' => $restaurant->tables()->count(),
             'users' => $restaurant->users()->count(),
+            'dishes' => $restaurant->plats()->count(),
+            'orders_month' => $restaurant->orders()->whereBetween('created_at', [$monthStart, $monthEnd])->count(),
         ];
 
         $canCreateTable = $limits['tables'] > 0 && $usage['tables'] < $limits['tables'];
         $canCreateUser = $limits['users'] > 0 && $usage['users'] < $limits['users'];
+        $canCreateDish = $limits['dishes'] === null || $usage['dishes'] < $limits['dishes'];
+        $canAcceptOrder = $limits['orders_month'] === null || $usage['orders_month'] < $limits['orders_month'];
+        $features = $restaurant->plan?->featurePermissions() ?? [];
 
         return response()->json([
             'plan' => $restaurant->plan,
@@ -455,7 +464,20 @@ class SaasController extends Controller
             'permissions' => [
                 'can_create_table' => $canCreateTable,
                 'can_create_user' => $canCreateUser,
+                'can_create_dish' => $canCreateDish,
+                'can_accept_order' => $canAcceptOrder,
+                'can_use_mobile_money' => (bool) ($features['mobile_money'] ?? false),
+                'can_view_analytics' => (bool) ($features['analytics'] ?? false),
+                'can_view_advanced_analytics' => (bool) ($features['advanced_analytics'] ?? false),
+                'can_customize_menu' => (bool) ($features['customization'] ?? false),
+                'can_use_feedback' => (bool) ($features['feedback'] ?? false),
+                'can_use_reservations' => (bool) ($features['reservations'] ?? false),
+                'can_use_chatbot' => (bool) ($features['chatbot'] ?? false),
+                'can_manage_roles' => (bool) ($features['roles'] ?? false),
+                'can_use_multi_restaurant' => (bool) ($features['multi_restaurant'] ?? false),
             ],
+            'features' => $features,
+            'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
             'messages' => [
                 'tables' => $canCreateTable
                     ? "{$usage['tables']} / {$limits['tables']} tables utilisees"
@@ -463,6 +485,12 @@ class SaasController extends Controller
                 'users' => $canCreateUser
                     ? "{$usage['users']} / {$limits['users']} utilisateurs utilises"
                     : "Limite de {$limits['users']} utilisateurs atteinte pour le plan {$restaurant->plan?->name}.",
+                'dishes' => $limits['dishes'] === null
+                    ? 'Plats illimites'
+                    : ($canCreateDish ? "{$usage['dishes']} / {$limits['dishes']} plats utilises" : "Limite de {$limits['dishes']} plats atteinte pour le plan {$restaurant->plan?->name}."),
+                'orders_month' => $limits['orders_month'] === null
+                    ? 'Commandes illimitees'
+                    : ($canAcceptOrder ? "{$usage['orders_month']} / {$limits['orders_month']} commandes ce mois" : "Limite de {$limits['orders_month']} commandes mensuelles atteinte pour le plan {$restaurant->plan?->name}."),
             ],
         ]);
     }
@@ -484,7 +512,7 @@ class SaasController extends Controller
         ]);
 
         $hasCustomization = $request->hasAny(['settings', 'logo_data', 'slug']);
-        if ($hasCustomization && !$this->canCustomizeRestaurant($restaurant)) {
+        if ($hasCustomization && !$restaurant->plan?->allows('customization')) {
             return response()->json([
                 'message' => 'La personnalisation du menu client est reservee aux plans Pro et Business.',
             ], 403);
@@ -970,8 +998,12 @@ class SaasController extends Controller
             'limits' => [
                 'tables' => $restaurant->plan?->max_tables ?? 0,
                 'users' => $restaurant->plan?->max_users ?? 0,
+                'dishes' => $restaurant->plan?->maxDishes(),
+                'orders_month' => $restaurant->plan?->maxOrdersPerMonth(),
                 'restaurants' => $restaurant->plan?->max_restaurants ?? 1,
             ],
+            'features' => $restaurant->plan?->featurePermissions() ?? [],
+            'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
         ];
     }
 
@@ -985,7 +1017,7 @@ class SaasController extends Controller
                 'monthly_price' => 15,
                 'max_tables' => 8,
                 'max_users' => 5,
-                'features' => ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
+                'features' => ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Pro',
@@ -995,7 +1027,7 @@ class SaasController extends Controller
                 'max_tables' => 20,
                 'max_users' => 15,
                 'is_popular' => true,
-                'features' => ['Commandes illimitees', 'Plats illimites', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire', 'Installation : 20 000 FC'],
+                'features' => ['Commandes illimitees', 'Plats illimites', 'Mobile Money', 'Reservations', 'Feedback client', 'Chatbot client intelligent', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Business',
@@ -1005,7 +1037,7 @@ class SaasController extends Controller
                 'max_restaurants' => 5,
                 'max_tables' => 20,
                 'max_users' => 15,
-                'features' => ['Tout le plan Pro', 'Statistiques avancees', 'Multi-utilisateurs et roles', 'Support dedie', 'Onboarding personnalise', 'Installation : 30 000 FC', 'Multi-restaurants'],
+                'features' => ['Tout le plan Pro', 'Chatbot client intelligent', 'Assistant intelligent dashboard', 'Statistiques avancees', 'Roles et permissions', 'Support dedie', 'Onboarding personnalise', 'Installation : 30 000 FC', 'Multi-restaurants'],
             ],
         ];
 

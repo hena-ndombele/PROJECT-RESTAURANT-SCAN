@@ -60,6 +60,11 @@ class Restaurant extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function plats()
+    {
+        return $this->hasMany(Plat::class);
+    }
+
     public function payments()
     {
         return $this->hasMany(Payment::class);

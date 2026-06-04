@@ -29,6 +29,8 @@ export interface Restaurant {
   trial_ends_at?: string;
   subscription_ends_at?: string;
   plan?: SaasPlan;
+  features?: Record<string, boolean>;
+  payment_methods?: string[];
   created_at?: string;
 }
 
@@ -56,17 +58,35 @@ export interface RestaurantPlanUsage {
   limits: {
     tables: number;
     users: number;
+    dishes?: number | null;
+    orders_month?: number | null;
   };
   usage: {
     tables: number;
     users: number;
+    dishes?: number;
+    orders_month?: number;
   };
   permissions: {
     can_create_table: boolean;
     can_create_user: boolean;
+    can_create_dish?: boolean;
+    can_accept_order?: boolean;
+    can_use_mobile_money?: boolean;
+    can_view_analytics?: boolean;
+    can_view_advanced_analytics?: boolean;
+    can_customize_menu?: boolean;
+    can_use_feedback?: boolean;
+    can_use_reservations?: boolean;
+    can_manage_roles?: boolean;
+    can_use_multi_restaurant?: boolean;
   };
+  features?: Record<string, boolean>;
+  payment_methods?: string[];
   messages: {
     tables: string;
     users: string;
+    dishes?: string;
+    orders_month?: string;
   };
 }

@@ -14,6 +14,8 @@ import { CategoryDto } from "../../models/category/CategoryDto";
 import { TableDto } from "../../models/table/TableDto";
 import { Order } from "../../models/orders/OrderDto";
 import { OrderRealtimeService } from "../../services/realtime/order-realtime-service";
+import { SaasService } from "../../services/saas/saas-service";
+import { RestaurantPlanUsage } from "../../models/saas/saas.models";
 
 type DashboardStatus = Order["status"];
 
@@ -29,6 +31,15 @@ interface CurrencyRevenue {
     currency: string;
     amount: number;
     count: number;
+}
+
+interface OnboardingStep {
+    eyebrow: string;
+    title: string;
+    description: string;
+    icon: string;
+    tone: "orange" | "indigo" | "violet" | "emerald" | "pink";
+    bullets: string[];
 }
 
 @Component({
@@ -51,6 +62,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     private readonly tableService = inject(TableService);
     private readonly agentService = inject(AgentService);
     private readonly realtime = inject(OrderRealtimeService);
+    private readonly saasService = inject(SaasService);
 
     private salesPurchaseChart?: ApexCharts;
     private customerChart?: ApexCharts;
@@ -61,6 +73,9 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     readonly refreshing = signal(false);
     readonly errorMessage = signal("");
     readonly lastUpdated = signal<Date | null>(null);
+    readonly onboardingOpen = signal(false);
+    readonly onboardingStepIndex = signal(0);
+    readonly planUsage = signal<RestaurantPlanUsage | null>(null);
 
     readonly todayOrders = signal<Order[]>([]);
     readonly monthOrders = signal<Order[]>([]);
@@ -162,6 +177,68 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     });
 
     readonly recentOrders = computed(() => this.todayOrders().slice(0, 6));
+    readonly canViewAnalytics = computed(() => this.planUsage()?.permissions?.can_view_analytics !== false);
+
+    readonly onboardingSteps: OnboardingStep[] = [
+        {
+            eyebrow: "14 jours d'essai gratuit - plan complet",
+            title: "Bienvenue sur E-RESTO",
+            description: "Votre restaurant entre dans l'ere digitale. En quelques minutes, vos clients pourront consulter votre menu et commander depuis leur telephone.",
+            icon: "ti ti-hand-wave",
+            tone: "orange",
+            bullets: ["Tableau de bord en temps reel", "Menu QR accessible sans application", "Commandes centralisees dans votre espace"]
+        },
+        {
+            eyebrow: "Etape 1 - gerer les plats",
+            title: "Creez votre menu",
+            description: "Ajoutez vos categories, vos plats, vos prix et vos photos pour construire un menu clair et pret a partager.",
+            icon: "ti ti-tools-kitchen-2",
+            tone: "indigo",
+            bullets: ["Categories: entrees, plats, boissons", "Photos, descriptions et prix", "Plat disponible ou epuise en un clic"]
+        },
+        {
+            eyebrow: "Etape 2 - installer le QR code",
+            title: "Votre QR code unique",
+            description: "Creez vos tables, imprimez les QR codes et placez-les pour que les clients ouvrent le menu instantanement.",
+            icon: "ti ti-qrcode",
+            tone: "violet",
+            bullets: ["Generation de QR code par table", "Impression depuis la fiche table", "Lien menu client partageable"]
+        },
+        {
+            eyebrow: "Etape 3 - gerer les commandes",
+            title: "Recevez des commandes",
+            description: "Les commandes arrivent directement depuis le menu client avec statut, table, total et details des plats.",
+            icon: "ti ti-shopping-cart",
+            tone: "orange",
+            bullets: ["Notification a chaque nouvelle commande", "Sur place, a emporter ou livraison", "Validation et suivi du statut"]
+        },
+        {
+            eyebrow: "Etape 4 - statistiques",
+            title: "Analysez vos performances",
+            description: "Suivez les plats les plus commandes, les revenus par periode et l'activite du service.",
+            icon: "ti ti-chart-bar",
+            tone: "emerald",
+            bullets: ["Commandes et revenus du jour", "Top plats du mois", "Graphiques sur les 7 derniers jours"]
+        },
+        {
+            eyebrow: "Etape 5 - parametres",
+            title: "Personnalisez votre menu",
+            description: "Adaptez les informations visibles par vos clients: logo, couleurs, telephone, adresse et slug public.",
+            icon: "ti ti-settings",
+            tone: "pink",
+            bullets: ["Logo et couleurs du menu client", "Adresse et telephone cliquables", "URL publique personnalisee selon le plan"]
+        },
+        {
+            eyebrow: "C'est parti",
+            title: "Vous etes pret",
+            description: "Commencez par creer vos categories et vos plats, puis ajoutez vos tables pour imprimer les QR codes.",
+            icon: "ti ti-rocket",
+            tone: "orange",
+            bullets: ["Notre equipe peut vous accompagner", "Vous pouvez rouvrir le guide depuis ce navigateur", "Votre dashboard est pret pour le service"]
+        }
+    ];
+
+    readonly currentOnboardingStep = computed(() => this.onboardingSteps[this.onboardingStepIndex()]);
 
     readonly kpiCards = computed<KpiCard[]>(() => [
         {
@@ -197,7 +274,9 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     ngOnInit(): void {
         this.realtime.start();
         this.realtimeSubscription = this.realtime.orderChanged$.subscribe((order) => this.applyRealtimeOrder(order));
+        this.loadUsage();
         this.loadDashboard();
+        this.openOnboardingForFirstVisit();
     }
 
     ngAfterViewInit(): void {
@@ -284,11 +363,55 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         return items.map((item) => this.formatMoneyWithCurrency(item.amount, item.currency)).join(" / ");
     }
 
+    loadUsage(): void {
+        this.saasService.restaurantUsage().subscribe({
+            next: (usage) => this.planUsage.set(usage),
+            error: () => this.planUsage.set(null),
+        });
+    }
+
+    nextOnboardingStep(): void {
+        if (this.onboardingStepIndex() >= this.onboardingSteps.length - 1) {
+            this.finishOnboarding();
+            return;
+        }
+
+        this.onboardingStepIndex.update((index) => index + 1);
+    }
+
+    previousOnboardingStep(): void {
+        this.onboardingStepIndex.update((index) => Math.max(0, index - 1));
+    }
+
+    skipOnboarding(): void {
+        this.finishOnboarding();
+    }
+
+    finishOnboarding(): void {
+        localStorage.setItem(this.onboardingStorageKey(), "done");
+        this.onboardingOpen.set(false);
+        this.onboardingStepIndex.set(0);
+    }
+
     private renderCharts(): void {
         if (!this.chartsReady) return;
 
         this.renderSalesPurchaseChart();
         this.renderCustomerChart();
+    }
+
+    private openOnboardingForFirstVisit(): void {
+        if (localStorage.getItem(this.onboardingStorageKey()) === "done") {
+            return;
+        }
+
+        setTimeout(() => this.onboardingOpen.set(true), 350);
+    }
+
+    private onboardingStorageKey(): string {
+        const restaurant = JSON.parse(localStorage.getItem("restaurant_session") || "null");
+        const user = JSON.parse(localStorage.getItem("user_data") || "null");
+        return `e_resto_dashboard_onboarding_done_${restaurant?.id || restaurant?.slug || user?.email || "current"}`;
     }
 
     private renderSalesPurchaseChart(): void {

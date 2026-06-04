@@ -27,15 +27,22 @@ class ReservationController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated) {
-            $table = !empty($validated['table_id']) ? Table::with('restaurant')->find($validated['table_id']) : null;
+            $table = !empty($validated['table_id']) ? Table::with('restaurant.plan')->find($validated['table_id']) : null;
             $restaurant = $table?->restaurant
-                ?? (!empty($validated['restaurant_id']) ? Restaurant::find($validated['restaurant_id']) : null)
-                ?? (!empty($validated['restaurant_slug']) ? Restaurant::where('slug', $validated['restaurant_slug'])->first() : null);
+                ?? (!empty($validated['restaurant_id']) ? Restaurant::with('plan')->find($validated['restaurant_id']) : null)
+                ?? (!empty($validated['restaurant_slug']) ? Restaurant::with('plan')->where('slug', $validated['restaurant_slug'])->first() : null);
 
             if (!$restaurant || !in_array($restaurant->status, ['active', 'trial'], true)) {
                 return response()->json([
                     'message' => 'Ce restaurant ne prend pas de reservations pour le moment.',
                 ], 422);
+            }
+
+            if (!$restaurant->plan?->allows('reservations')) {
+                return response()->json([
+                    'message' => 'Les reservations sont reservees aux plans Pro et Business.',
+                    'requires_upgrade' => true,
+                ], 403);
             }
 
             $reservation = Reservation::create([
@@ -62,6 +69,15 @@ class ReservationController extends Controller
     public function index(Request $request)
     {
         $restaurantId = $request->user()?->restaurant_id;
+        $restaurant = $restaurantId ? Restaurant::with('plan')->find($restaurantId) : null;
+
+        if ($restaurant && !$restaurant->plan?->allows('reservations')) {
+            return response()->json([
+                'message' => 'Les reservations sont reservees aux plans Pro et Business.',
+                'requires_upgrade' => true,
+            ], 403);
+        }
+
         $query = Reservation::with(['table', 'restaurant'])
             ->when($restaurantId, fn ($builder) => $builder->where('restaurant_id', $restaurantId))
             ->latest('reservation_date')

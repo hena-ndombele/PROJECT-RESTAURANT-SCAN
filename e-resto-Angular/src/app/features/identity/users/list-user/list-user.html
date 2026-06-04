@@ -17,11 +17,23 @@
       </div>
     </div>
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
-      <button class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#userModal" (click)="openCreate()">
+      <button class="btn btn-primary text-black"
+              [disabled]="userLimitReached()"
+              data-bs-toggle="modal"
+              [attr.data-bs-target]="userLimitReached() ? null : '#userModal'"
+              (click)="openCreate()">
         <i class="ti ti-plus me-1"></i> Create User
       </button>
     </div>
   </header>
+
+  @if (planUsage()) {
+    <div class="alert" [ngClass]="userLimitReached() ? 'alert-warning' : 'alert-info'">
+      Plan {{ planUsage()?.plan?.name || 'non configure' }} :
+      {{ planUsage()?.usage?.users }} / {{ planUsage()?.limits?.users }} utilisateurs.
+      {{ userLimitMessage() }}
+    </div>
+  }
 
   <div class="card border-0 mb-4 shadow-sm">
     <div class="card-body p-3">
@@ -183,10 +195,16 @@
           <div class="row">
             <div class="col-md-12 mb-3">
               <label class="form-label">Roles</label>
+              @if (!canManageRoles()) {
+                <div class="alert alert-warning py-2">
+                  La gestion des roles et permissions est reservee au plan Business.
+                </div>
+              }
               <div class="border rounded-3 p-3" style="max-height: 220px; overflow: auto;">
                 @for (role of roles(); track role.id) {
                   <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" [id]="'userRole' + role.id"
+                           [disabled]="!canManageRoles()"
                            [checked]="isRoleSelected(role.name)" (change)="onRoleChange(role.name, $event)">
                     <label class="form-check-label" [for]="'userRole' + role.id">{{ role.name }}</label>
                   </div>

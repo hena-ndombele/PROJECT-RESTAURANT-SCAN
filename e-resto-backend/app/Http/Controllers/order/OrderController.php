@@ -40,7 +40,7 @@ class OrderController extends Controller
 
         try {
             return DB::transaction(function () use ($validated, $request) {
-                $table = Table::with('restaurant')->findOrFail($validated['table_id']);
+                $table = Table::with('restaurant.plan')->findOrFail($validated['table_id']);
 
                 if (!$table->restaurant || !in_array($table->restaurant->status, ['active', 'trial'], true)) {
                     throw new \Exception("Ce restaurant n'accepte pas de commandes pour le moment.");
@@ -50,6 +50,26 @@ class OrderController extends Controller
                 $orderType = $validated['order_type'] ?? 'dine_in';
                 $isMobileMoney = $requestedMethod !== 'cash';
                 $paymentProvider = $isMobileMoney ? ($validated['payment_provider'] ?? $requestedMethod) : null;
+
+                if ($isMobileMoney && !$table->restaurant->plan?->allows('mobile_money')) {
+                    return response()->json([
+                        'message' => 'Le paiement Mobile Money est reserve aux plans Pro et Business.',
+                        'requires_upgrade' => true,
+                    ], 403);
+                }
+
+                $monthlyLimit = $table->restaurant->plan?->maxOrdersPerMonth();
+                if ($monthlyLimit !== null) {
+                    $ordersThisMonth = $table->restaurant->orders()
+                        ->whereBetween('created_at', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])
+                        ->count();
+                    if ($ordersThisMonth >= $monthlyLimit) {
+                        return response()->json([
+                            'message' => "Limite de {$monthlyLimit} commandes mensuelles atteinte pour le plan {$table->restaurant->plan?->name}.",
+                            'requires_upgrade' => true,
+                        ], 403);
+                    }
+                }
 
                 $order = Order::create([
                     'tracking_code' => $this->generateTrackingCode(),
@@ -261,7 +281,7 @@ class OrderController extends Controller
 
         try {
             return DB::transaction(function () use ($id, $validated) {
-                $order = Order::with(['table.restaurant', 'items.plat', 'latestPayment'])
+                $order = Order::with(['table.restaurant.plan', 'items.plat', 'latestPayment'])
                     ->whereKey($id)
                     ->lockForUpdate()
                     ->firstOrFail();
@@ -334,6 +354,13 @@ class OrderController extends Controller
                     $metadata['modification_message'] = 'Commande modifiee par le client avant preparation.';
 
                     if ($order->payment_method === 'mobile_money') {
+                        if (!$order->table?->restaurant?->plan?->allows('mobile_money')) {
+                            return response()->json([
+                                'message' => 'Le paiement Mobile Money est reserve aux plans Pro et Business.',
+                                'requires_upgrade' => true,
+                            ], 403);
+                        }
+
                         $payment->update([
                             'status' => 'failed',
                             'metadata' => array_merge($metadata, [
@@ -554,6 +581,16 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+        if ($restaurant
+            && !$restaurant->plan?->allows('analytics')
+            && ($request->has('month') || $request->has('year'))) {
+            return response()->json([
+                'message' => 'Les statistiques mensuelles et annuelles sont reservees aux plans Pro et Business.',
+                'requires_upgrade' => true,
+            ], 403);
+        }
+
         $query = Order::with(['table', 'items.plat', 'latestPayment'])
             ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId));
 

@@ -20,6 +20,10 @@
             </h6>
             <div class="d-flex align-items-center gap-1">
                 <span class="badge-admin">{{ restaurantData.city || 'RESTAURANT' }}</span>
+                <span class="subscription-pill" [ngClass]="subscriptionInfo.tone">
+                    <i class="ti ti-calendar-stats"></i>
+                    {{ subscriptionInfo.shortLabel }}
+                </span>
             </div>
         </div>
     </div>
@@ -124,6 +128,26 @@
                             </div>
                         </div>
                     </div>
+                    <div class="px-2 pt-2">
+                        <div class="session-summary">
+                            <div>
+                                <span>Abonnement</span>
+                                <strong>{{ subscriptionInfo.label }}</strong>
+                                <small>{{ subscriptionInfo.detail }}</small>
+                            </div>
+                            <i class="ti ti-clock-dollar"></i>
+                        </div>
+                        @if (subscriptionInfo.expiresAt) {
+                            <div class="session-meta">
+                                <i class="ti ti-calendar-due"></i>
+                                Fin prevue le {{ subscriptionInfo.expiresAt | date:'dd/MM/yyyy HH:mm' }}
+                            </div>
+                        }
+                        <div class="session-meta">
+                            <i class="ti ti-login-2"></i>
+                            Connecte le {{ loginInfo.connectedAt | date:'dd/MM/yyyy HH:mm' }}
+                        </div>
+                    </div>
                     <div class="p-2 d-flex flex-column gap-1">
                         <a class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2"
                            routerLink="/auth/profile">
@@ -220,12 +244,14 @@
                 </a>
             </li>
 
+            @if (canUse('reservations')) {
             <li>
                 <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-table-alias"></i><span class="nav-text">Reservations</span>
                 </a>
             </li>
+            }
 
             <li>
                 <a routerLink="/restaurant/settings" routerLinkActive="active" class="nav-link"
@@ -235,12 +261,14 @@
             </li>
 
 
+            @if (canUse('feedback')) {
             <li>
                 <a routerLink="/feedback/list" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-message-2-star"></i><span class="nav-text">Feedbacks</span>
                 </a>
             </li>
+            }
 
             <li>
                 <a routerLink="/auth/account-request/list"
@@ -259,12 +287,14 @@
             </li>
 
             <li class="nav-label mt-4">ADMINISTRATION</li>
+            @if (canUse('roles')) {
             <li>
                 <a routerLink="/identity/list-roles" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-shield-lock"></i><span class="nav-text">Rôles</span>
                 </a>
             </li>
+            }
 
             <li>
                 <a routerLink="/identity/list-users" routerLinkActive="active" class="nav-link" (click)="closeMobileSidebar()">
@@ -278,6 +308,54 @@
 <main id="content" class="content py-10" [class.full]="isSidebarCollapsed">
     <router-outlet></router-outlet>
 </main>
+
+@if (canUse('chatbot')) {
+    <section class="dashboard-assistant" [class.open]="assistantOpen">
+        @if (assistantOpen) {
+            <div class="assistant-panel shadow-lg">
+                <div class="assistant-head">
+                    <div>
+                        <span>Assistant intelligent</span>
+                        <strong>E-RESTO Copilot</strong>
+                    </div>
+                    <button type="button" (click)="toggleAssistant()" aria-label="Fermer l'assistant">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+
+                <div class="assistant-suggestions">
+                    <button type="button" (click)="askAssistant('Comment mieux gerer mes commandes ?')">Commandes</button>
+                    <button type="button" (click)="askAssistant('Que disent mes statistiques ?')">Stats</button>
+                    <button type="button" (click)="askAssistant('Comment utiliser mes QR codes ?')">QR code</button>
+                </div>
+
+                <div class="assistant-messages">
+                    @for (message of assistantMessages; track $index) {
+                        <div class="assistant-message" [class.user]="message.from === 'user'">
+                            {{ message.text }}
+                        </div>
+                    }
+                </div>
+
+                <div class="assistant-form">
+                    <input
+                            type="text"
+                            [(ngModel)]="assistantInput"
+                            (keydown.enter)="askAssistant()"
+                            placeholder="Posez une question sur votre restaurant...">
+                    <button type="button" (click)="askAssistant()" aria-label="Envoyer">
+                        <i class="ti ti-send"></i>
+                    </button>
+                </div>
+            </div>
+        }
+
+        <button class="assistant-toggle" type="button" (click)="toggleAssistant()" [attr.aria-expanded]="assistantOpen">
+            <i class="ti ti-sparkles"></i>
+            <span>Assistant</span>
+        </button>
+    </section>
+}
 
 
 <div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true">

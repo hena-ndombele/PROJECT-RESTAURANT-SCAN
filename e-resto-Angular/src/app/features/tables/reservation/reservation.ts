@@ -1,6 +1,7 @@
 import { CommonModule, DatePipe } from "@angular/common";
 import { Component, OnInit, computed, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { SaasService } from "../../../services/saas/saas-service";
 import { ReservationDto, ReservationService, ReservationStatus } from "../../../services/reservation/reservation-service";
 
 @Component({
@@ -22,6 +23,7 @@ export class Reservation implements OnInit {
   searchTerm = signal("");
   internalNote = signal("");
   cancellationReason = signal("");
+  upgradeRequired = signal(false);
 
   readonly statusOptions: { value: ReservationStatus; label: string; icon: string }[] = [
     { value: "pending", label: "En attente", icon: "bi-hourglass" },
@@ -58,10 +60,18 @@ export class Reservation implements OnInit {
     }))
   ]);
 
-  constructor(private reservationService: ReservationService) {}
+  constructor(private reservationService: ReservationService, private saasService: SaasService) {}
 
   ngOnInit(): void {
+    this.loadUsage();
     this.loadReservations();
+  }
+
+  loadUsage(): void {
+    this.saasService.restaurantUsage().subscribe({
+      next: (usage) => this.upgradeRequired.set(usage.permissions?.can_use_reservations === false),
+      error: () => this.upgradeRequired.set(false),
+    });
   }
 
   loadReservations(): void {
@@ -77,8 +87,13 @@ export class Reservation implements OnInit {
         this.reservations.set(reservations);
         this.loading.set(false);
       },
-      error: () => {
-        this.errorMessage.set("Impossible de charger les reservations.");
+      error: (error) => {
+        if (error?.status === 403 || error?.error?.requires_upgrade) {
+          this.upgradeRequired.set(true);
+          this.errorMessage.set(error?.error?.message || "Les reservations sont reservees aux plans Pro et Business.");
+        } else {
+          this.errorMessage.set("Impossible de charger les reservations.");
+        }
         this.reservations.set([]);
         this.loading.set(false);
       }
