@@ -19,10 +19,13 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   isLoading = true;
   isSubmitting = false;
   isNewsletterSubmitting = false;
+  isContactSubmitting = false;
   message = '';
   newsletterEmail = '';
   newsletterMessage = '';
   newsletterStatus: 'idle' | 'success' | 'error' = 'idle';
+  contactMessage = '';
+  contactStatus: 'idle' | 'success' | 'error' = 'idle';
   billingCycle: 'monthly' | 'yearly' = 'yearly';
   statsLoaded = true;
   ctaStats = [
@@ -49,6 +52,14 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     name: '',
     expiry: '',
     cvc: '',
+  };
+
+  contactForm = {
+    name: '',
+    email: '',
+    phone: '',
+    subject: 'Demande restaurant SaaS',
+    message: '',
   };
 
   constructor(private saas: SaasService, private router: Router, private cdr: ChangeDetectorRef) {}
@@ -159,6 +170,46 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
         this.newsletterMessage = error?.error?.message ?? "Impossible d'inscrire cet email pour le moment.";
         this.newsletterStatus = 'error';
         this.isNewsletterSubmitting = false;
+      },
+    });
+  }
+
+  submitContact(): void {
+    const payload = {
+      name: this.contactForm.name.trim(),
+      email: this.contactForm.email.trim(),
+      phone: this.contactForm.phone.trim(),
+      subject: this.contactForm.subject.trim() || 'Demande restaurant SaaS',
+      message: this.contactForm.message.trim(),
+    };
+
+    if (!payload.name || !payload.email || !payload.message) {
+      this.contactMessage = 'Completez votre nom, email et message.';
+      this.contactStatus = 'error';
+      return;
+    }
+
+    this.isContactSubmitting = true;
+    this.contactMessage = '';
+    this.contactStatus = 'idle';
+
+    this.saas.sendContactMessage(payload).subscribe({
+      next: (response) => {
+        this.contactMessage = response.message || 'Message envoye avec succes.';
+        this.contactStatus = 'success';
+        this.contactForm = {
+          name: '',
+          email: '',
+          phone: '',
+          subject: 'Demande restaurant SaaS',
+          message: '',
+        };
+        this.isContactSubmitting = false;
+      },
+      error: (error) => {
+        this.contactMessage = error?.error?.message ?? "Impossible d'envoyer le message pour le moment.";
+        this.contactStatus = 'error';
+        this.isContactSubmitting = false;
       },
     });
   }

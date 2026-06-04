@@ -133,6 +133,54 @@
     <a routerLink="/pricing">Demarrer mon essai gratuit</a>
   </section>
 
+  <section class="contact-section landing-reveal" id="contact">
+    <div class="contact-copy">
+      <span class="eyebrow">Contact restaurant</span>
+      <h2>Vous voulez digitaliser votre restaurant ?</h2>
+      <p>Envoyez-nous un message. Nous vous aidons a choisir le plan, configurer vos QR codes et demarrer votre menu digital.</p>
+      <div class="contact-highlights">
+        <article><i class="bi bi-lightning-charge"></i><span>Reponse rapide</span></article>
+        <article><i class="bi bi-qr-code"></i><span>Aide configuration QR</span></article>
+        <article><i class="bi bi-headset"></i><span>Accompagnement SaaS</span></article>
+      </div>
+    </div>
+
+    <form class="contact-form" (ngSubmit)="submitContact()">
+      <div class="grid-2">
+        <label>
+          <span>Nom complet *</span>
+          <input type="text" name="contact_name" [(ngModel)]="contactForm.name" placeholder="Votre nom" autocomplete="name" required>
+        </label>
+        <label>
+          <span>Email *</span>
+          <input type="email" name="contact_email" [(ngModel)]="contactForm.email" placeholder="nom@email.com" autocomplete="email" required>
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>
+          <span>Telephone</span>
+          <input type="tel" name="contact_phone" [(ngModel)]="contactForm.phone" placeholder="+243..." autocomplete="tel">
+        </label>
+        <label>
+          <span>Sujet</span>
+          <input type="text" name="contact_subject" [(ngModel)]="contactForm.subject" placeholder="Demande restaurant SaaS">
+        </label>
+      </div>
+
+      <label>
+        <span>Message *</span>
+        <textarea name="contact_message" [(ngModel)]="contactForm.message" rows="5" placeholder="Parlez-nous de votre restaurant, vos besoins, votre ville..." required></textarea>
+      </label>
+
+      <button type="submit" [disabled]="isContactSubmitting">
+        {{ isContactSubmitting ? 'Envoi en cours...' : 'Envoyer le message' }}
+      </button>
+
+      <small *ngIf="contactMessage" [class.success]="contactStatus === 'success'" [class.error]="contactStatus === 'error'">{{ contactMessage }}</small>
+    </form>
+  </section>
+
   <footer class="site-footer landing-reveal">
     <div class="footer-brand">
       <a class="brand" routerLink="/">
@@ -158,7 +206,7 @@
       <h3>Ressources</h3>
       <a href="#features">Menu QR</a>
       <a routerLink="/pricing">Plans SaaS</a>
-      <a href="mailto:e.resto2025@gmail.com">Support client</a>
+      <a href="#contact">Support client</a>
     </div>
 
     <form class="newsletter" (ngSubmit)="submitNewsletter()">
@@ -172,7 +220,7 @@
     </form>
 
     <div class="footer-bottom">
-      <span>© 2026 E-RESTO. Tous droits reserves.</span>
+      <span>&copy; 2026 E-RESTO. Tous droits reserves.</span>
     </div>
   </footer>
 </main>

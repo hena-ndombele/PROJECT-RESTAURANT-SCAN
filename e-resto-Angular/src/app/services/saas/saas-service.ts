@@ -25,6 +25,10 @@ export class SaasService {
     });
   }
 
+  sendContactMessage(payload: { name: string; email: string; phone?: string; subject: string; message: string }): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_ROOT}/public/contact`, payload);
+  }
+
   restaurants(): Observable<Restaurant[]> {
     return this.http.get<Restaurant[]>(`${this.apiUrl}/restaurants`);
   }

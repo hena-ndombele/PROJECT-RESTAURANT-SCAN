@@ -1573,7 +1573,7 @@ Un footer SaaS professionnel est ajoute avec adresse, contact, liens produit/res
 
 Les boutons principaux de `e-resto-angular` sont forces a un rayon de 8px afin d'eviter les formes trop rondes dans l'application.
 
-Le budget Angular `anyComponentStyle` est augmente a 8kB en warning et 12kB en erreur pour accepter la landing SaaS complete sans casser le build.
+Le budget Angular `anyComponentStyle` est augmente a 14kB en warning et 18kB en erreur pour accepter la landing SaaS complete sans casser le build.
 
 ## 27. Flow Newsletter SaaS
 
@@ -1651,6 +1651,38 @@ Le login principal reste donc le login SaaS restaurant :
 ```
 
 Si un utilisateur se deconnecte depuis le dashboard ou si une session expire, il revient toujours sur `/restaurant/login`.
+
+## 30. Formulaire Contact Restaurant
+
+La landing `e-resto-angular` contient un formulaire de contact sous la section `Pret a moderniser votre restaurant ?`.
+
+Endpoint :
+
+```txt
+POST /api/public/contact
+```
+
+Payload :
+
+```json
+{
+  "name": "Nom du restaurant ou proprietaire",
+  "email": "client@example.com",
+  "phone": "+243...",
+  "subject": "Demande restaurant SaaS",
+  "message": "Message du restaurant"
+}
+```
+
+Flow :
+
+1. Le restaurant remplit le formulaire de contact sur la landing.
+2. Angular valide les champs obligatoires : nom, email et message.
+3. Laravel enregistre le message dans `contact_messages`.
+4. Laravel tente d'envoyer le message par email a l'adresse configuree dans le backend apres l'enregistrement.
+5. Le SMTP utilise un timeout court via `MAIL_TIMEOUT=5` pour eviter que le formulaire reste bloque trop longtemps.
+6. Si l'envoi mail echoue, le message reste en base et l'erreur est journalisee sans bloquer l'utilisateur.
+7. Angular affiche un message de succes ou d'erreur.
 
 ## 25. Console interne e-resto-admin
 
