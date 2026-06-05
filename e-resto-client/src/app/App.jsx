@@ -2,10 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cancelOrder, createOrder, getOrder, requestBill, trackOrder, updateOrderItems } from '../features/cart/orderApi';
 import { buildReceiptPdf } from '../features/cart/receiptPdf';
 import { useCart } from '../features/cart/useCart';
-import { sendContactMessage } from '../features/contact/contactApi';
 import { submitFeedback } from '../features/feedback/feedbackApi';
 import { getPublicMenu } from '../features/menu/menuApi';
-import { createReservation } from '../features/reservation/reservationApi';
 import { getEcho } from '../shared/api/realtime';
 import { assetUrl } from '../shared/api/httpClient';
 import { formatMoney } from '../shared/lib/money';
@@ -91,10 +89,10 @@ export function App() {
   const cart = useCart();
   const [menu, setMenu] = useState({ categories: [], plats: [] });
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [activeView, setActiveView] = useState('menu');
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedPlat, setSelectedPlat] = useState(null);
-  const [cartOpen, setCartOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [snackbar, setSnackbar] = useState(null);
@@ -276,11 +274,15 @@ export function App() {
         brand={brand}
         onSearch={() => setSearchOpen(true)}
         cartCount={cart.totals.totalQuantity}
+        activeView={activeView}
         activeOrder={activeOrder}
-        onTrackOrder={() => {
-          document.getElementById('order-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
-        onCart={() => setCartOpen(true)}
+        onView={setActiveView}
+      />
+      <MobileBottomNav
+        cartCount={cart.totals.totalQuantity}
+        activeView={activeView}
+        activeOrder={activeOrder}
+        onView={setActiveView}
       />
       <SearchOverlay
         open={searchOpen}
@@ -290,140 +292,117 @@ export function App() {
         onClose={() => setSearchOpen(false)}
         onPickCategory={(id) => {
           setSelectedCategory(id);
+          setActiveView('menu');
           setSearchOpen(false);
           document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
         }}
       />
-      <Hero brand={brand} />
-      <Marquee />
-      <CategorySection
-        categories={menu.categories}
-        selectedCategory={selectedCategory}
-        onSelect={setSelectedCategory}
-      />
-      <AboutSection />
-      <MenuSection
-        loading={loadingMenu}
-        error={menuError}
-        categories={menu.categories}
-        plats={filteredPlats}
-        selectedCategory={selectedCategory}
-        onCategory={setSelectedCategory}
-        onDetails={openDetails}
-      />
-      <DealSection />
-      <GallerySection />
-      <ChefsSection />
-      <TestimonialsSection />
-      <ReservationSection tableId={tableId} restaurantSlug={restaurantSlug || brand.slug} brand={brand} />
-      <OrderRecoverySection
-        tableId={tableId}
-        activeOrder={activeOrder}
-        notice={recoveryNotice}
-        onRecovered={(order) => {
-          setRecoveryNotice('');
-          rememberActiveOrder(order, tableId, true);
-          setActiveOrder(order);
-          setSnackbar({
-            type: 'success',
-            title: 'Commande retrouvee',
-            message: 'Votre suivi de commande est de nouveau actif.',
-          });
-          setTimeout(() => {
-            document.getElementById('order-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 120);
-        }}
-      />
-      <OrderStatusTracker
-        order={activeOrder}
-        tableId={tableId}
-        onOrderUpdate={setActiveOrder}
-        onStatusNotification={(notification) => setSnackbar(notification)}
-        onCancellationModal={(order) => setCancelledOrderModal(order)}
-        onCancelOrder={async (order) => {
-          const reason = window.prompt('Pourquoi voulez-vous annuler cette commande ?');
-          if (!reason || reason.trim().length < 3) {
-            setSnackbar({
-              type: 'error',
-              title: 'Annulation impossible',
-              message: 'La raison d annulation est obligatoire.',
-            });
-            return;
-          }
+      <main className="client-app-shell">
+        {activeView === 'menu' && (
+          <div className="menu-view">
+            <MenuSection
+              loading={loadingMenu}
+              error={menuError}
+              categories={menu.categories}
+              plats={filteredPlats}
+              search={search}
+              selectedCategory={selectedCategory}
+              onSearch={setSearch}
+              onCategory={setSelectedCategory}
+              onDetails={openDetails}
+            />
+          </div>
+        )}
+        {activeView === 'cart' && (
+          <CartPage
+            tableId={tableId}
+            brand={brand}
+            cart={cart}
+            onOrderCreated={(order) => {
+              rememberActiveOrder(order, tableId, true);
+              setActiveOrder(order);
+              setEditingOrder(null);
+              setSnackbar({
+                type: 'success',
+                title: 'Commande envoyee',
+                message: 'Votre suivi de commande est maintenant actif.',
+              });
+              setActiveView('orders');
+            }}
+            editingOrder={editingOrder}
+            onOrderUpdated={(order) => {
+              rememberActiveOrder(order, tableId, true);
+              setActiveOrder(order);
+              setEditingOrder(null);
+              setSnackbar({
+                type: 'success',
+                title: 'Commande modifiee',
+                message: 'Votre modification a ete envoyee au restaurant.',
+              });
+              setActiveView('orders');
+            }}
+            onContinueShopping={() => setActiveView('menu')}
+          />
+        )}
+        {activeView === 'orders' && (
+          <OrdersPage
+            tableId={tableId}
+            activeOrder={activeOrder}
+            recoveryNotice={recoveryNotice}
+            onRecovered={(order) => {
+              setRecoveryNotice('');
+              rememberActiveOrder(order, tableId, true);
+              setActiveOrder(order);
+              setSnackbar({
+                type: 'success',
+                title: 'Commande retrouvee',
+                message: 'Votre suivi de commande est de nouveau actif.',
+              });
+            }}
+            onOrderUpdate={setActiveOrder}
+            onStatusNotification={(notification) => setSnackbar(notification)}
+            onCancellationModal={(order) => setCancelledOrderModal(order)}
+            onCancelOrder={async (order) => {
+              const reason = window.prompt('Pourquoi voulez-vous annuler cette commande ?');
+              if (!reason || reason.trim().length < 3) {
+                setSnackbar({
+                  type: 'error',
+                  title: 'Annulation impossible',
+                  message: 'La raison d annulation est obligatoire.',
+                });
+                return;
+              }
 
-          const response = await cancelOrder(order.id, reason.trim());
-          setActiveOrder(response.order);
-          setCancelledOrderModal(response.order);
-          playOrderNotificationSound('error');
-          setSnackbar({
-            type: 'success',
-            title: 'Commande annulee',
-            message: 'Votre commande a ete annulee avant preparation.',
-          });
-        }}
-        onEditOrder={(order) => {
-          if (order.status !== 'pending' || order.payment_status === 'paid') return;
-          cart.replaceItems((order.items ?? []).map((item) => ({
-            plat: item.plat,
-            quantity: Number(item.quantity ?? 1),
-          })).filter((item) => item.plat));
-          setEditingOrder(order);
-          setCartOpen(true);
-        }}
-      />
-      <ReceiptSection order={activeOrder} />
-      <BlogSection />
-      <NewsletterSection />
-      <ContactSection />
-      <Footer />
+              const response = await cancelOrder(order.id, reason.trim());
+              setActiveOrder(response.order);
+              setCancelledOrderModal(response.order);
+              playOrderNotificationSound('error');
+              setSnackbar({
+                type: 'success',
+                title: 'Commande annulee',
+                message: 'Votre commande a ete annulee avant preparation.',
+              });
+            }}
+            onEditOrder={(order) => {
+              if (order.status !== 'pending' || order.payment_status === 'paid') return;
+              cart.replaceItems((order.items ?? []).map((item) => ({
+                plat: item.plat,
+                quantity: Number(item.quantity ?? 1),
+              })).filter((item) => item.plat));
+              setEditingOrder(order);
+              setActiveView('cart');
+            }}
+          />
+        )}
+      </main>
       <ClientChatbot
         brand={brand}
         menu={menu}
         cart={cart}
         activeOrder={activeOrder}
-        onOpenMenu={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        onOpenMenu={() => setActiveView('menu')}
       />
       <MenuModal plat={selectedPlat} onClose={() => setSelectedPlat(null)} onAdd={cart.addItem} />
-      <CartDrawer
-        open={cartOpen}
-        tableId={tableId}
-        brand={brand}
-        cart={cart}
-        onOrderCreated={(order) => {
-          rememberActiveOrder(order, tableId, true);
-          setActiveOrder(order);
-          setEditingOrder(null);
-          setSnackbar({
-            type: 'success',
-            title: 'Commande envoyee',
-            message: 'Votre suivi de commande est maintenant actif.',
-          });
-          setCartOpen(false);
-          setTimeout(() => {
-            document.getElementById('order-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 120);
-        }}
-        editingOrder={editingOrder}
-        onOrderUpdated={(order) => {
-          rememberActiveOrder(order, tableId, true);
-          setActiveOrder(order);
-          setEditingOrder(null);
-          setCartOpen(false);
-          setSnackbar({
-            type: 'success',
-            title: 'Commande modifiee',
-            message: 'Votre modification a ete envoyee au restaurant.',
-          });
-        }}
-        onClose={() => {
-          setCartOpen(false);
-          setEditingOrder(null);
-        }}
-        onContinueShopping={() => {
-          setCartOpen(false);
-          document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
-      />
       <CancelledOrderModal order={cancelledOrderModal} onClose={() => setCancelledOrderModal(null)} />
       <FeedbackModal
         order={brand.can_feedback ? feedbackOrder : null}
@@ -469,63 +448,36 @@ function TopBar({ brand }) {
   );
 }
 
-function Navbar({ brand, onSearch, cartCount, activeOrder, onTrackOrder, onCart }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const closeDrawer = () => setDrawerOpen(false);
-
-  useEffect(() => {
-    document.body.classList.toggle('mobile-nav-open', drawerOpen);
-    return () => document.body.classList.remove('mobile-nav-open');
-  }, [drawerOpen]);
-
+function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, onView }) {
   return (
     <nav className="navbar navbar-expand-lg" id="nav">
       <div className="container">
-        <a className="navbar-brand" href="#hero">
+        <button className="navbar-brand clean-btn" type="button" onClick={() => onView('menu')}>
           <BrandLogo brand={brand} />
-        </a>
-        <button
-          className="mobile-menu-toggle"
-          type="button"
-          aria-label={drawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
-          aria-expanded={drawerOpen}
-          onClick={() => setDrawerOpen((open) => !open)}
-        >
-          <i className={`fas ${drawerOpen ? 'fa-times' : 'fa-bars'}`}></i>
         </button>
-        <button
-          className={`mobile-drawer-backdrop clean-btn ${drawerOpen ? 'open' : ''}`}
-          aria-label="Close navigation menu"
-          onClick={closeDrawer}
-        ></button>
-        <div className={`navbar-collapse mobile-drawer ${drawerOpen ? 'open' : ''}`} id="navmenu">
-          <div className="mobile-drawer-head">
-            <BrandLogo brand={brand} />
-            <button className="mobile-drawer-close" type="button" aria-label="Close navigation menu" onClick={closeDrawer}>
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
+        <div className="navbar-collapse desktop-nav" id="navmenu">
           <ul className="navbar-nav mx-auto">
             {[
-              ['#hero', 'Home'],
-              ['#about', 'About'],
-              ['#menu', 'Menu'],
-              ['#chefs', 'Chefs'],
-              ['#reservation', 'Reservation'],
-              ['#testimonials', 'Reviews'],
-              ['#contact-section', 'Contact'],
-            ].map(([href, label]) => (
-              <li className="nav-item" key={href}><a className="nav-link" href={href} onClick={closeDrawer}>{label}</a></li>
+              ['menu', 'Menu'],
+              ['cart', `Panier (${cartCount})`],
+              ['orders', 'Commandes'],
+            ].map(([view, label]) => (
+              <li className="nav-item" key={view}>
+                <button
+                  className={`nav-link clean-btn ${activeView === view ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => onView(view)}
+                >
+                  {label}
+                </button>
+              </li>
             ))}
             {activeOrder ? (
               <li className="nav-item">
                 <button
                   className="nav-link track-order-link clean-btn"
                   type="button"
-                  onClick={() => {
-                    closeDrawer();
-                    onTrackOrder();
-                  }}
+                  onClick={() => onView('orders')}
                 >
                   <i className="fas fa-bell-concierge me-1"></i>
                   Suivi commande
@@ -535,19 +487,36 @@ function Navbar({ brand, onSearch, cartCount, activeOrder, onTrackOrder, onCart 
             ) : null}
           </ul>
           <div className="nav-actions d-flex align-items-center gap-1">
-            <button id="navSearchBtn" title="Search" onClick={() => {
-              closeDrawer();
-              onSearch();
-            }}><i className="fas fa-search"></i></button>
-            <button className="nav-link nav-cta clean-btn" onClick={() => {
-              closeDrawer();
-              onCart();
-            }}>
-              <i className="fas fa-shopping-bag me-1"></i>My Cart ({cartCount})
-            </button>
+            <button id="navSearchBtn" title="Search" onClick={onSearch}><i className="fas fa-search"></i></button>
           </div>
         </div>
       </div>
+    </nav>
+  );
+}
+
+function MobileBottomNav({ cartCount, activeView, activeOrder, onView }) {
+  return (
+    <nav className="mobile-bottom-nav" aria-label="Navigation mobile">
+      <button type="button" className={`mobile-bottom-item ${activeView === 'menu' ? 'active' : ''}`} onClick={() => onView('menu')}>
+        <i className="fas fa-utensils"></i>
+        <span>Menu</span>
+      </button>
+      <button type="button" className={`mobile-bottom-item ${activeView === 'cart' ? 'active' : ''}`} onClick={() => onView('cart')}>
+        <span className="mobile-bottom-icon">
+          <i className="fas fa-shopping-cart"></i>
+          {cartCount > 0 ? <em>{cartCount}</em> : null}
+        </span>
+        <span>Panier</span>
+      </button>
+      <button
+        type="button"
+        className={`mobile-bottom-item ${activeView === 'orders' ? 'active' : ''} ${activeOrder ? 'has-order' : ''}`}
+        onClick={() => onView('orders')}
+      >
+        <i className="fas fa-receipt"></i>
+        <span>Commandes</span>
+      </button>
     </nav>
   );
 }
@@ -681,60 +650,74 @@ function CategoryCard({ category, active, image, onSelect }) {
   );
 }
 
-function AboutSection() {
-  return (
-    <section id="about">
-      <div className="container">
-        <div className="row align-items-center g-5">
-          <div className="col-lg-5">
-            <div className="astack">
-              <div className="aexp"><span className="anum">12+</span><small>Years of<br />Excellence</small></div>
-              <div className="amain"><img src="/img/about1.jpg" alt="Restaurant" /></div>
-              <div className="asm"><img src="/img/about2.jpg" alt="" /></div>
-            </div>
-          </div>
-          <div className="col-lg-7">
-            <span className="slbl">Our Story</span>
-            <h2 className="stitle text-start">We Invite You to Visit<br />Our <span>Food Restaurant</span></h2>
-            <div className="sline lft"></div>
-            <p className="sdesc mb-4">Founded in 2012, Sarab began as a small corner joint with a big dream - to serve food that brings people together.</p>
-            {[
-              ['leaf', '100% Fresh Ingredients', 'We source locally and sustainably for maximum freshness.'],
-              ['award', 'Award-Winning Recipes', 'Our signature recipes are crafted with care and consistency.'],
-              ['shipping-fast', 'Lightning-Fast Delivery', 'Order online and get hot, fresh food without the wait.'],
-            ].map(([icon, title, text]) => (
-              <div className="fti" key={title}>
-                <div className="ftico r"><i className={`fas fa-${icon}`}></i></div>
-                <div><h6>{title}</h6><p>{text}</p></div>
-              </div>
-            ))}
-            <a href="#menu" className="btn-red"><i className="fas fa-book-open"></i>View Full Menu</a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function MenuSection({ loading, error, categories, plats, selectedCategory, onCategory, onDetails }) {
+function MenuSection({ loading, error, categories, plats, search, selectedCategory, onSearch, onCategory, onDetails }) {
   return (
     <section id="menu">
       <div className="container">
         <SectionTitle eyebrow="What's Cooking" title="Our Delicious" highlight="Menu" />
+        <div className="menu-inline-search">
+          <i className="fas fa-search"></i>
+          <input
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Rechercher un plat..."
+            autoComplete="off"
+          />
+          {search ? (
+            <button type="button" className="clean-btn" aria-label="Effacer la recherche" onClick={() => onSearch('')}>
+              <i className="fas fa-times"></i>
+            </button>
+          ) : null}
+        </div>
         <div className="text-center mb-4">
           <button className={`filtbtn ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => onCategory('all')}>All</button>
           {categories.map((category) => (
             <button className={`filtbtn ${selectedCategory === category.id ? 'active' : ''}`} key={category.id} onClick={() => onCategory(category.id)}>{category.name}</button>
           ))}
         </div>
-        {error && <div className="client-alert">{error} Les plats de demonstration restent affiches.</div>}
-        {loading ? <div className="client-alert">Chargement du menu...</div> : null}
+        {error && (
+          <MenuStateCard
+            icon="fa-circle-exclamation"
+            title="Menu temporaire"
+            message={`${error} Les plats de demonstration restent affiches.`}
+          />
+        )}
+        {loading ? (
+          <MenuStateCard
+            icon="fa-utensils"
+            title="Chargement du menu"
+            message="Nous recuperons les plats du restaurant. Patientez quelques secondes."
+            loading
+          />
+        ) : null}
         <div className="row g-4" id="mgrid">
           {plats.map((plat, index) => <MenuCard key={plat.id} plat={plat} index={index} onDetails={onDetails} />)}
-          {!loading && plats.length === 0 ? <div className="col-12"><div className="client-alert">Aucun plat disponible dans cette categorie.</div></div> : null}
+          {!loading && plats.length === 0 ? (
+            <div className="col-12">
+              <MenuStateCard
+                icon="fa-bowl-food"
+                title="Menu en attente"
+                message="La liste des plats n'est pas encore disponible. Essayez une autre categorie ou revenez dans un instant."
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
+  );
+}
+
+function MenuStateCard({ icon, title, message, loading = false }) {
+  return (
+    <div className={`menu-state-card ${loading ? 'loading' : ''}`}>
+      <div className="menu-state-icon">
+        <i className={`fas ${icon}`}></i>
+      </div>
+      <div>
+        <strong>{title}</strong>
+        <span>{message}</span>
+      </div>
+    </div>
   );
 }
 
@@ -755,6 +738,7 @@ function MenuCard({ plat, index, onDetails }) {
           <div className="mfoot">
             <div>
               <div className="mprice">{formatMoney(plat.price, plat.currency)}</div>
+              <div className="mtime"><i className="fas fa-clock"></i>{plat.preparation_time ?? 20} min</div>
               <div className="mstars"><i className="fas fa-star"></i> <span style={{ color: '#bbb', fontSize: '.7rem' }}>(128)</span></div>
             </div>
             <span className="madd" title="View Details"><i className="fas fa-plus"></i></span>
@@ -808,7 +792,7 @@ function MenuModal({ plat, onClose, onAdd }) {
   );
 }
 
-function CartDrawer({ open, tableId, brand, cart, onClose, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping }) {
+function CartPage({ tableId, brand, cart, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping }) {
   const [note, setNote] = useState('');
   const [orderType, setOrderType] = useState('dine_in');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -900,10 +884,17 @@ function CartDrawer({ open, tableId, brand, cart, onClose, onOrderCreated, editi
   };
 
   return (
-    <div className={`cart-panel ${open ? 'open' : ''}`}>
-      <div className="cart-panel-box">
-        <button className="mpclose" onClick={onClose}><i className="fas fa-times"></i></button>
-        <h3>{isEditing ? 'Modifier ma commande' : 'My Cart'}</h3>
+    <section className="cart-page app-page" id="cart-page">
+      <div className="container">
+        <div className="cart-panel-box">
+        <div className="app-page-head">
+          <span className="slbl">Panier</span>
+          <h2>{isEditing ? 'Modifier ma commande' : 'Mon panier'}</h2>
+          <button type="button" className="receipt-share-btn" onClick={onContinueShopping}>
+            <i className="fas fa-utensils"></i>
+            Menu
+          </button>
+        </div>
         {isEditing && (
           <div className="client-alert info">
             Modification autorisee tant que la commande n'est pas en preparation et pas deja payee.
@@ -914,7 +905,13 @@ function CartDrawer({ open, tableId, brand, cart, onClose, onOrderCreated, editi
           </div>
         )}
         {!tableId && <div className="client-alert">Scannez un QR code de table pour envoyer la commande au backend.</div>}
-        {cart.items.length === 0 ? <p className="sdesc">Votre panier est vide.</p> : cart.items.map((item) => (
+        {cart.items.length === 0 ? (
+          <div className="empty-page-card compact">
+            <i className="fas fa-shopping-cart"></i>
+            <strong>Votre panier est vide</strong>
+            <span>Ajoutez un plat depuis le menu pour commencer.</span>
+          </div>
+        ) : cart.items.map((item) => (
           <div className="cart-line" key={item.plat.id}>
             <div>
               <strong>{item.plat.name}</strong>
@@ -927,74 +924,79 @@ function CartDrawer({ open, tableId, brand, cart, onClose, onOrderCreated, editi
             </div>
           </div>
         ))}
-        <textarea className="fctrl" rows="3" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note pour la cuisine..." />
-        <div className="order-type-box">
-          <div className="payment-title">
-            <strong>Mode de service</strong>
-            <span>Le client peut manger a table ou demander a emporter.</span>
-          </div>
-          <div className="order-type-options">
-            <button type="button" className={`order-type-option clean-btn ${orderType === 'dine_in' ? 'active' : ''}`} onClick={() => setOrderType('dine_in')}>
-              <i className="fas fa-utensils"></i>
-              <span>Sur place</span>
-            </button>
-            <button type="button" className={`order-type-option clean-btn ${orderType === 'takeaway' ? 'active' : ''}`} onClick={() => setOrderType('takeaway')}>
-              <i className="fas fa-bag-shopping"></i>
-              <span>A emporter</span>
-            </button>
-          </div>
-          {orderType === 'takeaway' && (
-            <p className="payment-note">Ajoutez un telephone pour que le restaurant puisse identifier la commande a emporter.</p>
-          )}
-        </div>
-        <div className="mobile-money-form">
-          <label>Nom du client</label>
-          <input className="fctrl" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Votre nom" />
-          <label>Telephone pour retrouver la commande</label>
-          <input className="fctrl" type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+243 8XX XXX XXX" />
-        </div>
-        <div className="payment-box">
-          <div className="payment-title">
-            <strong>Moyen de paiement</strong>
-            <span>{brand?.can_mobile_money ? 'Cash et mobile money pour le client du restaurant.' : 'Paiement cash disponible avec ce plan.'}</span>
-          </div>
-          <div className="payment-options">
-            {paymentMethods.map((method) => (
-              <button
-                className={`payment-option clean-btn ${paymentMethod === method.key ? 'active' : ''}`}
-                key={method.key}
-                type="button"
-                onClick={() => setPaymentMethod(method.key)}
-                title={method.hint}
-              >
-                <i className={`fas ${method.icon}`}></i>
-                <span>{method.name}</span>
-                <small>{method.key === 'cash' ? 'A table' : 'Mobile money'}</small>
-              </button>
-            ))}
-          </div>
-          {paymentMethod === 'cash' ? (
-            <p className="payment-note success">Votre commande sera envoyee maintenant. Le paiement cash sera confirme par le restaurant.</p>
-          ) : (
-            <div className="mobile-money-form">
-              <label>Email du client</label>
-              <input className="fctrl" type="email" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder="client@email.com" />
-              <label>Numero mobile money</label>
-              <input className="fctrl" type="tel" value={mobileWallet} onChange={(event) => setMobileWallet(event.target.value)} placeholder="+243 8XX XXX XXX" />
-              <p className="payment-note">Une demande de validation sera envoyee sur ce numero. Le restaurant verra le paiement en attente jusqu'a confirmation.</p>
+        {cart.items.length > 0 && (
+          <>
+            <textarea className="fctrl" rows="3" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note pour la cuisine..." />
+            <div className="order-type-box">
+              <div className="payment-title">
+                <strong>Mode de service</strong>
+                <span>Le client peut manger a table ou demander a emporter.</span>
+              </div>
+              <div className="order-type-options">
+                <button type="button" className={`order-type-option clean-btn ${orderType === 'dine_in' ? 'active' : ''}`} onClick={() => setOrderType('dine_in')}>
+                  <i className="fas fa-utensils"></i>
+                  <span>Sur place</span>
+                </button>
+                <button type="button" className={`order-type-option clean-btn ${orderType === 'takeaway' ? 'active' : ''}`} onClick={() => setOrderType('takeaway')}>
+                  <i className="fas fa-bag-shopping"></i>
+                  <span>A emporter</span>
+                </button>
+              </div>
+              {orderType === 'takeaway' && (
+                <p className="payment-note">Ajoutez un telephone pour que le restaurant puisse identifier la commande a emporter.</p>
+              )}
             </div>
-          )}
-        </div>
-        <div className="cart-total">
-          <span>Total</span>
-          <strong>{formatMoney(cart.totals.totalAmount, cart.totals.currency)}</strong>
-        </div>
-        <button className="btn-red w-100 justify-content-center" disabled={!canSubmit || status.type === 'loading'} onClick={submitOrder}>
-          <i className="fas fa-paper-plane"></i>{isEditing ? 'Enregistrer la modification' : (isMobileMoney ? 'Commander et payer' : 'Envoyer la commande')}
-        </button>
+            <div className="mobile-money-form">
+              <label>Nom du client</label>
+              <input className="fctrl" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Votre nom" />
+              <label>Telephone pour retrouver la commande</label>
+              <input className="fctrl" type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+243 8XX XXX XXX" />
+            </div>
+            <div className="payment-box">
+              <div className="payment-title">
+                <strong>Moyen de paiement</strong>
+                <span>{brand?.can_mobile_money ? 'Cash et mobile money pour le client du restaurant.' : 'Paiement cash disponible avec ce plan.'}</span>
+              </div>
+              <div className="payment-options">
+                {paymentMethods.map((method) => (
+                  <button
+                    className={`payment-option clean-btn ${paymentMethod === method.key ? 'active' : ''}`}
+                    key={method.key}
+                    type="button"
+                    onClick={() => setPaymentMethod(method.key)}
+                    title={method.hint}
+                  >
+                    <i className={`fas ${method.icon}`}></i>
+                    <span>{method.name}</span>
+                    <small>{method.key === 'cash' ? 'A table' : 'Mobile money'}</small>
+                  </button>
+                ))}
+              </div>
+              {paymentMethod === 'cash' ? (
+                <p className="payment-note success">Votre commande sera envoyee maintenant. Le paiement cash sera confirme par le restaurant.</p>
+              ) : (
+                <div className="mobile-money-form">
+                  <label>Email du client</label>
+                  <input className="fctrl" type="email" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder="client@email.com" />
+                  <label>Numero mobile money</label>
+                  <input className="fctrl" type="tel" value={mobileWallet} onChange={(event) => setMobileWallet(event.target.value)} placeholder="+243 8XX XXX XXX" />
+                  <p className="payment-note">Une demande de validation sera envoyee sur ce numero. Le restaurant verra le paiement en attente jusqu'a confirmation.</p>
+                </div>
+              )}
+            </div>
+            <div className="cart-total">
+              <span>Total</span>
+              <strong>{formatMoney(cart.totals.totalAmount, cart.totals.currency)}</strong>
+            </div>
+            <button className="btn-red w-100 justify-content-center" disabled={!canSubmit || status.type === 'loading'} onClick={submitOrder}>
+              <i className="fas fa-paper-plane"></i>{isEditing ? 'Enregistrer la modification' : (isMobileMoney ? 'Commander et payer' : 'Envoyer la commande')}
+            </button>
+          </>
+        )}
         {status.message && <div className={`client-alert ${status.type}`}>{status.message}</div>}
       </div>
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -1020,6 +1022,55 @@ const paymentStatusLabels = {
   failed: 'Paiement echoue',
   refunded: 'Paiement rembourse',
 };
+
+function OrdersPage({
+  tableId,
+  activeOrder,
+  recoveryNotice,
+  onRecovered,
+  onOrderUpdate,
+  onStatusNotification,
+  onCancellationModal,
+  onCancelOrder,
+  onEditOrder,
+}) {
+  return (
+    <section className="orders-page app-page" id="orders-page">
+      <div className="container">
+        <div className="app-page-head">
+          <span className="slbl">Commandes</span>
+          <h2>Suivi de commande</h2>
+          {activeOrder ? <span className="order-status-pill compact">{statusLabels[activeOrder.status] ?? activeOrder.status}</span> : null}
+        </div>
+      </div>
+      <OrderRecoverySection
+        tableId={tableId}
+        activeOrder={activeOrder}
+        notice={recoveryNotice}
+        onRecovered={onRecovered}
+      />
+      {!activeOrder ? (
+        <div className="container">
+          <div className="empty-page-card">
+            <i className="fas fa-receipt"></i>
+            <strong>Aucune commande active</strong>
+            <span>Votre suivi apparaitra ici apres l'envoi du panier.</span>
+          </div>
+        </div>
+      ) : null}
+      <OrderStatusTracker
+        order={activeOrder}
+        tableId={tableId}
+        onOrderUpdate={onOrderUpdate}
+        onStatusNotification={onStatusNotification}
+        onCancellationModal={onCancellationModal}
+        onCancelOrder={onCancelOrder}
+        onEditOrder={onEditOrder}
+      />
+      <ReceiptSection order={activeOrder} />
+    </section>
+  );
+}
 
 function getPaymentMethodLabel(order) {
   if (order?.payment_method === 'mobile_money') {
@@ -2010,127 +2061,6 @@ function OrderSnackbar({ snackbar, onClose }) {
   );
 }
 
-function ReservationSection({ tableId, restaurantSlug, brand }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const canReserve = Boolean(brand?.can_reservations && (tableId || restaurantSlug));
-  const [form, setForm] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    guests: '2',
-    reservation_date: today,
-    reservation_time: '19:00',
-    special_requests: '',
-  });
-  const [status, setStatus] = useState({ type: '', message: '' });
-  const [reservationRef, setReservationRef] = useState('');
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setStatus({ type: 'loading', message: 'Reservation en cours...' });
-    try {
-      const response = await createReservation({
-        ...form,
-        table_id: tableId || null,
-        restaurant_slug: restaurantSlug || undefined,
-        guests: Number(form.guests),
-      });
-      setReservationRef(response.data?.id ? response.data.id.slice(0, 8).toUpperCase() : '');
-      setStatus({ type: 'success', message: "Demande envoyee. Le restaurant va confirmer la disponibilite." });
-      setForm((current) => ({ ...current, special_requests: '' }));
-    } catch (error) {
-      setStatus({ type: 'error', message: error.message });
-    }
-  };
-
-  return (
-    <section id="reservation">
-      <div className="container">
-        <SectionTitle eyebrow="Reservation" title="Reserver chez" highlight={brand?.name || 'E-RESTO'} description={brand?.can_reservations ? "Envoyez une demande de reservation. Le restaurant confirme ensuite la table et l'heure." : "Les reservations sont disponibles avec les plans Pro et Business."} />
-        <div className="row g-4 align-items-start">
-          <InfoPanel />
-          <div className="col-lg-8">
-            <form className="fcard" onSubmit={submit}>
-              <div className="reservation-flow-box">
-                <div><i className="fas fa-paper-plane"></i><strong>Demande envoyee</strong></div>
-                <div><i className="fas fa-calendar-check"></i><strong>Restaurant confirme</strong></div>
-                <div><i className="fas fa-chair"></i><strong>Table preparee</strong></div>
-              </div>
-              <div className="row g-3">
-                <FormInput label="Full Name *" value={form.name} onChange={(name) => setForm({ ...form, name })} required />
-                <FormInput label="Phone Number *" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required />
-                <FormInput label="Email Address *" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required />
-                <div className="col-sm-6"><label className="flbl">Number of Guests *</label><input className="fctrl" type="number" min="1" max="50" value={form.guests} onChange={(event) => setForm({ ...form, guests: event.target.value })} /></div>
-                <div className="col-sm-6"><label className="flbl">Date *</label><input className="fctrl" type="date" min={today} value={form.reservation_date} onChange={(event) => setForm({ ...form, reservation_date: event.target.value })} required /></div>
-                <FormInput label="Time *" type="time" value={form.reservation_time} onChange={(reservation_time) => setForm({ ...form, reservation_time })} required />
-                <div className="col-12"><label className="flbl">Special Requests</label><textarea className="fctrl" rows="3" value={form.special_requests} onChange={(event) => setForm({ ...form, special_requests: event.target.value })} placeholder="Anniversaire, terrasse, allergies, chaise enfant..." /></div>
-                {!brand?.can_reservations && (
-                  <div className="col-12">
-                    <div className="client-alert">Ce restaurant n'a pas active les reservations sur son plan actuel.</div>
-                  </div>
-                )}
-                {brand?.can_reservations && !canReserve && (
-                  <div className="col-12">
-                    <div className="client-alert">Ouvrez le lien public du restaurant ou scannez un QR code pour envoyer une reservation au bon restaurant.</div>
-                  </div>
-                )}
-                <div className="col-12"><button className="btn-red w-100 justify-content-center" disabled={!canReserve || status.type === 'loading'}><i className="fas fa-calendar-check"></i>{status.type === 'loading' ? 'Envoi...' : 'Demander la reservation'}</button></div>
-              </div>
-              {status.message && <div className={`sucmsg visible ${status.type}`}><i className="fas fa-check-circle"></i><p>{status.message}</p></div>}
-              {reservationRef && <p className="reservation-ref">Reference reservation : <strong>#{reservationRef}</strong></p>}
-            </form>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ContactSection() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: 'General Inquiry', message: '' });
-  const [status, setStatus] = useState({ type: '', message: '' });
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setStatus({ type: 'loading', message: 'Envoi du message...' });
-    try {
-      await sendContactMessage(form);
-      setForm({ name: '', email: '', phone: '', subject: 'General Inquiry', message: '' });
-      setStatus({ type: 'success', message: "Message envoye ! Nous repondrons rapidement." });
-    } catch (error) {
-      setStatus({ type: 'error', message: error.message });
-    }
-  };
-
-  return (
-    <section id="contact-section">
-      <div className="container">
-        <SectionTitle eyebrow="Get In Touch" title="Contact" highlight="Us" description="Have a question, feedback, or want to plan a special event? We'd love to hear from you." />
-        <div className="row g-4">
-          <div className="col-lg-4"><ContactInfo /></div>
-          <div className="col-lg-8">
-            <form className="fcard" onSubmit={submit}>
-              <div className="row g-3">
-                <FormInput label="Your Name *" value={form.name} onChange={(name) => setForm({ ...form, name })} required />
-                <FormInput label="Email Address *" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required />
-                <FormInput label="Phone Number" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
-                <div className="col-sm-6"><label className="flbl">Subject *</label><select className="fctrl" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })}>{['General Inquiry', 'Catering & Events', 'Feedback', 'Partnership', 'Media & Press'].map((item) => <option key={item}>{item}</option>)}</select></div>
-                <div className="col-12"><label className="flbl">Message *</label><textarea className="fctrl" rows="5" value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} required placeholder="Write your message here..." /></div>
-                <div className="col-12"><button className="btn-red" disabled={status.type === 'loading'}><i className="fas fa-paper-plane"></i>Send Message</button></div>
-              </div>
-              {status.message && <div className={`sucmsg visible ${status.type}`}><i className="fas fa-check-circle"></i><p>{status.message}</p></div>}
-            </form>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FormInput({ label, value, onChange, type = 'text', required = false }) {
-  return <div className="col-sm-6"><label className="flbl">{label}</label><input className="fctrl" type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} /></div>;
-}
-
 function SectionTitle({ eyebrow, title, highlight, description }) {
   return (
     <div className="text-center mb-5">
@@ -2140,77 +2070,6 @@ function SectionTitle({ eyebrow, title, highlight, description }) {
       {description && <p className="sdesc mx-auto section-desc">{description}</p>}
     </div>
   );
-}
-
-function InfoPanel() {
-  return (
-    <div className="col-lg-4">
-      <div className="ctdark">
-        <h4>Contact Info</h4>
-        <p className="ctsub">We're happy to help you plan the perfect dining experience.</p>
-        {[
-          ['clock', 'Opening Hours', 'Wed - Sun, 9 AM - 11 PM'],
-          ['phone-alt', 'Call for Booking', '+243 830376004'],
-          ['users', 'Group Dining', 'Special menus for 10+ guests'],
-          ['map-marker-alt', 'Location', '42 Flavor Street, NY'],
-        ].map(([icon, title, text]) => (
-          <div className="ctitem" key={title}><div className="cticon"><i className={`fas fa-${icon}`}></i></div><div className="ctinfo"><strong>{title}</strong><span>{text}</span></div></div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ContactInfo() {
-  return (
-    <div className="ctdark">
-      <h4>Let's Talk</h4>
-      <p className="ctsub">We typically respond within 2 hours during business hours.</p>
-      {[
-        ['map-marker-alt', 'Address', '42 Flavor Street, Manhattan, New York, NY 10001'],
-        ['phone-alt', 'Phone', '+243 830376004'],
-        ['envelope', 'Email', 'e.resto2025@gmail.com'],
-        ['clock', 'Working Hours', 'Wed - Sun: 9 AM - 11 PM'],
-      ].map(([icon, title, text]) => <div className="ctitem" key={title}><div className="cticon"><i className={`fas fa-${icon}`}></i></div><div className="ctinfo"><strong>{title}</strong><span>{text}</span></div></div>)}
-    </div>
-  );
-}
-
-function DealSection() {
-  return <section id="offer"><div className="container"><div className="offerwrap"><div><span className="slbl">Limited Offer</span><h2>Get 30% Off Today</h2><p>Fresh burgers, crispy chicken and artisan pizza prepared in minutes.</p><a href="#menu" className="btn-red"><i className="fas fa-shopping-cart"></i>Grab the Deal</a></div><img src="/img/off-img.jpg" alt="Special offer" /></div></div></section>;
-}
-
-function GallerySection() {
-  return (
-    <section id="gallery">
-      <div className="container">
-        <SectionTitle eyebrow="Our Gallery" title="Fresh Food" highlight="Moments" />
-        <div className="row g-4">
-          {[1, 2, 3, 4, 5].map((item) => <div className="col-sm-6 col-lg-4" key={item}><div className="gitem"><img src={`/img/portfolio/work${item}.jpg`} alt="" /></div></div>)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ChefsSection() {
-  return <section id="chefs"><div className="container"><SectionTitle eyebrow="Our Team" title="Meet Our Expert" highlight="Chefs" /><div className="row g-4">{[1, 2, 3, 4].map((item) => <div className="col-sm-6 col-lg-3" key={item}><div className="chcard"><img src={`/img/chefs/${item}.jpg`} alt="" /><div className="chbody"><h5>Chef {item}</h5><div className="chrole">Executive Chef</div></div></div></div>)}</div></div></section>;
-}
-
-function TestimonialsSection() {
-  return <section id="testimonials"><div className="container"><SectionTitle eyebrow="Testimonials" title="Happy Customer" highlight="Reviews" /><div className="row g-4">{[1, 2, 3].map((item) => <div className="col-md-4" key={item}><div className="tcard"><div className="tstars">★★★★★</div><p>Fantastic food, fast service and beautiful experience.</p><div className="tauth"><img src={`/img/testimonial/${item}.jpg`} alt="" /><div><strong>Customer {item}</strong><span>Food lover</span></div></div></div></div>)}</div></div></section>;
-}
-
-function BlogSection() {
-  return <section id="blog"><div className="container"><SectionTitle eyebrow="News & Updates" title="Our Latest" highlight="Blog Posts" /><div className="row g-4">{[1, 2, 3].map((item) => <div className="col-md-6 col-lg-4" key={item}><div className="blcard"><div className="blimg"><img src={`/img/blog/${item}.jpg`} alt="" /></div><div className="blbody"><div className="bltag">Food & Health</div><div className="bltit"><a href="#">Healthy Fast Food and Fresh Ideas</a></div><a href="#" className="blmore">Read More <i className="fas fa-arrow-right"></i></a></div></div></div>)}</div></div></section>;
-}
-
-function NewsletterSection() {
-  return <section id="newsletter"><div className="nlbg"></div><div className="container"><div className="nlw text-center"><span className="slbl" style={{ color: 'rgba(255,255,255,.7)' }}>Stay Connected</span><h2 className="mb-3" style={{ color: '#fff' }}>Subscribe & Get Exclusive <span style={{ color: 'var(--secondary)' }}>Deals</span></h2><p className="mb-4" style={{ color: 'rgba(255,255,255,.78)' }}>Get 15% off your first order plus early access to new menu items</p><div className="nl-form-wrap"><input className="nlinput" type="email" placeholder="Enter your email address..." /><button className="nlbtn"><i className="fas fa-paper-plane me-1"></i>Subscribe</button></div></div></div></section>;
-}
-
-function Footer() {
-  return <footer><div className="container"><div className="row g-5"><div className="col-lg-4"><div className="footer-brand"><img src="/img/logo/e-resto-logo.png" alt="E-RESTO" /><div className="fnm">E-<span>RESTO</span></div></div><p className="fdesc">We bring the world's finest flavors together in a fast, friendly, and affordable experience.</p></div><div className="col-sm-6 col-lg-2"><div className="ftit">Quick Links</div><ul className="flinks ps-0"><li><a href="#hero"><i className="fas fa-chevron-right"></i>Home</a></li><li><a href="#menu"><i className="fas fa-chevron-right"></i>Our Menu</a></li><li><a href="#reservation"><i className="fas fa-chevron-right"></i>Reservation</a></li></ul></div><div className="col-lg-4"><div className="ftit">Get In Touch</div><div className="fci"><div className="fciico"><i className="fas fa-map-marker-alt"></i></div><div className="fciinfo"><strong>Address</strong>42 Flavor Street, Manhattan, NY 10001</div></div></div></div></div><div className="fbot"><div className="container"><p>&copy; 2026 <span>E-RESTO Restaurant</span>. All Rights Reserved.</p></div></div></footer>;
 }
 
 function ClientChatbot({ brand, menu, cart, activeOrder, onOpenMenu }) {

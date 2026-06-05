@@ -54,4 +54,4 @@
     </table>
 </body>
 </html>
-<?php /**PATH C:\xampp\htdocs\PROJECT-E-RESTO\e-resto-backend\resources\views/emails/restaurant_account_created.blade.php ENDPATH**/ ?>
+<?php /**PATH /var/www/html/resources/views/emails/restaurant_account_created.blade.php ENDPATH**/ ?>

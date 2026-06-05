@@ -53,7 +53,7 @@ export class RestaurantLogin implements OnDestroy {
 
     this.loading = true;
     this.saas.login({ email, password }).pipe(
-      timeout(10000),
+      timeout(30000),
       finalize(() => this.loading = false),
     ).subscribe({
       next: (response) => this.completeLogin(response),
@@ -91,7 +91,7 @@ export class RestaurantLogin implements OnDestroy {
     }
 
     if (error?.name === 'TimeoutError') {
-      return 'Le serveur met trop de temps a repondre. Verifiez votre connexion puis reessayez.';
+      return 'Le serveur met trop de temps a repondre. Verifiez que Docker, Laravel et MySQL sont bien demarres puis reessayez.';
     }
 
     const errors = error?.error?.errors;

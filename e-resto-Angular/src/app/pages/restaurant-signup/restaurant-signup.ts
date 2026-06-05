@@ -43,13 +43,18 @@ export class RestaurantSignup implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.saas.plans().pipe(timeout(10000)).subscribe({
+    this.saas.plans().pipe(timeout(30000)).subscribe({
       next: (plans) => {
         this.resolveSelectedPlan(plans);
         this.planLoading = false;
       },
       error: () => {
         this.planLoading = false;
+        if (this.hasSelectedPlanFallback()) {
+          this.message = '';
+          return;
+        }
+
         this.message = 'Impossible de charger les plans. Verifiez que le serveur et la base de donnees sont demarres.';
       },
     });
@@ -133,7 +138,7 @@ export class RestaurantSignup implements OnInit {
       ...this.account,
       saas_plan_id: planId,
     }).pipe(
-      timeout(12000),
+      timeout(30000),
       finalize(() => this.creating = false),
     ).subscribe({
       next: (response) => {
@@ -176,7 +181,7 @@ export class RestaurantSignup implements OnInit {
   }
 
   goToDashboard(): void {
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/restaurant/dashboard']);
   }
 
   copyMenuUrl(): void {
@@ -229,6 +234,33 @@ export class RestaurantSignup implements OnInit {
       currency: selected.currency,
     };
     localStorage.setItem('selected_plan', JSON.stringify(this.selectedPlan));
+  }
+
+  private hasSelectedPlanFallback(): boolean {
+    const planKey = this.selectedPlan.id || this.selectedPlan.slug || this.route.snapshot.queryParamMap.get('plan');
+
+    if (!planKey) {
+      return false;
+    }
+
+    this.selectedPlan = {
+      ...this.selectedPlan,
+      id: this.selectedPlan.id || planKey,
+      slug: this.selectedPlan.slug || String(planKey).toLowerCase(),
+      name: this.selectedPlan.name || this.planNameFromKey(String(planKey)),
+    };
+    localStorage.setItem('selected_plan', JSON.stringify(this.selectedPlan));
+
+    return true;
+  }
+
+  private planNameFromKey(planKey: string): string {
+    const normalized = planKey.toLowerCase();
+
+    if (normalized === 'pro') return 'Pro';
+    if (normalized === 'business') return 'Business';
+
+    return 'Starter';
   }
 
   private validationMessage(error: any): string {

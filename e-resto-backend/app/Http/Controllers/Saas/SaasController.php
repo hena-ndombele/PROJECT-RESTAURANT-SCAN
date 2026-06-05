@@ -138,7 +138,7 @@ class SaasController extends Controller
             'city' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
-            'saas_plan_id' => 'required|uuid|exists:saas_plans,id',
+            'saas_plan_id' => 'required|string|max:80',
         ], [
             'restaurant_name.required' => 'Le nom du restaurant est obligatoire.',
             'owner_name.required' => 'Le nom du proprietaire est obligatoire.',
@@ -150,9 +150,18 @@ class SaasController extends Controller
             'password.min' => 'Le mot de passe doit contenir au moins 6 caracteres.',
             'password.confirmed' => 'Les mots de passe ne correspondent pas.',
             'saas_plan_id.required' => 'Choisissez un plan avant de creer le compte.',
-            'saas_plan_id.uuid' => 'Le plan selectionne est invalide. Revenez depuis la page Tarifs.',
-            'saas_plan_id.exists' => 'Le plan selectionne n existe plus. Revenez depuis la page Tarifs.',
+            'saas_plan_id.string' => 'Le plan selectionne est invalide. Revenez depuis la page Tarifs.',
         ]);
+
+        $plan = $this->resolveSignupPlan($validated['saas_plan_id']);
+        if (!$plan) {
+            return response()->json([
+                'message' => 'Le plan selectionne est invalide. Revenez depuis la page Tarifs.',
+                'errors' => [
+                    'saas_plan_id' => ['Le plan selectionne est invalide. Revenez depuis la page Tarifs.'],
+                ],
+            ], 422);
+        }
 
         if (!empty($validated['google_credential'])) {
             $googleProfile = $this->verifiedGoogleProfile($validated['google_credential']);
@@ -162,8 +171,7 @@ class SaasController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($validated) {
-            $plan = SaasPlan::findOrFail($validated['saas_plan_id']);
+        return DB::transaction(function () use ($validated, $plan) {
             [$firstName, $lastName] = $this->splitName($validated['owner_name']);
 
             $restaurant = Restaurant::create([
@@ -1198,6 +1206,23 @@ class SaasController extends Controller
                 ]
             );
         }
+    }
+
+    private function resolveSignupPlan(string $identifier): ?SaasPlan
+    {
+        $identifier = trim($identifier);
+
+        if ($identifier === '') {
+            return null;
+        }
+
+        return SaasPlan::where('is_active', true)
+            ->where(function ($query) use ($identifier) {
+                $query->where('id', $identifier)
+                    ->orWhere('slug', Str::slug($identifier))
+                    ->orWhere('name', $identifier);
+            })
+            ->first();
     }
 
     private function uniqueRestaurantSlug(string $name, ?string $ignoreId = null): string
