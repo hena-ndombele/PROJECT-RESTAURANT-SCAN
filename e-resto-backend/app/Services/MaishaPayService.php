@@ -6,6 +6,7 @@ use App\Models\Payment;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Throwable;
 
 class MaishaPayService
 {
@@ -63,7 +64,7 @@ class MaishaPayService
 
         $payload = [
             'transactionReference' => $transactionReference,
-            'gatewayMode' => config('services.maishapay.gateway_mode', '1'),
+            'gatewayMode' => (int) config('services.maishapay.gateway_mode', '1'),
             'publicApiKey' => config('services.maishapay.public_key'),
             'secretApiKey' => config('services.maishapay.secret_key'),
             'order' => [
@@ -90,45 +91,46 @@ class MaishaPayService
 
         if (filter_var(config('services.maishapay.mock'), FILTER_VALIDATE_BOOLEAN)) {
             return [
-                'status_code' => 200,
-                'transactionStatus' => 'SUCCESS',
-                'transactionId' => random_int(100000, 999999),
-                'originatingTransactionId' => $transactionReference,
+                'status_code' => 503,
+                'transactionStatus' => 'FAILED',
                 'mock' => true,
-                'order' => [
-                    'customerFullName' => $customer['name'],
-                    'customerPhoneNumber' => $walletId,
-                    'customerEmailAdress' => $customer['email'],
-                    'cost' => [
-                        'amount' => (float) $payment->amount,
-                        'frais' => round(((float) $payment->amount) * 0.04, 2),
-                        'total' => round(((float) $payment->amount) * 1.04, 2),
-                        'currency' => $payment->currency,
-                    ],
-                ],
-                'paymentChannel' => [
-                    'channel' => 'MOBILEMONEY',
-                    'provider' => [
-                        'libelle' => Str::upper($provider),
-                        'picture' => 'service-logos/' . Str::lower($provider) . '.png',
-                    ],
-                    'walletID' => $walletId,
-                ],
-                'created_at' => now()->format('d-m-Y H:i'),
-                'updated_at' => now()->format('d-m-Y H:i'),
+                'message' => 'Le mode simulation est desactive pour le paiement abonnement. Configurez MaishaPay Live.',
             ];
         }
 
         $baseUrl = rtrim(config('services.maishapay.base_url'), '/');
 
-        return Http::acceptJson()
-            ->asJson()
-            ->timeout(30)
-            ->post("{$baseUrl}/api/collect/v2/store/mobileMoney", $payload)
-            ->json() ?? [
-                'status_code' => 502,
+        try {
+            $response = Http::acceptJson()
+                ->asJson()
+                ->timeout(45)
+                ->post("{$baseUrl}/api/collect/v2/store/mobileMoney", $payload);
+        } catch (Throwable $error) {
+            return [
+                'status_code' => 503,
+                'transactionStatus' => 'FAILED',
+                'message' => 'Gateway Mobile Money injoignable. Reessayez dans un instant.',
+            ];
+        }
+
+        $data = $response->json();
+
+        if (!is_array($data)) {
+            return [
+                'status_code' => $response->status(),
                 'transactionStatus' => 'FAILED',
                 'message' => 'Reponse MaishaPay vide ou invalide.',
+            ];
+        }
+
+        return [
+            'status_code' => $response->status(),
+            'gateway_success' => $response->successful(),
+            ...$data,
+        ] ?: [
+            'status_code' => 502,
+            'transactionStatus' => 'FAILED',
+            'message' => 'Reponse MaishaPay vide ou invalide.',
             ];
     }
 

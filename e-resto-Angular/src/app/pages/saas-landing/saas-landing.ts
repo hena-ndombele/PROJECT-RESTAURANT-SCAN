@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { finalize, timeout } from 'rxjs';
 import { Restaurant, SaasOverview, SaasPlan } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
 
@@ -38,6 +39,8 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   private revealObserver?: IntersectionObserver;
   private ctaAnimationStarted = false;
   private ctaStatsTimer?: ReturnType<typeof setInterval>;
+  private newsletterMessageTimer?: ReturnType<typeof setTimeout>;
+  private contactMessageTimer?: ReturnType<typeof setTimeout>;
 
   lead: Partial<Restaurant> = {
     name: '',
@@ -119,6 +122,8 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     if (this.ctaStatsTimer) {
       clearInterval(this.ctaStatsTimer);
     }
+    this.clearNewsletterMessageTimer();
+    this.clearContactMessageTimer();
   }
 
   selectPlan(plan: SaasPlan): void {
@@ -152,6 +157,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     if (!email) {
       this.newsletterMessage = 'Ajoutez votre email pour recevoir les nouveautes.';
       this.newsletterStatus = 'error';
+      this.hideNewsletterMessageAfterDelay(12000);
       return;
     }
 
@@ -159,17 +165,20 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     this.newsletterMessage = '';
     this.newsletterStatus = 'idle';
 
-    this.saas.subscribeNewsletter(email).subscribe({
+    this.saas.subscribeNewsletter(email).pipe(
+      timeout(10000),
+      finalize(() => this.isNewsletterSubmitting = false),
+    ).subscribe({
       next: (response) => {
         this.newsletterMessage = response.message || 'Inscription confirmee.';
         this.newsletterStatus = 'success';
         this.newsletterEmail = '';
-        this.isNewsletterSubmitting = false;
+        this.hideNewsletterMessageAfterDelay(12000);
       },
       error: (error) => {
-        this.newsletterMessage = error?.error?.message ?? "Impossible d'inscrire cet email pour le moment.";
+        this.newsletterMessage = this.publicErrorMessage(error, "Impossible d'inscrire cet email pour le moment.");
         this.newsletterStatus = 'error';
-        this.isNewsletterSubmitting = false;
+        this.hideNewsletterMessageAfterDelay(12000);
       },
     });
   }
@@ -186,6 +195,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     if (!payload.name || !payload.email || !payload.message) {
       this.contactMessage = 'Completez votre nom, email et message.';
       this.contactStatus = 'error';
+      this.hideContactMessageAfterDelay(12000);
       return;
     }
 
@@ -193,9 +203,12 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     this.contactMessage = '';
     this.contactStatus = 'idle';
 
-    this.saas.sendContactMessage(payload).subscribe({
+    this.saas.sendContactMessage(payload).pipe(
+      timeout(8000),
+      finalize(() => this.isContactSubmitting = false),
+    ).subscribe({
       next: (response) => {
-        this.contactMessage = response.message || 'Message envoye avec succes.';
+        this.contactMessage = response.message || 'Message enregistre. Nous revenons vers vous rapidement.';
         this.contactStatus = 'success';
         this.contactForm = {
           name: '',
@@ -204,12 +217,17 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
           subject: 'Demande restaurant SaaS',
           message: '',
         };
-        this.isContactSubmitting = false;
+        this.hideContactMessageAfterDelay(12000);
       },
       error: (error) => {
-        this.contactMessage = error?.error?.message ?? "Impossible d'envoyer le message pour le moment.";
-        this.contactStatus = 'error';
-        this.isContactSubmitting = false;
+        if (error?.name === 'TimeoutError') {
+          this.contactMessage = 'Votre demande a peut-etre ete enregistree, mais la reponse du serveur prend trop de temps. Reessayez si le message ne part pas.';
+          this.contactStatus = 'success';
+        } else {
+          this.contactMessage = this.publicErrorMessage(error, "Impossible d'envoyer le message pour le moment.");
+          this.contactStatus = 'error';
+        }
+        this.hideContactMessageAfterDelay(12000);
       },
     });
   }
@@ -248,5 +266,57 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
         this.ctaStatsTimer = undefined;
       }
     }, 16);
+  }
+
+  private publicErrorMessage(error: any, fallback: string): string {
+    if (error?.status === 0) {
+      return "Impossible de joindre le serveur. Verifiez que l'API Laravel est demarree sur le port 8000.";
+    }
+
+    if (error?.name === 'TimeoutError') {
+      return 'Le serveur met trop de temps a repondre. Reessayez dans un instant.';
+    }
+
+    const errors = error?.error?.errors;
+    if (errors && typeof errors === 'object') {
+      const messages = Object.values(errors).flat().filter((message) => typeof message === 'string');
+      if (messages.length) {
+        return messages.join(' ');
+      }
+    }
+
+    return error?.error?.message || fallback;
+  }
+
+  private hideNewsletterMessageAfterDelay(delay = 5000): void {
+    this.clearNewsletterMessageTimer();
+    this.newsletterMessageTimer = setTimeout(() => {
+      this.newsletterMessage = '';
+      this.newsletterStatus = 'idle';
+      this.cdr.detectChanges();
+    }, delay);
+  }
+
+  private clearNewsletterMessageTimer(): void {
+    if (this.newsletterMessageTimer) {
+      clearTimeout(this.newsletterMessageTimer);
+      this.newsletterMessageTimer = undefined;
+    }
+  }
+
+  private hideContactMessageAfterDelay(delay = 6000): void {
+    this.clearContactMessageTimer();
+    this.contactMessageTimer = setTimeout(() => {
+      this.contactMessage = '';
+      this.contactStatus = 'idle';
+      this.cdr.detectChanges();
+    }, delay);
+  }
+
+  private clearContactMessageTimer(): void {
+    if (this.contactMessageTimer) {
+      clearTimeout(this.contactMessageTimer);
+      this.contactMessageTimer = undefined;
+    }
   }
 }

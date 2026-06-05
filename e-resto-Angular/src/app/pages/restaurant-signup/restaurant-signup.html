@@ -6,8 +6,8 @@
     </a>
     <div class="visual-copy">
       <span>Lancez votre menu digital</span>
-      <h2>Votre restaurant peut etre pret avant le prochain service.</h2>
-      <p>Menu QR, commandes en temps reel et suivi de l'activite dans un seul espace professionnel.</p>
+      <h2>Pret pour le prochain service.</h2>
+      <p>Menu QR, commandes en temps reel et suivi dans un espace professionnel.</p>
       <div class="visual-points">
         <span><i class="bi bi-check-circle-fill"></i> 14 jours d'essai</span>
         <span><i class="bi bi-check-circle-fill"></i> Installation accompagnee</span>
@@ -21,7 +21,6 @@
         <a class="form-logo" routerLink="/" aria-label="Retour a l'accueil">
           <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
         </a>
-        <span class="eyebrow">Compte restaurant</span>
         <h1>Creer votre espace</h1>
         <p>{{ accountCreated ? 'Votre restaurant est pret.' : 'Quelques informations suffisent pour demarrer.' }}</p>
         <span class="selected-plan" *ngIf="selectedPlan.name">Plan choisi : <strong>{{ selectedPlan.name }}</strong></span>
@@ -37,12 +36,6 @@
         <form (ngSubmit)="currentStep === 1 ? goNext() : createAccount()">
           @if (currentStep === 1) {
             <div class="form-section">
-              <div class="google-shell">
-                <div #googleButton class="google-button"></div>
-                <small *ngIf="!googleEnabled">Configurez Google pour activer cette inscription.</small>
-              </div>
-              <div class="divider"><span>ou avec votre email</span></div>
-
               <label>
                 <span>Adresse email *</span>
                 <input [(ngModel)]="account.owner_email" name="owner_email" type="email" placeholder="nom@email.com" autocomplete="email" required>
@@ -121,7 +114,7 @@
             </div>
           }
 
-          <p class="message" *ngIf="message">{{ message }}</p>
+          <p class="message" role="alert" *ngIf="message"><i class="bi bi-exclamation-triangle-fill"></i>{{ message }}</p>
         </form>
 
         <div class="signin-link">Deja un compte ? <a routerLink="/restaurant/login">Se connecter</a></div>

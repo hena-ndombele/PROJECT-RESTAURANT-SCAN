@@ -16,9 +16,10 @@ class SendOtpMail extends Mailable
         $this->otp = $otp;
     }
 
-      public function build()
+    public function build()
     {
-        return $this->view('emails.otp')
+        return $this->subject('Code de verification E-RESTO')
+                    ->view('emails.otp')
                     ->with(['otp' => $this->otp])
                     ->attach(public_path('assets/logo.png'), [
                         'as' => 'logo.png',

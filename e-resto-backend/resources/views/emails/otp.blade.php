@@ -1,103 +1,39 @@
-<!-- resources/views/emails/otp.blade.php -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Votre code OTP</title>
-    <style>
-        /* Reset */
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background-color: #f7f7f7;
-            color: #333;
-        }
-        .container {
-            width: 100%;
-            max-width: 600px;
-            margin: 30px auto;
-            background-color: #ffffff;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        .header {
-            background-color: #F9A11B; /* Couleur principale du restaurant */
-            text-align: center;
-        }
-        .header img {
-            max-width: 150px;
-        }
-        .content {
-            padding: 30px 20px;
-            text-align: center;
-        }
-        .content h2 {
-            color: #F9A11B;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        .otp-code {
-            font-size: 36px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin: 20px 0;
-            letter-spacing: 5px;
-        }
-        .content p {
-            font-size: 16px;
-            color: #555;
-            margin: 10px 0;
-        }
-        .footer {
-            background-color: #f1f1f1;
-            text-align: center;
-            padding: 20px;
-            font-size: 14px;
-            color: #888;
-        }
-        .button {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 12px 25px;
-            background-color: #e74c3c;
-            color: #fff !important;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        @media only screen and (max-width: 600px) {
-            .otp-code {
-                font-size: 28px;
-            }
-            .content h2 {
-                font-size: 20px;
-            }
-        }
-    </style>
+    <title>Code de verification E-RESTO</title>
 </head>
-<body>
-    <div class="container">
-        <!-- Header avec logo -->
-        <div class="header">
-           <img src="cid:logo.png" alt="Restaurant XYZ Logo"  width="130" height="130">
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="content">
-            <h2>Votre code OTP </h2>
-            <p>Utilisez ce code pour confirmer votre connexion</p>
-            <div class="otp-code">{{ $otp }}</div>
-            <p>Ce code expire dans <strong>10 minutes</strong>. Veuillez ne pas le partager avec quelqu'un d'autre.</p>
-            <a href="{{ url('/') }}" class="button">Visitez notre site</a>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            &copy; {{ date('Y') }} E-resto. Tous droits réservés.<br>
-             <a href="mailto:e.resto2025@gmail.com">support@eresto.com</a>
-        </div>
-    </div>
+<body style="margin:0;padding:0;background:#f4f6fb;color:#111827;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6fb;padding:28px 12px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(17,24,39,.08);">
+                    <tr>
+                        <td style="padding:30px;background:linear-gradient(135deg,#111827,#2b1113);color:#ffffff;text-align:center;">
+                            <img src="cid:logo.png" alt="E-RESTO" width="88" height="88" style="display:inline-block;border-radius:18px;margin-bottom:14px;">
+                            <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#ffb15c;font-weight:700;">Connexion securisee</div>
+                            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;">Votre code de verification</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:30px;text-align:center;">
+                            <p style="margin:0;color:#374151;line-height:1.7;">Utilisez ce code pour confirmer votre connexion a E-RESTO.</p>
+                            <div style="display:inline-block;margin:24px 0;padding:18px 26px;border:1px solid #fed7aa;border-radius:14px;background:#fff7ed;color:#111827;font-size:38px;letter-spacing:8px;font-weight:800;">{{ $otp }}</div>
+                            <p style="margin:0;color:#6b7280;line-height:1.7;">Ce code expire dans <strong>10 minutes</strong>. Ne le partagez avec personne.</p>
+                            <p style="margin:24px 0 0;">
+                                <a href="{{ url('/') }}" style="display:inline-block;padding:13px 18px;border-radius:10px;background:#d71920;color:#ffffff;text-decoration:none;font-weight:700;">Ouvrir E-RESTO</a>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:18px 28px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.6;text-align:center;">
+                            &copy; {{ date('Y') }} E-RESTO. Besoin d'aide ? <a href="mailto:e.resto2025@gmail.com" style="color:#d71920;text-decoration:none;">e.resto2025@gmail.com</a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

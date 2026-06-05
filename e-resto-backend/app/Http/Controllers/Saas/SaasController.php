@@ -78,7 +78,9 @@ class SaasController extends Controller
         );
 
         return response()->json([
-            'message' => 'Inscription newsletter confirmee.',
+            'message' => $subscriber->wasRecentlyCreated
+                ? 'Inscription newsletter confirmee.'
+                : 'Cet email est deja inscrit a la newsletter.',
             'subscriber' => $subscriber,
         ], $subscriber->wasRecentlyCreated ? 201 : 200);
     }
@@ -203,19 +205,21 @@ class SaasController extends Controller
                 'currency' => $plan->currency,
             ]);
 
-            try {
-                Mail::to($user->email)->send(new RestaurantAccountCreatedMail(
-                    $user,
-                    $restaurant->fresh(['plan', 'subscription'])
-                ));
-            } catch (\Throwable $mailError) {
-                Log::warning('Email de bienvenue non envoye pendant le signup SaaS.', [
-                    'restaurant_id' => $restaurant->id,
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'error' => $mailError->getMessage(),
-                ]);
-            }
+            app()->terminating(function () use ($user, $restaurant) {
+                try {
+                    Mail::to($user->email)->send(new RestaurantAccountCreatedMail(
+                        $user,
+                        $restaurant->fresh(['plan', 'subscription'])
+                    ));
+                } catch (\Throwable $mailError) {
+                    Log::warning('Email de bienvenue non envoye pendant le signup SaaS.', [
+                        'restaurant_id' => $restaurant->id,
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'error' => $mailError->getMessage(),
+                    ]);
+                }
+            });
 
             return response()->json([
                 'restaurant' => $restaurant->load(['plan', 'subscription']),
@@ -230,11 +234,27 @@ class SaasController extends Controller
         $validated = $request->validate([
             'restaurant_id' => 'required|uuid|exists:restaurants,id',
             'provider' => 'required|string|in:MPESA,AIRTEL,ORANGE,MTN,mpesa,airtel,orange,mtn',
-            'wallet_id' => 'required|string|max:30',
+            'wallet_id' => 'required|string|min:10|max:30',
             'billing_cycle' => 'sometimes|string|in:monthly,yearly',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        $provider = Str::upper($validated['provider']);
+        $walletId = $this->normalizeWalletId($validated['wallet_id']);
+
+        if (!$this->isValidWalletForProvider($walletId, $provider)) {
+            return response()->json([
+                'message' => $this->walletValidationMessage($provider),
+            ], 422);
+        }
+
+        $callbackUrl = config('services.maishapay.callback_url') ?: url('/api/saas/payment-callback');
+        if (!$this->isUsableLiveCallbackUrl($callbackUrl)) {
+            return response()->json([
+                'message' => 'Paiement live impossible avec un callback local ou prive. Configurez MAISHAPAY_CALLBACK_URL avec une URL HTTPS publique.',
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($validated, $provider, $walletId, $callbackUrl) {
             $restaurant = Restaurant::with(['plan', 'subscription', 'users'])->findOrFail($validated['restaurant_id']);
             $this->refreshBillingStatus($restaurant);
             $restaurant->refresh();
@@ -249,14 +269,15 @@ class SaasController extends Controller
                 'restaurant_id' => $restaurant->id,
                 'type' => 'subscription',
                 'method' => 'mobile_money',
-                'provider' => Str::upper($validated['provider']),
+                'provider' => $provider,
                 'status' => 'pending',
                 'amount' => $amount,
                 'currency' => $plan->currency,
                 'reference' => 'SUB-' . Str::upper(Str::random(10)),
                 'metadata' => [
                     'plan_id' => $plan->id,
-                    'wallet_id' => $validated['wallet_id'],
+                    'wallet_id' => $walletId,
+                    'wallet_id_original' => $validated['wallet_id'],
                     'billing_cycle' => $billingCycle,
                 ],
             ]);
@@ -264,12 +285,22 @@ class SaasController extends Controller
             $response = $this->maishaPay->collectMobileMoney(
                 $payment,
                 ['name' => $restaurant->owner_name, 'email' => $restaurant->owner_email],
-                $validated['provider'],
-                $validated['wallet_id'],
-                config('services.maishapay.callback_url') ?: url('/api/saas/payment-callback')
+                $provider,
+                $walletId,
+                $callbackUrl
             );
 
-            $status = $this->normalizePaymentStatus($response['transactionStatus'] ?? null);
+            $status = $this->normalizePaymentStatus(
+                $response['transactionStatus']
+                    ?? $response['status']
+                    ?? $response['data']['transactionStatus']
+                    ?? null
+            );
+
+            if (($response['gateway_success'] ?? true) === false && $status === 'pending') {
+                $status = 'failed';
+            }
+
             $payment->update([
                 'status' => $status,
                 'paid_at' => $status === 'paid' ? now() : null,
@@ -284,14 +315,46 @@ class SaasController extends Controller
             }
 
             $owner = $restaurant->users()->first();
+            $message = match ($status) {
+                'paid' => 'Paiement confirme. Votre abonnement est actif.',
+                'pending' => 'Demande de paiement envoyee. Confirmez sur votre telephone pour activer votre abonnement.',
+                default => $this->gatewayFailureMessage($response),
+            };
+            $httpStatus = match ($status) {
+                'paid' => 200,
+                'pending' => 202,
+                default => 422,
+            };
 
             return response()->json([
+                'message' => $message,
                 'payment' => $payment->fresh(),
                 'maishapay' => $response,
                 'restaurant' => $restaurant->fresh(['plan', 'subscription']),
                 'session' => $owner && $status === 'paid' ? $this->sessionPayload($owner) : null,
-            ]);
+            ], $httpStatus);
         });
+    }
+
+    public function checkoutStatus(Payment $payment)
+    {
+        if ($payment->type !== 'subscription') {
+            return response()->json(['message' => 'Paiement abonnement introuvable.'], 404);
+        }
+
+        $payment->load('restaurant.plan', 'restaurant.subscription', 'restaurant.users');
+        $owner = $payment->restaurant?->users()->first();
+
+        return response()->json([
+            'message' => match ($payment->status) {
+                'paid' => 'Paiement confirme. Votre abonnement est actif.',
+                'pending' => 'Paiement encore en attente de confirmation operateur.',
+                default => 'Paiement non confirme. Verifiez le numero puis reessayez.',
+            },
+            'payment' => $payment,
+            'restaurant' => $payment->restaurant ? $this->restaurantPayload($payment->restaurant) : null,
+            'session' => $owner && $payment->status === 'paid' ? $this->sessionPayload($owner) : null,
+        ]);
     }
 
     public function login(Request $request)
@@ -898,9 +961,89 @@ class SaasController extends Controller
     {
         return match (Str::upper((string) $status)) {
             'SUCCESS', 'SUCCEEDED', 'PAID', 'COMPLETED' => 'paid',
-            'PENDING', 'PROCESSING' => 'pending',
+            'PENDING', 'PROCESSING', 'INITIATED', 'CREATED', 'WAITING', 'WAITING_CUSTOMER_CONFIRMATION' => 'pending',
             default => 'failed',
         };
+    }
+
+    private function normalizeWalletId(string $walletId): string
+    {
+        $value = trim($walletId);
+        $value = preg_replace('/[\s\-.()]/', '', $value) ?? '';
+
+        if (str_starts_with($value, '00')) {
+            $value = '+' . substr($value, 2);
+        }
+
+        if (str_starts_with($value, '+')) {
+            return '+' . preg_replace('/\D/', '', substr($value, 1));
+        }
+
+        $digits = preg_replace('/\D/', '', $value) ?? '';
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '243' . substr($digits, 1);
+        }
+
+        if (!str_starts_with($digits, '243')) {
+            $digits = '243' . $digits;
+        }
+
+        return '+' . $digits;
+    }
+
+    private function isValidWalletForProvider(string $walletId, string $provider): bool
+    {
+        return match ($provider) {
+            'AIRTEL' => (bool) preg_match('/^\+2439\d{8}$/', $walletId),
+            'ORANGE' => (bool) preg_match('/^\+243(84|85)\d{7}$/', $walletId),
+            'MPESA' => (bool) preg_match('/^\+243(81|82|83)\d{7}$/', $walletId),
+            'MTN' => (bool) preg_match('/^\+243\d{9}$/', $walletId),
+            default => false,
+        };
+    }
+
+    private function walletValidationMessage(string $provider): string
+    {
+        return match ($provider) {
+            'AIRTEL' => 'Numero Airtel Money invalide. Utilisez le format +2439XXXXXXXX.',
+            'ORANGE' => 'Numero Orange Money invalide. Utilisez le format +24384XXXXXXX ou +24385XXXXXXX.',
+            'MPESA' => 'Numero M-Pesa invalide. Utilisez le format +24381XXXXXXX, +24382XXXXXXX ou +24383XXXXXXX.',
+            default => 'Numero Mobile Money invalide. Utilisez le format international +243XXXXXXXXX.',
+        };
+    }
+
+    private function gatewayFailureMessage(array $response): string
+    {
+        return $response['message']
+            ?? $response['error']
+            ?? $response['errors'][0]
+            ?? 'Le paiement Mobile Money a ete refuse ou non confirme par le gateway.';
+    }
+
+    private function isUsableLiveCallbackUrl(string $callbackUrl): bool
+    {
+        if ((int) config('services.maishapay.gateway_mode', '1') !== 1) {
+            return true;
+        }
+
+        $parts = parse_url($callbackUrl);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        if ($scheme !== 'https' || $host === '') {
+            return false;
+        }
+
+        if (in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true)) {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+        }
+
+        return true;
     }
 
     private function validatePlan(Request $request, ?SaasPlan $plan = null): array

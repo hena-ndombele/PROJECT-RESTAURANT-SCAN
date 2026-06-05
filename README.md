@@ -1779,6 +1779,13 @@ Flow :
 6. Si l'envoi mail echoue, le message reste en base et l'erreur est journalisee sans bloquer l'utilisateur.
 7. Angular affiche un message de succes ou d'erreur.
 
+Correction UX appliquee :
+
+- les boutons contact et newsletter utilisent un timeout frontend et s'arretent toujours apres succes ou erreur ;
+- les erreurs de validation Laravel sont affichees clairement dans la landing ;
+- la creation de compte restaurant envoie maintenant l'email de bienvenue apres la reponse HTTP pour ne pas bloquer l'inscription ;
+- les boutons de creation de compte et de connexion s'arretent aussi en cas d'erreur ou de timeout.
+
 ## 32. Assistant Intelligent, chatbot et fidelite client
 
 E-RESTO peut evoluer vers une plateforme SaaS plus professionnelle avec deux modules de croissance :

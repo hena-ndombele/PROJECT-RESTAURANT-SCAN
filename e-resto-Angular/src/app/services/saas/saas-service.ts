@@ -57,6 +57,10 @@ export class SaasService {
     return this.http.post<any>(`${this.apiUrl}/checkout/mobile-money`, payload);
   }
 
+  checkoutMobileMoneyStatus(paymentId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/checkout/mobile-money/${paymentId}`);
+  }
+
   login(payload: { email: string; password: string }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/login`, payload);
   }

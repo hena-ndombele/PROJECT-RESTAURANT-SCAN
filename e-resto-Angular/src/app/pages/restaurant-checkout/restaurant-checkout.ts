@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { finalize, timeout } from 'rxjs';
 import { SaasService } from '../../services/saas/saas-service';
 
 @Component({
@@ -11,13 +12,18 @@ import { SaasService } from '../../services/saas/saas-service';
   templateUrl: './restaurant-checkout.html',
   styleUrl: './restaurant-checkout.scss',
 })
-export class RestaurantCheckout {
+export class RestaurantCheckout implements OnDestroy {
   selectedPlan = JSON.parse(localStorage.getItem('selected_plan') || '{}');
   restaurant = JSON.parse(localStorage.getItem('pending_restaurant') || localStorage.getItem('restaurant_session') || '{}');
-  mobile = { provider: 'MPESA', wallet_id: '24383' };
+  mobile = { provider: 'MPESA', wallet_id: '+24383' };
   message = '';
+  messageType: 'info' | 'success' | 'error' = 'info';
   paying = false;
+  waitingConfirmation = false;
   paymentResponse: any = null;
+  paymentReference = '';
+  private paymentStatusTimer?: ReturnType<typeof setInterval>;
+  private paymentStatusAttempts = 0;
 
   constructor(private router: Router, private saas: SaasService) {}
 
@@ -52,14 +58,18 @@ export class RestaurantCheckout {
 
   get walletHint(): string {
     if (this.mobile.provider === 'AIRTEL') {
-      return 'Airtel Money doit commencer par 2439';
+      return 'Airtel Money doit commencer par +2439';
     }
 
     if (this.mobile.provider === 'ORANGE') {
-      return 'Orange Money doit commencer par 24384 ou 24385';
+      return 'Orange Money doit commencer par +24384 ou +24385';
     }
 
-    return 'M-Pesa doit commencer par 24381, 24382 ou 24383';
+    return 'M-Pesa doit commencer par +24381, +24382 ou +24383';
+  }
+
+  ngOnDestroy(): void {
+    this.stopPaymentStatusPolling();
   }
 
   onProviderChange(provider: string): void {
@@ -76,12 +86,13 @@ export class RestaurantCheckout {
 
   onWalletChange(value: string): void {
     this.mobile.wallet_id = this.normalizedWalletId(value);
-    if (this.mobile.wallet_id.length < 3) {
-      this.mobile.wallet_id = '243';
-    }
   }
 
   pay(): void {
+    if (this.paying || this.waitingConfirmation) {
+      return;
+    }
+
     if (!this.restaurant.id) {
       this.router.navigate(['/restaurant/signup']);
       return;
@@ -90,79 +101,182 @@ export class RestaurantCheckout {
     const walletId = this.normalizedWalletId(this.mobile.wallet_id);
     this.mobile.wallet_id = walletId;
 
-    if (!walletId || walletId === '243') {
-      this.message = 'Entrez le numero Mobile Money qui va payer l abonnement.';
+    if (!walletId || walletId === '+243') {
+      this.showMessage('Entrez le numero Mobile Money qui va payer l abonnement.', 'error');
       return;
     }
 
     if (!this.isValidWalletForProvider(walletId)) {
-      this.message = this.walletHint + '. Verifiez le numero avant de continuer.';
+      this.showMessage(this.walletHint + '. Verifiez le numero avant de continuer.', 'error');
       return;
     }
 
     this.paying = true;
-    this.message = '';
+    this.stopPaymentStatusPolling();
+    this.showMessage('Envoi de la demande de paiement vers votre telephone...', 'info');
     this.saas.checkoutMobileMoney({
       restaurant_id: this.restaurant.id,
       provider: this.mobile.provider,
       wallet_id: walletId,
       billing_cycle: this.billingCycle,
-    }).subscribe({
+    }).pipe(
+      timeout(60000),
+      finalize(() => this.paying = false),
+    ).subscribe({
       next: (response) => {
         this.paymentResponse = response.maishapay;
-        if (response.session?.token) {
-          localStorage.setItem('restaurant_token', response.session.token);
-          localStorage.setItem('auth_token', response.session.token);
-          localStorage.setItem('user_data', JSON.stringify(response.session.user));
-          localStorage.setItem('restaurant_session', JSON.stringify(response.session.restaurant));
-          localStorage.setItem('restaurant_login_at', new Date().toISOString());
-          localStorage.removeItem('pending_restaurant');
-        }
-        this.message = response.payment?.status === 'paid'
-          ? 'Paiement confirme. Ouverture de votre espace restaurant...'
-          : 'Paiement envoye. Votre espace sera active apres confirmation.';
-        setTimeout(() => this.router.navigate(['/restaurant/dashboard']), 700);
+        this.paymentReference = response.payment?.reference || '';
+        this.handlePaymentState(response);
       },
-      error: () => {
-        this.message = 'Le paiement Mobile Money a echoue. Verifiez le numero et reessayez.';
-        this.paying = false;
+      error: (error) => {
+        this.showMessage(this.errorMessage(error), 'error');
       },
     });
   }
 
   private defaultWalletPrefix(provider: string): string {
-    if (provider === 'AIRTEL') return '2439';
-    if (provider === 'ORANGE') return '24385';
-    return '24383';
+    if (provider === 'AIRTEL') return '+2439';
+    if (provider === 'ORANGE') return '+24385';
+    return '+24383';
   }
 
   private normalizedWalletId(value: string): string {
-    let digits = String(value || '').replace(/\D/g, '');
+    let raw = String(value || '').trim().replace(/[\s\-.()]/g, '');
 
-    if (digits.startsWith('00')) {
-      digits = digits.slice(2);
+    if (!raw) {
+      return '';
     }
 
+    if (raw.startsWith('00')) {
+      raw = `+${raw.slice(2)}`;
+    }
+
+    let digits = raw.startsWith('+')
+      ? raw.slice(1).replace(/\D/g, '')
+      : raw.replace(/\D/g, '');
+
     if (digits.startsWith('0')) {
-      digits = digits.slice(1);
+      digits = `243${digits.slice(1)}`;
     }
 
     if (!digits.startsWith('243')) {
       digits = `243${digits}`;
     }
 
-    return digits.slice(0, 12);
+    return `+${digits.slice(0, 12)}`;
   }
 
   private isValidWalletForProvider(walletId: string): boolean {
     if (this.mobile.provider === 'AIRTEL') {
-      return /^2439\d{8}$/.test(walletId);
+      return /^\+2439\d{8}$/.test(walletId);
     }
 
     if (this.mobile.provider === 'ORANGE') {
-      return /^243(84|85)\d{7}$/.test(walletId);
+      return /^\+243(84|85)\d{7}$/.test(walletId);
     }
 
-    return /^243(81|82|83)\d{7}$/.test(walletId);
+    return /^\+243(81|82|83)\d{7}$/.test(walletId);
+  }
+
+  private handlePaymentState(response: any): void {
+    const status = response.payment?.status;
+
+    if (status === 'paid' && response.session?.token) {
+      this.completePaidSession(response);
+      this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
+      setTimeout(() => this.router.navigate(['/restaurant/dashboard']), 700);
+      return;
+    }
+
+    if (status === 'pending') {
+      this.waitingConfirmation = true;
+      this.showMessage(response.message || 'Confirmez le paiement sur votre telephone. Nous attendons le retour operateur.', 'info');
+      this.startPaymentStatusPolling(response.payment?.id);
+      return;
+    }
+
+    this.showMessage(response.message || 'Le paiement n a pas ete confirme. Verifiez le numero et reessayez.', 'error');
+  }
+
+  private startPaymentStatusPolling(paymentId?: string): void {
+    if (!paymentId) {
+      return;
+    }
+
+    this.stopPaymentStatusPolling();
+    this.paymentStatusAttempts = 0;
+    this.paymentStatusTimer = setInterval(() => {
+      this.paymentStatusAttempts++;
+
+      if (this.paymentStatusAttempts > 60) {
+        this.stopPaymentStatusPolling();
+        this.waitingConfirmation = false;
+        this.showMessage('La confirmation operateur prend trop de temps. Si vous avez valide sur le telephone, contactez le support avec la reference paiement.', 'error');
+        return;
+      }
+
+      this.saas.checkoutMobileMoneyStatus(paymentId).pipe(timeout(15000)).subscribe({
+        next: (response) => {
+          if (response.payment?.status === 'paid') {
+            this.stopPaymentStatusPolling();
+            this.waitingConfirmation = false;
+            this.completePaidSession(response);
+            this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
+            setTimeout(() => this.router.navigate(['/restaurant/dashboard']), 700);
+            return;
+          }
+
+          if (response.payment?.status === 'failed') {
+            this.stopPaymentStatusPolling();
+            this.waitingConfirmation = false;
+            this.showMessage(response.message || 'Paiement refuse ou expire. Verifiez le numero puis reessayez.', 'error');
+          }
+        },
+        error: () => {
+          this.showMessage('Paiement envoye. La confirmation operateur prend du temps, nous continuons a verifier.', 'info');
+        },
+      });
+    }, 5000);
+  }
+
+  private stopPaymentStatusPolling(): void {
+    if (this.paymentStatusTimer) {
+      clearInterval(this.paymentStatusTimer);
+      this.paymentStatusTimer = undefined;
+    }
+  }
+
+  private completePaidSession(response: any): void {
+    if (!response.session?.token) {
+      return;
+    }
+
+    localStorage.setItem('restaurant_token', response.session.token);
+    localStorage.setItem('auth_token', response.session.token);
+    localStorage.setItem('user_data', JSON.stringify(response.session.user));
+    localStorage.setItem('restaurant_session', JSON.stringify(response.session.restaurant));
+    localStorage.setItem('restaurant_login_at', new Date().toISOString());
+    localStorage.removeItem('pending_restaurant');
+  }
+
+  private showMessage(message: string, type: 'info' | 'success' | 'error'): void {
+    this.message = message;
+    this.messageType = type;
+  }
+
+  private errorMessage(error: any): string {
+    if (error?.name === 'TimeoutError') {
+      return 'Le gateway met trop de temps a repondre. Verifiez votre telephone avant de reessayer.';
+    }
+
+    const errors = error?.error?.errors;
+    if (errors && typeof errors === 'object') {
+      const messages = Object.values(errors).flat().filter((message) => typeof message === 'string');
+      if (messages.length) {
+        return messages.join(' ');
+      }
+    }
+
+    return error?.error?.message || 'Le paiement Mobile Money a echoue. Verifiez le numero et reessayez.';
   }
 }

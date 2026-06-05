@@ -7,7 +7,7 @@
       </a>
       <span class="eyebrow">Etape 2 sur 2</span>
       <h2>Derniere verification avant activation</h2>
-      <p>Controlez votre plan, entrez le numero wallet, puis confirmez le paiement.</p>
+      <p>Controlez votre plan, entrez le numero wallet au format +243, puis confirmez le paiement sur votre telephone.</p>
       <a class="change-plan" routerLink="/pricing">Changer de plan</a>
     </div>
 
@@ -56,15 +56,15 @@
         <div class="trust-list">
           <div><i class="bi bi-check-circle-fill"></i><span>Session restaurant creee automatiquement</span></div>
           <div><i class="bi bi-check-circle-fill"></i><span>Plan synchronise avec votre dashboard</span></div>
-          <div><i class="bi bi-check-circle-fill"></i><span>Activation ou attente selon le retour operateur</span></div>
+          <div><i class="bi bi-check-circle-fill"></i><span>Activation uniquement apres confirmation operateur</span></div>
         </div>
       </aside>
 
-      <form class="payment-panel" (ngSubmit)="pay()">
+      <form class="payment-panel" (ngSubmit)="pay()" novalidate>
         <div class="payment-head">
           <span class="eyebrow">Paiement</span>
           <h2>Mobile Money</h2>
-          <p>Choisissez l'operateur et le numero wallet qui va autoriser le paiement.</p>
+          <p>Choisissez l'operateur et le numero wallet qui va recevoir la demande de paiement.</p>
         </div>
 
         <div class="operator-grid" aria-label="Choisir l'operateur Mobile Money">
@@ -93,9 +93,9 @@
               [ngModel]="mobile.wallet_id"
               (ngModelChange)="onWalletChange($event)"
               name="wallet_id"
-              placeholder="243830376004"
+              placeholder="+243830376004"
               autocomplete="tel"
-              inputmode="numeric">
+              inputmode="tel">
           </div>
           <small>{{ walletHint }}</small>
         </label>
@@ -105,18 +105,21 @@
           <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
         </div>
 
-        <button class="pay-button" [disabled]="paying">
-          <span *ngIf="paying" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-          <i *ngIf="!paying" class="bi bi-lock-fill"></i>
-          {{ paying ? 'Traitement du paiement...' : 'Payer et ouvrir mon dashboard' }}
+        <button class="pay-button" [disabled]="paying || waitingConfirmation">
+          <span *ngIf="paying || waitingConfirmation" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          <i *ngIf="!paying && !waitingConfirmation" class="bi bi-lock-fill"></i>
+          {{ paying ? 'Envoi au gateway...' : waitingConfirmation ? 'En attente de confirmation...' : 'Payer mon abonnement' }}
         </button>
 
-        <p class="message" *ngIf="message">{{ message }}</p>
+        <p class="message" role="alert" *ngIf="message" [ngClass]="messageType">
+          <i class="bi" [ngClass]="messageType === 'success' ? 'bi-check-circle-fill' : messageType === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-hourglass-split'"></i>
+          <span>{{ message }}</span>
+        </p>
 
-        <details class="gateway-response" *ngIf="paymentResponse">
-          <summary>Details techniques du paiement</summary>
-          <pre>{{ paymentResponse | json }}</pre>
-        </details>
+        <div class="payment-reference" *ngIf="paymentReference">
+          <span>Reference paiement</span>
+          <strong>{{ paymentReference }}</strong>
+        </div>
       </form>
     </div>
   </section>

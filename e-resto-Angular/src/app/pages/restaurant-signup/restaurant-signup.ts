@@ -1,10 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { timeout } from 'rxjs';
+import { finalize, timeout } from 'rxjs';
 import { SaasPlan } from '../../models/saas/saas.models';
-import { GoogleIdentityService } from '../../services/google/google-identity-service';
 import { SaasService } from '../../services/saas/saas-service';
 
 @Component({
@@ -14,14 +13,10 @@ import { SaasService } from '../../services/saas/saas-service';
   templateUrl: './restaurant-signup.html',
   styleUrl: './restaurant-signup.scss',
 })
-export class RestaurantSignup implements OnInit, AfterViewInit {
-  @ViewChild('googleButton') googleButton?: ElementRef<HTMLElement>;
-
+export class RestaurantSignup implements OnInit {
   currentStep: 1 | 2 = 1;
   showPassword = false;
   showPasswordConfirmation = false;
-  googleCredential = '';
-  googleEnabled = true;
   planLoading = true;
 
   account = {
@@ -45,7 +40,6 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
     private router: Router,
     private route: ActivatedRoute,
     private saas: SaasService,
-    private googleIdentity: GoogleIdentityService,
   ) {}
 
   ngOnInit(): void {
@@ -61,24 +55,20 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
     });
   }
 
-  ngAfterViewInit(): void {
-    this.renderGoogleButton();
-  }
-
   goNext(): void {
     this.message = '';
 
-    if (!this.account.owner_email || (!this.googleCredential && (!this.account.password || !this.account.password_confirmation))) {
+    if (!this.account.owner_email || !this.account.password || !this.account.password_confirmation) {
       this.message = 'Completez votre email et votre mot de passe.';
       return;
     }
 
-    if (!this.googleCredential && this.account.password.length < 6) {
+    if (this.account.password.length < 6) {
       this.message = 'Le mot de passe doit contenir au minimum 6 caracteres.';
       return;
     }
 
-    if (!this.googleCredential && this.account.password !== this.account.password_confirmation) {
+    if (this.account.password !== this.account.password_confirmation) {
       this.message = 'Les mots de passe ne correspondent pas.';
       return;
     }
@@ -89,7 +79,6 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
   goBack(): void {
     this.message = '';
     this.currentStep = 1;
-    setTimeout(() => this.renderGoogleButton());
   }
 
   passwordStrengthScore(): number {
@@ -123,12 +112,12 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
       return;
     }
 
-    if (!this.account.restaurant_name || !this.account.owner_name || !this.account.owner_email || !this.account.owner_phone || (!this.googleCredential && !this.account.password)) {
+    if (!this.account.restaurant_name || !this.account.owner_name || !this.account.owner_email || !this.account.owner_phone || !this.account.password) {
       this.message = 'Completez les champs obligatoires pour creer le compte.';
       return;
     }
 
-    if (!this.googleCredential && this.account.password !== this.account.password_confirmation) {
+    if (this.account.password !== this.account.password_confirmation) {
       this.message = 'Les mots de passe ne correspondent pas.';
       return;
     }
@@ -143,8 +132,10 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
     this.saas.signup({
       ...this.account,
       saas_plan_id: planId,
-      google_credential: this.googleCredential || undefined,
-    }).pipe(timeout(15000)).subscribe({
+    }).pipe(
+      timeout(12000),
+      finalize(() => this.creating = false),
+    ).subscribe({
       next: (response) => {
         const token = response.session?.token || response.token || response.access_token;
         const restaurant = response.session?.restaurant || response.restaurant;
@@ -173,11 +164,9 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
         this.createdRestaurant = restaurant;
         this.publicMenuUrl = this.buildMenuUrl(restaurant);
         this.accountCreated = true;
-        this.creating = false;
       },
       error: (error) => {
         this.message = this.validationMessage(error);
-        this.creating = false;
       },
     });
   }
@@ -213,41 +202,6 @@ export class RestaurantSignup implements OnInit, AfterViewInit {
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-  }
-
-  private renderGoogleButton(): void {
-    if (!this.googleButton) {
-      return;
-    }
-
-    this.googleIdentity.renderButton(this.googleButton.nativeElement, (credential) => this.continueWithGoogle(credential))
-      .then((enabled) => this.googleEnabled = enabled)
-      .catch(() => this.googleEnabled = false);
-  }
-
-  private continueWithGoogle(credential: string): void {
-    const profile = this.decodeGoogleCredential(credential);
-    if (!profile?.email) {
-      this.message = 'Impossible de lire les informations du compte Google.';
-      return;
-    }
-
-    this.googleCredential = credential;
-    this.account.owner_email = profile.email;
-    this.account.owner_name = profile.name || this.account.owner_name;
-    this.message = '';
-    this.currentStep = 2;
-  }
-
-  private decodeGoogleCredential(credential: string): { email?: string; name?: string } | null {
-    try {
-      const payload = credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      const paddedPayload = payload.padEnd(Math.ceil(payload.length / 4) * 4, '=');
-      const bytes = Uint8Array.from(atob(paddedPayload), (character) => character.charCodeAt(0));
-      return JSON.parse(new TextDecoder().decode(bytes));
-    } catch {
-      return null;
-    }
   }
 
   private resolveSelectedPlan(plans: SaasPlan[]): void {

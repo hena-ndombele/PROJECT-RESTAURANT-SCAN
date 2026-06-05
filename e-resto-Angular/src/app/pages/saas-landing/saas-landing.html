@@ -145,7 +145,7 @@
       </div>
     </div>
 
-    <form class="contact-form" (ngSubmit)="submitContact()">
+    <form class="contact-form" (ngSubmit)="submitContact()" novalidate>
       <div class="grid-2">
         <label>
           <span>Nom complet *</span>
@@ -177,7 +177,10 @@
         {{ isContactSubmitting ? 'Envoi en cours...' : 'Envoyer le message' }}
       </button>
 
-      <small *ngIf="contactMessage" [class.success]="contactStatus === 'success'" [class.error]="contactStatus === 'error'">{{ contactMessage }}</small>
+      <div class="form-feedback" role="alert" *ngIf="contactMessage" [class.success]="contactStatus === 'success'" [class.error]="contactStatus === 'error'">
+        <i class="bi" [ngClass]="contactStatus === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+        <span>{{ contactMessage }}</span>
+      </div>
     </form>
   </section>
 
@@ -209,14 +212,17 @@
       <a href="#contact">Support client</a>
     </div>
 
-    <form class="newsletter" (ngSubmit)="submitNewsletter()">
+    <form class="newsletter" (ngSubmit)="submitNewsletter()" novalidate>
       <h3>Newsletter</h3>
       <p>Nouveautes produit et conseils restaurant.</p>
       <div>
         <input type="email" name="newsletter_email" [(ngModel)]="newsletterEmail" placeholder="Votre adresse email" aria-label="Adresse email newsletter" autocomplete="email" required>
         <button type="submit" [disabled]="isNewsletterSubmitting">{{ isNewsletterSubmitting ? 'Envoi...' : "S'inscrire" }}</button>
       </div>
-      <small *ngIf="newsletterMessage" [class.success]="newsletterStatus === 'success'" [class.error]="newsletterStatus === 'error'">{{ newsletterMessage }}</small>
+      <div class="form-feedback" role="alert" *ngIf="newsletterMessage" [class.success]="newsletterStatus === 'success'" [class.error]="newsletterStatus === 'error'">
+        <i class="bi" [ngClass]="newsletterStatus === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+        <span>{{ newsletterMessage }}</span>
+      </div>
     </form>
 
     <div class="footer-bottom">

@@ -30,6 +30,7 @@ Route::prefix('saas')->group(function () {
     Route::post('/newsletter', [SaasController::class, 'newsletterSubscribe']);
     Route::post('/signup', [SaasController::class, 'signup']);
     Route::post('/checkout/mobile-money', [SaasController::class, 'checkout']);
+    Route::get('/checkout/mobile-money/{payment}', [SaasController::class, 'checkoutStatus']);
     Route::post('/login', [SaasController::class, 'login']);
     Route::get('/google/config', [SaasController::class, 'googleConfig']);
     Route::post('/google/login', [SaasController::class, 'googleLogin']);

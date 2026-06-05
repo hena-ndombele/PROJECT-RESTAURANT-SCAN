@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ContactMessageReceivedMail;
 use App\Models\ContactMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -25,23 +26,7 @@ class ContactController extends Controller
         app()->terminating(function () use ($message) {
             try {
                 $recipient = config('mail.from.address') ?: 'e.resto2025@gmail.com';
-                $body = implode("\n", [
-                    'Nouveau message depuis la landing SaaS E-RESTO',
-                    '',
-                    'Nom : ' . $message->name,
-                    'Email : ' . $message->email,
-                    'Telephone : ' . ($message->phone ?: '-'),
-                    'Sujet : ' . $message->subject,
-                    '',
-                    'Message :',
-                    $message->message,
-                ]);
-
-                Mail::raw($body, function ($mail) use ($message, $recipient) {
-                    $mail->to($recipient)
-                        ->replyTo($message->email, $message->name)
-                        ->subject('[E-RESTO] Nouveau contact restaurant');
-                });
+                Mail::to($recipient)->send(new ContactMessageReceivedMail($message));
             } catch (\Throwable $mailError) {
                 Log::warning('Email contact landing non envoye.', [
                     'contact_message_id' => $message->id,
@@ -52,7 +37,7 @@ class ContactController extends Controller
         });
 
         return response()->json([
-            'message' => 'Message envoyee avec succes',
+            'message' => 'Message envoye avec succes',
             'data' => $message,
         ], 201);
     }

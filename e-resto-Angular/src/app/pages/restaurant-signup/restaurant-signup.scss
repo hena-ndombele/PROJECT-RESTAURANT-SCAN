@@ -18,7 +18,7 @@
   color: #fff;
   background:
     linear-gradient(180deg, rgba(4, 10, 22, .25), rgba(4, 10, 22, .9)),
-    url('/assets/landing/restaurant-auth-bg.png') center / cover no-repeat;
+    url('/assets/landing/qr-scan-phone.png') center / cover no-repeat;
 }
 
 .visual-brand {
@@ -53,7 +53,7 @@
 
 .visual-copy h2 {
   margin: 14px 0;
-  font-size: clamp(34px, 4.5vw, 58px);
+  font-size: clamp(28px, 4vw, 46px);
   line-height: 1;
   font-weight: 950;
 }
@@ -113,6 +113,8 @@
   width: 66px;
   height: 66px;
   object-fit: contain;
+  border-radius: 50%;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, .12);
 }
 
 h1 {
@@ -173,36 +175,6 @@ h1 {
 form {
   display: grid;
   gap: 16px;
-}
-
-.google-button {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.google-shell small {
-  display: block;
-  color: var(--muted);
-  text-align: center;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #9ca3af;
-  font-size: 12px;
-  font-weight: 850;
-  text-transform: uppercase;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: #e5e7eb;
 }
 
 .section-title strong,
@@ -325,13 +297,23 @@ select:focus {
 }
 
 .message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   margin: 0;
-  padding: 12px 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(215, 25, 32, .18);
   border-radius: 10px;
   color: var(--red);
   background: rgba(215, 25, 32, .08);
   font-weight: 850;
-  text-align: center;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.message i {
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 
 .signin-link {
