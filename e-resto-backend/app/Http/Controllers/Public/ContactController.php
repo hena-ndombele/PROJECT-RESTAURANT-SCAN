@@ -25,7 +25,7 @@ class ContactController extends Controller
 
         app()->terminating(function () use ($message) {
             try {
-                $recipient = config('mail.from.address') ?: 'e.resto2025@gmail.com';
+                $recipient = config('mail.from.address') ?: 'restauraScan2026@gmail.com';
                 Mail::to($recipient)->send(new ContactMessageReceivedMail($message));
             } catch (\Throwable $mailError) {
                 Log::warning('Email contact landing non envoye.', [

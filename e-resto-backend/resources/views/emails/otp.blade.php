@@ -28,7 +28,7 @@
                     </tr>
                     <tr>
                         <td style="padding:18px 28px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.6;text-align:center;">
-                            &copy; {{ date('Y') }} Restaura Scan. Besoin d'aide ? <a href="mailto:e.resto2025@gmail.com" style="color:#d71920;text-decoration:none;">e.resto2025@gmail.com</a>
+                            &copy; {{ date('Y') }} Restaura Scan. Besoin d'aide ? <a href="mailto:restauraScan2026@gmail.com" style="color:#d71920;text-decoration:none;">restauraScan2026@gmail.com</a>
                         </td>
                     </tr>
                 </table>
