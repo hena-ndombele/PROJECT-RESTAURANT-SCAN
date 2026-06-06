@@ -111,7 +111,6 @@ body {
   display: none !important;
 }
 
-.scanned-table-pill,
 .scanned-table-banner {
   display: inline-flex;
   align-items: center;
@@ -123,19 +122,11 @@ body {
   font-weight: 800;
 }
 
-.scanned-table-pill {
-  margin-left: 14px;
-  padding: 8px 11px;
-  font-size: .78rem;
-}
-
-.scanned-table-pill span,
 .scanned-table-banner span {
   color: #666;
   font-weight: 700;
 }
 
-.scanned-table-pill i,
 .scanned-table-banner i {
   color: var(--primary);
 }
@@ -267,13 +258,6 @@ body {
 .mpqty.small span {
   width: 28px;
   height: 28px;
-}
-
-@media (max-width: 991px) {
-  .scanned-table-pill {
-    margin-left: auto;
-    font-size: .72rem;
-  }
 }
 
 .mpqty button,

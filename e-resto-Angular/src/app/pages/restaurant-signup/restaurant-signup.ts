@@ -31,6 +31,7 @@ export class RestaurantSignup implements OnInit {
   };
   message = '';
   creating = false;
+  private createAccountSafetyTimer?: ReturnType<typeof setTimeout>;
   accountCreated = false;
   createdRestaurant: any = null;
   publicMenuUrl = '';
@@ -134,14 +135,30 @@ export class RestaurantSignup implements OnInit {
     }
 
     this.creating = true;
+    this.clearCreateAccountSafetyTimer();
+    this.createAccountSafetyTimer = setTimeout(() => {
+      if (!this.creating) {
+        return;
+      }
+
+      this.creating = false;
+      localStorage.setItem('restaurant_owner_email', this.account.owner_email);
+      this.message = 'Le compte semble avoir ete cree, mais la confirmation prend trop de temps. Redirection vers la connexion...';
+      setTimeout(() => this.router.navigate(['/restaurant/login']), 1200);
+    }, 15000);
     this.saas.signup({
       ...this.account,
       saas_plan_id: planId,
     }).pipe(
       timeout(30000),
-      finalize(() => this.creating = false),
+      finalize(() => {
+        this.creating = false;
+        this.clearCreateAccountSafetyTimer();
+      }),
     ).subscribe({
       next: (response) => {
+        this.creating = false;
+        this.clearCreateAccountSafetyTimer();
         const token = response.session?.token || response.token || response.access_token;
         const restaurant = response.session?.restaurant || response.restaurant;
         const user = response.session?.user || response.user || {
@@ -172,6 +189,8 @@ export class RestaurantSignup implements OnInit {
         this.createdRestaurant = restaurant;
         this.publicMenuUrl = this.buildMenuUrl(restaurant);
         this.accountCreated = true;
+        this.message = 'Compte cree. Ouverture du dashboard...';
+        setTimeout(() => this.router.navigate(['/dashboard']), 700);
       },
       error: (error) => {
         this.message = this.validationMessage(error);
@@ -268,7 +287,7 @@ export class RestaurantSignup implements OnInit {
 
   private validationMessage(error: any): string {
     if (error?.name === 'TimeoutError') {
-      return 'Le serveur ne repond pas. Verifiez que le backend et la base de donnees sont demarres.';
+      return 'La creation prend trop de temps. Si vous avez recu le mail, votre compte est cree : connectez-vous avec vos identifiants.';
     }
 
     const errors = error?.error?.errors;
@@ -280,5 +299,12 @@ export class RestaurantSignup implements OnInit {
     }
 
     return error?.error?.message || 'Creation impossible. Verifiez les informations.';
+  }
+
+  private clearCreateAccountSafetyTimer(): void {
+    if (this.createAccountSafetyTimer) {
+      clearTimeout(this.createAccountSafetyTimer);
+      this.createAccountSafetyTimer = undefined;
+    }
   }
 }

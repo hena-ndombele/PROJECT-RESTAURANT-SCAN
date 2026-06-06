@@ -280,7 +280,6 @@ export function App() {
       <TopBar brand={brand} />
       <Navbar
         brand={brand}
-        scannedTable={scannedTable}
         onSearch={() => setSearchOpen(true)}
         cartCount={cart.totals.totalQuantity}
         activeView={activeView}
@@ -467,7 +466,7 @@ function TopBar({ brand }) {
   );
 }
 
-function Navbar({ brand, scannedTable, onSearch, cartCount, activeView, activeOrder, hasTable, onView }) {
+function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, hasTable, onView }) {
   const navItems = [
     ['menu', 'Menu'],
     ['cart', 'Panier'],
@@ -481,13 +480,6 @@ function Navbar({ brand, scannedTable, onSearch, cartCount, activeView, activeOr
         <button className="navbar-brand clean-btn" type="button" onClick={() => onView('menu')}>
           <BrandLogo brand={brand} />
         </button>
-        {scannedTable ? (
-          <div className="scanned-table-pill">
-            <i className="fas fa-qrcode"></i>
-            <span>Table scannee</span>
-            <strong>{scannedTable.name}</strong>
-          </div>
-        ) : null}
         <div className="navbar-collapse desktop-nav" id="navmenu">
           <ul className="navbar-nav mx-auto">
             {navItems.map(([view, label]) => (

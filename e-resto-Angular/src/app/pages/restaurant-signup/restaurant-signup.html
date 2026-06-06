@@ -106,7 +106,7 @@
               </label>
 
               <div class="actions-row">
-                <button class="secondary-action" type="button" (click)="goBack()"><i class="bi bi-arrow-left"></i> Retour</button>
+                <button class="secondary-action" type="button" (click)="goBack()" [disabled]="creating"><i class="bi bi-arrow-left"></i> Retour</button>
                 <button class="primary-action" type="submit" [disabled]="creating || planLoading">
                   {{ creating ? 'Creation...' : planLoading ? 'Chargement du plan...' : 'Creer mon compte' }}
                 </button>
@@ -130,7 +130,7 @@
       <span class="modal-subtitle">Restaura Scan - Menu digital QR code</span>
       <div class="modal-icon"><i class="bi bi-stars"></i></div>
       <h2 id="signupSuccessTitle">Compte cree !</h2>
-      <p>Ton restaurant est pret. Ton menu digital est accessible ici :</p>
+      <p>Ton restaurant est pret. Ouverture automatique du dashboard...</p>
       <div class="menu-url modal-menu-url">
         <span>{{ publicMenuUrl }}</span>
         <button type="button" (click)="copyMenuUrl()" aria-label="Copier l'URL du menu"><i class="bi bi-copy"></i></button>
