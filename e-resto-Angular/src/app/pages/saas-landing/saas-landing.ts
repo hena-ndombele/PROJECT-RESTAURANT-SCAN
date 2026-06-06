@@ -143,7 +143,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
         this.message = 'Abonnement initialise. Redirection vers votre espace restaurant...';
         this.lead = { name: '', owner_name: '', owner_email: '', owner_phone: '', city: '', saas_plan_id: this.lead.saas_plan_id };
         this.isSubmitting = false;
-        setTimeout(() => this.router.navigate(['/restaurant/dashboard']), 700);
+        setTimeout(() => this.router.navigate(['/dashboard']), 700);
       },
       error: (error) => {
         this.message = error?.error?.message ?? "L'inscription a echoue.";
@@ -161,6 +161,13 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    if (!this.isValidEmail(email)) {
+      this.newsletterMessage = 'Adresse email invalide. Verifiez le format puis reessayez.';
+      this.newsletterStatus = 'error';
+      this.hideNewsletterMessageAfterDelay(12000);
+      return;
+    }
+
     this.isNewsletterSubmitting = true;
     this.newsletterMessage = '';
     this.newsletterStatus = 'idle';
@@ -170,10 +177,10 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       finalize(() => this.isNewsletterSubmitting = false),
     ).subscribe({
       next: (response) => {
-        this.newsletterMessage = response.message || 'Inscription confirmee.';
+        this.newsletterMessage = response.message || 'Votre email est enregistre dans la newsletter.';
         this.newsletterStatus = 'success';
         this.newsletterEmail = '';
-        this.hideNewsletterMessageAfterDelay(12000);
+        this.hideNewsletterMessageAfterDelay(5000);
       },
       error: (error) => {
         this.newsletterMessage = this.publicErrorMessage(error, "Impossible d'inscrire cet email pour le moment.");
@@ -199,6 +206,13 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    if (!this.isValidEmail(payload.email)) {
+      this.contactMessage = 'Adresse email invalide. Verifiez le format puis reessayez.';
+      this.contactStatus = 'error';
+      this.hideContactMessageAfterDelay(12000);
+      return;
+    }
+
     this.isContactSubmitting = true;
     this.contactMessage = '';
     this.contactStatus = 'idle';
@@ -208,7 +222,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       finalize(() => this.isContactSubmitting = false),
     ).subscribe({
       next: (response) => {
-        this.contactMessage = response.message || 'Message enregistre. Nous revenons vers vous rapidement.';
+        this.contactMessage = response.message || 'Message envoye. Nous revenons vers vous rapidement.';
         this.contactStatus = 'success';
         this.contactForm = {
           name: '',
@@ -217,7 +231,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
           subject: 'Demande restaurant SaaS',
           message: '',
         };
-        this.hideContactMessageAfterDelay(12000);
+        this.hideContactMessageAfterDelay(5000);
       },
       error: (error) => {
         if (error?.name === 'TimeoutError') {
@@ -286,6 +300,10 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return error?.error?.message || fallback;
+  }
+
+  private isValidEmail(value: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
 
   private hideNewsletterMessageAfterDelay(delay = 5000): void {

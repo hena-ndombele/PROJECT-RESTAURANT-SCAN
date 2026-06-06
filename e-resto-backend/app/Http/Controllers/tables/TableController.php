@@ -20,7 +20,8 @@ class TableController extends Controller
             'server_phone' => 'nullable|string|max:20',
         ]);
 
-        if ($restaurant && $restaurant->plan && $restaurant->tables()->count() >= $restaurant->plan->max_tables) {
+        $tableLimit = $restaurant?->plan?->maxTables();
+        if ($restaurant && $restaurant->plan && $tableLimit !== null && $restaurant->tables()->count() >= $tableLimit) {
             return response()->json([
                 'message' => "Limite de tables atteinte pour le plan {$restaurant->plan->name}.",
             ], 422);
@@ -34,20 +35,8 @@ class TableController extends Controller
             'server_phone' => $validated['server_phone'] ?? null,
         ]);
 
-        $frontendUrl = rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.64:5173'), '/');
-        $url = "{$frontendUrl}/?table_id={$table->id}";
-
-        $qrImage = QrCode::format('svg')
-            ->size(400)
-            ->errorCorrection('H')
-            ->margin(2)
-            ->generate($url);
-
-        $qrPath = "qrcodes/table_{$table->id}.svg";
-        if (!Storage::disk('public')->exists('qrcodes')) {
-            Storage::disk('public')->makeDirectory('qrcodes');
-        }
-        Storage::disk('public')->put($qrPath, $qrImage);
+        $url = $this->menuUrl($table);
+        $qrPath = $this->generateTableQrCode($table, $url);
 
         $table->update(['qr_code' => $qrPath]);
 
@@ -117,9 +106,51 @@ class TableController extends Controller
                 default => 'gray',
             },
             'qr_url' => $table->qr_code ? asset("storage/{$table->qr_code}") : null,
-            'menu_url' => rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/') . "/?table_id={$table->id}",
+            'menu_url' => $this->menuUrl($table),
             'created_at' => $table->created_at?->toIso8601String(),
             'updated_at' => $table->updated_at?->toIso8601String(),
         ];
+    }
+
+    private function menuUrl(Table $table): string
+    {
+        return rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/') . "/?table_id={$table->id}";
+    }
+
+    private function generateTableQrCode(Table $table, string $url): string
+    {
+        $qrImage = QrCode::format('svg')
+            ->size(400)
+            ->errorCorrection('H')
+            ->margin(2)
+            ->generate($url);
+
+        $qrImage = $this->injectRestaurantLogo($qrImage, $table);
+        $qrPath = "qrcodes/table_{$table->id}.svg";
+        if (!Storage::disk('public')->exists('qrcodes')) {
+            Storage::disk('public')->makeDirectory('qrcodes');
+        }
+        Storage::disk('public')->put($qrPath, $qrImage);
+
+        return $qrPath;
+    }
+
+    private function injectRestaurantLogo(string $svg, Table $table): string
+    {
+        $restaurant = $table->restaurant;
+        if (!$restaurant?->logo || !Storage::disk('public')->exists($restaurant->logo)) {
+            return $svg;
+        }
+
+        $logoPath = Storage::disk('public')->path($restaurant->logo);
+        $mime = mime_content_type($logoPath) ?: 'image/png';
+        $logoData = base64_encode((string) file_get_contents($logoPath));
+        $logo = sprintf(
+            '<rect x="154" y="154" width="92" height="92" rx="18" fill="#fff"/><image href="data:%s;base64,%s" x="164" y="164" width="72" height="72" preserveAspectRatio="xMidYMid meet"/>',
+            $mime,
+            $logoData
+        );
+
+        return str_replace('</svg>', $logo . '</svg>', $svg);
     }
 }

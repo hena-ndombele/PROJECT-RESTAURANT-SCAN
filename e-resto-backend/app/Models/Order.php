@@ -51,6 +51,11 @@ class Order extends Model
         return $this->belongsTo(Table::class);
     }
 
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
+
     public function payments()
     {
         return $this->hasMany(Payment::class);

@@ -29,7 +29,7 @@ export class PricingPage {
       max_users: 5,
       features: ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Cash uniquement', 'Sur place / Emporter', 'Support standard'],
       installation_fee: 20_000,
-      limitations: ['Pas de Mobile Money', 'Pas de statistiques detaillees', 'Pas de reservations', 'Pas de feedback client', 'Pas de chatbot intelligent', 'Pas de personnalisation', 'Pas de roles avances'],
+      limitations: ['Pas de paiement client Mobile Money', 'Pas de statistiques detaillees', 'Pas de reservations', 'Pas de feedback client', 'Pas de personnalisation', 'Roles limites'],
       is_popular: false,
     },
     {
@@ -40,11 +40,11 @@ export class PricingPage {
       monthly_price: 25,
       currency: 'USD',
       max_restaurants: 1,
-      max_tables: 20,
-      max_users: 15,
-      features: ['Commandes illimitees', 'Plats illimites', 'Mobile Money', 'Reservations', 'Feedback client', 'Chatbot client intelligent', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire'],
+      max_tables: null,
+      max_users: null,
+      features: ['Tables illimitees', 'Utilisateurs illimites', 'Commandes illimitees', 'Plats illimites', 'Reservations', 'Feedback client', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire'],
       installation_fee: 20_000,
-      limitations: ['Pas de multi-restaurant', 'Pas de roles et permissions avances', 'Assistant dashboard avance reserve au Business'],
+      limitations: ['Pas de multi-restaurant', 'Assistant dashboard avance reserve au Business'],
       is_popular: true,
     },
     {
@@ -57,7 +57,7 @@ export class PricingPage {
       max_restaurants: 5,
       max_tables: 20,
       max_users: 15,
-      features: ['Tout le plan Pro', 'Chatbot client intelligent', 'Assistant intelligent dashboard', 'Statistiques avancees', 'Roles et permissions', 'Support dedie', 'Onboarding personnalise', 'Multi-restaurants'],
+      features: ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancees', 'Roles et permissions', 'Support dedie', 'Onboarding personnalise', 'Multi-restaurants'],
       installation_fee: 30_000,
       limitations: [],
       is_popular: false,
@@ -101,5 +101,9 @@ export class PricingPage {
 
   displayCurrency(plan: SaasPlan): string {
     return plan.currency === 'CDF' ? 'CDF' : plan.currency === 'USD' ? '$' : plan.currency || 'FCFA';
+  }
+
+  limitLabel(value: number | null, singular: string, unlimited: string): string {
+    return value === null ? unlimited : `${value} ${singular}`;
   }
 }

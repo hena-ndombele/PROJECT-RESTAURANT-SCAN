@@ -13,9 +13,12 @@ Le but est de permettre a un restaurant de :
 - gerer ses plats, categories, tables, agents et commandes ;
 - generer des QR codes par table ;
 - permettre aux clients de commander sans compte via QR code ;
-- encaisser les commandes en cash ou Mobile Money ;
+- encaisser les commandes client en cash au restaurant ;
+- envoyer uniquement les commandes hors restaurant vers le WhatsApp du restaurant ;
 - suivre les paiements dans le dashboard ;
 - produire un recu client.
+
+> Note 2026-06-06 : Mobile Money reste utilise pour payer les abonnements SaaS. Les commandes client dans `e-resto-client` sont en paiement cash uniquement. Les commandes `A emporter` restent envoyees normalement au dashboard du restaurant. Seules les commandes `Hors restaurant`, detectees quand le client n'a pas scanne de table, ouvrent WhatsApp avec un message pret a envoyer au numero configure dans les parametres restaurant.
 
 Le projet est compose de plusieurs applications :
 
@@ -2029,7 +2032,7 @@ Elle permet de gerer les restaurants inscrits dans la plateforme :
 - gestion des plans SaaS : prix, devise, limites, fonctionnalites, plan populaire/actif ;
 - suivi des paiements d'abonnement avec filtre par statut.
 - wallet MaishaPay avec balance CDF et USD masquee par defaut ;
-- support plateforme : messages contact, demandes de compte, feedbacks ;
+- support plateforme : messages contact, feedbacks et reservations ;
 - audit plateforme : derniers evenements restaurants et paiements ;
 - reinitialisation du mot de passe proprietaire.
 
@@ -2057,3 +2060,48 @@ Quand le plan ou le statut d'un restaurant change depuis `e-resto-admin`, le bac
 Le wallet appelle MaishaPay via `POST /wallet/balance/report` avec les memes `MAISHAPAY_PUBLIC_KEY`, `MAISHAPAY_SECRET_KEY` et `MAISHAPAY_GATEWAY_MODE` que les paiements d'abonnement.
 
 Les plans par defaut `Free Demo`, `Starter`, `Pro` et `Enterprise` sont crees seulement s'ils n'existent pas encore. Les modifications faites depuis `e-resto-admin` ne sont donc plus ecrasees automatiquement au chargement de `/api/saas/overview` ou `/api/saas/plans`.
+
+## 27. Changements produit 2026-06-06
+
+### 27.1 Feedback landing
+
+Les formulaires de la landing affichent maintenant un retour visible sous le bouton :
+
+- contact restaurant : message vert de confirmation pendant quelques secondes apres envoi ;
+- newsletter : message vert confirmant que l'email est enregistre ;
+- erreurs API : message rouge clair dans l'application.
+
+### 27.2 Commandes client et WhatsApp
+
+Le client final ne paie plus ses commandes par Mobile Money dans `e-resto-client`.
+
+- Commande sur place : paiement cash confirme par le restaurant dans le dashboard.
+- Commande a emporter : la commande est enregistree dans le backend et arrive dans le dashboard du restaurant, sans WhatsApp.
+- Commande hors restaurant : si le client n'a pas scanne de table, il renseigne nom, telephone et adresse. La commande est enregistree dans le backend puis WhatsApp s'ouvre avec un message pret a envoyer au restaurant.
+- Le numero WhatsApp se configure dans `Parametres du restaurant > WhatsApp commandes hors restaurant`.
+- Si aucun numero WhatsApp n'est configure, l'application le signale avant l'envoi.
+
+### 27.3 Paiement abonnement
+
+Mobile Money reste actif pour le paiement d'abonnement SaaS dans `/restaurant/checkout`.
+
+Le message technique `Gateway Mobile Money injoignable` est remplace par un message utilisateur : `Paiement echoue. Verifiez le numero puis reessayez.`
+
+Si un restaurant arrive sur le checkout parce que son abonnement a expire, la page affiche un message de reactivation.
+
+### 27.4 Plans et roles
+
+Le plan Starter est limite a 3 roles. Si le restaurant essaie d'en creer plus, le backend renvoie une erreur visible dans l'application.
+
+Le chatbot client est retire de l'application client et du pricing. L'assistant dashboard peut rester une fonctionnalite interne selon le plan.
+
+### 27.5 Quand utiliser Redis
+
+Redis est deja prevu dans `docker-compose.yml`. Dans cette application, il devient utile quand on veut :
+
+- gerer les queues Laravel pour envoyer les emails sans bloquer les requetes ;
+- accelerer le cache de permissions, plans et statistiques ;
+- fiabiliser le temps reel et les notifications si le volume de commandes augmente ;
+- stocker temporairement des verrous ou etats courts, par exemple anti-spam newsletter/contact.
+
+Pour l'activer en production : utiliser `CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`, verifier `REDIS_HOST`, puis lancer un worker Laravel avec `php artisan queue:work`.

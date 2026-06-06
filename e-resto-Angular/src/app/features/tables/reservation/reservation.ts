@@ -1,8 +1,10 @@
 import { CommonModule, DatePipe } from "@angular/common";
-import { Component, OnInit, computed, signal } from "@angular/core";
+import { Component, OnDestroy, OnInit, computed, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { SaasService } from "../../../services/saas/saas-service";
 import { ReservationDto, ReservationService, ReservationStatus } from "../../../services/reservation/reservation-service";
+import { OrderRealtimeService } from "../../../services/realtime/order-realtime-service";
+import { Subscription } from "rxjs";
 
 @Component({
   selector: "app-reservation",
@@ -11,7 +13,7 @@ import { ReservationDto, ReservationService, ReservationStatus } from "../../../
   styleUrl: "./reservation.scss",
   standalone:true
 })
-export class Reservation implements OnInit {
+export class Reservation implements OnInit, OnDestroy {
   reservations = signal<ReservationDto[]>([]);
   selectedReservation = signal<ReservationDto | null>(null);
   loading = signal(false);
@@ -24,6 +26,7 @@ export class Reservation implements OnInit {
   internalNote = signal("");
   cancellationReason = signal("");
   upgradeRequired = signal(false);
+  private realtimeSubscription?: Subscription;
 
   readonly statusOptions: { value: ReservationStatus; label: string; icon: string }[] = [
     { value: "pending", label: "En attente", icon: "bi-hourglass" },
@@ -60,11 +63,23 @@ export class Reservation implements OnInit {
     }))
   ]);
 
-  constructor(private reservationService: ReservationService, private saasService: SaasService) {}
+  constructor(
+    private reservationService: ReservationService,
+    private saasService: SaasService,
+    private realtime: OrderRealtimeService
+  ) {}
 
   ngOnInit(): void {
     this.loadUsage();
     this.loadReservations();
+    this.realtimeSubscription = this.realtime.reservationCreated$.subscribe((reservation) => {
+      this.reservations.update((list) => list.some((item) => item.id === reservation.id) ? list : [reservation, ...list]);
+      this.successMessage.set("Nouvelle reservation recue.");
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.realtimeSubscription?.unsubscribe();
   }
 
   loadUsage(): void {

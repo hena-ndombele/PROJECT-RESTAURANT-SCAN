@@ -1,8 +1,6 @@
 import {inject, Injectable, NgZone} from "@angular/core";
 import { HttpClient } from '@angular/common/http';
 import {BehaviorSubject, fromEvent, merge, Observable, Subscription, switchMap, tap, timer} from "rxjs";
-import {AccountRequestInput} from "../../models/users/AccountRequestInput";
-import {AccountRequestDto} from "../../models/users/AccountRequestDto";
 import {Router} from "@angular/router";
 import { API_ROOT } from "../api-url";
 
@@ -30,6 +28,12 @@ export class AuthService {
   }
 
   private hasToken(): boolean {
+    const expiresAt = localStorage.getItem('auth_token_expires_at');
+    if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+      this.clearLocalSession();
+      return false;
+    }
+
     return !!localStorage.getItem('auth_token');
   }
 
@@ -81,7 +85,7 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/auth/verify-otp`, { email, otp }).pipe(
         tap((response: any) => {
           if (response && response.token) {
-            this.saveToken(response.token);
+            this.saveToken(response.token, response.token_expires_at);
             localStorage.setItem('user_data', JSON.stringify(response.user));
             this.loggedIn.next(true);
           //  this.initListener(); // Démarre le timer après une connexion réussie
@@ -90,20 +94,22 @@ export class AuthService {
     );
   }
 
-  saveToken(token: string) {
+  saveToken(token: string, expiresAt?: string) {
     localStorage.setItem('auth_token', token);
+    if (expiresAt) {
+      localStorage.setItem('auth_token_expires_at', expiresAt);
+    }
   }
 
   getToken(): string | null {
+    const expiresAt = localStorage.getItem('auth_token_expires_at');
+    if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+      this.clearLocalSession();
+      return null;
+    }
+
     return localStorage.getItem('auth_token');
   }
-
-    sendAccountRequest(data: AccountRequestInput): Observable<any> {
-        return this.http.post(`${this.apiUrl}/auth/account-request`, data);
-    }
-    listAccountRequest(): Observable<AccountRequestDto[]> {
-        return this.http.get<AccountRequestDto[]>(`${this.apiUrl}/auth/account-request`);
-    }
 
   getUserData() {
     const data = localStorage.getItem('user_data');
@@ -120,9 +126,10 @@ export class AuthService {
     );
   }
 
-  private clearLocalSession() {
+  clearLocalSession() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('restaurant_token');
+    localStorage.removeItem('auth_token_expires_at');
     localStorage.removeItem('restaurant_session');
     localStorage.removeItem('restaurant_login_at');
     localStorage.removeItem('user_data');

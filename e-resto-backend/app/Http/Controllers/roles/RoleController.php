@@ -14,6 +14,9 @@ class RoleController extends Controller
         if ($response = $this->ensureCanManageRoles($request)) {
             return $response;
         }
+        if ($response = $this->ensureRoleLimit($request)) {
+            return $response;
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|unique:roles,name',
@@ -157,13 +160,33 @@ class RoleController extends Controller
             return null;
         }
 
-        if ($restaurant->plan?->allows('roles')) {
+        return null;
+    }
+
+    private function ensureRoleLimit(Request $request)
+    {
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+        if (!$restaurant) {
             return null;
         }
 
-        return response()->json([
-            'message' => 'La gestion des roles et permissions est reservee au plan Business.',
-            'requires_upgrade' => true,
-        ], 403);
+        $limit = $this->roleLimitForPlan($restaurant->plan?->tier() ?? 'starter');
+        if ($limit !== null && Role::count() >= $limit) {
+            return response()->json([
+                'message' => "Votre plan limite la creation a {$limit} roles. Passez a un plan superieur pour en ajouter plus.",
+                'requires_upgrade' => true,
+            ], 403);
+        }
+
+        return null;
+    }
+
+    private function roleLimitForPlan(string $tier): ?int
+    {
+        return match ($tier) {
+            'starter' => 3,
+            'pro' => 8,
+            default => null,
+        };
     }
 }

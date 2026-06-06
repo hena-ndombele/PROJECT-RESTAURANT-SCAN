@@ -153,6 +153,9 @@ export class RestaurantSignup implements OnInit {
         if (token) {
           localStorage.setItem('restaurant_token', token);
           localStorage.setItem('auth_token', token);
+          if (response.session?.token_expires_at || response.token_expires_at) {
+            localStorage.setItem('auth_token_expires_at', response.session?.token_expires_at || response.token_expires_at);
+          }
           localStorage.setItem('restaurant_login_at', new Date().toISOString());
         }
 
@@ -181,7 +184,7 @@ export class RestaurantSignup implements OnInit {
   }
 
   goToDashboard(): void {
-    this.router.navigate(['/restaurant/dashboard']);
+    this.router.navigate(['/dashboard']);
   }
 
   copyMenuUrl(): void {

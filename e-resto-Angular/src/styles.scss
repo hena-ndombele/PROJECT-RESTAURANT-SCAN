@@ -1,11 +1,79 @@
 @import "./assets/scss/style.scss";
 
+:root {
+  --dashboard-primary: #F9A11B;
+  --dashboard-primary-rgb: 249, 161, 27;
+  --dashboard-secondary: #111318;
+  --dashboard-surface: #FFF7ED;
+}
+
+body.restaurant-theme {
+  --bs-primary: var(--dashboard-primary);
+  --bs-primary-rgb: var(--dashboard-primary-rgb);
+  --bs-link-color: var(--dashboard-primary);
+  --bs-link-hover-color: var(--dashboard-secondary);
+}
+
+body.restaurant-theme .btn-primary {
+  --bs-btn-bg: var(--dashboard-primary);
+  --bs-btn-border-color: var(--dashboard-primary);
+  --bs-btn-hover-bg: var(--dashboard-secondary);
+  --bs-btn-hover-border-color: var(--dashboard-secondary);
+  --bs-btn-active-bg: var(--dashboard-secondary);
+  --bs-btn-active-border-color: var(--dashboard-secondary);
+  --bs-btn-disabled-bg: var(--dashboard-primary);
+  --bs-btn-disabled-border-color: var(--dashboard-primary);
+  color: #111318 !important;
+}
+
+body.restaurant-theme .btn-outline-primary {
+  --bs-btn-color: var(--dashboard-primary);
+  --bs-btn-border-color: var(--dashboard-primary);
+  --bs-btn-hover-bg: var(--dashboard-primary);
+  --bs-btn-hover-border-color: var(--dashboard-primary);
+  --bs-btn-active-bg: var(--dashboard-primary);
+  --bs-btn-active-border-color: var(--dashboard-primary);
+}
+
+body.restaurant-theme .text-primary,
+body.restaurant-theme .spinner-border.text-primary {
+  color: var(--dashboard-primary) !important;
+}
+
+body.restaurant-theme .bg-primary {
+  background-color: var(--dashboard-primary) !important;
+}
+
+body.restaurant-theme .bg-primary.bg-opacity-10 {
+  background-color: rgba(var(--dashboard-primary-rgb), .12) !important;
+}
+
+body.restaurant-theme .border-primary {
+  border-color: var(--dashboard-primary) !important;
+}
+
+body.restaurant-theme .page-item.active .page-link {
+  background-color: var(--dashboard-primary) !important;
+  border-color: var(--dashboard-primary) !important;
+  color: #111318 !important;
+}
+
 button,
 .btn,
 input[type="button"],
 input[type="submit"],
 input[type="reset"] {
   border-radius: 8px !important;
+}
+
+img[src*="assets/logo/e-resto-logo"],
+img[src*="e-resto-logo.png"],
+.logo-shadow,
+.logo-wrapper img,
+.form-logo img,
+.modal-logo img,
+.qr-center-logo img {
+  border-radius: 12px !important;
 }
 
 body.dashboard-dark-theme {
@@ -115,7 +183,7 @@ body.dashboard-dark-theme .pagination .page-link {
 }
 
 body.dashboard-dark-theme .pagination .page-item.active .page-link {
-  background-color: #f59e0b !important;
-  border-color: #f59e0b !important;
+  background-color: var(--dashboard-primary) !important;
+  border-color: var(--dashboard-primary) !important;
   color: #111827 !important;
 }

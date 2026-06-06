@@ -22,7 +22,7 @@ export async function request(path, options = {}) {
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new HttpError(payload?.message ?? payload?.error ?? 'Une erreur est survenue', payload);
+    throw new HttpError(payload?.message ?? payload?.details ?? payload?.error ?? 'Une erreur est survenue', payload);
   }
 
   return payload;

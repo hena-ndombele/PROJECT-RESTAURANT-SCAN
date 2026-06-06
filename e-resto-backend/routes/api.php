@@ -5,7 +5,6 @@ use App\Http\Controllers\roles\RoleController;
 use App\Http\Controllers\tables\TableController;
 use App\Http\Controllers\plats\PlatController;
 use App\Http\Controllers\order\OrderController;
-use App\Http\Controllers\users\AccountRequestController;
 use App\Http\Controllers\agents\AgentController;
 use App\Http\Controllers\permissions\PermissionController;
 use App\Http\Controllers\Public\ContactController;
@@ -21,7 +20,6 @@ Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/admin/auth/login', [AuthController::class, 'adminLogin']);
 Route::post('/admin/auth/verify-otp', [AuthController::class, 'adminVerifyOtp']);
 Route::post('/otp/request', [AuthController::class, 'requestOtp']);
-Route::post('/auth/account-request', [AccountRequestController::class, 'store']);
 
 //*****************************************SAAS PLATFORM***************************************************************
 Route::prefix('saas')->group(function () {
@@ -54,7 +52,6 @@ Route::prefix('saas')->group(function () {
 
     Route::middleware(['auth:sanctum', 'restaurant.only'])->group(function () {
         Route::get('/me', [SaasController::class, 'me']);
-        Route::get('/restaurant/dashboard', [SaasController::class, 'dashboard']);
         Route::get('/restaurant/usage', [SaasController::class, 'usage']);
         Route::put('/restaurant/profile', [SaasController::class, 'updateProfile']);
     });
@@ -74,12 +71,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/agents/show/{id}', [AgentController::class, 'show']);
     Route::put('/agents/update/{id}', [AgentController::class, 'update']);
 });
-
-Route::middleware('auth:sanctum')->group(function () {
-   Route::get('/auth/account-request', [AccountRequestController::class, 'index']);
-    Route::delete('/auth/account-request/{id}', [AccountRequestController::class, 'destroy']);
-});
-
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);

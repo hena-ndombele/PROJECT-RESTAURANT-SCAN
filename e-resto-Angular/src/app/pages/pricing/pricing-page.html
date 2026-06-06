@@ -1,8 +1,8 @@
 <main class="pricing-page">
   <nav class="topnav">
     <a class="brand" routerLink="/">
-      <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
-      <span>E-RESTO</span>
+      <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+      <span>Restaura Scan</span>
     </a>
     <div class="nav-actions">
       <a routerLink="/">Accueil</a>
@@ -33,8 +33,8 @@
     <div class="ai-feature-strip">
       <div class="ai-feature-icon"><i class="bi bi-stars"></i></div>
       <div>
-        <span>Assistant intelligent inclus des le plan Pro</span>
-        <strong>Chatbot client pour conseiller les plats, Assistant dashboard avance avec Business.</strong>
+        <span>Outils avances selon votre plan</span>
+        <strong>Statistiques, roles, support et assistant dashboard selon le niveau choisi.</strong>
       </div>
     </div>
 
@@ -66,8 +66,8 @@
         </div>
 
         <ul>
-          <li><i class="bi bi-check-circle-fill"></i>{{ plan.max_tables }} tables QR</li>
-          <li><i class="bi bi-check-circle-fill"></i>{{ plan.max_users }} utilisateurs equipe</li>
+          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_tables, 'tables QR', 'Tables QR illimitees') }}</li>
+          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_users, 'utilisateurs equipe', 'Utilisateurs equipe illimites') }}</li>
           <li *ngFor="let feature of plan.features"><i class="bi bi-check-circle-fill"></i>{{ feature }}</li>
           <li class="limitation" *ngFor="let limitation of plan.limitations"><i class="bi bi-x-circle"></i>{{ limitation }}</li>
         </ul>

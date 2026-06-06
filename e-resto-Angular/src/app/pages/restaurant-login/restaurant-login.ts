@@ -53,7 +53,7 @@ export class RestaurantLogin implements OnDestroy {
 
     this.loading = true;
     this.saas.login({ email, password }).pipe(
-      timeout(30000),
+      timeout(15000),
       finalize(() => this.loading = false),
     ).subscribe({
       next: (response) => this.completeLogin(response),
@@ -64,10 +64,13 @@ export class RestaurantLogin implements OnDestroy {
   private completeLogin(response: any): void {
     localStorage.setItem('restaurant_token', response.token);
     localStorage.setItem('auth_token', response.token);
+    if (response.token_expires_at) {
+      localStorage.setItem('auth_token_expires_at', response.token_expires_at);
+    }
     localStorage.setItem('user_data', JSON.stringify(response.user));
     localStorage.setItem('restaurant_session', JSON.stringify(response.restaurant));
     localStorage.setItem('restaurant_login_at', new Date().toISOString());
-    this.router.navigate(['/restaurant/dashboard']);
+    this.router.navigate(['/dashboard']);
   }
 
   private handleLoginError(error: any, google: boolean): void {
@@ -103,7 +106,7 @@ export class RestaurantLogin implements OnDestroy {
     }
 
     if (error?.status === 401 || error?.status === 404) {
-      return 'Aucun compte restaurant ne correspond a ces identifiants.';
+      return 'Identifiants incorrects. Verifiez votre email et votre mot de passe.';
     }
 
     return error?.error?.message || 'Connexion impossible. Verifiez vos identifiants puis reessayez.';

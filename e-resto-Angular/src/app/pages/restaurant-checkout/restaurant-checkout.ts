@@ -28,7 +28,7 @@ export class RestaurantCheckout implements OnDestroy {
   constructor(private router: Router, private saas: SaasService) {}
 
   get planName(): string {
-    return this.restaurant.plan?.name || this.selectedPlan.name || 'Plan E-RESTO';
+    return this.restaurant.plan?.name || this.selectedPlan.name || 'Plan Restaura Scan';
   }
 
   get monthlyPrice(): number {
@@ -66,6 +66,11 @@ export class RestaurantCheckout implements OnDestroy {
     }
 
     return 'M-Pesa doit commencer par +24381, +24382 ou +24383';
+  }
+
+  get subscriptionExpired(): boolean {
+    const status = String(this.restaurant.status || this.restaurant.subscription?.status || '').toLowerCase();
+    return ['past_due', 'expired', 'suspended'].includes(status);
   }
 
   ngOnDestroy(): void {
@@ -184,7 +189,7 @@ export class RestaurantCheckout implements OnDestroy {
     if (status === 'paid' && response.session?.token) {
       this.completePaidSession(response);
       this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
-      setTimeout(() => this.router.navigate(['/restaurant/dashboard']), 700);
+      setTimeout(() => this.router.navigate(['/dashboard']), 700);
       return;
     }
 
@@ -222,7 +227,7 @@ export class RestaurantCheckout implements OnDestroy {
             this.waitingConfirmation = false;
             this.completePaidSession(response);
             this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
-            setTimeout(() => this.router.navigate(['/restaurant/dashboard']), 700);
+            setTimeout(() => this.router.navigate(['/dashboard']), 700);
             return;
           }
 
@@ -253,6 +258,9 @@ export class RestaurantCheckout implements OnDestroy {
 
     localStorage.setItem('restaurant_token', response.session.token);
     localStorage.setItem('auth_token', response.session.token);
+    if (response.session.token_expires_at) {
+      localStorage.setItem('auth_token_expires_at', response.session.token_expires_at);
+    }
     localStorage.setItem('user_data', JSON.stringify(response.session.user));
     localStorage.setItem('restaurant_session', JSON.stringify(response.session.restaurant));
     localStorage.setItem('restaurant_login_at', new Date().toISOString());
@@ -265,6 +273,10 @@ export class RestaurantCheckout implements OnDestroy {
   }
 
   private errorMessage(error: any): string {
+    if (error?.status === 0) {
+      return "Impossible de joindre le backend de paiement. Verifiez que Laravel est demarre sur le port 8000.";
+    }
+
     if (error?.name === 'TimeoutError') {
       return 'Le gateway met trop de temps a repondre. Verifiez votre telephone avant de reessayer.';
     }
@@ -277,6 +289,6 @@ export class RestaurantCheckout implements OnDestroy {
       }
     }
 
-    return error?.error?.message || 'Le paiement Mobile Money a echoue. Verifiez le numero et reessayez.';
+    return error?.error?.message || 'Paiement echoue. Verifiez le numero et reessayez.';
   }
 }

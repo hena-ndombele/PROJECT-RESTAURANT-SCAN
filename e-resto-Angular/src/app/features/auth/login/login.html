@@ -5,8 +5,8 @@
              style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('assets/images/image10.jpg') center/cover;">
 
             <div class="text-center text-white p-4" style="z-index: 2;">
-                <img src="assets/logo/e-resto-logo.png" alt="Logo" width="120" height="120"
-                     class="mb-4" style="border-radius: 50%; border: 3px solid white; object-fit: cover;">
+                <img src="assets/logo/e-resto-logo.png" alt="Logo" width="150" height="96"
+                     class="mb-4" style="border-radius: 0; border: 3px solid white; object-fit: contain;">
 
                 <h6 class="display-4 fw-bold mb-1" style="font-size: 32px">The digital menu, simplified management.</h6>
                 <br/>
@@ -29,9 +29,9 @@
                                     <a routerLink="/" class="d-inline-block mb-3">
                                         <img src="assets/logo/e-resto-logo.png"
                                              alt="Logo"
-                                             width="80"
-                                             height="80"
-                                             class="rounded-circle logo-shadow" style="border: 2px solid black">
+                                             width="110"
+                                             height="70"
+                                             class="logo-shadow" style="border-radius: 0; border: 2px solid black; object-fit: contain;">
                                     </a>
                                     <h1 class="h4 fw-bold text-dark">LOG IN</h1>
                                     <p class="text-muted small">Please enter your details to sign in</p>
@@ -106,16 +106,6 @@
                             </div>
                         </div>
 
-                        <p class="text-center mt-4 text-black-50 small">
-                            Don't have an account?
-                            <a href="javascript:void(0)"
-                               class="text-black text-decoration-underline"
-                               data-bs-toggle="modal"
-                               data-bs-target="#contactModal">
-                                Contact Admin
-                            </a>
-                        </p>
-
                     </div>
 
                 <span style="font-size: 11px;"><app-footer></app-footer></span>
@@ -125,45 +115,5 @@
         </div>
 
 
-    </div>
-
-
-
-
-    <div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header text-white" style="background: #F9A11B">
-                    <h5 class="modal-title fw-bold" id="contactModalLabel" style="color:black">Account Request</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeContactModal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <p class="text-muted small">Fill out this form to request your account.</p>
-
-                    <form #contactForm="ngForm" (ngSubmit)="onContactSubmit(contactForm)">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">UserName <span style="color:red">*</span></label>
-                            <input type="text" name="username" ngModel required class="form-control" placeholder="Enter your username">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Phone / WhatsApp <span style="color:red">*</span></label>
-                            <input type="tel" name="phone" ngModel required class="form-control" placeholder="+243...">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Message <span style="color:red">*</span></label>
-                            <textarea name="message" ngModel required class="form-control" rows="3"></textarea>
-                        </div>
-
-                        <button type="submit"
-                                [disabled]="contactForm.invalid || isSubmittingContact"
-                                class="btn w-100 fw-bold text-black mt-2 d-flex align-items-center justify-content-center"
-                                style="background: #F9A11B">
-                            <span *ngIf="isSubmittingContact" class="spinner-border spinner-border-sm me-2"></span>
-                            <span>{{ isSubmittingContact ? 'Sending...' : 'Send Request' }}</span>
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
     </div>
 </div>

@@ -8,7 +8,7 @@
                 <div>
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
-                            <li class="breadcrumb-item">E-RESTO</li>
+                            <li class="breadcrumb-item">Restaura Scan</li>
                             <li class="breadcrumb-item active text-primary">COMMANDES</li>
                         </ol>
                     </nav>
@@ -84,6 +84,7 @@
                     <label class="form-label small fw-bold text-muted text-uppercase">Statut</label>
                     <select class="form-select bg-transparent" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); currentPage.set(1)">
                         <option value="all">Tous</option>
+                        <option value="online">En ligne</option>
                         @for (status of statusOptions; track status.value) {
                             <option [value]="status.value">{{ status.label }}</option>
                         }
@@ -145,6 +146,7 @@
                         <div>
                             <strong class="order-table-name">{{ order.table?.name || 'Table inconnue' }}</strong>
                             <span class="order-reference">#{{ order.id.slice(0, 8).toUpperCase() }}</span>
+                            <span class="order-tracking-code">Code: {{ order.tracking_code || 'N/A' }}</span>
                         </div>
                         <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="viewOrder(order)" title="Voir les details">
                             <i class="bi bi-eye"></i>
@@ -168,6 +170,10 @@
                         <div>
                             <small>Heure</small>
                             <strong>{{ order.created_at | date:'HH:mm' }}</strong>
+                        </div>
+                        <div>
+                            <small>Code suivi</small>
+                            <strong>{{ order.tracking_code || 'N/A' }}</strong>
                         </div>
                     </div>
 
@@ -235,6 +241,7 @@
                 <div class="new-order-summary">
                     <div><span>Client</span><strong>{{ order.customer_name || order.customer_phone || 'Client QR' }}</strong></div>
                     <div><span>Table</span><strong>{{ order.table?.name || 'Table inconnue' }}</strong></div>
+                    <div><span>Code suivi</span><strong>{{ order.tracking_code || 'N/A' }}</strong></div>
                     <div><span>Service</span><strong>{{ orderTypeLabel(order) }}</strong></div>
                     <div><span>Articles</span><strong>{{ orderItemsCount(order) }}</strong></div>
                     <div><span>Total</span><strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong></div>

@@ -6,8 +6,8 @@ export interface SaasPlan {
   monthly_price: string | number;
   currency: string;
   max_restaurants: number;
-  max_tables: number;
-  max_users: number;
+  max_tables: number | null;
+  max_users: number | null;
   features: string[];
   is_popular: boolean;
 }
@@ -56,8 +56,8 @@ export interface RestaurantPlanUsage {
   plan: SaasPlan | null;
   restaurant_status: Restaurant['status'];
   limits: {
-    tables: number;
-    users: number;
+    tables: number | null;
+    users: number | null;
     dishes?: number | null;
     orders_month?: number | null;
   };

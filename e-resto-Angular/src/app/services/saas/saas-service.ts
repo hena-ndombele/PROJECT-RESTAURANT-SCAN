@@ -77,10 +77,6 @@ export class SaasService {
     return this.http.get<any>(`${this.apiUrl}/me`);
   }
 
-  restaurantDashboard(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/restaurant/dashboard`);
-  }
-
   restaurantUsage(): Observable<RestaurantPlanUsage> {
     return this.http.get<RestaurantPlanUsage>(`${this.apiUrl}/restaurant/usage`);
   }

@@ -110,7 +110,7 @@ export class App implements OnInit {
   payments = signal<Payment[]>([]);
   users = signal<AdminUser[]>([]);
   roles = signal<Role[]>([]);
-  support = signal<any>({ contact_messages: [], account_requests: [], feedbacks: [] });
+  support = signal<any>({ contact_messages: [], feedbacks: [], reservations: [] });
   auditEvents = signal<any[]>([]);
 
   restaurantModalOpen = signal(false);
@@ -150,6 +150,11 @@ export class App implements OnInit {
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
+    if (this.isTokenExpired()) {
+      this.clearAdminSession();
+      return;
+    }
+
     if (this.token()) this.loadAll();
   }
 
@@ -178,6 +183,9 @@ export class App implements OnInit {
     }).subscribe({
       next: (response) => {
         localStorage.setItem('admin_token', response.token);
+        if (response.token_expires_at) {
+          localStorage.setItem('admin_token_expires_at', response.token_expires_at);
+        }
         localStorage.setItem('admin_user', JSON.stringify(response.user));
         this.token.set(response.token);
         this.currentUser.set(response.user);
@@ -190,10 +198,7 @@ export class App implements OnInit {
 
   logout(): void {
     this.http.post(`${this.apiRoot}/auth/logout`, {}).subscribe({ error: () => undefined });
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    this.token.set('');
-    this.currentUser.set(null);
+    this.clearAdminSession();
     this.loginStep.set('credentials');
     this.loginForm.otp = '';
   }
@@ -475,6 +480,19 @@ export class App implements OnInit {
     } catch {
       return null;
     }
+  }
+
+  private isTokenExpired(): boolean {
+    const expiresAt = localStorage.getItem('admin_token_expires_at');
+    return Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now());
+  }
+
+  private clearAdminSession(): void {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_token_expires_at');
+    localStorage.removeItem('admin_user');
+    this.token.set('');
+    this.currentUser.set(null);
   }
 
   private authError(error: any): void {

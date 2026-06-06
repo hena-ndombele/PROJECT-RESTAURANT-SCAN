@@ -46,6 +46,7 @@ export class RestaurantSettings implements OnInit {
       slogan: '',
       description: '',
       google_maps_url: '',
+      whatsapp_order_phone: '',
       theme: {
         primary: '#ff9f1a',
         secondary: '#d71920',
@@ -128,16 +129,10 @@ export class RestaurantSettings implements OnInit {
     if (this.canCustomize()) {
       payload.slug = this.slugify(this.restaurant.slug || this.restaurant.name);
       payload.logo_data = this.logoData;
+      payload.settings = this.customizableSettingsPayload();
+    } else {
       payload.settings = {
-        app_name: this.restaurant.name,
-        slogan: this.restaurant.settings.slogan,
-        description: this.restaurant.settings.description,
-        google_maps_url: this.restaurant.settings.google_maps_url,
-        theme: {
-          primary: this.restaurant.settings.theme.primary,
-          secondary: this.restaurant.settings.theme.secondary,
-          background: this.restaurant.settings.theme.background,
-        },
+        whatsapp_order_phone: this.restaurant.settings.whatsapp_order_phone,
       };
     }
 
@@ -178,6 +173,7 @@ export class RestaurantSettings implements OnInit {
         slogan: settings.slogan || '',
         description: settings.description || 'Menu digital QR code',
         google_maps_url: settings.google_maps_url || '',
+        whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '',
         theme: {
           primary: theme.primary || '#ff9f1a',
           secondary: theme.secondary || '#d71920',
@@ -195,5 +191,20 @@ export class RestaurantSettings implements OnInit {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 80);
+  }
+
+  private customizableSettingsPayload(): any {
+    return {
+      app_name: this.restaurant.name,
+      slogan: this.restaurant.settings.slogan,
+      description: this.restaurant.settings.description,
+      google_maps_url: this.restaurant.settings.google_maps_url,
+      whatsapp_order_phone: this.restaurant.settings.whatsapp_order_phone,
+      theme: {
+        primary: this.restaurant.settings.theme.primary,
+        secondary: this.restaurant.settings.theme.secondary,
+        background: this.restaurant.settings.theme.background,
+      },
+    };
   }
 }

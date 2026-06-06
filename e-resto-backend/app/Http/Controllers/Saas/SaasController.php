@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Saas;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RestaurantAccountCreatedMail;
-use App\Models\AccountRequest;
 use App\Models\ContactMessage;
 use App\Models\Feedback;
 use App\Models\NewsletterSubscriber;
@@ -13,6 +12,7 @@ use App\Models\Reservation;
 use App\Models\Restaurant;
 use App\Models\RestaurantSubscription;
 use App\Models\SaasPlan;
+use App\Models\Table;
 use App\Models\User;
 use App\Services\MaishaPayService;
 use Carbon\Carbon;
@@ -79,7 +79,7 @@ class SaasController extends Controller
 
         return response()->json([
             'message' => $subscriber->wasRecentlyCreated
-                ? 'Inscription newsletter confirmee.'
+                ? 'Votre email est enregistre dans la newsletter.'
                 : 'Cet email est deja inscrit a la newsletter.',
             'subscriber' => $subscriber,
         ], $subscriber->wasRecentlyCreated ? 201 : 200);
@@ -256,11 +256,6 @@ class SaasController extends Controller
         }
 
         $callbackUrl = config('services.maishapay.callback_url') ?: url('/api/saas/payment-callback');
-        if (!$this->isUsableLiveCallbackUrl($callbackUrl)) {
-            return response()->json([
-                'message' => 'Paiement live impossible avec un callback local ou prive. Configurez MAISHAPAY_CALLBACK_URL avec une URL HTTPS publique.',
-            ], 422);
-        }
 
         return DB::transaction(function () use ($validated, $provider, $walletId, $callbackUrl) {
             $restaurant = Restaurant::with(['plan', 'subscription', 'users'])->findOrFail($validated['restaurant_id']);
@@ -506,8 +501,8 @@ class SaasController extends Controller
         $restaurant->loadMissing('plan');
 
         $limits = [
-            'tables' => (int) ($restaurant->plan?->max_tables ?? 0),
-            'users' => (int) ($restaurant->plan?->max_users ?? 0),
+            'tables' => $restaurant->plan?->maxTables(),
+            'users' => $restaurant->plan?->maxUsers(),
             'dishes' => $restaurant->plan?->maxDishes(),
             'orders_month' => $restaurant->plan?->maxOrdersPerMonth(),
         ];
@@ -521,8 +516,8 @@ class SaasController extends Controller
             'orders_month' => $restaurant->orders()->whereBetween('created_at', [$monthStart, $monthEnd])->count(),
         ];
 
-        $canCreateTable = $limits['tables'] > 0 && $usage['tables'] < $limits['tables'];
-        $canCreateUser = $limits['users'] > 0 && $usage['users'] < $limits['users'];
+        $canCreateTable = $limits['tables'] === null || ($limits['tables'] > 0 && $usage['tables'] < $limits['tables']);
+        $canCreateUser = $limits['users'] === null || ($limits['users'] > 0 && $usage['users'] < $limits['users']);
         $canCreateDish = $limits['dishes'] === null || $usage['dishes'] < $limits['dishes'];
         $canAcceptOrder = $limits['orders_month'] === null || $usage['orders_month'] < $limits['orders_month'];
         $features = $restaurant->plan?->featurePermissions() ?? [];
@@ -550,12 +545,12 @@ class SaasController extends Controller
             'features' => $features,
             'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
             'messages' => [
-                'tables' => $canCreateTable
-                    ? "{$usage['tables']} / {$limits['tables']} tables utilisees"
-                    : "Limite de {$limits['tables']} tables atteinte pour le plan {$restaurant->plan?->name}.",
-                'users' => $canCreateUser
-                    ? "{$usage['users']} / {$limits['users']} utilisateurs utilises"
-                    : "Limite de {$limits['users']} utilisateurs atteinte pour le plan {$restaurant->plan?->name}.",
+                'tables' => $limits['tables'] === null
+                    ? 'Tables illimitees'
+                    : ($canCreateTable ? "{$usage['tables']} / {$limits['tables']} tables utilisees" : "Limite de {$limits['tables']} tables atteinte pour le plan {$restaurant->plan?->name}."),
+                'users' => $limits['users'] === null
+                    ? 'Utilisateurs illimites'
+                    : ($canCreateUser ? "{$usage['users']} / {$limits['users']} utilisateurs utilises" : "Limite de {$limits['users']} utilisateurs atteinte pour le plan {$restaurant->plan?->name}."),
                 'dishes' => $limits['dishes'] === null
                     ? 'Plats illimites'
                     : ($canCreateDish ? "{$usage['dishes']} / {$limits['dishes']} plats utilises" : "Limite de {$limits['dishes']} plats atteinte pour le plan {$restaurant->plan?->name}."),
@@ -582,14 +577,19 @@ class SaasController extends Controller
             'settings' => 'sometimes|array',
         ]);
 
-        $hasCustomization = $request->hasAny(['settings', 'logo_data', 'slug']);
+        $protectedSettingKeys = ['app_name', 'slogan', 'description', 'google_maps_url', 'theme'];
+        $settingsPayload = $request->input('settings', []);
+        $hasProtectedSettings = is_array($settingsPayload)
+            && count(array_intersect(array_keys($settingsPayload), $protectedSettingKeys)) > 0;
+        $hasCustomization = $request->hasAny(['logo_data', 'slug']) || $hasProtectedSettings;
         if ($hasCustomization && !$restaurant->plan?->allows('customization')) {
             return response()->json([
                 'message' => 'La personnalisation du menu client est reservee aux plans Pro et Business.',
             ], 403);
         }
 
-        if (!empty($validated['logo_data'])) {
+        $logoChanged = !empty($validated['logo_data']);
+        if ($logoChanged) {
             $validated['logo'] = $this->storeRestaurantLogo($validated['logo_data'], $restaurant->id);
             unset($validated['logo_data']);
         }
@@ -599,6 +599,9 @@ class SaasController extends Controller
         }
 
         $restaurant->update($validated);
+        if ($logoChanged) {
+            $this->regenerateTableQrCodes($restaurant->fresh());
+        }
 
         return response()->json($this->restaurantPayload($restaurant->fresh(['plan', 'subscription'])));
     }
@@ -656,7 +659,6 @@ class SaasController extends Controller
     {
         return response()->json([
             'contact_messages' => ContactMessage::latest()->take(50)->get(),
-            'account_requests' => AccountRequest::latest()->take(50)->get(),
             'feedbacks' => Feedback::with(['restaurant', 'order.table'])->latest()->take(50)->get(),
             'reservations' => Reservation::with(['restaurant', 'table'])->latest()->take(50)->get(),
         ]);
@@ -875,13 +877,14 @@ class SaasController extends Controller
             'slogan' => 'Menu digital QR code',
             'description' => 'Menu digital QR code',
             'google_maps_url' => null,
+            'whatsapp_order_phone' => null,
             'theme' => [
                 'primary' => '#ff7a1a',
                 'secondary' => '#d71920',
                 'background' => '#fff7ef',
                 'dark' => '#111111',
             ],
-            'payment_methods' => ['cash', 'mpesa', 'orange_money', 'airtel_money'],
+            'payment_methods' => ['cash'],
         ];
     }
 
@@ -1029,31 +1032,6 @@ class SaasController extends Controller
             ?? 'Le paiement Mobile Money a ete refuse ou non confirme par le gateway.';
     }
 
-    private function isUsableLiveCallbackUrl(string $callbackUrl): bool
-    {
-        if ((int) config('services.maishapay.gateway_mode', '1') !== 1) {
-            return true;
-        }
-
-        $parts = parse_url($callbackUrl);
-        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
-        $host = strtolower((string) ($parts['host'] ?? ''));
-
-        if ($scheme !== 'https' || $host === '') {
-            return false;
-        }
-
-        if (in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true)) {
-            return false;
-        }
-
-        if (filter_var($host, FILTER_VALIDATE_IP)) {
-            return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
-        }
-
-        return true;
-    }
-
     private function validatePlan(Request $request, ?SaasPlan $plan = null): array
     {
         return $request->validate([
@@ -1063,8 +1041,8 @@ class SaasController extends Controller
             'monthly_price' => 'sometimes|numeric|min:0',
             'currency' => 'sometimes|string|in:USD,CDF',
             'max_restaurants' => 'sometimes|integer|min:1',
-            'max_tables' => 'sometimes|integer|min:1',
-            'max_users' => 'sometimes|integer|min:1',
+            'max_tables' => 'sometimes|nullable|integer|min:1',
+            'max_users' => 'sometimes|nullable|integer|min:1',
             'features' => 'nullable',
             'is_popular' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
@@ -1128,8 +1106,11 @@ class SaasController extends Controller
 
     private function sessionPayload(User $user): array
     {
+        $expiresAt = now()->addMinutes((int) env('AUTH_TOKEN_TTL_MINUTES', 1440));
+
         return [
-            'token' => $user->createToken('restaurant-dashboard')->plainTextToken,
+            'token' => $user->createToken('restaurant-dashboard', ['*'], $expiresAt)->plainTextToken,
+            'token_expires_at' => $expiresAt->toIso8601String(),
             'user' => $user->load('restaurant.plan', 'restaurant.subscription'),
             'restaurant' => $this->restaurantPayload($user->restaurant),
         ];
@@ -1147,8 +1128,8 @@ class SaasController extends Controller
             ...$restaurant->toArray(),
             'logo_url' => $restaurant->logo ? asset("storage/{$restaurant->logo}") : null,
             'limits' => [
-                'tables' => $restaurant->plan?->max_tables ?? 0,
-                'users' => $restaurant->plan?->max_users ?? 0,
+                'tables' => $restaurant->plan?->maxTables(),
+                'users' => $restaurant->plan?->maxUsers(),
                 'dishes' => $restaurant->plan?->maxDishes(),
                 'orders_month' => $restaurant->plan?->maxOrdersPerMonth(),
                 'restaurants' => $restaurant->plan?->max_restaurants ?? 1,
@@ -1156,6 +1137,38 @@ class SaasController extends Controller
             'features' => $restaurant->plan?->featurePermissions() ?? [],
             'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
         ];
+    }
+
+    private function regenerateTableQrCodes(Restaurant $restaurant): void
+    {
+        $frontendUrl = rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/');
+        $restaurant->tables()->get()->each(function (Table $table) use ($restaurant, $frontendUrl) {
+            $url = "{$frontendUrl}/?table_id={$table->id}";
+            $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+                ->size(400)
+                ->errorCorrection('H')
+                ->margin(2)
+                ->generate($url);
+
+            if ($restaurant->logo && Storage::disk('public')->exists($restaurant->logo)) {
+                $logoPath = Storage::disk('public')->path($restaurant->logo);
+                $mime = mime_content_type($logoPath) ?: 'image/png';
+                $logoData = base64_encode((string) file_get_contents($logoPath));
+                $logo = sprintf(
+                    '<rect x="154" y="154" width="92" height="92" rx="18" fill="#fff"/><image href="data:%s;base64,%s" x="164" y="164" width="72" height="72" preserveAspectRatio="xMidYMid meet"/>',
+                    $mime,
+                    $logoData
+                );
+                $qrImage = str_replace('</svg>', $logo . '</svg>', $qrImage);
+            }
+
+            $qrPath = "qrcodes/table_{$table->id}.svg";
+            if (!Storage::disk('public')->exists('qrcodes')) {
+                Storage::disk('public')->makeDirectory('qrcodes');
+            }
+            Storage::disk('public')->put($qrPath, $qrImage);
+            $table->update(['qr_code' => $qrPath]);
+        });
     }
 
     private function ensureDefaultPlans(): void
@@ -1175,10 +1188,10 @@ class SaasController extends Controller
                 'slug' => 'pro',
                 'description' => 'Pour automatiser le service et piloter un restaurant en croissance.',
                 'monthly_price' => 25,
-                'max_tables' => 20,
-                'max_users' => 15,
+                'max_tables' => null,
+                'max_users' => null,
                 'is_popular' => true,
-                'features' => ['Commandes illimitees', 'Plats illimites', 'Mobile Money', 'Reservations', 'Feedback client', 'Chatbot client intelligent', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire', 'Installation : 20 000 FC'],
+                'features' => ['Commandes illimitees', 'Plats illimites', 'Reservations', 'Feedback client', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Business',
@@ -1188,7 +1201,7 @@ class SaasController extends Controller
                 'max_restaurants' => 5,
                 'max_tables' => 20,
                 'max_users' => 15,
-                'features' => ['Tout le plan Pro', 'Chatbot client intelligent', 'Assistant intelligent dashboard', 'Statistiques avancees', 'Roles et permissions', 'Support dedie', 'Onboarding personnalise', 'Installation : 30 000 FC', 'Multi-restaurants'],
+                'features' => ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancees', 'Roles et permissions', 'Support dedie', 'Onboarding personnalise', 'Installation : 30 000 FC', 'Multi-restaurants'],
             ],
         ];
 

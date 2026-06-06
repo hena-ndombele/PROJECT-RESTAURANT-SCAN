@@ -69,6 +69,10 @@
           <input [(ngModel)]="restaurant.owner_phone" name="owner_phone">
         </label>
         <label>
+          <span>WhatsApp commandes hors restaurant</span>
+          <input [(ngModel)]="restaurant.settings.whatsapp_order_phone" name="whatsapp_order_phone" placeholder="+243...">
+        </label>
+        <label>
           <span>Ville</span>
           <input [(ngModel)]="restaurant.city" name="city">
         </label>

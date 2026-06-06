@@ -8,9 +8,9 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 
 /**
  * @OA\Info(
- *     title="E-RESTO API",
+ *     title="Restaura Scan API",
  *     version="1.0.0",
- *     description="Documentation des endpoints de mon application E-RESTO"
+ *     description="Documentation des endpoints de mon application Restaura Scan"
  * )
  *
  * @OA\Server(

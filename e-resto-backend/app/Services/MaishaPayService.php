@@ -91,10 +91,12 @@ class MaishaPayService
 
         if (filter_var(config('services.maishapay.mock'), FILTER_VALIDATE_BOOLEAN)) {
             return [
-                'status_code' => 503,
-                'transactionStatus' => 'FAILED',
+                'status_code' => 200,
+                'gateway_success' => true,
+                'transactionStatus' => 'SUCCESS',
                 'mock' => true,
-                'message' => 'Le mode simulation est desactive pour le paiement abonnement. Configurez MaishaPay Live.',
+                'message' => 'Paiement abonnement simule avec succes.',
+                'transactionReference' => $transactionReference,
             ];
         }
 
@@ -109,7 +111,7 @@ class MaishaPayService
             return [
                 'status_code' => 503,
                 'transactionStatus' => 'FAILED',
-                'message' => 'Gateway Mobile Money injoignable. Reessayez dans un instant.',
+                'message' => 'Paiement echoue. Verifiez le numero puis reessayez.',
             ];
         }
 

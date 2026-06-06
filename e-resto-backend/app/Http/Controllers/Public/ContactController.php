@@ -37,7 +37,7 @@ class ContactController extends Controller
         });
 
         return response()->json([
-            'message' => 'Message envoye avec succes',
+            'message' => 'Message envoye avec succes. Nous vous repondrons rapidement.',
             'data' => $message,
         ], 201);
     }

@@ -44,9 +44,10 @@
 }
 
 .brand img {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 58px;
+  height: 40px;
+  border-radius: 0;
+  object-fit: contain;
 }
 
 .nav-actions {
