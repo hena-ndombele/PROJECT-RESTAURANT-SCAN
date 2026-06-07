@@ -84,7 +84,7 @@ interface Paginated<T> {
   styleUrl: './app.scss',
 })
 export class App implements OnInit {
- readonly apiRoot = 'https://api.restaurascan.com/api';
+ readonly apiRoot = 'http://192.168.1.68:8000/api';
   readonly saasUrl = `${this.apiRoot}/saas`;
 
   token = signal(localStorage.getItem('admin_token') || '');
