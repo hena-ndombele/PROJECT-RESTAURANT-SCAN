@@ -114,7 +114,13 @@ class TableController extends Controller
 
     private function menuUrl(Table $table): string
     {
-        return rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/') . "/?table_id={$table->id}";
+        $query = ['table_id' => $table->id];
+        $slug = $table->restaurant?->slug;
+        if ($slug) {
+            $query['restaurant_slug'] = $slug;
+        }
+
+        return rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/') . '/?' . http_build_query($query);
     }
 
     private function generateTableQrCode(Table $table, string $url): string

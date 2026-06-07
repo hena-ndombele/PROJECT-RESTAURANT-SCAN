@@ -84,7 +84,7 @@ interface Paginated<T> {
   styleUrl: './app.scss',
 })
 export class App implements OnInit {
-  readonly apiRoot = `${window.location.protocol}//${window.location.hostname}:8000/api`;
+ readonly apiRoot = 'https://api.restaurascan.com/api';
   readonly saasUrl = `${this.apiRoot}/saas`;
 
   token = signal(localStorage.getItem('admin_token') || '');
@@ -501,6 +501,11 @@ export class App implements OnInit {
   }
 
   private showError(error: any): void {
+    if (error?.status === 0) {
+      this.error.set("Impossible de joindre l'API. Verifiez le domaine https://api.restaurascan.com, le certificat SSL et la configuration CORS du backend.");
+      return;
+    }
+
     if (error?.status === 401) {
       this.logout();
       this.error.set('Votre session a expire. Connectez-vous de nouveau.');

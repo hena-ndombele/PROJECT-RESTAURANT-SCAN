@@ -1143,7 +1143,10 @@ class SaasController extends Controller
     {
         $frontendUrl = rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/');
         $restaurant->tables()->get()->each(function (Table $table) use ($restaurant, $frontendUrl) {
-            $url = "{$frontendUrl}/?table_id={$table->id}";
+            $url = $frontendUrl . '/?' . http_build_query([
+                'table_id' => $table->id,
+                'restaurant_slug' => $restaurant->slug,
+            ]);
             $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
                 ->size(400)
                 ->errorCorrection('H')
