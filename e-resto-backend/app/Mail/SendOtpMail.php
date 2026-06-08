@@ -18,12 +18,8 @@ class SendOtpMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Code de verification E-RESTO')
+        return $this->subject('Code de verification Restaura Scan')
                     ->view('emails.otp')
-                    ->with(['otp' => $this->otp])
-                    ->attach(public_path('assets/logo.png'), [
-                        'as' => 'logo.png',
-                        'mime' => 'image/png',
-                    ]);
+                    ->with(['otp' => $this->otp]);
     }
 }

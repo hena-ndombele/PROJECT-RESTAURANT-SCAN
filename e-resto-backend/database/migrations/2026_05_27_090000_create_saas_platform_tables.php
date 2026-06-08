@@ -113,7 +113,29 @@ return new class extends Migration
     {
         Schema::dropIfExists('payments');
         Schema::dropIfExists('restaurant_subscriptions');
+
+        foreach (['users', 'categories', 'plats', 'tables', 'contact_messages', 'reservations', 'agents', 'account_requests', 'orders'] as $tableName) {
+            $this->dropRestaurantReference($tableName);
+        }
+
         Schema::dropIfExists('restaurants');
         Schema::dropIfExists('saas_plans');
+    }
+
+    private function dropRestaurantReference(string $tableName): void
+    {
+        if (!Schema::hasTable($tableName) || !Schema::hasColumn($tableName, 'restaurant_id')) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) {
+            try {
+                $table->dropForeign(['restaurant_id']);
+            } catch (Throwable) {
+                // Keep rollback tolerant across databases with manually altered constraints.
+            }
+
+            $table->dropColumn('restaurant_id');
+        });
     }
 };

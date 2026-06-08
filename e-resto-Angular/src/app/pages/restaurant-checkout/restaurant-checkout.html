@@ -2,12 +2,18 @@
   <section class="checkout-shell">
     <div class="checkout-intro">
       <a class="brand" routerLink="/">
-        <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
-        <span>E-RESTO</span>
+        <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+        <span>Restaura Scan</span>
       </a>
       <span class="eyebrow">Etape 2 sur 2</span>
       <h2>Derniere verification avant activation</h2>
       <p>Controlez votre plan, entrez le numero wallet au format +243, puis confirmez le paiement sur votre telephone.</p>
+      @if (subscriptionExpired) {
+        <p class="message error" role="alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          Votre abonnement a expire. Payez votre abonnement pour reactiver l'acces a votre espace restaurant.
+        </p>
+      }
       <a class="change-plan" routerLink="/pricing">Changer de plan</a>
     </div>
 
@@ -16,7 +22,7 @@
         <div class="restaurant-card">
           <span>Restaurant</span>
           <strong>{{ restaurant.name || 'Votre restaurant' }}</strong>
-          <small>{{ restaurant.city || restaurant.address || 'Espace SaaS E-RESTO' }}</small>
+          <small>{{ restaurant.city || restaurant.address || 'Espace SaaS Restaura Scan' }}</small>
         </div>
 
         <div class="plan-summary">

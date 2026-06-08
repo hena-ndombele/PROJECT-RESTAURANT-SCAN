@@ -14,6 +14,7 @@ class MenuController extends Controller
     public function index(Request $request)
     {
         $restaurantId = null;
+        $table = null;
         if ($request->filled('table_id')) {
             $table = Table::find($request->table_id);
             if (!$table || !$table->restaurant_id) {
@@ -104,6 +105,12 @@ class MenuController extends Controller
         return response()->json([
             'restaurant_id' => $restaurantId,
             'restaurant' => $restaurantId ? $this->publicRestaurantPayload(Restaurant::find($restaurantId)) : null,
+            'table' => $table ? [
+                'id' => $table->id,
+                'name' => $table->name,
+                'capacity' => $table->capacity,
+                'status' => $table->status,
+            ] : null,
             'categories' => $categories,
             'plats' => $plats,
         ]);
@@ -130,11 +137,12 @@ class MenuController extends Controller
             'settings' => $settings,
             'app_name' => $settings['app_name'] ?? $restaurant->name,
             'slogan' => $settings['slogan'] ?? null,
+            'whatsapp_order_phone' => $settings['whatsapp_order_phone'] ?? $restaurant->owner_phone,
             'theme' => $settings['theme'] ?? [],
             'can_feedback' => (bool) $restaurant->plan?->allows('feedback'),
             'can_reservations' => (bool) $restaurant->plan?->allows('reservations'),
-            'can_mobile_money' => (bool) $restaurant->plan?->allows('mobile_money'),
-            'can_chatbot' => (bool) $restaurant->plan?->allows('chatbot'),
+            'can_mobile_money' => false,
+            'can_chatbot' => false,
             'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
         ];
     }

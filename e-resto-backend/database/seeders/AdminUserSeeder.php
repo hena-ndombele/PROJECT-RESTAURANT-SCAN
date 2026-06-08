@@ -18,13 +18,13 @@ class AdminUserSeeder extends Seeder
 
         // Keep the platform administrator separate from every restaurant account.
         $admin = User::firstOrCreate(
-            ['email' => env('ADMIN_EMAIL', 'henandombele8+admin@gmail.com')],
+            ['email' => env('ADMIN_EMAIL', 'henandombele8@gmail.com')],
             [
                 'first_name' => 'Hena',
                 'last_name' => 'Ndombele',
                 'phone_number' => '0000000000',
                 'address' => 'Kinshasa',
-                'password' => bcrypt(env('ADMIN_PASSWORD', '12345678')),
+                'password' => bcrypt(env('ADMIN_PASSWORD', 'admin1234*')),
             ]
         );
 

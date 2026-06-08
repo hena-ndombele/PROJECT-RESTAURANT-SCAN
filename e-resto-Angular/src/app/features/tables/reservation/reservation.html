@@ -5,7 +5,7 @@
       <div>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
-            <li class="breadcrumb-item">E-RESTO</li>
+            <li class="breadcrumb-item">Restaura Scan</li>
             <li class="breadcrumb-item active text-primary">RESERVATIONS</li>
           </ol>
         </nav>
@@ -92,27 +92,33 @@
   } @else {
     <section class="reservation-grid">
       @for (reservation of filteredReservations(); track reservation.id) {
-        <article class="reservation-card">
+        <article class="reservation-card status-{{ reservation.status }}">
           <div class="reservation-card-head">
             <div>
-              <strong>{{ reservation.name }}</strong>
-              <span>{{ reservation.phone }}</span>
+              <strong class="reservation-client-name">{{ reservation.name }}</strong>
+              <span class="reservation-reference">#{{ reservation.id.slice(0, 8).toUpperCase() }} · {{ reservation.phone }}</span>
             </div>
-            <span class="badge rounded-pill" [ngClass]="statusClass(reservation.status)">{{ statusLabel(reservation.status) }}</span>
+            <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="openReservation(reservation)" title="Voir les details">
+              <i class="bi bi-eye"></i>
+            </button>
           </div>
+
+          <div class="reservation-badges">
+            <span class="badge rounded-pill" [ngClass]="statusClass(reservation.status)">{{ statusLabel(reservation.status) }}</span>
+            <span class="badge rounded-pill bg-dark">{{ reservation.guests }} pers.</span>
+            <span class="badge rounded-pill bg-secondary">{{ reservation.table?.name || 'A assigner' }}</span>
+          </div>
+
           <div class="reservation-meta">
             <div><span>Date</span><strong>{{ reservation.reservation_date | date:'dd/MM/yyyy' }}</strong></div>
             <div><span>Heure</span><strong>{{ reservation.reservation_time }}</strong></div>
-            <div><span>Personnes</span><strong>{{ reservation.guests }}</strong></div>
-            <div><span>Table</span><strong>{{ reservation.table?.name || 'A assigner' }}</strong></div>
+            <div><span>Email</span><strong>{{ reservation.email }}</strong></div>
+            <div><span>Source</span><strong>{{ reservation.source || 'qr_client' }}</strong></div>
           </div>
           @if (reservation.special_requests) {
             <p class="reservation-note">{{ reservation.special_requests }}</p>
           }
           <div class="reservation-actions">
-            <button class="btn btn-dark btn-sm" type="button" (click)="openReservation(reservation)">
-              <i class="bi bi-eye me-1"></i> Voir
-            </button>
             @if (reservation.status === 'pending') {
               <button class="btn btn-primary btn-sm" type="button" (click)="updateStatus(reservation, 'confirmed')">Confirmer</button>
             }

@@ -1,11 +1,11 @@
 import {Component} from "@angular/core";
 import {AuthService} from "../../../services/auth/auth-service";
 import {Router, RouterModule} from "@angular/router";
-import {FormsModule, NgForm, ReactiveFormsModule} from "@angular/forms";
+import {FormsModule, ReactiveFormsModule} from "@angular/forms";
 import {CommonModule} from "@angular/common";
 import Swal from 'sweetalert2';
 import {finalize} from 'rxjs/operators';
-import {AccountRequestInput} from "../../../models/users/AccountRequestInput";
+import {timeout} from 'rxjs';
 import {Footer} from "../../../layouts/footer/footer"; // <--- Important
 
 @Component({
@@ -21,7 +21,6 @@ export class Login {
     password = '';
     isLoading = false;
     error = '';
-    isSubmittingContact = false;
 
     constructor(private authService: AuthService, private router: Router) {
     }
@@ -43,6 +42,7 @@ export class Login {
 
         this.authService.login(this.email, this.password)
             .pipe(
+                timeout(15000),
                 finalize(() => {
                     this.isLoading = false;
                 })
@@ -67,56 +67,33 @@ export class Login {
                     this.router.navigate(['/auth/otp']);
                 },
                 error: (err) => {
-                    this.isLoading = false;
+                    const message = this.loginErrorMessage(err);
                     Swal.fire({
                         title: 'Error',
-                        text: err.error?.message || 'Invalid email or password.',
+                        text: message,
                         icon: 'error',
                         confirmButtonColor: '#d33',
                         confirmButtonText: 'Try again'
                     });
-                    this.isLoading = false;
-                    this.error = err.error?.message || "Identifiants invalides.";
+                    this.error = message;
                 }
             });
     }
 
-    onContactSubmit(form: NgForm) {
-        if (form.invalid) {
-            return;
+    private loginErrorMessage(err: any): string {
+        if (err?.name === 'TimeoutError') {
+            return 'La connexion prend trop de temps. Verifiez que le backend est demarre puis reessayez.';
         }
-        this.isSubmittingContact = true;
-        const payload: AccountRequestInput = {
-            username: form.value.username,
-            phone: form.value.phone,
-            message: form.value.message
-        };
-        console.log(payload);
 
-        this.authService.sendAccountRequest(payload).subscribe({
-            next: (res) => {
-                this.isSubmittingContact = false;
-                console.log("res", res);
-                Swal.fire({
-                    title: 'Succès !',
-                    text: 'Your request has been successfully sent.',
-                    icon: 'success',
-                    confirmButtonColor: '#F9A11B'
-                });
-                window.location.reload();
-                form.resetForm();
-            },
-            error: (err) => {
-                console.log(err);
-                this.isSubmittingContact = false;
+        if (err?.status === 0) {
+            return "Impossible de joindre le serveur. Verifiez que l'API Laravel est demarree.";
+        }
 
-                Swal.fire({
-                    title: 'Error',
-                    text: err.error?.message || 'Impossible d\'envoyer la demande.',
-                    icon: 'error',
-                    confirmButtonColor: '#d33'
-                });
-            }
-        });
+        if (err?.status === 401 || err?.status === 404) {
+            return 'Identifiants incorrects. Verifiez votre email et votre mot de passe.';
+        }
+
+        return err?.error?.message || 'Identifiants incorrects. Verifiez votre email et votre mot de passe.';
     }
+
 }

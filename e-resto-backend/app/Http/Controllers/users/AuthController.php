@@ -105,11 +105,13 @@ class AuthController extends Controller
 
         $otp->delete();
 
-        $token = $user->createToken('API Token')->plainTextToken;
+        $expiresAt = $this->tokenExpiresAt();
+        $token = $user->createToken('API Token', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json([
             'message' => 'Connexion réussie',
             'token'   => $token,
+            'token_expires_at' => $expiresAt->toIso8601String(),
             'user'    => $user->load('roles'),
         ]);
     }
@@ -166,11 +168,13 @@ class AuthController extends Controller
         }
 
         $otp->delete();
-        $token = $user->createToken('Admin API Token')->plainTextToken;
+        $expiresAt = $this->tokenExpiresAt();
+        $token = $user->createToken('Admin API Token', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json([
             'message' => 'Connexion administrateur reussie.',
             'token' => $token,
+            'token_expires_at' => $expiresAt->toIso8601String(),
             'user' => $user,
         ]);
     }
@@ -200,8 +204,8 @@ class AuthController extends Controller
         $restaurant = $request->user()?->restaurant()->with('plan')->first();
 
         if ($restaurant && $restaurant->plan) {
-            $limit = (int) $restaurant->plan->max_users;
-            if ($limit > 0 && $restaurant->users()->count() >= $limit) {
+            $limit = $restaurant->plan->maxUsers();
+            if ($limit !== null && $limit > 0 && $restaurant->users()->count() >= $limit) {
                 return response()->json([
                     'message' => "Limite d'utilisateurs atteinte pour le plan {$restaurant->plan->name}.",
                 ], 422);
@@ -445,6 +449,11 @@ class AuthController extends Controller
             'message' => 'Mot de passe changé avec succès',
             'is_first_login' => $user->is_first_login
         ]);
+    }
+
+    private function tokenExpiresAt(): Carbon
+    {
+        return Carbon::now()->addMinutes((int) env('AUTH_TOKEN_TTL_MINUTES', 1440));
     }
 
 }

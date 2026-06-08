@@ -1,8 +1,8 @@
 <main class="signup-page">
   <aside class="signup-visual">
     <a class="visual-brand" routerLink="/">
-      <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
-      <span>E-RESTO</span>
+      <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+      <span>Restaura Scan</span>
     </a>
     <div class="visual-copy">
       <span>Lancez votre menu digital</span>
@@ -19,7 +19,7 @@
     <div class="signup-card">
       <div class="signup-head">
         <a class="form-logo" routerLink="/" aria-label="Retour a l'accueil">
-          <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+          <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
         </a>
         <h1>Creer votre espace</h1>
         <p>{{ accountCreated ? 'Votre restaurant est pret.' : 'Quelques informations suffisent pour demarrer.' }}</p>
@@ -106,7 +106,7 @@
               </label>
 
               <div class="actions-row">
-                <button class="secondary-action" type="button" (click)="goBack()"><i class="bi bi-arrow-left"></i> Retour</button>
+                <button class="secondary-action" type="button" (click)="goBack()" [disabled]="creating"><i class="bi bi-arrow-left"></i> Retour</button>
                 <button class="primary-action" type="submit" [disabled]="creating || planLoading">
                   {{ creating ? 'Creation...' : planLoading ? 'Chargement du plan...' : 'Creer mon compte' }}
                 </button>
@@ -125,12 +125,12 @@
   <div class="success-modal-backdrop" *ngIf="accountCreated">
     <section class="success-modal" role="dialog" aria-modal="true" aria-labelledby="signupSuccessTitle">
       <a class="modal-logo" routerLink="/">
-        <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
+        <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
       </a>
-      <span class="modal-subtitle">E-RESTO - Menu digital QR code</span>
+      <span class="modal-subtitle">Restaura Scan - Menu digital QR code</span>
       <div class="modal-icon"><i class="bi bi-stars"></i></div>
       <h2 id="signupSuccessTitle">Compte cree !</h2>
-      <p>Ton restaurant est pret. Ton menu digital est accessible ici :</p>
+      <p>Ton restaurant est pret. Ouverture automatique du dashboard...</p>
       <div class="menu-url modal-menu-url">
         <span>{{ publicMenuUrl }}</span>
         <button type="button" (click)="copyMenuUrl()" aria-label="Copier l'URL du menu"><i class="bi bi-copy"></i></button>

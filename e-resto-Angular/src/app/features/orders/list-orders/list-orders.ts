@@ -49,8 +49,9 @@ export class ListOrders implements OnInit, OnDestroy {
 
     readonly statusTabs = computed(() => {
         const orders = this.orders();
-        const tabs: Array<{ value: Order["status"] | "all"; label: string; icon: string; count: number }> = [
+        const tabs: Array<{ value: Order["status"] | "all" | "online"; label: string; icon: string; count: number }> = [
             { value: "all", label: "Toutes", icon: "bi-grid", count: orders.length },
+            { value: "online", label: "En ligne", icon: "bi-whatsapp", count: orders.filter((order) => order.order_type === "remote").length },
             { value: "pending", label: "Nouvelles", icon: "bi-bell", count: orders.filter((order) => order.status === "pending").length },
             { value: "preparing", label: "En preparation", icon: "bi-hourglass-split", count: orders.filter((order) => order.status === "preparing").length },
             { value: "ready", label: "Pretes", icon: "bi-check-square", count: orders.filter((order) => order.status === "ready").length },
@@ -65,7 +66,7 @@ export class ListOrders implements OnInit, OnDestroy {
     pageSize = 10;
 
     searchTerm = signal<string>("");
-    statusFilter = signal<Order["status"] | "all">("all");
+    statusFilter = signal<Order["status"] | "all" | "online">("all");
     tableFilter = signal<string>("all");
 
     filters = {
@@ -82,6 +83,8 @@ export class ListOrders implements OnInit, OnDestroy {
 
         const statusFiltered = selectedStatus === "all"
             ? allOrders
+            : selectedStatus === "online"
+                ? allOrders.filter((order) => order.order_type === "remote")
             : allOrders.filter((order) => order.status === selectedStatus);
 
         const tableFiltered = selectedTable === "all"
@@ -355,7 +358,7 @@ export class ListOrders implements OnInit, OnDestroy {
         receipt.document.write(`
             <html>
             <head>
-                <title>Recu cash E-RESTO</title>
+                <title>Recu cash Restaura Scan</title>
                 <style>
                     body { font-family: Arial, sans-serif; color: #111827; padding: 18px; }
                     h1 { text-align: center; margin: 0 0 4px; }
@@ -367,7 +370,7 @@ export class ListOrders implements OnInit, OnDestroy {
                 </style>
             </head>
             <body>
-                <h1>E-RESTO</h1>
+                <h1>Restaura Scan</h1>
                 <p class="muted">Recu cash - ${new Date().toLocaleString("fr-FR")}</p>
                 <p><strong>Table :</strong> ${order.table?.name || "Table inconnue"}</p>
                 <p><strong>Commande :</strong> #${order.id.slice(0, 8).toUpperCase()}</p>
@@ -438,6 +441,7 @@ export class ListOrders implements OnInit, OnDestroy {
     }
 
     orderTypeLabel(order: Order): string {
+        if (order.order_type === "remote") return "En ligne";
         return order.order_type === "takeaway" ? "A emporter" : "Sur place";
     }
 
@@ -538,7 +542,7 @@ export class ListOrders implements OnInit, OnDestroy {
         printWindow.document.write(`
             <html>
             <head>
-                <title>Rapport commandes E-RESTO</title>
+                <title>Rapport commandes Restaura Scan</title>
                 <style>
                     body { font-family: Arial, sans-serif; color: #111827; padding: 28px; }
                     h1 { margin: 0 0 4px; }

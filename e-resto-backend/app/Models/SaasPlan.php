@@ -67,11 +67,19 @@ class SaasPlan extends Model
         return $this->tier() === 'starter' ? 150 : null;
     }
 
+    public function maxTables(): ?int
+    {
+        return $this->tier() === 'pro' ? null : $this->max_tables;
+    }
+
+    public function maxUsers(): ?int
+    {
+        return $this->tier() === 'pro' ? null : $this->max_users;
+    }
+
     public function includedPaymentMethods(): array
     {
-        return $this->allows('mobile_money')
-            ? ['cash', 'mpesa', 'orange_money', 'airtel_money']
-            : ['cash'];
+        return ['cash'];
     }
 
     public function featurePermissions(): array
@@ -82,14 +90,14 @@ class SaasPlan extends Model
             'basic_menu' => true,
             'orders' => true,
             'takeaway' => true,
-            'mobile_money' => in_array($tier, ['pro', 'business'], true),
+            'mobile_money' => false,
             'analytics' => in_array($tier, ['pro', 'business'], true),
             'advanced_analytics' => $tier === 'business',
             'customization' => in_array($tier, ['pro', 'business'], true),
             'feedback' => in_array($tier, ['pro', 'business'], true),
             'reservations' => in_array($tier, ['pro', 'business'], true),
-            'chatbot' => in_array($tier, ['pro', 'business'], true),
-            'roles' => $tier === 'business',
+            'chatbot' => false,
+            'roles' => true,
             'multi_restaurant' => $tier === 'business',
             'priority_support' => in_array($tier, ['pro', 'business'], true),
             'dedicated_support' => $tier === 'business',

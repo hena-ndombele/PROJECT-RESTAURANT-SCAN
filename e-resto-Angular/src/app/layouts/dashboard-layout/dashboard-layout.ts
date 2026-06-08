@@ -5,9 +5,11 @@ import {AuthService} from "../../services/auth/auth-service";
 import Swal from "sweetalert2";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 import introJs from 'intro.js';
-import {TranslateModule} from "@ngx-translate/core";
+import {TranslateModule, TranslateService} from "@ngx-translate/core";
 import {OrderRealtimeService} from "../../services/realtime/order-realtime-service";
 import {ThemeService} from "../../services/theme/theme-service";
+import {ReservationService} from "../../services/reservation/reservation-service";
+import {Subscription} from "rxjs";
 
 @Component({
     selector: 'app-dashboard-layout',
@@ -25,6 +27,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private cdref = inject(ChangeDetectorRef);
     protected orderRealtime = inject(OrderRealtimeService);
     protected theme = inject(ThemeService);
+    private translate = inject(TranslateService);
+    private reservationService = inject(ReservationService);
+    private reservationBadgeTimer?: ReturnType<typeof setInterval>;
+    private reservationCreatedSubscription?: Subscription;
 
 
     passwordForm: FormGroup;
@@ -42,11 +48,12 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         fonction: '',
     };
     restaurantData: any = {
-        name: 'E-RESTO',
+        name: 'Restaura Scan',
         logo: 'assets/logo/e-resto-logo.png',
         city: '',
         owner_phone: '',
         features: {},
+        theme: {},
     };
     protected subscriptionInfo = {
         label: 'Abonnement non renseigne',
@@ -59,16 +66,18 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected loginInfo = {
         connectedAt: new Date(),
     };
+    protected pendingReservationsCount = 0;
     protected assistantOpen = false;
     protected assistantInput = '';
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
             from: 'bot',
-            text: 'Bonjour, je suis votre Assistant E-RESTO. Je peux vous aider avec les commandes, les statistiques, les QR codes, les reservations et votre plan.',
+            text: 'Bonjour, je suis votre Assistant Restaura Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les reservations et votre plan.',
         },
     ];
 
     ngOnInit(): void {
+        this.translate.use(this.currentLang);
         this.orderRealtime.start();
         const userData = this.authService.getUserData();
         const restaurantSession = localStorage.getItem('restaurant_session');
@@ -83,7 +92,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         if (restaurant) {
             this.restaurantData = {
-                name: restaurant.name || 'E-RESTO',
+                name: restaurant.name || 'Restaura Scan',
                 logo: restaurant.logo_url || (restaurant.logo ? `http://127.0.0.1:8000/storage/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
                 city: restaurant.city || '',
                 owner_phone: restaurant.owner_phone || '',
@@ -91,13 +100,23 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     ...this.featuresFromPlan(restaurant.plan),
                     ...(restaurant.features || {}),
                 },
+                theme: restaurant.theme || restaurant.settings?.theme || restaurant.settings || {},
             };
         }
 
         this.subscriptionInfo = this.buildSubscriptionInfo(restaurant);
+        this.applyRestaurantTheme(restaurant);
         this.loginInfo = {
             connectedAt: this.resolveLoginDate(),
         };
+        if (this.canUse('reservations')) {
+            this.loadReservationBadge();
+            this.reservationCreatedSubscription = this.orderRealtime.reservationCreated$.subscribe(() => {
+                this.pendingReservationsCount += 1;
+                this.cdref.detectChanges();
+            });
+            this.reservationBadgeTimer = setInterval(() => this.loadReservationBadge(), 15000);
+        }
 
         this.cdref.detectChanges();
 
@@ -110,9 +129,14 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.orderRealtime.stop();
+        document.body.classList.remove('restaurant-theme');
+        if (this.reservationBadgeTimer) {
+            clearInterval(this.reservationBadgeTimer);
+        }
+        this.reservationCreatedSubscription?.unsubscribe();
     }
 
-    currentLang = 'fr';
+    currentLang = localStorage.getItem('app_lang') || 'fr';
     protected isSidebarCollapsed = false;
     protected isMobileSidebarOpen = false;
 
@@ -129,12 +153,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     }
 
     changeLanguage(lang: string) {
-        console.log("Changement de langue vers :", lang);
+        this.currentLang = lang === 'en' ? 'en' : 'fr';
+        localStorage.setItem('app_lang', this.currentLang);
+        this.translate.use(this.currentLang);
     }
 
     switchLanguage() {
-        this.currentLang = this.currentLang === 'fr' ? 'en' : 'fr';
-        console.log('Langue changée en :', this.currentLang);
+        this.changeLanguage(this.currentLang === 'fr' ? 'en' : 'fr');
     }
 
 
@@ -148,6 +173,19 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
     protected canUse(feature: string): boolean {
         return Boolean(this.restaurantData.features?.[feature]);
+    }
+
+    private loadReservationBadge(): void {
+        this.reservationService.list({ status: 'pending' }).subscribe({
+            next: (reservations) => {
+                this.pendingReservationsCount = reservations.length;
+                this.cdref.detectChanges();
+            },
+            error: () => {
+                this.pendingReservationsCount = 0;
+                this.cdref.detectChanges();
+            },
+        });
     }
 
     private featuresFromPlan(plan: any): Record<string, boolean> {
@@ -165,6 +203,58 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             multi_restaurant: isBusiness,
             chatbot: isPro,
         };
+    }
+
+    private applyRestaurantTheme(restaurant: any): void {
+        const defaultTheme = {
+            primary: '#F9A11B',
+            secondary: '#111318',
+            surface: '#FFF7ED',
+        };
+        const planFeatures = this.featuresFromPlan(restaurant?.plan);
+        const features = {
+            ...planFeatures,
+            ...(restaurant?.features || {}),
+        };
+        const canCustomize = Boolean(features.customization);
+        const theme = restaurant?.theme || restaurant?.settings?.theme || restaurant?.settings || {};
+        const primary = this.normalizeColor(canCustomize ? theme.primary_color || theme.primary || theme.accent : null, defaultTheme.primary);
+        const secondary = this.normalizeColor(canCustomize ? theme.secondary_color || theme.secondary : null, defaultTheme.secondary);
+        const surface = this.normalizeColor(canCustomize ? theme.background_color || theme.background || theme.surface : null, defaultTheme.surface);
+        const primaryRgb = this.hexToRgb(primary);
+
+        document.body.classList.add('restaurant-theme');
+        document.documentElement.style.setProperty('--dashboard-primary', primary);
+        document.documentElement.style.setProperty('--dashboard-primary-rgb', primaryRgb);
+        document.documentElement.style.setProperty('--dashboard-secondary', secondary);
+        document.documentElement.style.setProperty('--dashboard-surface', surface);
+        document.documentElement.style.setProperty('--bs-primary', primary);
+        document.documentElement.style.setProperty('--bs-primary-rgb', primaryRgb);
+        document.documentElement.style.setProperty('--bs-link-color', primary);
+        document.documentElement.style.setProperty('--bs-link-hover-color', secondary);
+    }
+
+    private normalizeColor(value: any, fallback: string): string {
+        const color = String(value || '').trim();
+        if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color)) {
+            return color;
+        }
+
+        return fallback;
+    }
+
+    private hexToRgb(hex: string): string {
+        let clean = hex.replace('#', '').trim();
+        if (clean.length === 3) {
+            clean = clean.split('').map((char) => char + char).join('');
+        }
+
+        const value = Number.parseInt(clean, 16);
+        if (Number.isNaN(value)) {
+            return '249, 161, 27';
+        }
+
+        return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
     }
 
     protected toggleAssistant(): void {

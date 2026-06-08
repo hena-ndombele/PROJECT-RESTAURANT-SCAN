@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Events\ReservationCreated;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
 use App\Models\Restaurant;
@@ -58,6 +59,8 @@ class ReservationController extends Controller
                 'status' => 'pending',
                 'source' => 'qr_client',
             ]);
+
+            broadcast(new ReservationCreated($reservation))->toOthers();
 
             return response()->json([
                 'message' => 'Demande de reservation envoyee. Le restaurant va confirmer la disponibilite.',
@@ -116,15 +119,15 @@ class ReservationController extends Controller
 
             if ($validated['status'] === 'confirmed') {
                 $updates['confirmed_at'] = now();
-                $reservation->table?->update(['status' => 'Reservee']);
+                $reservation->table?->update(['status' => Table::STATUS_RESERVED]);
             }
             if ($validated['status'] === 'seated') {
                 $updates['seated_at'] = now();
-                $reservation->table?->update(['status' => 'Occupee']);
+                $reservation->table?->update(['status' => Table::STATUS_OCCUPIED]);
             }
             if (in_array($validated['status'], ['completed', 'cancelled', 'no_show'], true)) {
                 $updates['completed_at'] = $validated['status'] === 'completed' ? now() : $reservation->completed_at;
-                $reservation->table?->update(['status' => 'Disponible']);
+                $reservation->table?->update(['status' => Table::STATUS_FREE]);
             }
 
             $reservation->update($updates);

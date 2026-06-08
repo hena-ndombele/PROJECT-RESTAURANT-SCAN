@@ -10,7 +10,7 @@ function paymentMethodLabel(order) {
   return order.payment_method === 'cash' ? 'Cash' : (order.payment_method || 'Non renseigne');
 }
 
-export function buildReceiptPdf(order) {
+export function buildReceiptPdf(order, brand = {}) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 42;
@@ -18,6 +18,15 @@ export function buildReceiptPdf(order) {
   const paidAt = order.updated_at ? new Date(order.updated_at) : new Date();
   const items = order.items ?? [];
   const paymentMethod = paymentMethodLabel(order);
+  const restaurantName = brand.name || order.restaurant?.name || 'Restaura Scan';
+  const restaurantSubtitle = brand.slogan || brand.description || 'Fast Food & Restaurant';
+  const initials = restaurantName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase() || 'RS';
 
   doc.setFillColor(17, 17, 17);
   doc.rect(0, 0, pageWidth, 118, 'F');
@@ -27,14 +36,14 @@ export function buildReceiptPdf(order) {
   doc.setTextColor(17, 17, 17);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
-  doc.text('ER', margin + 14, 57);
+  doc.text(initials, margin + 11, 57);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
-  doc.text('E-RESTO', margin + 62, 48);
+  doc.text(restaurantName, margin + 62, 48);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text('Fast Food & Restaurant', margin + 64, 66);
+  doc.text(restaurantSubtitle, margin + 64, 66);
 
   doc.setFillColor(249, 161, 27);
   doc.roundedRect(pageWidth - margin - 82, 36, 82, 30, 15, 15, 'F');
@@ -146,8 +155,8 @@ export function buildReceiptPdf(order) {
   doc.setTextColor(120, 120, 120);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text('Merci pour votre visite chez E-RESTO.', pageWidth / 2, 790, { align: 'center' });
-  doc.text('Recu genere automatiquement par E-RESTO.', pageWidth / 2, 806, { align: 'center' });
+  doc.text(`Merci pour votre visite chez ${restaurantName}.`, pageWidth / 2, 790, { align: 'center' });
+  doc.text('Recu genere automatiquement par Restaura Scan.', pageWidth / 2, 806, { align: 'center' });
 
   return {
     doc,

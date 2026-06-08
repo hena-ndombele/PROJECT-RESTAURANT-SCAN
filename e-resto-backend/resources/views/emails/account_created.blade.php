@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Compte E-RESTO cree</title>
+    <title>Compte Restaura Scan cree</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f6fb;color:#111827;font-family:Arial,Helvetica,sans-serif;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6fb;padding:28px 12px;">
@@ -10,9 +10,10 @@
             <td align="center">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(17,24,39,.08);">
                     <tr>
-                        <td style="padding:30px;background:#111827;color:#ffffff;">
-                            <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#ffb15c;font-weight:700;">Compte equipe</div>
-                            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;">Votre acces E-RESTO est cree</h1>
+                        <td style="padding:30px;background:linear-gradient(135deg,#ff7a1a,#d71920);color:#ffffff;">
+                            <img src="{{ $message->embed(public_path('assets/logo.png')) }}" alt="Restaura Scan" width="112" height="72" style="display:block;border-radius:12px;margin-bottom:16px;object-fit:contain;background:#ffffff;">
+                            <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#fff3d6;font-weight:700;">Compte equipe</div>
+                            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;">Votre acces Restaura Scan est cree</h1>
                             <p style="margin:12px 0 0;color:#d1d5db;line-height:1.6;">Bonjour {{ $user->first_name }} {{ $user->last_name }}, un compte vient d'etre ouvert pour vous.</p>
                         </td>
                     </tr>
@@ -28,12 +29,12 @@
                             </table>
 
                             <p style="margin:0 0 20px;color:#374151;line-height:1.7;">Pour proteger votre restaurant, changez ce mot de passe lors de votre premiere connexion.</p>
-                            <a href="{{ config('app.url') }}" style="display:inline-block;padding:14px 20px;border-radius:10px;background:#d71920;color:#ffffff;text-decoration:none;font-weight:700;">Se connecter</a>
+                            <a href="{{ config('app.frontend_url', config('app.url')) }}" style="display:inline-block;padding:14px 20px;border-radius:10px;background:linear-gradient(135deg,#ff7a1a,#d71920);color:#ffffff;text-decoration:none;font-weight:700;">Se connecter</a>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding:18px 28px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.6;">
-                            &copy; {{ date('Y') }} E-RESTO. Cet email confirme la creation de votre acces.
+                            &copy; {{ date('Y') }} Restaura Scan. Cet email confirme la creation de votre acces.
                         </td>
                     </tr>
                 </table>

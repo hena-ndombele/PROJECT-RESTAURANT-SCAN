@@ -17,7 +17,7 @@ class ContactMessageReceivedMail extends Mailable
 
     public function build()
     {
-        return $this->subject('[E-RESTO] Nouveau contact restaurant')
+        return $this->subject('[Restaura Scan] Nouveau contact restaurant')
             ->replyTo($this->contactMessage->email, $this->contactMessage->name)
             ->view('emails.contact_message_received');
     }

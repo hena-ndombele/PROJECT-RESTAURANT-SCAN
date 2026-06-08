@@ -3,13 +3,15 @@ import { Subject } from "rxjs";
 import { Order } from "../../models/orders/OrderDto";
 import { AuthService } from "../auth/auth-service";
 import { OderService } from "../orders/oder-service";
+import { ReservationDto } from "../reservation/reservation-service";
 
 interface OrderNotification {
     id: string;
     title: string;
     message: string;
     createdAt: Date;
-    order: Order;
+    order?: Order;
+    route?: string;
 }
 
 @Injectable({
@@ -27,8 +29,10 @@ export class OrderRealtimeService {
 
     readonly orders = signal<Order[]>([]);
     readonly notifications = signal<OrderNotification[]>([]);
+    readonly pendingReservationsCount = signal(0);
     readonly connectionState = signal<"idle" | "connecting" | "connected" | "error">("idle");
     readonly orderChanged$ = new Subject<Order>();
+    readonly reservationCreated$ = new Subject<ReservationDto>();
 
     readonly activeOrdersCount = computed(() => {
         return this.orders().filter((order) => this.isActiveOrder(order)).length;
@@ -80,6 +84,7 @@ export class OrderRealtimeService {
                 this.connected = true;
                 this.connectionState.set("connected");
                 this.subscribeToOrders();
+                this.subscribeToReservations();
             });
         };
 
@@ -111,6 +116,16 @@ export class OrderRealtimeService {
         });
     }
 
+    private subscribeToReservations(): void {
+        const restaurantId = this.authService.getUserData()?.restaurant_id;
+        const channel = restaurantId ? `reservations.${restaurantId}` : "reservations";
+
+        this.send({
+            event: "pusher:subscribe",
+            data: { channel }
+        });
+    }
+
     private handleSocketMessage(raw: string): void {
         let message: any;
         try {
@@ -121,6 +136,11 @@ export class OrderRealtimeService {
 
         if (message.event === "pusher:ping") {
             this.send({ event: "pusher:pong", data: {} });
+            return;
+        }
+
+        if (message.event === "reservation.created") {
+            this.handleReservationCreated(message);
             return;
         }
 
@@ -142,6 +162,26 @@ export class OrderRealtimeService {
         }
     }
 
+    private handleReservationCreated(message: any): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        const reservation = payload?.reservation as ReservationDto | undefined;
+        if (!reservation?.id) return;
+
+        this.pendingReservationsCount.update((count) => count + 1);
+        this.reservationCreated$.next(reservation);
+        this.notifications.update((items) => [
+            {
+                id: `${reservation.id}-${Date.now()}`,
+                title: "Nouvelle reservation",
+                message: `${reservation.name} - ${reservation.guests} pers. le ${reservation.reservation_date}`,
+                createdAt: new Date(),
+                route: "/table/reservation-table"
+            },
+            ...items
+        ].slice(0, 8));
+        this.playNotificationSound();
+    }
+
     private upsertOrder(order: Order): void {
         this.orders.update((orders) => {
             const exists = orders.some((item) => item.id === order.id);
@@ -161,7 +201,8 @@ export class OrderRealtimeService {
                 title: "Nouvelle commande",
                 message: `${tableName} - ${Number(order.total_amount || 0).toLocaleString("fr-FR")} ${order.currency}`,
                 createdAt: new Date(),
-                order
+                order,
+                route: "/orders/list"
             },
             ...items
         ].slice(0, 8));

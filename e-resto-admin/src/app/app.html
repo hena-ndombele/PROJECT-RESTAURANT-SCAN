@@ -1,7 +1,7 @@
 @if (!token()) {
   <main class="auth-page">
     <section class="auth-visual">
-      <div class="brand large"><span class="brand-mark">E</span><strong>E-RESTO</strong></div>
+      <div class="brand large"><span class="brand-mark">R</span><strong>Restaura Scan</strong></div>
       <div>
         <span class="eyebrow">Administration SaaS</span>
         <h1>Pilotez toute la plateforme depuis un espace unique.</h1>
@@ -12,7 +12,7 @@
       <form class="auth-card" (ngSubmit)="loginStep() === 'credentials' ? login() : verifyOtp()">
         <span class="eyebrow">Acces securise</span>
         <h2>{{ loginStep() === 'credentials' ? 'Connexion administrateur' : 'Verification OTP' }}</h2>
-        <p>{{ loginStep() === 'credentials' ? 'Utilisez votre compte E-RESTO pour continuer.' : 'Entrez le code a 5 chiffres recu par email.' }}</p>
+        <p>{{ loginStep() === 'credentials' ? 'Utilisez votre compte Restaura Scan pour continuer.' : 'Entrez le code a 5 chiffres recu par email.' }}</p>
         @if (loginStep() === 'credentials') {
           <label>Adresse email<input [(ngModel)]="loginForm.email" name="email" type="email" required autocomplete="email"></label>
           <label>Mot de passe<input [(ngModel)]="loginForm.password" name="password" type="password" required autocomplete="current-password"></label>
@@ -31,7 +31,7 @@
 } @else {
   <main class="admin-shell">
     <aside class="sidebar">
-      <a class="brand" href="#"><span class="brand-mark">E</span><span><strong>E-RESTO</strong><small>Administration</small></span></a>
+      <a class="brand" href="#"><span class="brand-mark">R</span><span><strong>Restaura Scan</strong><small>Administration</small></span></a>
       <nav>
         <button type="button" [class.active]="activeTab() === 'dashboard'" (click)="setTab('dashboard')"><i class="bi bi-grid-1x2-fill"></i><span>Vue generale</span></button>
         <button type="button" [class.active]="activeTab() === 'restaurants'" (click)="setTab('restaurants')"><i class="bi bi-shop-window"></i><span>Restaurants</span></button>
@@ -49,7 +49,7 @@
     <section class="workspace">
       <header class="topbar">
         <div>
-          <span class="eyebrow">Console E-RESTO</span>
+          <span class="eyebrow">Console Restaura Scan</span>
           <h1>{{ activeTab() === 'dashboard' ? 'Vue generale' : activeTab() | titlecase }}</h1>
           <p>Gerez la plateforme, les comptes et les abonnements depuis un seul espace.</p>
         </div>
@@ -150,7 +150,7 @@
       }
 
       @if (activeTab() === 'support') {
-        <section class="content-grid"><article class="panel" *ngFor="let group of [['Messages', support().contact_messages], ['Demandes de compte', support().account_requests], ['Feedbacks', support().feedbacks]]"><div class="panel-head"><h2>{{ group[0] }}</h2></div><div class="support-item" *ngFor="let item of group[1]"><strong>{{ item.name || item.username || item.restaurant?.name || 'Client' }}</strong><span>{{ item.email || item.phone || item.status || '' }}</span><p>{{ item.message || item.comment || 'Aucun message' }}</p></div></article></section>
+        <section class="content-grid"><article class="panel" *ngFor="let group of [['Messages', support().contact_messages], ['Feedbacks', support().feedbacks], ['Reservations', support().reservations]]"><div class="panel-head"><h2>{{ group[0] }}</h2></div><div class="support-item" *ngFor="let item of group[1]"><strong>{{ item.name || item.username || item.restaurant?.name || 'Client' }}</strong><span>{{ item.email || item.phone || item.status || '' }}</span><p>{{ item.message || item.comment || 'Aucun message' }}</p></div></article></section>
       }
 
       @if (activeTab() === 'audit') {

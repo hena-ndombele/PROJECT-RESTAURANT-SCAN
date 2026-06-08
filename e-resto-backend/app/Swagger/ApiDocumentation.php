@@ -85,14 +85,6 @@ namespace App\Swagger;
  *     @OA\Property(property="fonction", type="string", example="Serveur")
  * )
  *
- * @OA\Schema(
- *     schema="AccountRequestPayload",
- *     required={"username","phone"},
- *     @OA\Property(property="username", type="string", example="Jean Dupont"),
- *     @OA\Property(property="phone", type="string", example="+243900000000"),
- *     @OA\Property(property="message", type="string", example="Je souhaite creer un compte.")
- * )
- *
  * @OA\Post(
  *     path="/api/otp/request",
  *     tags={"Auth"},
@@ -125,10 +117,6 @@ namespace App\Swagger;
  * @OA\Get(path="/api/agents/show/{id}", tags={"Agents"}, summary="Afficher un agent", security={{"sanctum":{}}}, @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string", format="uuid")), @OA\Response(response=200, description="Agent"))
  * @OA\Put(path="/api/agents/update/{id}", tags={"Agents"}, summary="Modifier un agent", security={{"sanctum":{}}}, @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string", format="uuid")), @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/AgentPayload")), @OA\Response(response=200, description="Agent modifie"))
  * @OA\Delete(path="/api/agents/delete/{id}", tags={"Agents"}, summary="Supprimer un agent", security={{"sanctum":{}}}, @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string", format="uuid")), @OA\Response(response=200, description="Agent supprime"))
- *
- * @OA\Post(path="/api/auth/account-request", tags={"Account Requests"}, summary="Soumettre une demande de compte", @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/AccountRequestPayload")), @OA\Response(response=201, description="Demande creee"))
- * @OA\Get(path="/api/auth/account-request", tags={"Account Requests"}, summary="Lister les demandes de compte", security={{"sanctum":{}}}, @OA\Response(response=200, description="Liste"))
- * @OA\Delete(path="/api/auth/account-request/{id}", tags={"Account Requests"}, summary="Supprimer une demande de compte", security={{"sanctum":{}}}, @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string", format="uuid")), @OA\Response(response=200, description="Demande supprimee"))
  *
  * @OA\Get(path="/api/category/{id}", tags={"Categories"}, summary="Afficher une categorie", security={{"sanctum":{}}}, @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string", format="uuid")), @OA\Response(response=200, description="Categorie"))
  * @OA\Put(path="/api/category/{id}", tags={"Categories"}, summary="Modifier une categorie", security={{"sanctum":{}}}, @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string", format="uuid")), @OA\Response(response=200, description="Categorie modifiee"))

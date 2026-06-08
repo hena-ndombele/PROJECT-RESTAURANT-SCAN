@@ -54,8 +54,8 @@
             </li>
 
             <li class="dropdown">
-                <a class="position-relative btn btn-icon btn-sm  rounded-circle shadow-sm" data-bs-toggle="dropdown"
-                   href="#" role="button" style="background: #F9A11B" (click)="openNotifications()">
+                <a class="position-relative btn btn-icon btn-sm rounded-circle shadow-sm notification-button" data-bs-toggle="dropdown"
+                   href="#" role="button" (click)="openNotifications()">
                     <i class="ti ti-bell fs-5"></i>
                     @if (orderRealtime.notifications().length > 0) {
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
@@ -67,7 +67,7 @@
                 <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-0 mt-3 notification-menu" style="width: 330px;">
                     <div class="p-3 border-bottom bg-light">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0 fw-bold small text-uppercase">Notifications</h6>
+                            <h6 class="mb-0 fw-bold small text-uppercase">{{ 'topbar.notifications' | translate }}</h6>
                             <span class="badge rounded-pill"
                                   [ngClass]="orderRealtime.connectionState() === 'connected' ? 'bg-success' : 'bg-secondary'">
                                 {{ orderRealtime.connectionState() === 'connected' ? 'Live' : 'Offline' }}
@@ -75,11 +75,11 @@
                         </div>
                     </div>
                     @if (orderRealtime.notifications().length === 0) {
-                        <div class="p-4 text-center text-muted small">Aucune nouvelle alerte</div>
+                        <div class="p-4 text-center text-muted small">{{ 'topbar.noAlerts' | translate }}</div>
                     } @else {
                         <div class="notification-list">
                             @for (notification of orderRealtime.notifications(); track notification.id) {
-                                <a routerLink="/orders/list" class="notification-item dropdown-item">
+                                <a [routerLink]="notification.route || '/orders/list'" class="notification-item dropdown-item">
                                     <div class="notification-icon"><i class="ti ti-bell-ringing"></i></div>
                                     <div>
                                         <strong>{{ notification.title }}</strong>
@@ -97,7 +97,7 @@
                 <button class="btn-logout-custom" data-bs-toggle="modal"
                         data-bs-target="#logoutModal">
                     <i class="ti ti-logout"></i>
-                    <span>Logout</span>
+                    <span>{{ 'topbar.logout' | translate }}</span>
                 </button>
             </li>
 
@@ -151,21 +151,21 @@
                     <div class="p-2 d-flex flex-column gap-1">
                         <a class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2"
                            routerLink="/auth/profile">
-                            <i class="ti ti-user-circle fs-5 text-primary"></i> My Profile
+                            <i class="ti ti-user-circle fs-5 text-primary"></i> {{ 'topbar.profile' | translate }}
                         </a>
 
 
                         <button class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2 text-black "
                                 data-bs-toggle="modal"
                                 data-bs-target="#changePasswordModal" id="userDropdown">
-                            <i class="ti ti-password fs-5 text-primary"></i> Change Password
+                            <i class="ti ti-password fs-5 text-primary"></i> {{ 'topbar.changePassword' | translate }}
                         </button>
 
                         <div class="dropdown-divider"></div>
                         <button class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2 text-danger fw-semibold"
                                 data-bs-toggle="modal"
                                 data-bs-target="#logoutModal">
-                            <i class="ti ti-logout fs-5"></i> Logout
+                            <i class="ti ti-logout fs-5"></i> {{ 'topbar.logout' | translate }}
                         </button>
                     </div>
                 </div>
@@ -180,30 +180,30 @@
     <div class="logo-area d-flex align-items-center py-3 px-3">
         <a routerLink="/" class="d-flex align-items-center text-decoration-none" (click)="closeMobileSidebar()">
             <div class="mb-3">
-                <img src="assets/logo/e-resto-logo.png" alt="Logo"
-                     style="height: 40px;width: 40px;margin-top: 15px; object-fit: contain; border-radius: 5px; border:2px solid white">
+                <img [src]="restaurantData.logo" alt="Logo"
+                     style="height: 42px;width: 64px;margin-top: 15px; object-fit: contain; border-radius: 0; border:2px solid white">
 
 
             </div>
-            <span class="logo-text ms-2">E-RESTO</span>
+            <span class="logo-text ms-2">Restaura Scan</span>
         </a>
     </div>
 
     <div class="sidebar-scroll">
         <ul class="nav flex-column ps-2 pe-2 gap-1">
-            <li class="nav-label mt-2">MENU PRINCIPAL</li>
+            <li class="nav-label mt-2">{{ 'sidebar.mainMenu' | translate }}</li>
 
             <li>
                 <a routerLink="/dashboard" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active"
                    class="nav-link" (click)="closeMobileSidebar()">
-                    <i class="ti ti-smart-home"></i><span class="nav-text">Dashboard</span>
+                    <i class="ti ti-smart-home"></i><span class="nav-text">{{ 'sidebar.dashboard' | translate }}</span>
                 </a>
             </li>
 
             <li>
                 <a routerLink="/agents/list-agent" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-users"></i><span class="nav-text">Employee</span>
+                    <i class="ti ti-users"></i><span class="nav-text">{{ 'sidebar.employee' | translate }}</span>
                 </a>
             </li>
 
@@ -211,13 +211,13 @@
             <li>
                 <a routerLink="/category/list-category" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-category"></i><span class="nav-text">Category</span>
+                    <i class="ti ti-category"></i><span class="nav-text">{{ 'sidebar.category' | translate }}</span>
                 </a>
             </li>
             <li>
                 <a routerLink="/dish/list-dish" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-tools-kitchen-2"></i><span class="nav-text">Dishs</span>
+                    <i class="ti ti-tools-kitchen-2"></i><span class="nav-text">{{ 'sidebar.dishes' | translate }}</span>
                 </a>
             </li>
 
@@ -227,7 +227,7 @@
                    (click)="closeMobileSidebar()">
 
                     <i class="ti ti-shopping-cart"></i>
-                    <span class="nav-text ms-2">Orders</span>
+                    <span class="nav-text ms-2">{{ 'sidebar.orders' | translate }}</span>
 
                     @if (orderRealtime.activeOrdersCount() > 0) {
                         <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
@@ -240,7 +240,7 @@
             <li>
                 <a routerLink="/tables/list-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-table-alias"></i><span class="nav-text">Tables</span>
+                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.tables' | translate }}</span>
                 </a>
             </li>
 
@@ -248,7 +248,12 @@
             <li>
                 <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-table-alias"></i><span class="nav-text">Reservations</span>
+                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.reservations' | translate }}</span>
+                    @if (pendingReservationsCount > 0) {
+                        <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
+                            {{ pendingReservationsCount }}
+                        </span>
+                    }
                 </a>
             </li>
             }
@@ -256,7 +261,7 @@
             <li>
                 <a routerLink="/restaurant/settings" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-settings"></i><span class="nav-text">Parametres</span>
+                    <i class="ti ti-settings"></i><span class="nav-text">{{ 'sidebar.settings' | translate }}</span>
                 </a>
             </li>
 
@@ -265,28 +270,12 @@
             <li>
                 <a routerLink="/feedback/list" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-message-2-star"></i><span class="nav-text">Feedbacks</span>
+                    <i class="ti ti-message-2-star"></i><span class="nav-text">{{ 'sidebar.feedbacks' | translate }}</span>
                 </a>
             </li>
             }
 
-            <li>
-                <a routerLink="/auth/account-request/list"
-                   routerLinkActive="active"
-                   class="nav-link d-flex align-items-center justify-content-between"
-                   (click)="closeMobileSidebar()">
-
-                    <div class="d-flex align-items-center">
-                        <i class="ti ti-user-plus"></i>
-                        <span class="nav-text ms-2">Account Request</span>
-                    </div>
-
-                </a>
-
-
-            </li>
-
-            <li class="nav-label mt-4">ADMINISTRATION</li>
+            <li class="nav-label mt-4">{{ 'sidebar.administration' | translate }}</li>
             @if (canUse('roles')) {
             <li>
                 <a routerLink="/identity/list-roles" routerLinkActive="active" class="nav-link"
@@ -298,7 +287,7 @@
 
             <li>
                 <a routerLink="/identity/list-users" routerLinkActive="active" class="nav-link" (click)="closeMobileSidebar()">
-                    <i class="ti ti-user-cog"></i><span class="nav-text">Users</span>
+                    <i class="ti ti-user-cog"></i><span class="nav-text">{{ 'sidebar.users' | translate }}</span>
                 </a>
             </li>
         </ul>
@@ -316,7 +305,7 @@
                 <div class="assistant-head">
                     <div>
                         <span>Assistant intelligent</span>
-                        <strong>E-RESTO Copilot</strong>
+                        <strong>Restaura Scan Copilot</strong>
                     </div>
                     <button type="button" (click)="toggleAssistant()" aria-label="Fermer l'assistant">
                         <i class="ti ti-x"></i>
@@ -371,16 +360,16 @@
                     <i class="ti ti-alert-circle text-danger" style="font-size: 4rem;"></i>
                 </div>
 
-                <h4 class="fw-bolder">Disconnect ?</h4>
+                <h4 class="fw-bolder">{{ 'logout.title' | translate }}</h4>
                 <p class="text-muted text-wrap text-break px-2">
-                    Are you sure you want to disconnect?
+                    {{ 'logout.message' | translate }}
                 </p>
             </div>
 
             <div class="modal-footer border-top-0 d-flex justify-content-center gap-3 pb-4">
                 <button type="reset" class="btn btn-light d-flex align-items-center" data-bs-dismiss="modal">
                     <i class="ti ti-x me-2 fs-4"></i>
-                    Cancel
+                    {{ 'common.cancel' | translate }}
                 </button>
 
                 <button type="button"
@@ -390,10 +379,10 @@
 
                     @if (isLoading) {
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        <span>Logout...</span>
+                        <span>{{ 'topbar.logout' | translate }}...</span>
                     } @else {
                         <i class="ti ti-trash me-2 fs-4"></i>
-                        <span>Logout</span>
+                        <span>{{ 'topbar.logout' | translate }}</span>
                     }
                 </button>
             </div>
@@ -410,9 +399,8 @@
 
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">Change
-                        Password</h5>
-                    <p class="mb-0 text-muted small">Change your password</p>
+                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">{{ 'topbar.changePassword' | translate }}</h5>
+                    <p class="mb-0 text-muted small">{{ 'password.subtitle' | translate }}</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -474,7 +462,7 @@
             </div>
 
             <div class="modal-footer d-flex gap-2">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ 'common.cancel' | translate }}</button>
                 <button type="submit"
                         form="passwordFormElement"
                         class="btn btn-primary text-black px-4 shadow-sm"
@@ -482,7 +470,7 @@
                     @if (isLoading) {
                         <span class="spinner-border spinner-border-sm me-2"></span>
                     }
-                    Change Password
+                    {{ 'topbar.changePassword' | translate }}
                 </button>
             </div>
         </div>

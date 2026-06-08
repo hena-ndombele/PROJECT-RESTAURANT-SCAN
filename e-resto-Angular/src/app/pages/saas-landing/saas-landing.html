@@ -1,8 +1,8 @@
 <main class="saas-page">
   <nav class="saas-nav">
     <a class="brand" routerLink="/">
-      <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
-      <span>E-RESTO</span>
+      <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+      <span>Restaura Scan</span>
     </a>
     <div class="nav-links">
       <a href="#features">Fonctionnalites</a>
@@ -83,7 +83,7 @@
   <section class="knowledge landing-reveal">
     <div class="section-title">
       <span class="eyebrow">Guide d'utilisation</span>
-      <h2>Tout ce que vous devez savoir pour demarrer avec E-RESTO</h2>
+      <h2>Tout ce que vous devez savoir pour demarrer avec Restaura Scan</h2>
       <p>Un parcours simple pour passer du compte cree a la premiere commande.</p>
     </div>
 
@@ -187,15 +187,20 @@
   <footer class="site-footer landing-reveal">
     <div class="footer-brand">
       <a class="brand" routerLink="/">
-        <img src="assets/logo/e-resto-logo.png" alt="E-RESTO">
-        <span>E-RESTO</span>
+        <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+        <span>Restaura Scan</span>
       </a>
       <p>Plateforme SaaS pour restaurants : menu QR, commandes, paiements, reservations, feedback et rapports.</p>
       <address>
         Kinshasa, Republique Democratique du Congo<br>
-        <a href="tel:+243830376004">+243 830 376 004</a><br>
-        <a href="mailto:e.resto2025@gmail.com">e.resto2025@gmail.com</a>
+        <a href="tel:+243830376004">+243 000000000</a><br>
+        <a href="mailto:restauraScan2026@gmail.com">restauraScan2026@gmail.com</a>
       </address>
+      <div class="social-links" aria-label="Reseaux sociaux">
+        <a href="https://www.facebook.com/" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+        <a href="https://www.linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+        <a href="https://x.com/" target="_blank" rel="noopener" aria-label="X"><i class="bi bi-twitter-x"></i></a>
+      </div>
     </div>
 
     <div class="footer-links">
@@ -215,7 +220,7 @@
     <form class="newsletter" (ngSubmit)="submitNewsletter()" novalidate>
       <h3>Newsletter</h3>
       <p>Nouveautes produit et conseils restaurant.</p>
-      <div>
+      <div class="newsletter-row">
         <input type="email" name="newsletter_email" [(ngModel)]="newsletterEmail" placeholder="Votre adresse email" aria-label="Adresse email newsletter" autocomplete="email" required>
         <button type="submit" [disabled]="isNewsletterSubmitting">{{ isNewsletterSubmitting ? 'Envoi...' : "S'inscrire" }}</button>
       </div>
@@ -226,7 +231,8 @@
     </form>
 
     <div class="footer-bottom">
-      <span>&copy; 2026 E-RESTO. Tous droits reserves.</span>
+      <span>&copy; 2026 Restaura Scan. Tous droits reserves.</span>
+      <span>Cree par Hena Ndombele.</span>
     </div>
   </footer>
 </main>

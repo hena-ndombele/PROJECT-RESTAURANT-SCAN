@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Plat;
+use App\Models\Restaurant;
 use App\Models\Table;
 use App\Services\MaishaPayService;
 use Carbon\Carbon;
@@ -24,12 +25,14 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'table_id' => 'required|uuid|exists:tables,id',
-            'order_type' => 'nullable|string|in:dine_in,takeaway',
+            'table_id' => 'nullable|uuid|exists:tables,id',
+            'restaurant_id' => 'nullable|uuid|exists:restaurants,id',
+            'restaurant_slug' => 'nullable|string|exists:restaurants,slug',
+            'order_type' => 'nullable|string|in:dine_in,takeaway,remote',
             'note' => 'nullable|string',
-            'payment_method' => 'nullable|string|in:cash,mobile_money,orange_money,mpesa,airtel_money',
+            'payment_method' => 'nullable|string|in:cash',
             'payment_provider' => 'nullable|string',
-            'wallet_id' => 'nullable|string|required_unless:payment_method,cash',
+            'wallet_id' => 'nullable|string',
             'customer_name' => 'nullable|string|max:120',
             'customer_phone' => 'nullable|string|max:30',
             'customer_email' => 'nullable|email|max:160',
@@ -40,22 +43,11 @@ class OrderController extends Controller
 
         try {
             return DB::transaction(function () use ($validated, $request) {
-                $table = Table::with('restaurant.plan')->findOrFail($validated['table_id']);
+                $orderType = $validated['order_type'] ?? 'dine_in';
+                $table = $this->resolveOrderTable($validated, $orderType);
 
                 if (!$table->restaurant || !in_array($table->restaurant->status, ['active', 'trial'], true)) {
                     throw new \Exception("Ce restaurant n'accepte pas de commandes pour le moment.");
-                }
-
-                $requestedMethod = $validated['payment_method'] ?? 'cash';
-                $orderType = $validated['order_type'] ?? 'dine_in';
-                $isMobileMoney = $requestedMethod !== 'cash';
-                $paymentProvider = $isMobileMoney ? ($validated['payment_provider'] ?? $requestedMethod) : null;
-
-                if ($isMobileMoney && !$table->restaurant->plan?->allows('mobile_money')) {
-                    return response()->json([
-                        'message' => 'Le paiement Mobile Money est reserve aux plans Pro et Business.',
-                        'requires_upgrade' => true,
-                    ], 403);
                 }
 
                 $monthlyLimit = $table->restaurant->plan?->maxOrdersPerMonth();
@@ -80,12 +72,12 @@ class OrderController extends Controller
                     'customer_name' => $validated['customer_name'] ?? null,
                     'customer_phone' => $validated['customer_phone'] ?? ($validated['wallet_id'] ?? null),
                     'customer_email' => $validated['customer_email'] ?? null,
-                    'pickup_name' => $orderType === 'takeaway' ? ($validated['customer_name'] ?? null) : null,
-                    'pickup_phone' => $orderType === 'takeaway' ? ($validated['customer_phone'] ?? ($validated['wallet_id'] ?? null)) : null,
+                    'pickup_name' => in_array($orderType, ['takeaway', 'remote'], true) ? ($validated['customer_name'] ?? null) : null,
+                    'pickup_phone' => in_array($orderType, ['takeaway', 'remote'], true) ? ($validated['customer_phone'] ?? ($validated['wallet_id'] ?? null)) : null,
                     'status' => 'pending',
-                    'payment_method' => $isMobileMoney ? 'mobile_money' : 'cash',
-                    'payment_provider' => $paymentProvider,
-                    'payment_status' => $isMobileMoney ? 'pending' : 'unpaid',
+                    'payment_method' => 'cash',
+                    'payment_provider' => null,
+                    'payment_status' => 'unpaid',
                 ]);
 
                 $total = 0;
@@ -121,43 +113,20 @@ class OrderController extends Controller
                     'type' => 'order',
                     'method' => $order->payment_method,
                     'provider' => $order->payment_provider,
-                    'status' => $isMobileMoney ? 'pending' : 'unpaid',
+                    'status' => 'unpaid',
                     'amount' => $total,
                     'currency' => $mainCurrency,
                     'reference' => 'ORD-' . Str::upper(substr($order->id, 0, 8)),
                     'metadata' => [
-                        'message' => $isMobileMoney
-                            ? 'Paiement mobile money en attente de confirmation.'
-                            : 'Paiement cash a confirmer par le restaurant.',
+                        'message' => 'Paiement cash a confirmer par le restaurant.',
                     ],
                 ]);
 
                 $paymentResponse = null;
-                if ($isMobileMoney) {
-                    $paymentResponse = $this->maishaPayService->collectMobileMoney(
-                        $payment,
-                        [
-                            'name' => $validated['customer_name'] ?? 'Client ' . $table->name,
-                            'email' => $validated['customer_email'] ?? 'client@e-resto.local',
-                        ],
-                        $paymentProvider,
-                        $validated['wallet_id'],
-                        url('/api/orders/payment-callback')
-                    );
 
-                    $paymentStatus = $this->mapGatewayPaymentStatus($paymentResponse['transactionStatus'] ?? null);
-                    $payment->update([
-                        'status' => $paymentStatus,
-                        'metadata' => array_merge($payment->metadata ?? [], [
-                            'wallet_id' => $validated['wallet_id'],
-                            'gateway_response' => $paymentResponse,
-                        ]),
-                        'paid_at' => $paymentStatus === 'paid' ? now() : null,
-                    ]);
-                    $order->update(['payment_status' => $paymentStatus]);
+                if ($orderType !== 'remote') {
+                    $table->update(['status' => Table::STATUS_OCCUPIED]);
                 }
-
-                $table->update(['status' => 'Occupee']);
 
                 broadcast(new OrderPlaced($order->load(['table', 'items.plat', 'latestPayment'])))->toOthers();
 
@@ -166,6 +135,7 @@ class OrderController extends Controller
                     'order' => $order->load(['table', 'items.plat', 'latestPayment']),
                     'payment' => $payment->fresh(),
                     'payment_response' => $paymentResponse,
+                    'whatsapp_order_url' => $orderType === 'remote' ? $this->whatsappOrderUrl($order) : null,
                 ], 201);
             });
         } catch (\Exception $e) {
@@ -269,7 +239,7 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'note' => 'nullable|string',
-            'order_type' => 'nullable|string|in:dine_in,takeaway',
+            'order_type' => 'nullable|string|in:dine_in,takeaway,remote',
             'wallet_id' => 'nullable|string',
             'customer_name' => 'nullable|string|max:120',
             'customer_phone' => 'nullable|string|max:30',
@@ -336,8 +306,8 @@ class OrderController extends Controller
                 $order->update([
                     'note' => $validated['note'] ?? null,
                     'order_type' => $nextOrderType,
-                    'pickup_name' => $nextOrderType === 'takeaway' ? $nextCustomerName : null,
-                    'pickup_phone' => $nextOrderType === 'takeaway' ? $nextCustomerPhone : null,
+                    'pickup_name' => in_array($nextOrderType, ['takeaway', 'remote'], true) ? $nextCustomerName : null,
+                    'pickup_phone' => in_array($nextOrderType, ['takeaway', 'remote'], true) ? $nextCustomerPhone : null,
                     'customer_name' => $nextCustomerName,
                     'customer_phone' => $nextCustomerPhone,
                     'customer_email' => $validated['customer_email'] ?? $order->customer_email,
@@ -740,6 +710,72 @@ class OrderController extends Controller
             'FAILED', 'CANCELLED', 'CANCELED', 'ERROR' => 'failed',
             default => 'pending',
         };
+    }
+
+    private function whatsappOrderUrl(Order $order): ?string
+    {
+        $order->loadMissing(['restaurant', 'items.plat', 'table']);
+        $settings = $order->restaurant?->settings ?? [];
+        $phone = $settings['whatsapp_order_phone'] ?? $order->restaurant?->owner_phone;
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+
+        if (!$digits) {
+            return null;
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '243' . substr($digits, 1);
+        }
+
+        $items = $order->items->map(function ($item) {
+            return "- {$item->quantity} x " . ($item->plat?->name ?? 'Plat');
+        })->implode("\n");
+
+        $message = "Bonjour, nouvelle commande en ligne Restaura Scan.\n"
+            . "Restaurant: " . ($order->restaurant?->name ?? '-') . "\n"
+            . "Commande: #{$order->tracking_code}\n"
+            . "Client: " . ($order->customer_name ?: 'Client') . "\n"
+            . "Telephone: " . ($order->customer_phone ?: '-') . "\n"
+            . "Table/QR: " . ($order->table?->name ?: '-') . "\n"
+            . "Articles:\n{$items}\n"
+            . "Total: {$order->total_amount} {$order->currency}\n"
+            . "Note: " . ($order->note ?: '-');
+
+        return 'https://wa.me/' . $digits . '?text=' . rawurlencode($message);
+    }
+
+    private function resolveOrderTable(array $validated, string $orderType): Table
+    {
+        if (!empty($validated['table_id'])) {
+            return Table::with('restaurant.plan')->findOrFail($validated['table_id']);
+        }
+
+        if ($orderType !== 'remote') {
+            throw new \InvalidArgumentException('Scannez une table pour commander sur place ou a emporter.');
+        }
+
+        $restaurant = null;
+        if (!empty($validated['restaurant_id'])) {
+            $restaurant = Restaurant::with('plan')->find($validated['restaurant_id']);
+        }
+        if (!$restaurant && !empty($validated['restaurant_slug'])) {
+            $restaurant = Restaurant::with('plan')->where('slug', $validated['restaurant_slug'])->first();
+        }
+
+        if (!$restaurant) {
+            throw new \InvalidArgumentException('Restaurant introuvable pour la commande hors restaurant.');
+        }
+
+        return Table::firstOrCreate(
+            [
+                'restaurant_id' => $restaurant->id,
+                'name' => 'Commandes hors restaurant',
+            ],
+            [
+                'capacity' => 1,
+                'status' => 'Libre',
+            ]
+        )->load('restaurant.plan');
     }
 
     private function generateTrackingCode(): string
