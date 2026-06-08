@@ -107,12 +107,14 @@ class AuthController extends Controller
 
         $expiresAt = $this->tokenExpiresAt();
         $token = $user->createToken('API Token', ['*'], $expiresAt)->plainTextToken;
+        $user->load('roles', 'restaurant.plan', 'restaurant.subscription');
 
         return response()->json([
             'message' => 'Connexion réussie',
             'token'   => $token,
             'token_expires_at' => $expiresAt->toIso8601String(),
-            'user'    => $user->load('roles'),
+            'user'    => $user,
+            'restaurant' => $user->restaurant,
         ]);
     }
 

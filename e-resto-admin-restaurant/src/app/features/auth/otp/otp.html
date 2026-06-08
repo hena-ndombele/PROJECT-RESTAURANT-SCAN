@@ -1,0 +1,84 @@
+<div class="container-fluid p-0 overflow-hidden">
+    <div class="row min-vh-100 g-0">
+
+        <div class="col-lg-7 d-none d-lg-flex flex-column align-items-center justify-content-center bg-light p-5 position-relative"
+             style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('assets/images/image9.jpg') center/cover;">
+
+            <div class="text-center text-white p-4" style="z-index: 2;">
+                <img src="assets/logo/e-resto-logo.png" alt="Logo" width="150" height="96"
+                     class="mb-4" style="border-radius: 0; border: 3px solid white; object-fit: contain;">
+
+                <h1 class="display-4 fw-bold mb-3">CODE OTP</h1>
+                <p class="fs-5 opacity-75">
+                    Entrez le code de verification envoyé par email pour sécuriser votre compte restaurant.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-lg-5 d-flex align-items-center justify-content-center bg-white p-4">
+            <div class="w-100" style="max-width: 450px;">
+
+                <div class="card" style="max-width:420px; width:100%;">
+                    <div class="card-body p-5">
+
+                        <div class="text-center mb-3">
+                            <a routerLink="/" class="mb-4 d-inline-block">
+                    <span class="ms-2">
+                        <img src="assets/logo/e-resto-logo.png" alt="Logo" width="96" height="60"
+                             style="border-radius: 0; object-fit: contain; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border:1px solid black">
+                    </span>
+                            </a>
+                            <h1 class="card-title h4" style="font-weight: bolder">Verification du compte</h1>
+                            <p class="text-muted small mt-3">Nous avons envoye un code a 5 chiffres a {{ email }}.</p>
+                        </div>
+
+                        <form class="needs-validation mt-4" (ngSubmit)="verifyOtp()" novalidate>
+
+                            <div class="mb-4">
+                                <label class="form-label d-block text-center mb-3">Code de verification</label>
+                                <div class="d-flex justify-content-between gap-2 otp-container">
+                                    <input type="text" maxlength="1" class="form-control otp-input text-center fs-4 fw-bold"
+                                           #otp1 (keyup)="onKeyUp($event, 0)" required>
+                                    <input type="text" maxlength="1" class="form-control otp-input text-center fs-4 fw-bold"
+                                           #otp2 (keyup)="onKeyUp($event, 1)" required>
+                                    <input type="text" maxlength="1" class="form-control otp-input text-center fs-4 fw-bold"
+                                           #otp3 (keyup)="onKeyUp($event, 2)" required>
+                                    <input type="text" maxlength="1" class="form-control otp-input text-center fs-4 fw-bold"
+                                           #otp4 (keyup)="onKeyUp($event, 3)" required>
+                                    <input type="text" maxlength="1" class="form-control otp-input text-center fs-4 fw-bold"
+                                           #otp5 (keyup)="onKeyUp($event, 4)" required>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary w-100 py-2 d-flex align-items-center justify-content-center"
+                                    type="submit"
+                                    [disabled]="isLoading">
+
+                                <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+
+                                <span>{{ isLoading ? 'Verification...' : 'Verifier le code' }}</span>
+
+                                <i *ngIf="!isLoading" class="bi bi-shield-check ms-2"></i>
+                            </button>
+                            <br/>
+
+                            <div class="text-center">
+                                <p class="small text-muted mb-0">Vous n'avez pas recu le code ?</p>
+                                <button type="button" class="btn btn-link btn-sm p-0" style="color: blue" (click)="resendCode()" [disabled]="isResending">
+                                    {{ isResending ? 'Renvoi...' : 'Renvoyer le code' }}
+                                </button>
+
+                            </div>
+
+                            <p class="text-danger mt-2 text-center" *ngIf="error">{{ error }}</p>
+                        </form>
+
+                    </div>
+                </div>
+
+                <p class="text-center text-muted mt-4 small">© 2026 Restaura Scan. All rights reserved.</p>
+            </div>
+        </div>
+
+    </div>
+</div>

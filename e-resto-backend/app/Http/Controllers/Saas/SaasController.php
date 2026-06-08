@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Saas;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RestaurantAccountCreatedMail;
+use App\Mail\SendOtpMail;
 use App\Models\ContactMessage;
 use App\Models\Feedback;
 use App\Models\NewsletterSubscriber;
+use App\Models\Otp;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Restaurant;
@@ -229,10 +231,31 @@ class SaasController extends Controller
                 }
             });
 
+            $otpCode = rand(10000, 99999);
+            Otp::where('user_id', $user->id)->delete();
+            Otp::create([
+                'user_id' => $user->id,
+                'code' => $otpCode,
+                'expires_at' => now()->addMinutes(5),
+            ]);
+
+            app()->terminating(function () use ($user, $otpCode) {
+                try {
+                    Mail::to($user->email)->send(new SendOtpMail((string) $otpCode));
+                } catch (\Throwable $mailError) {
+                    Log::warning('OTP non envoye pendant le signup SaaS.', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'error' => $mailError->getMessage(),
+                    ]);
+                }
+            });
+
             return response()->json([
+                'message' => 'Compte cree. Un code OTP a ete envoye a votre adresse email.',
                 'restaurant' => $restaurant->load(['plan', 'subscription']),
                 'owner' => $user,
-                'session' => $this->sessionPayload($user),
+                'requires_otp' => true,
             ], 201);
         });
     }
