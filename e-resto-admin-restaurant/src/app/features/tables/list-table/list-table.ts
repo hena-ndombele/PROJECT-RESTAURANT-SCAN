@@ -107,8 +107,6 @@ export class ListTable implements OnInit {
         this.isLoading.set(true);
         this.tableService.list().subscribe({
             next: (response: any) => {
-                console.log(response);
-
                 if (response) {
                     this.tables.set(response);
                 } else {
@@ -119,7 +117,6 @@ export class ListTable implements OnInit {
                 this.currentPage.set(1);
             },
             error: (err) => {
-                console.error(err);
                 this.isLoading.set(false);
             }
         });
@@ -129,7 +126,6 @@ export class ListTable implements OnInit {
         this.saasService.restaurantUsage().subscribe({
             next: (usage) => this.planUsage.set(usage),
             error: (err) => {
-                console.error(err);
                 this.planUsage.set(null);
             }
         });

@@ -72,8 +72,6 @@ export class ListAgent {
     this.isLoading.set(true);
     this.agentService.list().subscribe({
       next: (response: any) => { // 'response' représente tout le JSON
-        console.log(response);
-
         // Accédez à la propriété 'data' qui contient le tableau d'agents
         if (response && response.data) {
           this.agents.set(response.data);
@@ -85,7 +83,6 @@ export class ListAgent {
         this.currentPage.set(1);
       },
       error: (err) => {
-        console.error(err);
         this.isLoading.set(false);
       }
     });

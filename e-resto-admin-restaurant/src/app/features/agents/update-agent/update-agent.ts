@@ -86,7 +86,6 @@ export class UpdateAgent implements OnInit {
     updateCategory(data: AgentInput) {
         this.agentService.update(this.agentDetail!.id, data).subscribe({
             next: (response) => {
-                console.log("response ********",response);
                 this.isLoading = false;
                 Swal.fire({
                     title: 'Updated!',

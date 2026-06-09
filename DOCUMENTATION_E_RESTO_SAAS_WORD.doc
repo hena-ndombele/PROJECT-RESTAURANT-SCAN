@@ -180,7 +180,7 @@ status = suspended ou cancelled
 => affiche Abonnement suspendu/annule</pre>
 <p>Le calcul utilise la difference entre la date de fin et la date actuelle. Si la date est depassee, le nombre de jours restants est ramene a 0.</p>
 <p>La date et l'heure de connexion sont enregistrees dans <code>localStorage.restaurant_login_at</code> quand une session restaurant est creee : login restaurant, creation de compte ou checkout Mobile Money avec session retournee.</p>
-<p>Le menu profil affiche ensuite <strong>Connecte le dd/MM/yyyy HH:mm</strong>. A la deconnexion, cette valeur est supprimee avec les tokens et la session restaurant.</p>
+<p>Le menu profil affiche ensuite <strong>Connecte le dd/MM/yyyy HH:mm</strong>. A la déconnexion, cette valeur est supprimee avec les tokens et la session restaurant.</p>
 <p>Fichiers concernes : dashboard-layout.ts, dashboard-layout.html, dashboard-layout.scss, restaurant-login.ts, restaurant-signup.ts, restaurant-checkout.ts et auth-service.ts.</p>
 <h2>Assistant Intelligent, chatbot et fidelite client</h2>
 <p>E-RESTO peut evoluer vers une plateforme SaaS professionnelle qui ne se limite pas au menu digital. L'objectif est d'aider les restaurants a vendre plus, conseiller les clients et les faire revenir.</p>

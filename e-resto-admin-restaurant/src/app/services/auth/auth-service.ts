@@ -67,7 +67,6 @@ export class AuthService {
       ).subscribe(() => {
         // On rentre dans la zone Angular pour exécuter la déconnexion et redirection
         this.ngZone.run(() => {
-          console.warn("Inactivité détectée : déconnexion automatique.");
           this.logout().subscribe(() => {
             this.router.navigate(['/restaurant/login']);
           });

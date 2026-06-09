@@ -23,10 +23,8 @@ export class DeleteAgent {
     this.isLoading = true;
     this.agentService.delete(id).subscribe({
       next: (res) => {
-        console.log("res***********", res);
         this.isLoading = false;
         this.agents.update(cats => cats.filter(c => c.id !== id));
-        console.log('Supprimée avec succès');
         window.location.reload();
 
       },

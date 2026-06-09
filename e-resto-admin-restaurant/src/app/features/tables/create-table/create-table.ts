@@ -71,7 +71,6 @@ export class CreateTable {
         this.isLoading = true;
         this.tableService.create(data).subscribe({
             next: (response) => {
-                console.log(response);
                 this.isLoading = false;
                 Swal.fire({
                     title: 'Succès !',

@@ -71,26 +71,15 @@ export class ListDish implements OnInit {
         this.isLoading.set(true); // Début du chargement
         this.dishService.list().subscribe({
             next: (response: any) => {
-                console.log("response/****", response);
                 const data = response.data ? response.data : response;
                 this.allDishes.set(data);
                 this.isLoading.set(false); // Fin du chargement
             },
             error: (err) => {
-                console.error("Erreur", err);
                 this.isLoading.set(false); // Fin même si erreur
             }
         });
     }
-    // loadDish(): void {
-    //     this.dishService.list().subscribe({
-    //         next: (response: any) => {
-    //             const data = response.data ? response.data : response;
-    //             this.allDishes.set(data);
-    //         },
-    //         error: (err) => console.error("Erreur lors du chargement", err)
-    //     });
-    // }
 
     onSearch(event: Event): void {
         const value = (event.target as HTMLInputElement).value;

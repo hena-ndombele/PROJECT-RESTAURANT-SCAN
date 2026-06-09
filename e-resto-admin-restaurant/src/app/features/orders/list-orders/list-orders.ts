@@ -175,7 +175,6 @@ export class ListOrders implements OnInit, OnDestroy {
                 this.loading.set(false);
             },
             error: (err) => {
-                console.error("Erreur lors du chargement", err);
                 this.orders.set([]);
                 this.errorMessage.set("Impossible de charger les commandes.");
                 this.loading.set(false);
@@ -271,7 +270,6 @@ export class ListOrders implements OnInit, OnDestroy {
                 this.updatingOrderId.set(null);
             },
             error: (err) => {
-                console.error("Erreur lors de la mise a jour du statut", err);
                 this.orders.update((orders) =>
                     orders.map((item) => item.id === order.id ? { ...item, status: previousStatus } : item)
                 );
@@ -328,7 +326,6 @@ export class ListOrders implements OnInit, OnDestroy {
                 setTimeout(() => this.printCashReceipt(updatedOrder), 100);
             },
             error: (err) => {
-                console.error("Erreur lors de l'encaissement", err);
                 this.errorMessage.set("Impossible de confirmer le paiement cash.");
                 this.updatingPaymentId.set(null);
             }

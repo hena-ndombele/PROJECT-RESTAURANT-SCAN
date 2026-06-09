@@ -25,7 +25,6 @@ export class DeleteCategory {
         this.isLoading = true;
         this.categoryService.delete(id).subscribe({
             next: (res) => {
-                console.log("res***********", res);
                 this.isLoading = false;
                 this.categories.update(cats => cats.filter(c => c.id !== id));
                 window.location.reload();

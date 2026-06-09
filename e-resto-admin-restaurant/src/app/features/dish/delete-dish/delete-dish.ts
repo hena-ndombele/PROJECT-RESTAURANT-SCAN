@@ -23,7 +23,6 @@ export class DeleteDish {
         this.isLoading = true;
         this.dishService.delete(id).subscribe({
             next: (res) => {
-                console.log("res***********", res);
                 this.isLoading = false;
                 this.dish.update(dish => dish.filter(c => c.id !== id));
                 window.location.reload();

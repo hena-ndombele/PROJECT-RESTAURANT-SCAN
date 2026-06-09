@@ -44,7 +44,6 @@ export class ShowDish implements OnInit {
 
         this.dishService.show(id).subscribe({
             next: (response) => {
-                console.log("Reponse plat recue :", response);
                 this.dishDetail.set({
                     ...response,
                     ingredients: this.normalizeIngredients(response.ingredients),
@@ -52,9 +51,8 @@ export class ShowDish implements OnInit {
                 this.isLoading.set(false);
             },
             error: (err) => {
-                console.error("Erreur de recuperation :", err);
                 this.errorMessage.set(err.name === "TimeoutError"
-                    ? "Le serveur ne repond pas. Verifie l'endpoint API du detail du plat."
+                    ? "Le serveur ne repond pas pour ce plat."
                     : "Impossible de charger les informations du plat.");
                 this.isLoading.set(false);
             },

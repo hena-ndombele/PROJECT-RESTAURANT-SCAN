@@ -45,7 +45,6 @@ export class Otp implements OnInit {
     this.authService.currentEmail.subscribe((email) => {
       this.email = email || this.email;
       if (!this.email) {
-        console.warn("Aucun email trouve, retour au login.");
         this.router.navigate(["/restaurant/login"]);
       }
     });

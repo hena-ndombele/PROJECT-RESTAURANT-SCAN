@@ -21,7 +21,6 @@ export class DeleteTable {
         this.isLoading=true;
         this.tableService.delete(id).subscribe({
             next: (res) => {
-                console.log(res);
                 this.isLoading=false;
                 this.tables.update(table => table.filter(c => c.id !== id));
                 window.location.reload();

@@ -58,7 +58,6 @@ export class CreateDish implements OnInit {
                 }
             },
             error: (err) => {
-                console.error("Erreur chargement categories", err);
                 this.formError.set("Impossible de charger les categories de ce restaurant. Reconnectez-vous puis reessayez.");
             },
         });

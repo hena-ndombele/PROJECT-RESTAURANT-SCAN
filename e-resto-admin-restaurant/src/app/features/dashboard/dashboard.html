@@ -12,7 +12,7 @@
                     {{ lastUpdated() | date:'HH:mm:ss' }}
                 </span>
             }
-            <button class="btn btn-light btn-sm" type="button" [disabled]="refreshing()" (click)="loadDashboard()">
+            <button class="btn btn-light btn-sm" type="button" [disabled]="refreshing()" (click)="loadDashboard(true)">
                 @if (refreshing()) {
                     <span class="spinner-border spinner-border-sm me-2"></span>
                 } @else {
@@ -33,11 +33,12 @@
     } -->
 
     @if (loading()) {
-        <div class="dashboard-loading">
-            <div class="spinner-border text-primary"></div>
+        <div class="dashboard-loading mb-3">
+            <div class="spinner-border spinner-border-sm text-primary"></div>
             <span>Chargement du dashboard...</span>
         </div>
-    } @else {
+    }
+
         <div class="row g-3 mb-3">
             @for (card of kpiCards(); track card.label) {
                 <div class="col-12 col-md-6 col-xl-3">
@@ -189,7 +190,6 @@
                 </div>
             </div>
         </div>
-    }
 
     @if (onboardingOpen()) {
         <div class="onboarding-backdrop">

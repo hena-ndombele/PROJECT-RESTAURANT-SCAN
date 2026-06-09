@@ -41,9 +41,6 @@ export class CreateCategory {
     } else {
       this.categoryForm.markAllAsTouched();
 
-      if (!this.selectedFile) {
-        console.error("L'image est manquante !");
-      }
     }
   }
 
@@ -52,7 +49,6 @@ export class CreateCategory {
     this.categoryService.create(data).subscribe({
       next: (response) => {
         this.isLoading = false;
-           console.log('category créée avec succès:', response);
         Swal.fire({
           title: 'Success !',
           text: 'A category has been added.',

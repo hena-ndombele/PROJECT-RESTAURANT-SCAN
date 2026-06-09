@@ -72,7 +72,7 @@ export class UpdateDish implements OnInit {
     loadCategories(): void {
         this.categoryService.list().subscribe({
             next: (data) => this.categories.set(data),
-            error: (err) => console.error("Erreur chargement categories", err),
+            error: () => undefined,
         });
     }
 
@@ -99,7 +99,6 @@ export class UpdateDish implements OnInit {
                 });
             },
             error: (err) => {
-                console.error("Erreur chargement plat", err);
                 this.errorMessage = err.name === "TimeoutError"
                     ? "Le serveur ne repond pas pour ce plat."
                     : "Impossible de charger le plat.";

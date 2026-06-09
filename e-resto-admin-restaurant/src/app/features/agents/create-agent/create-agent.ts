@@ -41,7 +41,6 @@ export class CreateAgent {
     this.agentService.create(agentData).subscribe({
       next: (response) => {
         this.isLoading = false;
-        console.log('agents créée avec succès:', response);
         Swal.fire({
           title: 'Success !',
           text: 'A employee has been added.',
@@ -56,7 +55,6 @@ export class CreateAgent {
       },
       error: (err) => {
         this.isLoading = false;
-        console.error(err);
         Swal.fire({
           title: 'Error',
           text: err.error?.message || '\n' +

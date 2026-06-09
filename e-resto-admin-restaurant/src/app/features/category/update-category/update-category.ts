@@ -47,7 +47,7 @@ export class UpdateCategory implements OnInit {
                     description: data.description,
                 });
             },
-            error: (err) => console.error("Erreur lors du chargement", err)
+            error: () => undefined
         });
     }
 

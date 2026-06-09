@@ -22,7 +22,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -221,13 +220,7 @@ class SaasController extends Controller
                         $user,
                         $restaurant->fresh(['plan', 'subscription'])
                     ));
-                } catch (\Throwable $mailError) {
-                    Log::warning('Email de bienvenue non envoye pendant le signup SaaS.', [
-                        'restaurant_id' => $restaurant->id,
-                        'user_id' => $user->id,
-                        'email' => $user->email,
-                        'error' => $mailError->getMessage(),
-                    ]);
+                } catch (\Throwable) {
                 }
             });
 
@@ -239,17 +232,10 @@ class SaasController extends Controller
                 'expires_at' => now()->addMinutes(5),
             ]);
 
-            app()->terminating(function () use ($user, $otpCode) {
-                try {
-                    Mail::to($user->email)->send(new SendOtpMail((string) $otpCode));
-                } catch (\Throwable $mailError) {
-                    Log::warning('OTP non envoye pendant le signup SaaS.', [
-                        'user_id' => $user->id,
-                        'email' => $user->email,
-                        'error' => $mailError->getMessage(),
-                    ]);
-                }
-            });
+            try {
+                Mail::to($user->email)->send(new SendOtpMail((string) $otpCode));
+            } catch (\Throwable) {
+            }
 
             return response()->json([
                 'message' => 'Compte cree. Un code OTP a ete envoye a votre adresse email.',
@@ -1120,9 +1106,7 @@ class SaasController extends Controller
                 'name' => $profile['name'] ?? $profile['email'],
                 'picture' => $profile['picture'] ?? null,
             ];
-        } catch (\Throwable $error) {
-            Log::warning('Verification Google impossible.', ['error' => $error->getMessage()]);
-
+        } catch (\Throwable) {
             return null;
         }
     }

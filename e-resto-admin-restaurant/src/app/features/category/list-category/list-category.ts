@@ -67,8 +67,6 @@ export class ListCategory implements OnInit {
     this.isLoading.set(true);
     this.categoryService.list().subscribe({
       next: (data) => {
-        console.log(data);
-
         this.categories.set(data);
         this.isLoading.set(false);
         this.currentPage.set(1); // Reset à la page 1 au chargement

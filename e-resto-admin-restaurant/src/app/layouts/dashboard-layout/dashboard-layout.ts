@@ -435,7 +435,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.isLoading = true;
         this.authService.changePassword(this.passwordForm.value).subscribe({
             next: (res) => {
-                console.log("res******", res);
                 this.isLoading = false
 
                 Swal.fire({
@@ -451,7 +450,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                 });
             },
             error: (err) => {
-                console.error("err******", err);
                 this.isLoading = false;
                 const errorMessage = err.error?.message || 'Une erreur est survenue';
 
@@ -472,7 +470,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         this.authService.logout().subscribe({
             next: (res) => {
-                console.log("res**************", res);
                 const modalElement = document.getElementById('logoutModal');
                 if (modalElement) {
                     const modalInstance = (window as any).bootstrap?.Modal.getInstance(modalElement);
@@ -482,7 +479,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                 this.router.navigate(['/restaurant/login']);
             },
             error: (err) => {
-                console.error('Erreur logout', err);
                 Swal.fire({
                     title: 'Error',
                     text: err.error?.message || '\n' +

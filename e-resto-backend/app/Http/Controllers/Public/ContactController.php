@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Mail\ContactMessageReceivedMail;
 use App\Models\ContactMessage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class ContactController extends Controller
@@ -27,12 +26,7 @@ class ContactController extends Controller
             try {
                 $recipient = config('mail.from.address') ?: 'restauraScan2026@gmail.com';
                 Mail::to($recipient)->send(new ContactMessageReceivedMail($message));
-            } catch (\Throwable $mailError) {
-                Log::warning('Email contact landing non envoye.', [
-                    'contact_message_id' => $message->id,
-                    'email' => $message->email,
-                    'error' => $mailError->getMessage(),
-                ]);
+            } catch (\Throwable) {
             }
         });
 

@@ -36,7 +36,6 @@ export class FloorTable implements OnInit {
                 setTimeout(() => this.isLoading.set(false), 600);
             },
             error: (err) => {
-                console.error('Erreur chargement tables:', err);
                 this.isLoading.set(false); // On coupe le loading même si ça échoue
             }
         });

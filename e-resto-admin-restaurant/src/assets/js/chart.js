@@ -294,7 +294,6 @@ chart.render();
     // call updateMonthlySales([arrayOf12], optionalCompareArrayOf12)
     function updateMonthlySales(currentYearArray, compareYearArray = null) {
       if (!Array.isArray(currentYearArray) || currentYearArray.length !== 12) {
-        console.warn('updateMonthlySales expects an array of 12 numbers for currentYearArray');
         return;
       }
       const series = [{ name: 'This Year', data: currentYearArray }];

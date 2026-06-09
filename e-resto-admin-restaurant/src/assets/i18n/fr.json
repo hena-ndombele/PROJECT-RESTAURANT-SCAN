@@ -2,7 +2,7 @@
   "topbar": {
     "notifications": "Notifications",
     "noAlerts": "Aucune nouvelle alerte",
-    "logout": "Deconnexion",
+    "logout": "Déconnexion",
     "profile": "Mon profil",
     "changePassword": "Changer le mot de passe"
   },
@@ -22,7 +22,7 @@
     "users": "Utilisateurs"
   },
   "logout": {
-    "title": "Deconnexion ?",
+    "title": "Déconnexion ?",
     "message": "Voulez-vous vraiment vous deconnecter ?"
   },
   "common": {

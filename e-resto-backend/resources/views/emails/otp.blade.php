@@ -20,7 +20,7 @@
                         <td style="padding:30px;text-align:center;">
                             <p style="margin:0;color:#374151;line-height:1.7;">Utilisez ce code pour confirmer votre connexion a Restaura Scan.</p>
                             <div style="display:inline-block;margin:24px 0;padding:18px 26px;border:1px solid #fed7aa;border-radius:14px;background:#fff7ed;color:#d71920;font-size:38px;letter-spacing:8px;font-weight:800;">{{ $otp }}</div>
-                            <p style="margin:0;color:#6b7280;line-height:1.7;">Ce code expire dans <strong>10 minutes</strong>. Ne le partagez avec personne.</p>
+                            <p style="margin:0;color:#6b7280;line-height:1.7;">Ce code expire dans <strong>5 minutes</strong>. Ne le partagez avec personne.</p>
                             <p style="margin:24px 0 0;">
                                 <a href="{{ config('app.frontend_url', config('app.url')) }}" style="display:inline-block;padding:13px 18px;border-radius:10px;background:linear-gradient(135deg,#ff7a1a,#d71920);color:#ffffff;text-decoration:none;font-weight:700;">Ouvrir Restaura Scan</a>
                             </p>
