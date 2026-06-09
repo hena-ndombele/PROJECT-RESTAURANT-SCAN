@@ -30,7 +30,7 @@ export class PricingPage {
       max_users: 5,
       features: ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Cash uniquement', 'Sur place / Emporter', 'Support standard'],
       installation_fee: 20_000,
-      limitations: ['Pas de paiement client Mobile Money', 'Pas de statistiques detaillees', 'Pas de reservations', 'Pas de feedback client', 'Pas de personnalisation', 'Roles limites'],
+      limitations: [ 'Pas de statistiques detaillées', 'Pas de réservations', 'Pas de feedback client', 'Pas de personnalisation', 'Rôles limités'],
       is_popular: false,
     },
     {
@@ -43,7 +43,7 @@ export class PricingPage {
       max_restaurants: 1,
       max_tables: null,
       max_users: null,
-      features: ['Tables illimitees', 'Utilisateurs illimites', 'Commandes illimitees', 'Plats illimites', 'Reservations', 'Feedback client', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire'],
+      features: ['Tables illimitées', 'Commandes illimitées', 'Plats illimités', 'Reservations', 'Feedback client', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire'],
       installation_fee: 20_000,
       limitations: ['Pas de multi-restaurant', 'Assistant dashboard avance reserve au Business'],
       is_popular: true,

@@ -15,26 +15,27 @@
     <div class="hero-copy">
       <span class="eyebrow">Tarifs simples et transparents</span>
       <h1>Un menu digital pro pour chaque restaurant</h1>
-      <p>Offrez une experience moderne a vos clients et gardez vos commandes, paiements et rapports connectes au meme espace.</p>
+      <p>Offrez une expérience moderne à vos clients en centralisant vos commandes, paiements et rapports au même espace.</p>
       <div class="hero-benefits">
         <span><i class="bi bi-check-circle-fill"></i> Mise en service accompagnée</span>
         <span><i class="bi bi-check-circle-fill"></i> 14 jours d'essai sans carte bancaire</span>
       </div>
+
     </div>
   </section>
 
   <section class="plans-shell">
     <div class="plans-intro">
       <span class="eyebrow">Choisissez votre formule</span>
-      <h2>Trois plans pour grandir sans complexité</h2>
-      <p>Commencez avec l'essentiel, puis activez les outils avances lorsque votre activité évolue.</p>
+      <h3>Trois plans pour grandir sans complexité</h3>
+      <p>Commencez avec l'éssentiel, puis activez les outils avancés lorsque votre activité évolue.</p>
     </div>
 
     <div class="ai-feature-strip">
       <div class="ai-feature-icon"><i class="bi bi-stars"></i></div>
       <div>
         <span>Outils avances selon votre plan</span>
-        <strong>Statistiques, roles, support et assistant dashboard selon le niveau choisi.</strong>
+        <strong>Statistiques, rôles, support et assistant dashboard selon le niveau choisi.</strong>
       </div>
     </div>
 
@@ -66,8 +67,8 @@
         </div>
 
         <ul>
-          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_tables, 'tables QR', 'Tables QR illimitees') }}</li>
-          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_users, 'utilisateurs equipe', 'Utilisateurs equipe illimites') }}</li>
+          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_tables, 'tables QR', 'Tables QR illimitées') }}</li>
+          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_users, 'utilisateurs équipe', 'Utilisateurs illimités') }}</li>
           <li *ngFor="let feature of plan.features"><i class="bi bi-check-circle-fill"></i>{{ feature }}</li>
           <li class="limitation" *ngFor="let limitation of plan.limitations"><i class="bi bi-x-circle"></i>{{ limitation }}</li>
         </ul>
