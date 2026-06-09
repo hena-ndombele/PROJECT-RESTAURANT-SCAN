@@ -139,9 +139,9 @@
   animation: card-rise .7s .1s cubic-bezier(.2, .8, .2, 1) both;
 }
 
-.plans-intro h2 {
+.plans-intro h3 {
   margin: 8px 0;
-  font-size: clamp(26px, 3.5vw, 36px);
+  font-size: clamp(18px, 3.5vw, 25px);
   line-height: 1.05;
   font-weight: 950;
 }

@@ -1,0 +1,238 @@
+<main class="saas-page">
+  <nav class="saas-nav">
+    <a class="brand" routerLink="/">
+      <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+      <span>Restaura Scan</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Fonctionnalites</a>
+      <a routerLink="/pricing">Tarifs</a>
+      <a routerLink="/restaurant/login">Connexion</a>
+      <a routerLink="/pricing" class="start">Essai gratuit -></a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-content">
+      <span class="eyebrow">Menu digital pour restaurants</span>
+      <h1>Menu QR qui fait commander</h1>
+      <p>Un menu QR premium pour commander, payer et suivre le service en temps reel.</p>
+      <div class="hero-actions">
+        <a routerLink="/pricing" class="btn-main">Démarrer gratuitement</a>
+        <a routerLink="/pricing" class="btn-secondary">Voir les tarifs -></a>
+      </div>
+      <div class="hero-stats">
+        <article><strong>14j</strong><span>Essai gratuit</span></article>
+        <article><strong>0</strong><span>Appli requise</span></article>
+        <article><strong>5min</strong><span>Pour demarrer</span></article>
+        <article><strong>100%</strong><span>Mobile-friendly</span></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="features landing-reveal">
+    <div class="section-title">
+      <span class="eyebrow">Fonctionnalites</span>
+      <h2>L'essentiel pour servir plus vite</h2>
+      <p>Menu QR, commandes, paiements et rapports dans un seul espace.</p>
+    </div>
+
+    <div class="feature-grid">
+      <article class="landing-reveal"><i class="bi bi-qr-code"></i><h3>QR Code</h3><p>Un code par table, pret a imprimer.</p></article>
+      <article class="landing-reveal"><i class="bi bi-broadcast"></i><h3>Temps reel</h3><p>Commande, addition et annulation notifiees.</p></article>
+      <article class="landing-reveal"><i class="bi bi-bag-check"></i><h3>Sur place / Emporter</h3><p>Le bon mode de service au bon moment.</p></article>
+      <article class="landing-reveal"><i class="bi bi-phone"></i><h3>Paiements</h3><p>Cash, mobile money et recus clairs.</p></article>
+      <article class="landing-reveal"><i class="bi bi-palette"></i><h3>Branding</h3><p>Logo, slogan et couleurs du restaurant.</p></article>
+      <article class="landing-reveal"><i class="bi bi-bar-chart"></i><h3>Rapports</h3><p>Revenus, plats populaires, PDF et Excel.</p></article>
+    </div>
+  </section>
+
+  <section class="scan-showcase landing-reveal">
+    <div class="scan-visual">
+      <img src="assets/landing/qr-scan-phone.png" alt="Telephone affichant un QR code de menu digital">
+      <div class="scan-overlay">
+        <span>Scan QR</span>
+        <strong>Commandez sans attendre</strong>
+      </div>
+    </div>
+    <div class="scan-copy">
+      <span class="eyebrow">Scan instantane</span>
+      <h2>Un QR code. Un menu. Une commande.</h2>
+      <p>Le client scanne, choisit et commande sans application.</p>
+      <div class="scan-points">
+        <article><strong>01</strong><span>Scan du QR code</span></article>
+        <article><strong>02</strong><span>Menu ouvert sur mobile</span></article>
+        <article><strong>03</strong><span>Commande recue en cuisine</span></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="guide landing-reveal">
+    <div class="section-title">
+      <span class="eyebrow">Comment ca marche</span>
+      <h2>Operationnel rapidement</h2>
+    </div>
+    <div class="steps">
+      <article class="landing-reveal"><strong>1</strong><h3>Compte</h3><p>Choisissez un plan.</p></article>
+      <article class="landing-reveal"><strong>2</strong><h3>Menu</h3><p>Ajoutez plats et tables.</p></article>
+      <article class="landing-reveal"><strong>3</strong><h3>Commandes</h3><p>Recevez tout en temps reel.</p></article>
+      <article class="landing-reveal"><strong>4</strong><h3>Rapports</h3><p>Suivez votre activite.</p></article>
+    </div>
+  </section>
+
+  <section class="knowledge landing-reveal">
+    <div class="section-title">
+      <span class="eyebrow">Guide d'utilisation</span>
+      <h2>Tout ce que vous devez savoir pour demarrer avec Restaura Scan</h2>
+      <p>Un parcours simple pour passer du compte cree a la premiere commande.</p>
+    </div>
+
+    <div class="knowledge-grid">
+      <article class="landing-reveal">
+        <strong>01</strong>
+        <h3>Creez votre espace restaurant</h3>
+        <p>Choisissez un plan et ouvrez votre espace.</p>
+        <ul>
+          <li>Infos proprietaire</li>
+          <li>Infos restaurant</li>
+          <li>Essai ou abonnement</li>
+        </ul>
+      </article>
+      <article class="landing-reveal">
+        <strong>02</strong>
+        <h3>Configurez menu, tables et QR codes</h3>
+        <p>Preparez ce que vos clients verront.</p>
+        <ul>
+          <li>Tables et QR codes</li>
+          <li>Categories et plats</li>
+          <li>Logo et couleurs</li>
+        </ul>
+      </article>
+      <article class="landing-reveal">
+        <strong>03</strong>
+        <h3>Recevez et suivez les commandes</h3>
+        <p>Le service suit chaque action client.</p>
+        <ul>
+          <li>Notification sonore</li>
+          <li>Statuts de commande</li>
+          <li>Feedback et rapports</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="cta landing-reveal" #ctaSection>
+    <div class="cta-stats" aria-label="Statistiques de la plateforme">
+      <article *ngFor="let stat of ctaStats; let i = index">
+        <strong>{{ statsLoaded ? ('+' + (animatedStats[i] | number:'1.0-0')) : '...' }}</strong>
+        <span>{{ stat.label }}</span>
+      </article>
+    </div>
+    <h2>Pret a moderniser votre restaurant ?</h2>
+    <p>Demarrez avec un menu QR professionnel et activez les outils selon votre plan.</p>
+    <a routerLink="/pricing">Demarrer mon essai gratuit</a>
+  </section>
+
+  <section class="contact-section landing-reveal" id="contact">
+    <div class="contact-copy">
+      <span class="eyebrow">Contact restaurant</span>
+      <h2>Vous voulez digitaliser votre restaurant ?</h2>
+      <p>Envoyez-nous un message. Nous vous aidons a choisir le plan, configurer vos QR codes et demarrer votre menu digital.</p>
+      <div class="contact-highlights">
+        <article><i class="bi bi-lightning-charge"></i><span>Reponse rapide</span></article>
+        <article><i class="bi bi-qr-code"></i><span>Aide configuration QR</span></article>
+        <article><i class="bi bi-headset"></i><span>Accompagnement SaaS</span></article>
+      </div>
+    </div>
+
+    <form class="contact-form" (ngSubmit)="submitContact()" novalidate>
+      <div class="grid-2">
+        <label>
+          <span>Nom complet *</span>
+          <input type="text" name="contact_name" [(ngModel)]="contactForm.name" placeholder="Votre nom" autocomplete="name" required>
+        </label>
+        <label>
+          <span>Email *</span>
+          <input type="email" name="contact_email" [(ngModel)]="contactForm.email" placeholder="nom@email.com" autocomplete="email" required>
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>
+          <span>Telephone</span>
+          <input type="tel" name="contact_phone" [(ngModel)]="contactForm.phone" placeholder="+243..." autocomplete="tel">
+        </label>
+        <label>
+          <span>Sujet</span>
+          <input type="text" name="contact_subject" [(ngModel)]="contactForm.subject" placeholder="Demande restaurant SaaS">
+        </label>
+      </div>
+
+      <label>
+        <span>Message *</span>
+        <textarea name="contact_message" [(ngModel)]="contactForm.message" rows="5" placeholder="Parlez-nous de votre restaurant, vos besoins, votre ville..." required></textarea>
+      </label>
+
+      <button type="submit" [disabled]="isContactSubmitting">
+        {{ isContactSubmitting ? 'Envoi en cours...' : 'Envoyer le message' }}
+      </button>
+
+      <div class="form-feedback" role="alert" *ngIf="contactMessage" [class.success]="contactStatus === 'success'" [class.error]="contactStatus === 'error'">
+        <i class="bi" [ngClass]="contactStatus === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+        <span>{{ contactMessage }}</span>
+      </div>
+    </form>
+  </section>
+
+  <footer class="site-footer landing-reveal">
+    <div class="footer-brand">
+      <a class="brand" routerLink="/">
+        <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+        <span>Restaura Scan</span>
+      </a>
+      <p>Plateforme SaaS pour restaurants : menu QR, commandes, paiements, reservations, feedback et rapports.</p>
+      <address>
+        Kinshasa, Republique Democratique du Congo<br>
+        <a href="tel:+243830376004">+243 000000000</a><br>
+        <a href="mailto:restauraScan2026@gmail.com">restauraScan2026@gmail.com</a>
+      </address>
+      <div class="social-links" aria-label="Reseaux sociaux">
+        <a href="https://www.facebook.com/" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+        <a href="https://www.linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+        <a href="https://x.com/" target="_blank" rel="noopener" aria-label="X"><i class="bi bi-twitter-x"></i></a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <h3>Produit</h3>
+      <a href="#features">Fonctionnalites</a>
+      <a routerLink="/pricing">Tarifs</a>
+      <a routerLink="/restaurant/login">Connexion restaurant</a>
+    </div>
+
+    <div class="footer-links">
+      <h3>Ressources</h3>
+      <a href="#features">Menu QR</a>
+      <a routerLink="/pricing">Plans SaaS</a>
+      <a href="#contact">Support client</a>
+    </div>
+
+    <form class="newsletter" (ngSubmit)="submitNewsletter()" novalidate>
+      <h3>Newsletter</h3>
+      <p>Nouveautes produit et conseils restaurant.</p>
+      <div class="newsletter-row">
+        <input type="email" name="newsletter_email" [(ngModel)]="newsletterEmail" placeholder="Votre adresse email" aria-label="Adresse email newsletter" autocomplete="email" required>
+        <button type="submit" [disabled]="isNewsletterSubmitting">{{ isNewsletterSubmitting ? 'Envoi...' : "S'inscrire" }}</button>
+      </div>
+      <div class="form-feedback" role="alert" *ngIf="newsletterMessage" [class.success]="newsletterStatus === 'success'" [class.error]="newsletterStatus === 'error'">
+        <i class="bi" [ngClass]="newsletterStatus === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+        <span>{{ newsletterMessage }}</span>
+      </div>
+    </form>
+
+    <div class="footer-bottom">
+      <span>&copy; 2026 Restaura Scan. Tous droits reserves.</span>
+      <span>Cree par Hena Ndombele.</span>
+    </div>
+  </footer>
+</main>
