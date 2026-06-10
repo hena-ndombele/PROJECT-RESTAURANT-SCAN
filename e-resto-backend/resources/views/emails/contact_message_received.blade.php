@@ -11,7 +11,7 @@
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(17,24,39,.08);">
                     <tr>
                         <td style="padding:30px;background:linear-gradient(135deg,#ff7a1a,#d71920);color:#ffffff;">
-                            <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#fff3d6;font-weight:700;">Restaura Scan Support</div>
+                            <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#fff3d6;font-weight:700;">Restaurant Scan Support</div>
                             <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;">Nouveau message restaurant</h1>
                             <p style="margin:10px 0 0;color:#d1d5db;line-height:1.6;">Un visiteur vient d'envoyer une demande depuis la landing SaaS.</p>
                         </td>
@@ -42,7 +42,7 @@
                     </tr>
                     <tr>
                         <td style="padding:18px 28px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.6;">
-                            &copy; {{ date('Y') }} Restaura Scan. Message conserve dans le tableau de support plateforme.
+                            &copy; {{ date('Y') }} Restaurant Scan. Message conserve dans le tableau de support plateforme.
                         </td>
                     </tr>
                 </table>

@@ -140,7 +140,7 @@ class MenuController extends Controller
             'whatsapp_order_phone' => $settings['whatsapp_order_phone'] ?? $restaurant->owner_phone,
             'theme' => $settings['theme'] ?? [],
             'can_feedback' => (bool) $restaurant->plan?->allows('feedback'),
-            'can_reservations' => (bool) $restaurant->plan?->allows('reservations'),
+            'can_Réservations' => (bool) $restaurant->plan?->allows('Réservations'),
             'can_mobile_money' => false,
             'can_chatbot' => false,
             'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],

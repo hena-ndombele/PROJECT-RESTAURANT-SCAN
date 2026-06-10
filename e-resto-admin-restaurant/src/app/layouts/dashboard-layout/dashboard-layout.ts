@@ -8,7 +8,7 @@ import introJs from 'intro.js';
 import {TranslateModule, TranslateService} from "@ngx-translate/core";
 import {OrderRealtimeService} from "../../services/realtime/order-realtime-service";
 import {ThemeService} from "../../services/theme/theme-service";
-import {ReservationService} from "../../services/reservation/reservation-service";
+import {Réservationservice} from "../../services/reservation/reservation-service";
 import {Subscription} from "rxjs";
 
 @Component({
@@ -28,7 +28,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected orderRealtime = inject(OrderRealtimeService);
     protected theme = inject(ThemeService);
     private translate = inject(TranslateService);
-    private reservationService = inject(ReservationService);
+    private Réservationservice = inject(Réservationservice);
     private reservationBadgeTimer?: ReturnType<typeof setInterval>;
     private reservationCreatedSubscription?: Subscription;
 
@@ -48,7 +48,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         fonction: '',
     };
     restaurantData: any = {
-        name: 'Restaura Scan',
+        name: 'Restaurant Scan',
         logo: 'assets/logo/e-resto-logo.png',
         city: '',
         owner_phone: '',
@@ -66,13 +66,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected loginInfo = {
         connectedAt: new Date(),
     };
-    protected pendingReservationsCount = 0;
+    protected pendingRéservationsCount = 0;
     protected assistantOpen = false;
     protected assistantInput = '';
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
             from: 'bot',
-            text: 'Bonjour, je suis votre Assistant Restaura Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les reservations et votre plan.',
+            text: 'Bonjour, je suis votre Assistant Restaurant Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les Réservations et votre plan.',
         },
     ];
 
@@ -92,7 +92,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         if (restaurant) {
             this.restaurantData = {
-                name: restaurant.name || 'Restaura Scan',
+                name: restaurant.name || 'Restaurant Scan',
                 logo: restaurant.logo_url || (restaurant.logo ? `http://127.0.0.1:8000/storage/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
                 city: restaurant.city || '',
                 owner_phone: restaurant.owner_phone || '',
@@ -109,10 +109,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.loginInfo = {
             connectedAt: this.resolveLoginDate(),
         };
-        if (this.canUse('reservations')) {
+        if (this.canUse('Réservations')) {
             this.loadReservationBadge();
             this.reservationCreatedSubscription = this.orderRealtime.reservationCreated$.subscribe(() => {
-                this.pendingReservationsCount += 1;
+                this.pendingRéservationsCount += 1;
                 this.cdref.detectChanges();
             });
             this.reservationBadgeTimer = setInterval(() => this.loadReservationBadge(), 15000);
@@ -176,13 +176,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     }
 
     private loadReservationBadge(): void {
-        this.reservationService.list({ status: 'pending' }).subscribe({
-            next: (reservations) => {
-                this.pendingReservationsCount = reservations.length;
+        this.Réservationservice.list({ status: 'pending' }).subscribe({
+            next: (Réservations) => {
+                this.pendingRéservationsCount = Réservations.length;
                 this.cdref.detectChanges();
             },
             error: () => {
-                this.pendingReservationsCount = 0;
+                this.pendingRéservationsCount = 0;
                 this.cdref.detectChanges();
             },
         });
@@ -194,7 +194,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         const isPro = isBusiness || slug.includes('pro');
 
         return {
-            reservations: isPro,
+            Réservations: isPro,
             feedback: isPro,
             analytics: isPro,
             customization: isPro,
@@ -279,13 +279,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         const planName = this.subscriptionInfo.detail.replace('Paiement confirme - ', '').replace('Essai gratuit - ', '') || 'votre plan';
 
         if (normalized.includes('commande')) {
-            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en temps reel avec son, badge et notification. Pour accelerer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
+            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en Temps réel avec son, badge et notification. Pour accelerer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
         }
 
         if (normalized.includes('stat') || normalized.includes('revenu') || normalized.includes('vente')) {
             return this.canUse('analytics')
                 ? `Votre plan permet les statistiques. Regardez le dashboard pour suivre les revenus par devise, les commandes du jour et les plats les plus commandes.`
-                : `Les statistiques detaillees sont reservees aux plans Pro et Business. Passez sur Pro pour voir les analyses avancees.`;
+                : `Les Statistiques detaillées sont reservees aux plans Pro et Business. Passez sur Pro pour voir les analyses avancees.`;
         }
 
         if (normalized.includes('qr') || normalized.includes('table')) {
@@ -293,9 +293,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         }
 
         if (normalized.includes('reservation')) {
-            return this.canUse('reservations')
-                ? `Les reservations sont actives sur ${planName}. Vos clients peuvent reserver depuis le menu public et vous confirmez ensuite dans Reservations.`
-                : `Les reservations sont reservees aux plans Pro et Business.`;
+            return this.canUse('Réservations')
+                ? `Les Réservations sont actives sur ${planName}. Vos clients peuvent reserver depuis le menu public et vous confirmez ensuite dans Réservations.`
+                : `Les Réservations sont reservees aux plans Pro et Business.`;
         }
 
         if (normalized.includes('plan') || normalized.includes('abonnement') || normalized.includes('jour')) {
@@ -310,7 +310,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             return `Le module fidelite peut recompenser les clients apres plusieurs commandes : points, tampons ou coupons. C'est ideal pour faire revenir les clients reguliers.`;
         }
 
-        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, reservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
+        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, Réservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
     }
 
     private buildSubscriptionInfo(restaurant: any): {

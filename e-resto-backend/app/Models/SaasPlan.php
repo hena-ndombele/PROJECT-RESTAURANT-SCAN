@@ -95,7 +95,7 @@ class SaasPlan extends Model
             'advanced_analytics' => $tier === 'business',
             'customization' => in_array($tier, ['pro', 'business'], true),
             'feedback' => in_array($tier, ['pro', 'business'], true),
-            'reservations' => in_array($tier, ['pro', 'business'], true),
+            'Réservations' => in_array($tier, ['pro', 'business'], true),
             'chatbot' => false,
             'roles' => true,
             'multi_restaurant' => $tier === 'business',

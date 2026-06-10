@@ -1,7 +1,7 @@
 <main class="signup-page">
   <aside class="signup-visual">
     <a class="visual-brand" routerLink="/">
-      <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+      <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
       <span>Restaurant Scan</span>
     </a>
     <div class="visual-copy">
@@ -19,10 +19,10 @@
     <div class="signup-card">
       <div class="signup-head">
         <a class="form-logo" routerLink="/" aria-label="Retour a l'accueil">
-          <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+          <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
         </a>
         <h1>Créer votre espace</h1>
-        <p>{{ accountCreated ? 'Votre restaurant est pret.' : 'Quelques informations suffisent pour demarrer.' }}</p>
+        <p>{{ accountCreated ? 'Votre restaurant est pret.' : 'Quelques informations suffisent Pour démarrer.' }}</p>
         <span class="selected-plan" *ngIf="selectedPlan.name">Plan choisi : <strong>{{ selectedPlan.name }}</strong></span>
 
         <div class="stepper" aria-label="Progression inscription" *ngIf="!accountCreated">
@@ -125,7 +125,7 @@
   <div class="success-modal-backdrop" *ngIf="accountCreated">
     <section class="success-modal" role="dialog" aria-modal="true" aria-labelledby="signupSuccessTitle">
       <a class="modal-logo" routerLink="/">
-        <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
+        <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
       </a>
       <span class="modal-subtitle">Restaurant Scan - Menu digital QR code</span>
       <div class="modal-icon"><i class="bi bi-stars"></i></div>

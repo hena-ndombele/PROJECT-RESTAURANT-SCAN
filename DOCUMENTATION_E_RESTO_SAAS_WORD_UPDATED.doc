@@ -13,9 +13,9 @@ code { background: #f3f4f6; padding: 1px 4px; }
 </head>
 <body>
 <h1>E-RESTO SaaS - Documentation mise a jour</h1>
-<p>Cette version reprend la documentation existante et ajoute le flow temps reel du dashboard Angular.</p>
+<p>Cette version reprend la documentation existante et ajoute le flow Temps réel du dashboard Angular.</p>
 
-<h2>Temps reel dashboard Angular</h2>
+<h2>Temps réel dashboard Angular</h2>
 <p>Le dashboard Angular utilise maintenant un websocket Laravel Reverb pour les commandes. Quand une commande arrive, Angular recoit l'evenement sans actualiser la page.</p>
 <pre>Nouvelle commande client
 => evenement Laravel broadcast
@@ -71,7 +71,7 @@ payment_status != paid</pre>
 <h3>Suivi client apres modification</h3>
 <p>Le suivi client detecte maintenant les changements de total, note, articles, quantites, statut paiement et statut commande. Une modification sans changement de statut est donc aussi synchronisee.</p>
 <h2>21. Limites des forfaits et actions bloquees</h2>
-<p>Chaque plan SaaS possede des quotas. Par exemple, le plan Free Demo donne droit a 3 tables et 1 utilisateur.</p>
+<p>Chaque Plan possede des quotas. Par exemple, le plan Free Demo donne droit a 3 tables et 1 utilisateur.</p>
 <p>Le backend expose l'utilisation du forfait du restaurant connecte via l'endpoint suivant :</p>
 <pre>GET /api/saas/restaurant/usage</pre>
 <p>La reponse contient le plan actif, les limites, l'utilisation actuelle, les permissions et les messages a afficher dans l'interface.</p>
@@ -91,9 +91,9 @@ Le backend refuse toujours l'action si la limite est depassee.</pre>
 <p>Le feedback est accepte uniquement si la commande est servie, ou si elle est prete avec order_type = takeaway. Une meme commande ne cree pas plusieurs avis : l'avis existant est mis a jour.</p>
 <p>Dans e-resto-Angular, le menu Feedbacks affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.</p>
 <p>Le module Feedback est reserve aux plans Pro, Business et Enterprise. Si le restaurant est sur Free Demo ou Starter, le backend refuse l'envoi, le dashboard affiche un message d'upgrade et le client ne declenche pas le modal feedback.</p>
-<h2>Reservations professionnelles</h2>
+<h2>Réservations professionnelles</h2>
 <p>Le client ouvre le menu QR ou le menu public, remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale. Le backend cree une reservation en statut pending.</p>
-<p>Le restaurant voit la demande dans le dashboard Reservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
+<p>Le restaurant voit la demande dans le dashboard Réservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
 <p>Statuts : pending, confirmed, seated, completed, cancelled, no_show.</p>
 <p>Dans e-resto-client, le client voit que sa demande est envoyee au restaurant et qu'elle doit etre confirmee. Une reference courte est affichee apres envoi.</p>
 <p>Dans e-resto-Angular, le restaurant peut filtrer par date/statut, rechercher, voir le detail, ajouter une note interne et changer le statut.</p>
@@ -116,7 +116,7 @@ Gestion restaurants
 => creation du compte proprietaire initial
 => modification des informations
 => changement de statut
-=> changement de plan SaaS
+=> changement de Plan
 => activation et suspension rapides
 
 Gestion plans SaaS

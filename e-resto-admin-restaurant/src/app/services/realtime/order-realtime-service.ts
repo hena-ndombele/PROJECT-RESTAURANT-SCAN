@@ -29,7 +29,7 @@ export class OrderRealtimeService {
 
     readonly orders = signal<Order[]>([]);
     readonly notifications = signal<OrderNotification[]>([]);
-    readonly pendingReservationsCount = signal(0);
+    readonly pendingRéservationsCount = signal(0);
     readonly connectionState = signal<"idle" | "connecting" | "connected" | "error">("idle");
     readonly orderChanged$ = new Subject<Order>();
     readonly reservationCreated$ = new Subject<ReservationDto>();
@@ -84,7 +84,7 @@ export class OrderRealtimeService {
                 this.connected = true;
                 this.connectionState.set("connected");
                 this.subscribeToOrders();
-                this.subscribeToReservations();
+                this.subscribeToRéservations();
             });
         };
 
@@ -116,9 +116,9 @@ export class OrderRealtimeService {
         });
     }
 
-    private subscribeToReservations(): void {
+    private subscribeToRéservations(): void {
         const restaurantId = this.authService.getUserData()?.restaurant_id;
-        const channel = restaurantId ? `reservations.${restaurantId}` : "reservations";
+        const channel = restaurantId ? `Réservations.${restaurantId}` : "Réservations";
 
         this.send({
             event: "pusher:subscribe",
@@ -167,7 +167,7 @@ export class OrderRealtimeService {
         const reservation = payload?.reservation as ReservationDto | undefined;
         if (!reservation?.id) return;
 
-        this.pendingReservationsCount.update((count) => count + 1);
+        this.pendingRéservationsCount.update((count) => count + 1);
         this.reservationCreated$.next(reservation);
         this.notifications.update((items) => [
             {

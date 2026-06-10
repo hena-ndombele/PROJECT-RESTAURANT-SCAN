@@ -8,7 +8,7 @@ Elle gere notamment :
 - la creation de compte restaurant ;
 - le checkout d'abonnement ;
 - le dashboard restaurant ;
-- les commandes, plats, categories, tables, reservations, feedbacks et utilisateurs ;
+- les commandes, plats, categories, tables, Réservations, feedbacks et utilisateurs ;
 - l'affichage des informations d'abonnement et de connexion dans l'administration.
 
 ## Flow session restaurant

@@ -1,8 +1,8 @@
 <main class="pricing-page">
   <nav class="topnav">
     <a class="brand" routerLink="/">
-      <img src="assets/logo/e-resto-logo.png" alt="Restaura Scan">
-      <span>Restaura Scan</span>
+      <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+      <span>Restaurant Scan</span>
     </a>
     <div class="nav-actions">
       <a routerLink="/">Accueil</a>
@@ -49,7 +49,7 @@
     <div class="plans-grid">
       <article class="plan-card" *ngFor="let plan of plans" [class.popular]="plan.is_popular">
         <span class="popular-badge" *ngIf="plan.is_popular">Le plus populaire</span>
-        <span class="plan-audience">{{ plan.slug === 'starter' ? 'Pour demarrer' : plan.slug === 'pro' ? 'Pour accelerer' : 'Pour structurer' }}</span>
+        <span class="plan-audience">{{ plan.slug === 'starter' ? 'Pour démarrer' : plan.slug === 'pro' ? 'Pour accelerer' : 'Pour structurer' }}</span>
         <h2>{{ plan.name }}</h2>
         <p>{{ plan.description }}</p>
 
@@ -83,18 +83,18 @@
   <section class="installation">
     <div class="installation-copy">
       <span class="eyebrow">Installation offerte</span>
-      <h2>Votre restaurant devient operationnel rapidement</h2>
-      <p>Nous vous aidons a passer de votre menu actuel a une experience digitale prete pour le service, sans perturber votre equipe.</p>
+      <h2>Votre restaurant devient opérationnel rapidement.</h2>
+      <p>Nous vous aidons à passer de votre menu actuel à une expérience digitale prête pour le service, sans perturber votre équipe.</p>
       <div class="installation-proof">
-        <article><strong>01</strong><span>Configuration guidee</span></article>
-        <article><strong>02</strong><span>QR codes prets a imprimer</span></article>
-        <article><strong>03</strong><span>Equipe prete pour le service</span></article>
+        <article><strong>01</strong><span>Configuration guidée</span></article>
+        <article><strong>02</strong><span>QR codes prêts à imprimer</span></article>
+        <article><strong>03</strong><span>Equipe prête pour le service</span></article>
       </div>
     </div>
     <div class="install-grid">
-      <article><span>Etape 1</span><i class="bi bi-shop"></i><h3>Votre espace</h3><p>Informations, equipe et parametres essentiels du restaurant.</p></article>
-      <article><span>Etape 2</span><i class="bi bi-qr-code"></i><h3>Votre menu QR</h3><p>Plats, tables et QR codes organises pour vos clients.</p></article>
-      <article><span>Etape 3</span><i class="bi bi-bell"></i><h3>Votre premier service</h3><p>Commandes et notifications suivies en temps reel.</p></article>
+      <article><span>Etape 1</span><i class="bi bi-shop"></i><h3>Votre espace</h3><p>Informations, équipe et paramètres essentiels du restaurant.</p></article>
+      <article><span>Etape 2</span><i class="bi bi-qr-code"></i><h3>Votre menu QR</h3><p>Plats, tables et QR codes organisés pour vos clients.</p></article>
+      <article><span>Etape 3</span><i class="bi bi-bell"></i><h3>Votre premier service</h3><p>Commandes et notifications suivies en Temps réel.</p></article>
     </div>
   </section>
 </main>

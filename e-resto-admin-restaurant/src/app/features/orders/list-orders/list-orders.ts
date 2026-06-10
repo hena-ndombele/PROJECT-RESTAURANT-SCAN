@@ -355,7 +355,7 @@ export class ListOrders implements OnInit, OnDestroy {
         receipt.document.write(`
             <html>
             <head>
-                <title>Recu cash Restaura Scan</title>
+                <title>Recu cash Restaurant Scan</title>
                 <style>
                     body { font-family: Arial, sans-serif; color: #111827; padding: 18px; }
                     h1 { text-align: center; margin: 0 0 4px; }
@@ -367,7 +367,7 @@ export class ListOrders implements OnInit, OnDestroy {
                 </style>
             </head>
             <body>
-                <h1>Restaura Scan</h1>
+                <h1>Restaurant Scan</h1>
                 <p class="muted">Recu cash - ${new Date().toLocaleString("fr-FR")}</p>
                 <p><strong>Table :</strong> ${order.table?.name || "Table inconnue"}</p>
                 <p><strong>Commande :</strong> #${order.id.slice(0, 8).toUpperCase()}</p>
@@ -539,7 +539,7 @@ export class ListOrders implements OnInit, OnDestroy {
         printWindow.document.write(`
             <html>
             <head>
-                <title>Rapport commandes Restaura Scan</title>
+                <title>Rapport commandes Restaurant Scan</title>
                 <style>
                     body { font-family: Arial, sans-serif; color: #111827; padding: 28px; }
                     h1 { margin: 0 0 4px; }

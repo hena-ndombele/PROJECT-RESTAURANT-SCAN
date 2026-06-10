@@ -546,7 +546,7 @@ class SaasController extends Controller
                 'can_view_advanced_analytics' => (bool) ($features['advanced_analytics'] ?? false),
                 'can_customize_menu' => (bool) ($features['customization'] ?? false),
                 'can_use_feedback' => (bool) ($features['feedback'] ?? false),
-                'can_use_reservations' => (bool) ($features['reservations'] ?? false),
+                'can_use_Réservations' => (bool) ($features['Réservations'] ?? false),
                 'can_use_chatbot' => (bool) ($features['chatbot'] ?? false),
                 'can_manage_roles' => (bool) ($features['roles'] ?? false),
                 'can_use_multi_restaurant' => (bool) ($features['multi_restaurant'] ?? false),
@@ -669,7 +669,7 @@ class SaasController extends Controller
         return response()->json([
             'contact_messages' => ContactMessage::latest()->take(50)->get(),
             'feedbacks' => Feedback::with(['restaurant', 'order.table'])->latest()->take(50)->get(),
-            'reservations' => Reservation::with(['restaurant', 'table'])->latest()->take(50)->get(),
+            'Réservations' => Reservation::with(['restaurant', 'table'])->latest()->take(50)->get(),
         ]);
     }
 
@@ -1201,17 +1201,17 @@ class SaasController extends Controller
                 'max_tables' => null,
                 'max_users' => null,
                 'is_popular' => true,
-                'features' => ['Commandes illimitees', 'Plats illimites', 'Reservations', 'Feedback client', 'Statistiques detaillees', 'Couleurs personnalisees', 'Support prioritaire', 'Installation : 20 000 FC'],
+                'features' => ['Commandes illimitees', 'Plats illimites', 'Réservations', 'Feedback client', 'Statistiques detaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Business',
                 'slug' => 'business',
-                'description' => 'Pour les equipes structurees et les restaurants multi-sites.',
+                'description' => 'Pour les équipes structurées et les restaurants multi-sites.',
                 'monthly_price' => 30,
                 'max_restaurants' => 5,
                 'max_tables' => 20,
                 'max_users' => 15,
-                'features' => ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancees', 'Roles et permissions', 'Support dedie', 'Onboarding personnalise', 'Installation : 30 000 FC', 'Multi-restaurants'],
+                'features' => ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dedié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
             ],
         ];
 

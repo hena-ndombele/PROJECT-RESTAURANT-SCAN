@@ -33,7 +33,7 @@
                             <?php if($restaurant->status === 'trial'): ?>
                                 <p style="margin:0 0 18px;color:#374151;line-height:1.7;">Votre essai gratuit est actif jusqu'au <strong><?php echo e(optional($restaurant->trial_ends_at)->format('d/m/Y')); ?></strong>. Vous pouvez deja configurer le menu, les tables QR et votre equipe.</p>
                             <?php elseif($restaurant->status === 'active'): ?>
-                                <p style="margin:0 0 18px;color:#374151;line-height:1.7;">Votre espace restaurant est actif. Vous pouvez configurer votre menu, vos tables QR et suivre vos commandes en temps reel.</p>
+                                <p style="margin:0 0 18px;color:#374151;line-height:1.7;">Votre espace restaurant est actif. Vous pouvez configurer votre menu, vos tables QR et suivre vos commandes en Temps réel.</p>
                             <?php else: ?>
                                 <p style="margin:0 0 18px;color:#374151;line-height:1.7;">Finalisez votre abonnement pour activer completement votre espace restaurant.</p>
                             <?php endif; ?>

@@ -36,7 +36,7 @@ Etape 2 : informations restaurant
 <p>La page Parametres respecte le design general du dashboard. Elle reste claire par defaut et passe en fond sombre uniquement quand le theme sombre du dashboard est active.</p>
 <p>La personnalisation du menu client est reservee aux plans Pro et Business. Le backend bloque aussi les modifications de logo, couleurs, slogan, description, slug public et lien Google Maps pour les plans non autorises.</p>
 <h2>Demande d'addition cash</h2>
-<p>Si le client a choisi le paiement cash, il peut demander l'addition uniquement apres que le restaurant a marque la commande comme servie. Le backend marque le paiement avec bill_requested, recharge les donnees fraiches du paiement et diffuse l'evenement en temps reel. Le dashboard commandes joue un son et ouvre automatiquement un modal avec la table, le client, le numero de commande, les plats et le total.</p>
+<p>Si le client a choisi le paiement cash, il peut demander l'addition uniquement apres que le restaurant a marque la commande comme servie. Le backend marque le paiement avec bill_requested, recharge les donnees fraiches du paiement et diffuse l'evenement en Temps réel. Le dashboard commandes joue un son et ouvre automatiquement un modal avec la table, le client, le numero de commande, les plats et le total.</p>
 <h2>Annulation client avec modal automatique</h2>
 <p>Quand une commande est annulee, l'application client joue le son, affiche un toast et ouvre un modal avec la table, la commande, le total, les plats et le motif d'annulation.</p>
 <h2>Modification de commande avec ajout de plats</h2>
@@ -105,7 +105,7 @@ GET /api/orders/track?code=A7K92B&amp;table_id=UUID_TABLE</pre>
 => rescane le QR code avec le meme telephone/navigateur
 => l'application retrouve order_id dans localStorage
 => elle recharge la commande exacte
-=> suivi temps reel se reactive
+=> suivi Temps réel se reactive
 => le client voit le statut actuel
 => les prochains changements declenchent son + toast + banniere de suivi</pre>
 <p>Important : le QR de table seul ne restaure plus une commande existante. Si une autre personne scanne le meme QR avec un autre telephone, elle ne doit pas voir la commande du premier client.</p>
@@ -175,7 +175,7 @@ delivered => pending</pre>
 client ajoute des plats
 client choisit Sur place ou A emporter
 client envoie la commande
-dashboard recoit la commande en temps reel avec son + modal
+dashboard recoit la commande en Temps réel avec son + modal
 restaurant prepare
 restaurant passe les statuts jusqu'a Servie
 client recoit le suivi et peut donner son avis</pre>
@@ -183,9 +183,9 @@ client recoit le suivi et peut donner son avis</pre>
 <p>Le feedback est accepte uniquement si la commande est servie, ou si elle est prete avec order_type = takeaway. Une meme commande ne cree pas plusieurs avis : l'avis existant est mis a jour.</p>
 <p>Dans e-resto-Angular, le menu Feedbacks affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.</p>
 <p>Le module Feedback est reserve aux plans Pro, Business et Enterprise. Si le restaurant est sur Free Demo ou Starter, le backend refuse l'envoi, le dashboard affiche un message d'upgrade et le client ne declenche pas le modal feedback.</p>
-<h2>Reservations professionnelles</h2>
+<h2>Réservations professionnelles</h2>
 <p>Le client ouvre le menu QR ou le menu public, remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale. Le backend cree une reservation en statut pending.</p>
-<p>Le restaurant voit la demande dans le dashboard Reservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
+<p>Le restaurant voit la demande dans le dashboard Réservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
 <pre>pending : demande recue
 confirmed : reservation acceptee, table bloquee
 seated : client installe, table occupee

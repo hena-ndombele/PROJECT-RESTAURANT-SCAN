@@ -147,9 +147,9 @@ npm.cmd run build dans e-resto-client</pre>
 <p>Le feedback est accepte uniquement si la commande est servie, ou si elle est prete avec order_type = takeaway. Une meme commande ne cree pas plusieurs avis : l'avis existant est mis a jour.</p>
 <p>Dans e-resto-Angular, le menu Feedbacks affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.</p>
 <p>Le module Feedback est reserve aux plans Pro, Business et Enterprise. Si le restaurant est sur Free Demo ou Starter, le backend refuse l'envoi, le dashboard affiche un message d'upgrade et le client ne declenche pas le modal feedback.</p>
-<h2>Reservations professionnelles</h2>
+<h2>Réservations professionnelles</h2>
 <p>Le client ouvre le menu QR ou le menu public, remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale. Le backend cree une reservation en statut pending.</p>
-<p>Le restaurant voit la demande dans le dashboard Reservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
+<p>Le restaurant voit la demande dans le dashboard Réservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
 <p>Statuts : pending, confirmed, seated, completed, cancelled, no_show.</p>
 <p>Dans e-resto-client, le client voit que sa demande est envoyee au restaurant et qu'elle doit etre confirmee. Une reference courte est affichee apres envoi.</p>
 <p>Dans e-resto-Angular, le restaurant peut filtrer par date/statut, rechercher, voir le detail, ajouter une note interne et changer le statut.</p>

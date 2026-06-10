@@ -137,7 +137,7 @@ Les entites principales sont liees a `restaurant_id` :
 - tables ;
 - commandes ;
 - paiements ;
-- reservations.
+- Réservations.
 
 Quand un restaurant se connecte, les endpoints authentifies filtrent les donnees par `restaurant_id`.
 
@@ -293,7 +293,7 @@ payment_status != paid
 status = delivered
 ```
 
-Le bouton n'apparait donc cote client qu'apres que le restaurant a marque la commande comme servie. Le backend marque ensuite le paiement avec `metadata.bill_requested = true` et diffuse la mise a jour en temps reel avec les informations fraiches du paiement. Dans le dashboard commandes, une notification modale s'ouvre automatiquement avec son, la table, le client, le numero de commande, les plats et le total. La carte et le modal detail affichent aussi `Addition demandee`.
+Le bouton n'apparait donc cote client qu'apres que le restaurant a marque la commande comme servie. Le backend marque ensuite le paiement avec `metadata.bill_requested = true` et diffuse la mise a jour en Temps réel avec les informations fraiches du paiement. Dans le dashboard commandes, une notification modale s'ouvre automatiquement avec son, la table, le client, le numero de commande, les plats et le total. La carte et le modal detail affichent aussi `Addition demandee`.
 
 Donnees utiles :
 
@@ -674,7 +674,7 @@ Pour rendre le SaaS encore plus professionnel :
 - ajouter historique/audit complet des actions ;
 - ajouter notifications email/SMS au restaurant.
 
-## 19. Temps reel dashboard Angular
+## 19. Temps réel dashboard Angular
 
 Le dashboard Angular utilise maintenant un websocket Reverb pour les commandes.
 
@@ -713,7 +713,7 @@ cd e-resto-backend
 php artisan reverb:start --host=0.0.0.0 --port=8080
 ```
 
-Important : pour que le temps reel fonctionne, il faut lancer :
+Important : pour que le Temps réel fonctionne, il faut lancer :
 
 ```txt
 serveur Laravel API
@@ -854,7 +854,7 @@ Client commande
 => client valide
 => backend remplace les order_items
 => backend recalcule total_amount
-=> dashboard restaurant recoit la mise a jour en temps reel
+=> dashboard restaurant recoit la mise a jour en Temps réel
 ```
 
 ### 20.2 Paiement cash
@@ -1112,7 +1112,7 @@ Client ferme l'application
 => rescane le QR code avec le meme telephone/navigateur
 => l'application retrouve order_id dans localStorage
 => elle recharge la commande exacte
-=> suivi temps reel se reactive
+=> suivi Temps réel se reactive
 => le client voit le statut actuel
 => les prochains changements declenchent son + toast + banniere de suivi
 ```
@@ -1201,7 +1201,7 @@ Quand une commande est `delivered`, elle ne peut plus revenir en arriere.
 
 ## 21. Limites des forfaits et actions bloquees
 
-Chaque plan SaaS possede des quotas.
+Chaque Plan possede des quotas.
 
 Exemple actuel :
 
@@ -1438,7 +1438,7 @@ client scanne le QR code
 client ajoute des plats
 client choisit Sur place ou A emporter
 client envoie la commande
-dashboard recoit la commande en temps reel avec son + modal
+dashboard recoit la commande en Temps réel avec son + modal
 restaurant prepare
 restaurant passe les statuts jusqu'a Servie
 client recoit le suivi et peut donner son avis
@@ -1468,7 +1468,7 @@ le client ne declenche pas le modal feedback
 
 Dans e-resto-Angular, le menu `Feedbacks` affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.
 
-## 24. Reservations professionnelles
+## 24. Réservations professionnelles
 
 Le module reservation suit un flow SaaS professionnel :
 
@@ -1476,7 +1476,7 @@ Le module reservation suit un flow SaaS professionnel :
 client ouvre le menu QR ou le menu public
 client remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale
 backend cree une reservation en statut pending
-dashboard restaurant affiche la demande dans Reservations
+dashboard restaurant affiche la demande dans Réservations
 restaurant confirme ou annule
 si confirme, la table liee passe Reservee
 quand le client arrive, restaurant passe la reservation en seated
@@ -1566,11 +1566,11 @@ La page Pricing affiche aussi des plans de secours instantanes. Des que le backe
 
 La landing SaaS garde les couleurs E-RESTO et reprend une disposition premium de menu digital QR : hero photo plein ecran, CTA, statistiques rapides, fonctionnalites, section scan QR complete en fond noir avec image generee, logo E-RESTO au centre du QR code et texte overlay, puis etapes operationnelles.
 
-La section finale `Pret a moderniser votre restaurant ?` affiche trois statistiques marketing fixes avec prefixe `+` : +20 restaurants inscrits, +800 commandes traitees et +60 QR codes generes. Les valeurs ont un effet count-up rapide quand la section devient visible.
+La section finale `Pret a moderniser votre restaurant ?` affiche trois statistiques marketing fixes avec prefixe `+` : +20 restaurants inscrits, +800 Commandes traitées et +60 QR codes générés. Les valeurs ont un effet count-up rapide quand la section devient visible.
 
 Cette section utilise un background image premium `assets/landing/cta-chef-bg.png` avec un chef et un overlay sombre pour garder les statistiques et le CTA lisibles.
 
-La landing contient aussi une section `Tout ce que vous devez savoir pour demarrer avec E-RESTO` sans bloc video demo. Elle explique le demarrage en trois etapes : creation de l'espace restaurant, configuration du menu/tables/QR codes et reception des commandes.
+La landing contient aussi une section `Tout ce que vous devez savoir Pour démarrer avec E-RESTO` sans bloc video demo. Elle explique le demarrage en trois etapes : creation de l'espace restaurant, configuration du menu/tables/QR codes et reception des commandes.
 
 Un footer SaaS professionnel est ajoute avec adresse, contact, liens produit/ressources et formulaire newsletter.
 
@@ -1902,7 +1902,7 @@ Quels plats se vendent le mieux cette semaine ?
 Pourquoi mes revenus ont baisse aujourd'hui ?
 Comment creer un QR code ?
 Que me manque-t-il pour mieux vendre ?
-Mon plan actuel permet-il les reservations ?
+Mon plan actuel permet-il les Réservations ?
 Quels plats dois-je mettre en avant ?
 ```
 
@@ -1914,7 +1914,7 @@ features autorisees
 commandes agregees
 plats les plus commandes
 revenus par devise
-reservations
+Réservations
 feedbacks
 etat des tables
 utilisation des quotas
@@ -2027,12 +2027,12 @@ Elle permet de gerer les restaurants inscrits dans la plateforme :
 - creation manuelle d'un restaurant et du compte proprietaire initial ;
 - modification des informations restaurant ;
 - changement de statut : essai, actif, en retard, suspendu, annule ;
-- changement de plan SaaS ;
+- changement de Plan ;
 - activation ou suspension rapide ;
 - gestion des plans SaaS : prix, devise, limites, fonctionnalites, plan populaire/actif ;
 - suivi des paiements d'abonnement avec filtre par statut.
 - wallet MaishaPay avec balance CDF et USD masquee par defaut ;
-- support plateforme : messages contact, feedbacks et reservations ;
+- support plateforme : messages contact, feedbacks et Réservations ;
 - audit plateforme : derniers evenements restaurants et paiements ;
 - reinitialisation du mot de passe proprietaire.
 
@@ -2101,7 +2101,7 @@ Redis est deja prevu dans `docker-compose.yml`. Dans cette application, il devie
 
 - gerer les queues Laravel pour envoyer les emails sans bloquer les requetes ;
 - accelerer le cache de permissions, plans et statistiques ;
-- fiabiliser le temps reel et les notifications si le volume de commandes augmente ;
+- fiabiliser le Temps réel et les notifications si le volume de commandes augmente ;
 - stocker temporairement des verrous ou etats courts, par exemple anti-spam newsletter/contact.
 
 Pour l'activer en production : utiliser `CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`, verifier `REDIS_HOST`, puis lancer un worker Laravel avec `php artisan queue:work`.

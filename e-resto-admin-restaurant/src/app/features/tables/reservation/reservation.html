@@ -5,14 +5,14 @@
       <div>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
-            <li class="breadcrumb-item">Restaura Scan</li>
-            <li class="breadcrumb-item active text-primary">RESERVATIONS</li>
+            <li class="breadcrumb-item">Restaurant Scan</li>
+            <li class="breadcrumb-item active text-primary">Réservations</li>
           </ol>
         </nav>
-        <h1 class="h3 mb-0 fw-bold text-dark">Gestion des reservations</h1>
+        <h1 class="h3 mb-0 fw-bold text-dark">Gestion des Réservations</h1>
       </div>
     </div>
-    <button class="btn btn-outline-secondary" type="button" (click)="loadReservations()">
+    <button class="btn btn-outline-secondary" type="button" (click)="loadRéservations()">
       <i class="bi bi-arrow-clockwise me-1"></i> Actualiser
     </button>
   </header>
@@ -20,14 +20,14 @@
   @if (upgradeRequired()) {
     <div class="alert alert-warning border-0 shadow-sm">
       <strong>Fonctionnalite Pro.</strong>
-      Les reservations sont disponibles avec les plans Pro et Business.
+      Les Réservations sont disponibles avec les plans Pro et Business.
     </div>
   }
 
   <section class="reservation-summary mb-4">
     <article>
       <span>Demandes</span>
-      <strong>{{ reservations().length }}</strong>
+      <strong>{{ Réservations().length }}</strong>
       <small>Total charge</small>
     </article>
     <article>
@@ -47,11 +47,11 @@
       <div class="row g-3 align-items-end">
         <div class="col-md-3">
           <label class="form-label small fw-bold text-muted text-uppercase">Date</label>
-          <input class="form-control bg-transparent" type="date" [ngModel]="dateFilter()" (ngModelChange)="dateFilter.set($event); loadReservations()">
+          <input class="form-control bg-transparent" type="date" [ngModel]="dateFilter()" (ngModelChange)="dateFilter.set($event); loadRéservations()">
         </div>
         <div class="col-md-3">
           <label class="form-label small fw-bold text-muted text-uppercase">Statut</label>
-          <select class="form-select bg-transparent" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); loadReservations()">
+          <select class="form-select bg-transparent" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); loadRéservations()">
             <option value="all">Tous</option>
             @for (status of statusOptions; track status.value) {
               <option [value]="status.value">{{ status.label }}</option>
@@ -66,13 +66,13 @@
           </div>
         </div>
         <div class="col-md-2">
-          <button class="btn btn-outline-secondary w-100" type="button" (click)="dateFilter.set(''); statusFilter.set('all'); searchTerm.set(''); loadReservations()">Reset</button>
+          <button class="btn btn-outline-secondary w-100" type="button" (click)="dateFilter.set(''); statusFilter.set('all'); searchTerm.set(''); loadRéservations()">Reset</button>
         </div>
       </div>
 
       <div class="status-tabs mt-4">
         @for (tab of statusTabs(); track tab.value) {
-          <button class="status-tab" [class.active]="statusFilter() === tab.value" type="button" (click)="statusFilter.set(tab.value); loadReservations()">
+          <button class="status-tab" [class.active]="statusFilter() === tab.value" type="button" (click)="statusFilter.set(tab.value); loadRéservations()">
             <span>{{ tab.label }}</span>
             <strong>{{ tab.count }}</strong>
           </button>
@@ -87,11 +87,11 @@
   @if (loading()) {
     <div class="reservation-loading">
       <div class="spinner-border text-primary" role="status"></div>
-      <p class="mt-2 text-muted fw-medium">Chargement des reservations...</p>
+      <p class="mt-2 text-muted fw-medium">Chargement des Réservations...</p>
     </div>
   } @else {
     <section class="reservation-grid">
-      @for (reservation of filteredReservations(); track reservation.id) {
+      @for (reservation of filteredRéservations(); track reservation.id) {
         <article class="reservation-card status-{{ reservation.status }}">
           <div class="reservation-card-head">
             <div>
@@ -131,7 +131,7 @@
           </div>
         </article>
       } @empty {
-        <div class="empty-reservations">
+        <div class="empty-Réservations">
           <i class="bi bi-calendar-x"></i>
           <h5>Aucune reservation trouvee</h5>
         </div>

@@ -182,11 +182,11 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     readonly onboardingSteps: OnboardingStep[] = [
         {
             eyebrow: "14 jours d'essai gratuit - plan complet",
-            title: "Bienvenue sur Restaura Scan",
+            title: "Bienvenue sur Restaurant Scan",
             description: "Votre restaurant entre dans l'ere digitale. En quelques minutes, vos clients pourront consulter votre menu et commander depuis leur telephone.",
             icon: "ti ti-hand-wave",
             tone: "orange",
-            bullets: ["Tableau de bord en temps reel", "Menu QR accessible sans application", "Commandes centralisees dans votre espace"]
+            bullets: ["Tableau de bord en Temps réel", "Menu QR accessible sans application", "Commandes centralisees dans votre espace"]
         },
         {
             eyebrow: "Etape 1 - gerer les plats",

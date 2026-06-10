@@ -110,7 +110,7 @@ export class App implements OnInit {
   payments = signal<Payment[]>([]);
   users = signal<AdminUser[]>([]);
   roles = signal<Role[]>([]);
-  support = signal<any>({ contact_messages: [], feedbacks: [], reservations: [] });
+  support = signal<any>({ contact_messages: [], feedbacks: [], Réservations: [] });
   auditEvents = signal<any[]>([]);
 
   restaurantModalOpen = signal(false);

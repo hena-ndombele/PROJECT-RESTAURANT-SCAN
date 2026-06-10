@@ -31,8 +31,8 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   statsLoaded = true;
   ctaStats = [
     { label: 'Restaurants inscrits', value: 20 },
-    { label: 'Commandes traitees', value: 800 },
-    { label: 'QR codes generes', value: 60 },
+    { label: 'Commandes traitées', value: 800 },
+    { label: 'QR codes générés', value: 60 },
   ];
   animatedStats = [0, 0, 0];
   private ctaObserver?: IntersectionObserver;

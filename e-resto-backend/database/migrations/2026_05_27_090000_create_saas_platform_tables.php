@@ -75,7 +75,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        foreach (['users', 'categories', 'plats', 'tables', 'contact_messages', 'reservations', 'agents', 'account_requests'] as $tableName) {
+        foreach (['users', 'categories', 'plats', 'tables', 'contact_messages', 'Réservations', 'agents', 'account_requests'] as $tableName) {
             if (Schema::hasTable($tableName) && !Schema::hasColumn($tableName, 'restaurant_id')) {
                 Schema::table($tableName, function (Blueprint $table) {
                     $table->foreignUuid('restaurant_id')->nullable()->after('id')->constrained('restaurants')->nullOnDelete();
@@ -114,7 +114,7 @@ return new class extends Migration
         Schema::dropIfExists('payments');
         Schema::dropIfExists('restaurant_subscriptions');
 
-        foreach (['users', 'categories', 'plats', 'tables', 'contact_messages', 'reservations', 'agents', 'account_requests', 'orders'] as $tableName) {
+        foreach (['users', 'categories', 'plats', 'tables', 'contact_messages', 'Réservations', 'agents', 'account_requests', 'orders'] as $tableName) {
             $this->dropRestaurantReference($tableName);
         }
 

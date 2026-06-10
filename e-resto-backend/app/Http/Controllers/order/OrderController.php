@@ -731,7 +731,7 @@ class OrderController extends Controller
             return "- {$item->quantity} x " . ($item->plat?->name ?? 'Plat');
         })->implode("\n");
 
-        $message = "Bonjour, nouvelle commande en ligne Restaura Scan.\n"
+        $message = "Bonjour, nouvelle commande en ligne Restaurant Scan.\n"
             . "Restaurant: " . ($order->restaurant?->name ?? '-') . "\n"
             . "Commande: #{$order->tracking_code}\n"
             . "Client: " . ($order->customer_name ?: 'Client') . "\n"

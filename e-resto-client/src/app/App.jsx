@@ -105,13 +105,13 @@ export function App() {
   const [feedbackOrder, setFeedbackOrder] = useState(null);
   const [orderConfirmation, setOrderConfirmation] = useState(null);
   const [brand, setBrand] = useState({
-    name: 'Restaura Scan',
+    name: 'Restaurant Scan',
     id: '',
     logo_url: '/img/logo/e-resto-logo.png',
     slogan: 'Fast Food & Restaurant',
     description: 'Fast Food & Restaurant',
     can_feedback: false,
-    can_reservations: false,
+    can_Réservations: false,
     can_mobile_money: false,
     can_chatbot: false,
     whatsapp_order_phone: '',
@@ -408,7 +408,7 @@ export function App() {
             }}
           />
         )}
-        {activeView === 'reservations' && (
+        {activeView === 'Réservations' && (
           <ReservationPage
             tableId={tableId}
             brand={brand}
@@ -471,7 +471,7 @@ function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, hasTable,
     ['menu', 'Menu'],
     ['cart', 'Panier'],
     ...(hasTable ? [['orders', 'Commandes']] : []),
-    ...(!hasTable ? [['reservations', 'Reserver']] : []),
+    ...(!hasTable ? [['Réservations', 'Reserver']] : []),
   ];
 
   return (
@@ -539,7 +539,7 @@ function MobileBottomNav({ brand, cartCount, activeView, activeOrder, hasTable, 
         <span>Panier</span>
       </button>
       {showReservationButton ? (
-        <button type="button" className={`mobile-bottom-item ${activeView === 'reservations' ? 'active' : ''}`} onClick={() => onView('reservations')}>
+        <button type="button" className={`mobile-bottom-item ${activeView === 'Réservations' ? 'active' : ''}`} onClick={() => onView('Réservations')}>
           <i className="fas fa-calendar-check"></i>
           <span>Reserver</span>
         </button>
@@ -560,9 +560,9 @@ function MobileBottomNav({ brand, cartCount, activeView, activeOrder, hasTable, 
 function BrandLogo({ brand }) {
   return (
     <div className="blogo brand-logo">
-      <img className="brand-logo-img" src={brand.logo_url || '/img/logo/e-resto-logo.png'} alt={brand.name || 'Restaura Scan'} />
+      <img className="brand-logo-img" src={brand.logo_url || '/img/logo/e-resto-logo.png'} alt={brand.name || 'Restaurant Scan'} />
       <div>
-        <div className="bname">{brand.name || 'Restaura Scan'}</div>
+        <div className="bname">{brand.name || 'Restaurant Scan'}</div>
         <div className="bsub">{brand.slogan || brand.description || 'Fast Food & Restaurant'}</div>
       </div>
     </div>
@@ -920,8 +920,8 @@ function ReservationPage({ tableId, brand, onStatus }) {
             <span className="slbl">Reservation</span>
             <h2>Reserver une table</h2>
           </div>
-          {!brand.can_reservations ? (
-            <div className="client-alert error">Les reservations ne sont pas activees pour ce restaurant.</div>
+          {!brand.can_Réservations ? (
+            <div className="client-alert error">Les Réservations ne sont pas activees pour ce restaurant.</div>
           ) : (
             <form className="mobile-money-form" onSubmit={submitReservation}>
               <label>Nom complet</label>
@@ -1402,7 +1402,7 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
 
     channel.listen('.order.placed', (event) => {
       applyOrderUpdate(event.order);
-      setConnectionState('Suivi temps reel active');
+      setConnectionState('Suivi Temps réel active');
     });
 
     channel.listen('.order.status.updated', (event) => {
@@ -1411,9 +1411,9 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
     });
 
     const connector = echo.connector?.pusher?.connection;
-    connector?.bind('connected', () => setConnectionState('Suivi temps reel active'));
-    connector?.bind('unavailable', () => setConnectionState('Connexion temps reel indisponible'));
-    connector?.bind('error', () => setConnectionState('Connexion temps reel a verifier'));
+    connector?.bind('connected', () => setConnectionState('Suivi Temps réel active'));
+    connector?.bind('unavailable', () => setConnectionState('Connexion Temps réel indisponible'));
+    connector?.bind('error', () => setConnectionState('Connexion Temps réel a verifier'));
 
     const pollingId = window.setInterval(() => {
       getOrder(order.id)
@@ -1533,13 +1533,13 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
 
   const shareTracking = async () => {
     const text = [
-      `Suivi de ma commande Restaura Scan`,
+      `Suivi de ma commande Restaurant Scan`,
       `Code: ${order.tracking_code ?? String(order.id).slice(0, 8).toUpperCase()}`,
       shareUrl,
     ].join('\n');
 
     if (navigator.share) {
-      await navigator.share({ title: 'Suivi commande Restaura Scan', text, url: shareUrl });
+      await navigator.share({ title: 'Suivi commande Restaurant Scan', text, url: shareUrl });
       return;
     }
 
@@ -1730,14 +1730,14 @@ function ReceiptSection({ order, brand }) {
       }),
       '',
       `Total: ${formatMoney(order.total_amount, order.currency)}`,
-      `Merci pour votre visite chez ${brand?.name || 'Restaura Scan'}.`,
+      `Merci pour votre visite chez ${brand?.name || 'Restaurant Scan'}.`,
     ];
 
     const text = lines.join('\n');
 
     if (navigator.share) {
       await navigator.share({
-        title: `Recu ${brand?.name || 'Restaura Scan'} ${receiptNumber}`,
+        title: `Recu ${brand?.name || 'Restaurant Scan'} ${receiptNumber}`,
         text,
       });
       return;
@@ -1765,9 +1765,9 @@ function ReceiptSection({ order, brand }) {
           <div className="receipt-card" id="paid-receipt">
             <div className="receipt-top">
               <div className="receipt-brand">
-                <img src={brand?.logo_url || '/img/logo/e-resto-logo.png'} alt={brand?.name || 'Restaura Scan'} />
+                <img src={brand?.logo_url || '/img/logo/e-resto-logo.png'} alt={brand?.name || 'Restaurant Scan'} />
                 <div>
-                  <strong>{brand?.name || 'Restaura Scan'}</strong>
+                  <strong>{brand?.name || 'Restaurant Scan'}</strong>
                   <span>{brand?.slogan || brand?.description || 'Fast Food & Restaurant'}</span>
                 </div>
               </div>
@@ -1839,8 +1839,8 @@ function ReceiptSection({ order, brand }) {
             </div>
 
             <div className="receipt-footer">
-              <p>Nous esperons vous revoir bientot chez {brand?.name || 'Restaura Scan'}.</p>
-              <span>Recu genere automatiquement par Restaura Scan</span>
+              <p>Nous esperons vous revoir bientot chez {brand?.name || 'Restaurant Scan'}.</p>
+              <span>Recu genere automatiquement par Restaurant Scan</span>
             </div>
           </div>
         </div>
@@ -1857,7 +1857,7 @@ function ReceiptSection({ order, brand }) {
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <iframe src={pdfPreview.url} title="Reçu PDF Restaura Scan"></iframe>
+            <iframe src={pdfPreview.url} title="Reçu PDF Restaurant Scan"></iframe>
             <div className="receipt-pdf-actions">
               <button className="btn-red" onClick={downloadPdf}>
                 <i className="fas fa-download"></i>Télécharger le PDF
@@ -1961,7 +1961,7 @@ function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
           <>
             <div className="feedback-icon"><i className="fas fa-star"></i></div>
             <h2>Votre repas etait comment ?</h2>
-            <p>Notez votre experience chez {restaurantName || 'Restaura Scan'}.</p>
+            <p>Notez votre experience chez {restaurantName || 'Restaurant Scan'}.</p>
             <div className="feedback-rating-list">
               {ratingRows.map((row) => (
                 <div className="feedback-rating-row" key={row.key}>
@@ -2026,7 +2026,7 @@ function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
 function buildClientBrand(restaurant) {
   const settings = restaurant.settings || {};
   const theme = restaurant.theme || settings.theme || {};
-  const defaultNames = ['menu digital', 'restaura scan'];
+  const defaultNames = ['menu digital', 'Restaurant Scan'];
   const customName = String(settings.app_name || '').trim();
   const hasCustomBranding = Boolean(
     restaurant.logo_url
@@ -2036,17 +2036,17 @@ function buildClientBrand(restaurant) {
 
   return {
     id: restaurant.id || '',
-    name: hasCustomBranding ? (customName || restaurant.name || 'Restaura Scan') : 'Restaura Scan',
+    name: hasCustomBranding ? (customName || restaurant.name || 'Restaurant Scan') : 'Restaurant Scan',
     slug: restaurant.slug || '',
     logo_url: restaurant.logo_url || '/img/logo/e-resto-logo.png',
     slogan: hasCustomBranding ? (settings.slogan || restaurant.slogan || '') : 'Menu digital pour restaurant',
-    description: hasCustomBranding ? (settings.description || restaurant.description || 'Menu digital QR code') : 'Scannez, commandez et suivez votre commande avec Restaura Scan.',
+    description: hasCustomBranding ? (settings.description || restaurant.description || 'Menu digital QR code') : 'Scannez, commandez et suivez votre commande avec Restaurant Scan.',
     owner_phone: restaurant.owner_phone || '',
     whatsapp_order_phone: settings.whatsapp_order_phone || restaurant.whatsapp_order_phone || restaurant.owner_phone || '',
     address: restaurant.address || '',
     city: restaurant.city || '',
     can_feedback: Boolean(restaurant.can_feedback),
-    can_reservations: Boolean(restaurant.can_reservations),
+    can_Réservations: Boolean(restaurant.can_Réservations),
     can_mobile_money: false,
     can_chatbot: false,
     payment_methods: ['cash'],
@@ -2088,7 +2088,7 @@ function notifyBrowser(title, message) {
 
   const show = () => {
     if (Notification.permission === 'granted') {
-      new Notification(`Restaura Scan - ${title}`, {
+      new Notification(`Restaurant Scan - ${title}`, {
         body: message,
         icon: '/img/logo/e-resto-logo.png',
         badge: '/img/logo/e-resto-logo.png',

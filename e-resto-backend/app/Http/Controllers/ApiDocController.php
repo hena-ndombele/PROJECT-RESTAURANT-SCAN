@@ -8,9 +8,9 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 
 /**
  * @OA\Info(
- *     title="Restaura Scan API",
+ *     title="Restaurant Scan API",
  *     version="1.0.0",
- *     description="Documentation des endpoints de mon application Restaura Scan"
+ *     description="Documentation des endpoints de mon application Restaurant Scan"
  * )
  *
  * @OA\Server(

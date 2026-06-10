@@ -3,7 +3,7 @@ import { Injectable } from "@angular/core";
 import { map, Observable } from "rxjs";
 import { API_ROOT } from "../api-url";
 
-export type ReservationStatus = "pending" | "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
+export type Réservationstatus = "pending" | "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
 
 export interface ReservationDto {
   id: string;
@@ -18,7 +18,7 @@ export interface ReservationDto {
   special_requests?: string | null;
   internal_note?: string | null;
   cancellation_reason?: string | null;
-  status: ReservationStatus;
+  status: Réservationstatus;
   source?: string;
   confirmed_at?: string | null;
   seated_at?: string | null;
@@ -28,8 +28,8 @@ export interface ReservationDto {
 }
 
 @Injectable({ providedIn: "root" })
-export class ReservationService {
-  private readonly apiUrl = `${API_ROOT}/reservations`;
+export class Réservationservice {
+  private readonly apiUrl = `${API_ROOT}/Réservations`;
 
   constructor(private http: HttpClient) {}
 
@@ -44,7 +44,7 @@ export class ReservationService {
   }
 
   updateStatus(id: string, payload: {
-    status: ReservationStatus;
+    status: Réservationstatus;
     internal_note?: string;
     cancellation_reason?: string;
   }): Observable<ReservationDto> {

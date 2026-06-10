@@ -1,7 +1,7 @@
 @if (!token()) {
   <main class="auth-page">
     <section class="auth-visual">
-      <div class="brand large"><span class="brand-mark">R</span><strong>Restaura Scan</strong></div>
+      <div class="brand large"><span class="brand-mark">R</span><strong>Restaurant Scan</strong></div>
       <div>
         <span class="eyebrow">Administration SaaS</span>
         <h1>Pilotez toute la plateforme depuis un espace unique.</h1>
@@ -12,7 +12,7 @@
       <form class="auth-card" (ngSubmit)="loginStep() === 'credentials' ? login() : verifyOtp()">
         <span class="eyebrow">Acces securise</span>
         <h2>{{ loginStep() === 'credentials' ? 'Connexion administrateur' : 'Verification OTP' }}</h2>
-        <p>{{ loginStep() === 'credentials' ? 'Utilisez votre compte Restaura Scan pour continuer.' : 'Entrez le code a 5 chiffres recu par email.' }}</p>
+        <p>{{ loginStep() === 'credentials' ? 'Utilisez votre compte Restaurant Scan pour continuer.' : 'Entrez le code a 5 chiffres recu par email.' }}</p>
         @if (loginStep() === 'credentials') {
           <label>Adresse email<input [(ngModel)]="loginForm.email" name="email" type="email" required autocomplete="email"></label>
           <label>Mot de passe<input [(ngModel)]="loginForm.password" name="password" type="password" required autocomplete="current-password"></label>
@@ -31,7 +31,7 @@
 } @else {
   <main class="admin-shell">
     <aside class="sidebar">
-      <a class="brand" href="#"><span class="brand-mark">R</span><span><strong>Restaura Scan</strong><small>Administration</small></span></a>
+      <a class="brand" href="#"><span class="brand-mark">R</span><span><strong>Restaurant Scan</strong><small>Administration</small></span></a>
       <nav>
         <button type="button" [class.active]="activeTab() === 'dashboard'" (click)="setTab('dashboard')"><i class="bi bi-grid-1x2-fill"></i><span>Vue generale</span></button>
         <button type="button" [class.active]="activeTab() === 'restaurants'" (click)="setTab('restaurants')"><i class="bi bi-shop-window"></i><span>Restaurants</span></button>
@@ -49,7 +49,7 @@
     <section class="workspace">
       <header class="topbar">
         <div>
-          <span class="eyebrow">Console Restaura Scan</span>
+          <span class="eyebrow">Console Restaurant Scan</span>
           <h1>{{ activeTab() === 'dashboard' ? 'Vue generale' : activeTab() | titlecase }}</h1>
           <p>Gerez la plateforme, les comptes et les abonnements depuis un seul espace.</p>
         </div>
@@ -150,7 +150,7 @@
       }
 
       @if (activeTab() === 'support') {
-        <section class="content-grid"><article class="panel" *ngFor="let group of [['Messages', support().contact_messages], ['Feedbacks', support().feedbacks], ['Reservations', support().reservations]]"><div class="panel-head"><h2>{{ group[0] }}</h2></div><div class="support-item" *ngFor="let item of group[1]"><strong>{{ item.name || item.username || item.restaurant?.name || 'Client' }}</strong><span>{{ item.email || item.phone || item.status || '' }}</span><p>{{ item.message || item.comment || 'Aucun message' }}</p></div></article></section>
+        <section class="content-grid"><article class="panel" *ngFor="let group of [['Messages', support().contact_messages], ['Feedbacks', support().feedbacks], ['Réservations', support().Réservations]]"><div class="panel-head"><h2>{{ group[0] }}</h2></div><div class="support-item" *ngFor="let item of group[1]"><strong>{{ item.name || item.username || item.restaurant?.name || 'Client' }}</strong><span>{{ item.email || item.phone || item.status || '' }}</span><p>{{ item.message || item.comment || 'Aucun message' }}</p></div></article></section>
       }
 
       @if (activeTab() === 'audit') {
@@ -165,7 +165,7 @@
     <section class="modal-card wide" (click)="$event.stopPropagation()">
       <header><div><span class="eyebrow">{{ restaurantForm.id ? 'Modification' : 'Nouveau compte' }}</span><h2>{{ restaurantForm.id ? 'Modifier le restaurant' : 'Creer un restaurant' }}</h2></div><button class="close-btn" (click)="restaurantModalOpen.set(false)">×</button></header>
       <form (ngSubmit)="saveRestaurant()">
-        <div class="form-grid"><label>Nom restaurant<input [(ngModel)]="restaurantForm.name" name="restaurant_name" required></label><label>Responsable<input [(ngModel)]="restaurantForm.owner_name" name="owner_name" required></label><label>Email proprietaire<input [(ngModel)]="restaurantForm.owner_email" name="owner_email" type="email" required></label><label>Telephone<input [(ngModel)]="restaurantForm.owner_phone" name="owner_phone"></label><label>Ville<input [(ngModel)]="restaurantForm.city" name="city"></label><label>Devise<select [(ngModel)]="restaurantForm.currency" name="currency"><option value="CDF">CDF</option><option value="USD">USD</option></select></label><label>Statut<select [(ngModel)]="restaurantForm.status" name="status"><option value="trial">Essai</option><option value="active">Actif</option><option value="past_due">En retard</option><option value="suspended">Suspendu</option></select></label><label>Plan SaaS<select [(ngModel)]="restaurantForm.saas_plan_id" name="saas_plan_id"><option *ngFor="let plan of plans()" [value]="plan.id">{{ plan.name }}</option></select></label></div>
+        <div class="form-grid"><label>Nom restaurant<input [(ngModel)]="restaurantForm.name" name="restaurant_name" required></label><label>Responsable<input [(ngModel)]="restaurantForm.owner_name" name="owner_name" required></label><label>Email proprietaire<input [(ngModel)]="restaurantForm.owner_email" name="owner_email" type="email" required></label><label>Telephone<input [(ngModel)]="restaurantForm.owner_phone" name="owner_phone"></label><label>Ville<input [(ngModel)]="restaurantForm.city" name="city"></label><label>Devise<select [(ngModel)]="restaurantForm.currency" name="currency"><option value="CDF">CDF</option><option value="USD">USD</option></select></label><label>Statut<select [(ngModel)]="restaurantForm.status" name="status"><option value="trial">Essai</option><option value="active">Actif</option><option value="past_due">En retard</option><option value="suspended">Suspendu</option></select></label><label>Plan<select [(ngModel)]="restaurantForm.saas_plan_id" name="saas_plan_id"><option *ngFor="let plan of plans()" [value]="plan.id">{{ plan.name }}</option></select></label></div>
         <label *ngIf="!restaurantForm.id">Mot de passe initial<input [(ngModel)]="restaurantForm.owner_password" name="owner_password" placeholder="Eresto@2026 par defaut"></label>
         <div class="reset-box" *ngIf="restaurantForm.id"><label>Nouveau mot de passe proprietaire<input [(ngModel)]="ownerPassword" name="reset_password" placeholder="Minimum 6 caracteres"></label><button type="button" class="btn ghost" (click)="resetOwnerPassword()">Reinitialiser</button></div>
         <footer><button type="button" class="btn ghost" (click)="restaurantModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">{{ saving() ? 'Enregistrement...' : 'Enregistrer' }}</button></footer>
@@ -179,7 +179,7 @@
 }
 
 @if (planModalOpen()) {
-  <div class="modal-backdrop" (click)="planModalOpen.set(false)"><section class="modal-card wide" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Plan SaaS</span><h2>{{ planForm.id ? 'Modifier le plan' : 'Nouveau plan' }}</h2></div><button class="close-btn" (click)="planModalOpen.set(false)">×</button></header><form (ngSubmit)="savePlan()"><div class="form-grid"><label>Nom<input [(ngModel)]="planForm.name" name="plan_name" required></label><label>Slug<input [(ngModel)]="planForm.slug" name="plan_slug" required></label><label>Prix mensuel<input [(ngModel)]="planForm.monthly_price" name="monthly_price" type="number" min="0"></label><label>Devise<select [(ngModel)]="planForm.currency" name="plan_currency"><option value="USD">USD</option><option value="CDF">CDF</option></select></label><label>Tables maximum<input [(ngModel)]="planForm.max_tables" name="max_tables" type="number" min="1"></label><label>Utilisateurs maximum<input [(ngModel)]="planForm.max_users" name="max_users" type="number" min="1"></label></div><label>Description<textarea [(ngModel)]="planForm.description" name="plan_description"></textarea></label><label>Fonctionnalites<textarea [(ngModel)]="planForm.features" name="features" placeholder="Une fonctionnalite par ligne"></textarea></label><footer><button type="button" class="btn ghost" (click)="planModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Enregistrer</button></footer></form></section></div>
+  <div class="modal-backdrop" (click)="planModalOpen.set(false)"><section class="modal-card wide" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Plan</span><h2>{{ planForm.id ? 'Modifier le plan' : 'Nouveau plan' }}</h2></div><button class="close-btn" (click)="planModalOpen.set(false)">×</button></header><form (ngSubmit)="savePlan()"><div class="form-grid"><label>Nom<input [(ngModel)]="planForm.name" name="plan_name" required></label><label>Slug<input [(ngModel)]="planForm.slug" name="plan_slug" required></label><label>Prix mensuel<input [(ngModel)]="planForm.monthly_price" name="monthly_price" type="number" min="0"></label><label>Devise<select [(ngModel)]="planForm.currency" name="plan_currency"><option value="USD">USD</option><option value="CDF">CDF</option></select></label><label>Tables maximum<input [(ngModel)]="planForm.max_tables" name="max_tables" type="number" min="1"></label><label>Utilisateurs maximum<input [(ngModel)]="planForm.max_users" name="max_users" type="number" min="1"></label></div><label>Description<textarea [(ngModel)]="planForm.description" name="plan_description"></textarea></label><label>Fonctionnalites<textarea [(ngModel)]="planForm.features" name="features" placeholder="Une fonctionnalite par ligne"></textarea></label><footer><button type="button" class="btn ghost" (click)="planModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Enregistrer</button></footer></form></section></div>
 }
 
 @if (roleModalOpen()) {

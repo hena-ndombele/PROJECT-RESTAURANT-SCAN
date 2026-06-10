@@ -22,7 +22,7 @@
 
 .reservation-summary article,
 .reservation-card,
-.empty-reservations,
+.empty-Réservations,
 .reservation-modal {
   border: 1px solid rgba(15, 23, 42, .08);
   border-radius: 16px;
@@ -183,14 +183,14 @@
   padding: 10px 12px 12px;
 }
 
-.empty-reservations,
+.empty-Réservations,
 .reservation-loading {
   grid-column: 1 / -1;
   padding: 34px;
   text-align: center;
 }
 
-.empty-reservations i {
+.empty-Réservations i {
   display: block;
   margin-bottom: 12px;
   color: var(--dashboard-primary);
@@ -242,7 +242,7 @@
 :host-context(body.dashboard-dark-theme) .reservation-card,
 :host-context(body.dashboard-dark-theme) .card,
 :host-context(body.dashboard-dark-theme) .reservation-modal,
-:host-context(body.dashboard-dark-theme) .empty-reservations,
+:host-context(body.dashboard-dark-theme) .empty-Réservations,
 :host-context(body.dashboard-dark-theme) .status-tab {
   background: #111827;
   border-color: rgba(148, 163, 184, .2);

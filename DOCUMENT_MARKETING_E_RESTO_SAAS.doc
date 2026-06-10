@@ -187,7 +187,7 @@ p {
         <td>
           <div class="eyebrow">Plateforme SaaS restaurant</div>
           <h1>E-RESTO transforme votre restaurant en service digital moderne</h1>
-          <p>Un menu QR code, des commandes en temps reel, des paiements Mobile Money, un assistant intelligent et des outils de fidelisation pour faire revenir vos clients.</p>
+          <p>Un menu QR code, des commandes en Temps réel, des paiements Mobile Money, un assistant intelligent et des outils de fidelisation pour faire revenir vos clients.</p>
           <span class="cta">Démarrer avec Restaurant Scan</span>
         </td>
       </tr>
@@ -207,9 +207,9 @@ p {
         <p>Chaque table possede son QR code. Le client scanne, consulte le menu, choisit ses plats et envoie sa commande sans installer d'application.</p>
       </td>
       <td class="card">
-        <span class="badge">Temps reel</span>
+        <span class="badge">Temps réel</span>
         <h3>Des commandes visibles immediatement</h3>
-        <p>Le restaurant recoit les commandes en temps reel avec notification sonore, statut cuisine et suivi complet.</p>
+        <p>Le restaurant recoit les commandes en Temps réel avec notification sonore, statut cuisine et suivi complet.</p>
       </td>
       <td class="card">
         <span class="badge">Paiement</span>
@@ -242,7 +242,7 @@ p {
     <tr>
       <td class="card">
         <h3>Gestion operationnelle</h3>
-        <p>Plats, categories, tables, commandes, utilisateurs, reservations et feedbacks sont regroupes dans un espace clair.</p>
+        <p>Plats, categories, tables, commandes, utilisateurs, Réservations et feedbacks sont regroupes dans un espace clair.</p>
       </td>
       <td class="card">
         <h3>Statistiques utiles</h3>
@@ -309,13 +309,13 @@ p {
       <td><strong>Pro</strong></td>
       <td><span class="price">25 USD/mois</span></td>
       <td>Restaurants qui veulent automatiser leur service.</td>
-      <td>Mobile Money, reservations, feedback, statistiques, chatbot client, personnalisation.</td>
+      <td>Mobile Money, Réservations, feedback, statistiques, chatbot client, personnalisation.</td>
     </tr>
     <tr>
       <td><strong>Business</strong></td>
       <td><span class="price">30 USD/mois</span></td>
       <td>Restaurants structures, equipes et multi-sites.</td>
-      <td>Tout Pro, assistant dashboard, roles, permissions, support dedie, multi-restaurants.</td>
+      <td>Tout Pro, assistant dashboard, roles, permissions, Support dedié, multi-restaurants.</td>
     </tr>
   </table>
 

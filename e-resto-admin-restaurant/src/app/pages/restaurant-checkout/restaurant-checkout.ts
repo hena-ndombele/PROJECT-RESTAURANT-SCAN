@@ -28,7 +28,7 @@ export class RestaurantCheckout implements OnDestroy {
   constructor(private router: Router, private saas: SaasService) {}
 
   get planName(): string {
-    return this.restaurant.plan?.name || this.selectedPlan.name || 'Plan Restaura Scan';
+    return this.restaurant.plan?.name || this.selectedPlan.name || 'Plan Restaurant Scan';
   }
 
   get monthlyPrice(): number {

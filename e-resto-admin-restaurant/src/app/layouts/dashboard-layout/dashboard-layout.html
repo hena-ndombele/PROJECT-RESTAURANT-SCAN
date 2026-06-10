@@ -185,7 +185,7 @@
 
 
             </div>
-            <span class="logo-text ms-2">Restaura Scan</span>
+            <span class="logo-text ms-2">Restaurant Scan</span>
         </a>
     </div>
 
@@ -244,14 +244,14 @@
                 </a>
             </li>
 
-            @if (canUse('reservations')) {
+            @if (canUse('Réservations')) {
             <li>
                 <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.reservations' | translate }}</span>
-                    @if (pendingReservationsCount > 0) {
+                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.Réservations' | translate }}</span>
+                    @if (pendingRéservationsCount > 0) {
                         <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
-                            {{ pendingReservationsCount }}
+                            {{ pendingRéservationsCount }}
                         </span>
                     }
                 </a>
@@ -305,7 +305,7 @@
                 <div class="assistant-head">
                     <div>
                         <span>Assistant intelligent</span>
-                        <strong>Restaura Scan Copilot</strong>
+                        <strong>Restaurant Scan Copilot</strong>
                     </div>
                     <button type="button" (click)="toggleAssistant()" aria-label="Fermer l'assistant">
                         <i class="ti ti-x"></i>

@@ -20,7 +20,7 @@ class RestaurantAccountCreatedMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Bienvenue sur Restaura Scan')
+        return $this->subject('Bienvenue sur Restaurant Scan')
             ->view('emails.restaurant_account_created');
     }
 }

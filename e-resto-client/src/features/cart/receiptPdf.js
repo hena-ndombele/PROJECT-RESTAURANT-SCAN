@@ -18,7 +18,7 @@ export function buildReceiptPdf(order, brand = {}) {
   const paidAt = order.updated_at ? new Date(order.updated_at) : new Date();
   const items = order.items ?? [];
   const paymentMethod = paymentMethodLabel(order);
-  const restaurantName = brand.name || order.restaurant?.name || 'Restaura Scan';
+  const restaurantName = brand.name || order.restaurant?.name || 'Restaurant Scan';
   const restaurantSubtitle = brand.slogan || brand.description || 'Fast Food & Restaurant';
   const initials = restaurantName
     .split(/\s+/)
@@ -156,7 +156,7 @@ export function buildReceiptPdf(order, brand = {}) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text(`Merci pour votre visite chez ${restaurantName}.`, pageWidth / 2, 790, { align: 'center' });
-  doc.text('Recu genere automatiquement par Restaura Scan.', pageWidth / 2, 806, { align: 'center' });
+  doc.text('Recu genere automatiquement par Restaurant Scan.', pageWidth / 2, 806, { align: 'center' });
 
   return {
     doc,
