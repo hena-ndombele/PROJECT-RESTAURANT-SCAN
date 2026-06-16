@@ -1,11 +1,11 @@
-<div id="overlay" class="overlay" [class.show]="isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>
+﻿<div id="overlay" class="overlay" [class.show]="isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>
 
 <nav id="topbar" class="navbar bg-white border-bottom fixed-top topbar px-3" [class.full]="isSidebarCollapsed">
     <div class="d-flex align-items-center gap-3">
         <button id="toggleBtn"
                 class="d-none d-lg-inline-flex btn btn-sidebar-toggle shadow-sm"
                 (click)="toggleSidebar()"
-                [title]="isSidebarCollapsed ? 'Développer' : 'Réduire'">
+                [title]="isSidebarCollapsed ? 'DÃ©velopper' : 'RÃ©duire'">
             <i class="ti fs-5"
                [ngClass]="isSidebarCollapsed ? 'ti-layout-sidebar-right-expand' : 'ti-layout-sidebar-left-collapse'"></i>
         </button>
@@ -244,14 +244,14 @@
                 </a>
             </li>
 
-            @if (canUse('Réservations')) {
+            @if (canUse('reservations')) {
             <li>
                 <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.Réservations' | translate }}</span>
-                    @if (pendingRéservationsCount > 0) {
+                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.reservations' | translate }}</span>
+                    @if (pendingReservationsCount > 0) {
                         <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
-                            {{ pendingRéservationsCount }}
+                            {{ pendingReservationsCount }}
                         </span>
                     }
                 </a>
@@ -280,7 +280,7 @@
             <li>
                 <a routerLink="/identity/list-roles" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-shield-lock"></i><span class="nav-text">Rôles</span>
+                    <i class="ti ti-shield-lock"></i><span class="nav-text">RÃ´les</span>
                 </a>
             </li>
             }
@@ -414,7 +414,7 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0"><i class="ti ti-key"></i></span>
                             <input #oldPwd [type]="oldPwd.type" class="form-control bg-light border-0"
-                                   formControlName="current_password" placeholder="••••••••">
+                                   formControlName="current_password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
                             <button class="btn btn-light border-0" type="button"
                                     (click)="oldPwd.type = oldPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="oldPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
@@ -431,14 +431,14 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0"><i class="ti ti-lock"></i></span>
                             <input #newPwd [type]="newPwd.type" class="form-control bg-light border-0"
-                                   formControlName="new_password" placeholder="Min. 6 caractères">
+                                   formControlName="new_password" placeholder="Min. 6 caractÃ¨res">
                             <button class="btn btn-light border-0" type="button"
                                     (click)="newPwd.type = newPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="newPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
                             </button>
                         </div>
                         @if (passwordForm.get('new_password')?.invalid && passwordForm.get('new_password')?.touched) {
-                            <small class="text-danger x-small">Requis (min. 6 caractères).</small>
+                            <small class="text-danger x-small">Requis (min. 6 caractÃ¨res).</small>
                         }
                     </div>
 
@@ -448,7 +448,7 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0"><i class="ti ti-circle-check"></i></span>
                             <input #confirmPwd [type]="confirmPwd.type" class="form-control bg-light border-0"
-                                   formControlName="new_password_confirmation" placeholder="••••••••">
+                                   formControlName="new_password_confirmation" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
                             <button class="btn btn-light border-0" type="button"
                                     (click)="confirmPwd.type = confirmPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="confirmPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
@@ -476,4 +476,5 @@
         </div>
     </div>
 </div>
+
 

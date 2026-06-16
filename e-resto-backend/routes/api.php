@@ -41,6 +41,8 @@ Route::prefix('saas')->group(function () {
         Route::delete('/plans/{plan}', [SaasController::class, 'destroyPlan']);
         Route::get('/wallet/balance', [SaasController::class, 'walletBalance']);
         Route::get('/support', [SaasController::class, 'supportCenter']);
+        Route::get('/contact-messages', [SaasController::class, 'contactMessages']);
+        Route::get('/newsletter-subscribers', [SaasController::class, 'newsletterSubscribers']);
         Route::get('/audit', [SaasController::class, 'auditTrail']);
         Route::get('/payments', [SaasController::class, 'payments']);
         Route::get('/restaurants', [SaasController::class, 'restaurants']);
@@ -60,6 +62,7 @@ Route::prefix('saas')->group(function () {
 //*****************************************CLIENT PUBLIC***************************************************************
 Route::get('/public/menu', [MenuController::class, 'index']);
 Route::post('/public/contact', [ContactController::class, 'store']);
+Route::post('/public/reservations', [ReservationController::class, 'store']);
 Route::post('/public/Réservations', [ReservationController::class, 'store']);
 Route::post('/public/feedbacks', [FeedbackController::class, 'store']);
 
@@ -156,6 +159,9 @@ Route::prefix('orders')->group(function () {
 
 Route::middleware('auth:sanctum')->get('/feedbacks', [FeedbackController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/reservations', [ReservationController::class, 'index']);
+    Route::patch('/reservations/{id}/status', [ReservationController::class, 'updateStatus']);
+    Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
     Route::get('/Réservations', [ReservationController::class, 'index']);
     Route::patch('/Réservations/{id}/status', [ReservationController::class, 'updateStatus']);
     Route::delete('/Réservations/{id}', [ReservationController::class, 'destroy']);

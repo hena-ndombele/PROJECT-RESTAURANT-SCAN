@@ -18,8 +18,8 @@ export class SaasService {
     return this.http.get<SaasPlan[]>(`${this.apiUrl}/plans`);
   }
 
-  subscribeNewsletter(email: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/newsletter`, {
+  subscribeNewsletter(email: string): Observable<{ message: string; already_exists?: boolean }> {
+    return this.http.post<{ message: string; already_exists?: boolean }>(`${this.apiUrl}/newsletter`, {
       email,
       source: 'saas_landing',
     });

@@ -1,4 +1,4 @@
-export interface SaasPlan {
+﻿export interface SaasPlan {
   id: string;
   name: string;
   slug: string;
@@ -77,7 +77,7 @@ export interface RestaurantPlanUsage {
     can_view_advanced_analytics?: boolean;
     can_customize_menu?: boolean;
     can_use_feedback?: boolean;
-    can_use_Réservations?: boolean;
+    can_use_reservations?: boolean;
     can_manage_roles?: boolean;
     can_use_multi_restaurant?: boolean;
   };
@@ -90,3 +90,4 @@ export interface RestaurantPlanUsage {
     orders_month?: string;
   };
 }
+

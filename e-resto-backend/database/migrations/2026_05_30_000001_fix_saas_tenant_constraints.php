@@ -9,13 +9,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('categories', function (Blueprint $table) {
-            try {
+        if ($this->indexExists('categories', 'categories_name_unique')) {
+            Schema::table('categories', function (Blueprint $table) {
                 $table->dropUnique(['name']);
-            } catch (Throwable) {
-                // Some existing databases may already have the unique index removed.
-            }
+            });
+        }
 
+        Schema::table('categories', function (Blueprint $table) {
             if (!$this->indexExists('categories', 'categories_restaurant_name_index')) {
                 $table->index(['restaurant_id', 'name'], 'categories_restaurant_name_index');
             }

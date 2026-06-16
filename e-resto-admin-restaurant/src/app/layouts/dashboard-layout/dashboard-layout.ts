@@ -1,22 +1,22 @@
-import {ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
-import {Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
-import {DatePipe, NgClass} from "@angular/common";
-import {AuthService} from "../../services/auth/auth-service";
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { DatePipe, NgClass } from "@angular/common";
+import { AuthService } from "../../services/auth/auth-service";
 import Swal from "sweetalert2";
-import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from "@angular/forms";
 import introJs from 'intro.js';
-import {TranslateModule, TranslateService} from "@ngx-translate/core";
-import {OrderRealtimeService} from "../../services/realtime/order-realtime-service";
-import {ThemeService} from "../../services/theme/theme-service";
-import {Réservationservice} from "../../services/reservation/reservation-service";
-import {Subscription} from "rxjs";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
+import { OrderRealtimeService } from "../../services/realtime/order-realtime-service";
+import { ThemeService } from "../../services/theme/theme-service";
+import { ReservationService } from "../../services/reservation/reservation-service";
+import { Subscription } from "rxjs";
 
 @Component({
     selector: 'app-dashboard-layout',
     imports: [RouterLink, RouterLinkActive, RouterOutlet, NgClass, ReactiveFormsModule, FormsModule, TranslateModule, DatePipe],
     styleUrl: "./dashboard-layout.scss",
     templateUrl: './dashboard-layout.html',
-    standalone:true
+    standalone: true
 })
 export class DashboardLayoutComponent implements OnInit, OnDestroy {
     isLoading = false;
@@ -28,10 +28,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected orderRealtime = inject(OrderRealtimeService);
     protected theme = inject(ThemeService);
     private translate = inject(TranslateService);
-    private Réservationservice = inject(Réservationservice);
+    private reservationService = inject(ReservationService);
     private reservationBadgeTimer?: ReturnType<typeof setInterval>;
     private reservationCreatedSubscription?: Subscription;
-
 
     passwordForm: FormGroup;
 
@@ -40,8 +39,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             current_password: ['', [Validators.required]],
             new_password: ['', [Validators.required, Validators.minLength(6)]],
             new_password_confirmation: ['', [Validators.required]]
-        }, {validator: this.passwordMatchValidator});
+        }, { validator: this.passwordMatchValidator });
     }
+
     userData: any = {
         firstName: '',
         lastName: '',
@@ -66,13 +66,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected loginInfo = {
         connectedAt: new Date(),
     };
-    protected pendingRéservationsCount = 0;
+    protected pendingReservationsCount = 0;
     protected assistantOpen = false;
     protected assistantInput = '';
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
             from: 'bot',
-            text: 'Bonjour, je suis votre Assistant Restaurant Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les Réservations et votre plan.',
+            text: 'Bonjour, je suis votre Assistant Restaurant Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les reservations et votre plan.',
         },
     ];
 
@@ -84,7 +84,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         const restaurant = restaurantSession ? JSON.parse(restaurantSession) : userData?.restaurant;
         if (userData) {
             this.userData = {
-                firstName: userData.first_name || 'Non renseigné',
+                firstName: userData.first_name || 'Non renseigne',
                 lastName: userData.last_name || '',
                 fonction: userData.fonction || ''
             };
@@ -109,10 +109,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.loginInfo = {
             connectedAt: this.resolveLoginDate(),
         };
-        if (this.canUse('Réservations')) {
+        if (this.canUse('reservations')) {
             this.loadReservationBadge();
             this.reservationCreatedSubscription = this.orderRealtime.reservationCreated$.subscribe(() => {
-                this.pendingRéservationsCount += 1;
+                this.pendingReservationsCount += 1;
                 this.cdref.detectChanges();
             });
             this.reservationBadgeTimer = setInterval(() => this.loadReservationBadge(), 15000);
@@ -162,7 +162,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.changeLanguage(this.currentLang === 'fr' ? 'en' : 'fr');
     }
 
-
     protected toggleTheme(): void {
         this.theme.toggle();
     }
@@ -176,13 +175,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     }
 
     private loadReservationBadge(): void {
-        this.Réservationservice.list({ status: 'pending' }).subscribe({
-            next: (Réservations) => {
-                this.pendingRéservationsCount = Réservations.length;
+        this.reservationService.list({ status: 'pending' }).subscribe({
+            next: (reservations) => {
+                this.pendingReservationsCount = reservations.length;
                 this.cdref.detectChanges();
             },
             error: () => {
-                this.pendingRéservationsCount = 0;
+                this.pendingReservationsCount = 0;
                 this.cdref.detectChanges();
             },
         });
@@ -194,7 +193,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         const isPro = isBusiness || slug.includes('pro');
 
         return {
-            Réservations: isPro,
+            reservations: isPro,
             feedback: isPro,
             analytics: isPro,
             customization: isPro,
@@ -279,13 +278,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         const planName = this.subscriptionInfo.detail.replace('Paiement confirme - ', '').replace('Essai gratuit - ', '') || 'votre plan';
 
         if (normalized.includes('commande')) {
-            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en Temps réel avec son, badge et notification. Pour accelerer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
+            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en temps reel avec son, badge et notification. Pour accelerer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
         }
 
         if (normalized.includes('stat') || normalized.includes('revenu') || normalized.includes('vente')) {
             return this.canUse('analytics')
                 ? `Votre plan permet les statistiques. Regardez le dashboard pour suivre les revenus par devise, les commandes du jour et les plats les plus commandes.`
-                : `Les Statistiques detaillées sont reservees aux plans Pro et Business. Passez sur Pro pour voir les analyses avancees.`;
+                : `Les statistiques detaillees sont reservees aux plans Pro et Business. Passez sur Pro pour voir les analyses avancees.`;
         }
 
         if (normalized.includes('qr') || normalized.includes('table')) {
@@ -293,9 +292,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         }
 
         if (normalized.includes('reservation')) {
-            return this.canUse('Réservations')
-                ? `Les Réservations sont actives sur ${planName}. Vos clients peuvent reserver depuis le menu public et vous confirmez ensuite dans Réservations.`
-                : `Les Réservations sont reservees aux plans Pro et Business.`;
+            return this.canUse('reservations')
+                ? `Les reservations sont actives sur ${planName}. Vos clients peuvent reserver depuis le menu public et vous confirmez ensuite dans Reservations.`
+                : `Les reservations sont reservees aux plans Pro et Business.`;
         }
 
         if (normalized.includes('plan') || normalized.includes('abonnement') || normalized.includes('jour')) {
@@ -310,7 +309,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             return `Le module fidelite peut recompenser les clients apres plusieurs commandes : points, tampons ou coupons. C'est ideal pour faire revenir les clients reguliers.`;
         }
 
-        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, Réservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
+        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, reservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
     }
 
     private buildSubscriptionInfo(restaurant: any): {
@@ -426,7 +425,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
     passwordMatchValidator(g: FormGroup) {
         return g.get('new_password')?.value === g.get('new_password_confirmation')?.value
-            ? null : {mismatch: true};
+            ? null : { mismatch: true };
     }
 
     onSubmit() {
@@ -435,11 +434,11 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.isLoading = true;
         this.authService.changePassword(this.passwordForm.value).subscribe({
             next: (res) => {
-                this.isLoading = false
+                this.isLoading = false;
 
                 Swal.fire({
                     title: 'Success !',
-                   text: res.message,
+                    text: res.message,
                     icon: 'success',
                     confirmButtonText: 'Close',
                     timerProgressBar: true,
@@ -455,8 +454,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
                 Swal.fire({
                     title: 'Error',
-                    text: errorMessage || '\n' +
-                        'Error during creation.',
+                    text: errorMessage || 'Error during creation.',
                     icon: 'error',
                     confirmButtonColor: '#d33',
                     confirmButtonText: 'Try again'
@@ -469,7 +467,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.isLoading = true;
 
         this.authService.logout().subscribe({
-            next: (res) => {
+            next: () => {
                 const modalElement = document.getElementById('logoutModal');
                 if (modalElement) {
                     const modalInstance = (window as any).bootstrap?.Modal.getInstance(modalElement);
@@ -481,8 +479,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             error: (err) => {
                 Swal.fire({
                     title: 'Error',
-                    text: err.error?.message || '\n' +
-                        'Error during disconnection.',
+                    text: err.error?.message || 'Error during disconnection.',
                     icon: 'error',
                     confirmButtonColor: '#d33',
                     confirmButtonText: 'Try again'
@@ -494,7 +491,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         });
     }
 
-
     startFirstLoginGuide() {
         const guideAlreadyShown = localStorage.getItem('guide_shown');
         if (guideAlreadyShown) return;
@@ -505,18 +501,18 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             steps: [
                 {
                     element: '#profileIcon',
-                    intro: "Bienvenue Hena ! Cliquez sur votre profil pour accéder aux paramètres.",
+                    intro: "Bienvenue Hena ! Cliquez sur votre profil pour acceder aux parametres.",
                     position: 'bottom'
                 },
                 {
                     element: '#userDropdown',
-                    intro: "Pour votre sécurité, veuillez changer votre mot de passe temporaire ici.",
+                    intro: "Pour votre securite, veuillez changer votre mot de passe temporaire ici.",
                     position: 'left'
                 }
             ],
             doneLabel: 'Compris !',
             nextLabel: 'Suivant',
-            prevLabel: 'Précédent',
+            prevLabel: 'Precedent',
             exitOnOverlayClick: false,
             showStepNumbers: false
         });
@@ -544,5 +540,4 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         intro.start();
     }
-
 }

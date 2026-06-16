@@ -46,7 +46,7 @@ export class RestaurantLogin implements OnDestroy {
     }
 
     if (!this.isValidEmail(email)) {
-      this.message = 'Adresse email invalide. Verifiez le format puis reessayez.';
+      this.message = 'Adresse e-mail invalide. Vérifiez le format, puis réessayez.';
       this.hideMessageAfterDelay();
       return;
     }

@@ -39,6 +39,11 @@ class SaasController extends Controller
         return response()->json([
             'metrics' => [
                 'restaurants' => Restaurant::count(),
+                'plan_counts' => [
+                    'starter' => $this->countRestaurantsForPlan('starter'),
+                    'pro' => $this->countRestaurantsForPlan('pro'),
+                    'business' => $this->countRestaurantsForPlan('business'),
+                ],
                 'active_restaurants' => Restaurant::whereIn('status', ['active', 'trial'])->count(),
                 'trial_restaurants' => Restaurant::where('status', 'trial')->count(),
                 'past_due_restaurants' => Restaurant::where('status', 'past_due')->count(),
@@ -67,23 +72,31 @@ class SaasController extends Controller
             'source' => 'nullable|string|max:80',
         ]);
 
-        $subscriber = NewsletterSubscriber::updateOrCreate(
-            ['email' => strtolower($validated['email'])],
-            [
-                'source' => $validated['source'] ?? 'saas_landing',
-                'status' => 'subscribed',
-                'subscribed_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => substr((string) $request->userAgent(), 0, 1000),
-            ]
-        );
+        $email = strtolower(trim($validated['email']));
+        $subscriber = NewsletterSubscriber::where('email', $email)->first();
+
+        if ($subscriber) {
+            return response()->json([
+                'message' => 'Cet e-mail est déjà inscrit à la newsletter.',
+                'already_exists' => true,
+                'subscriber' => $subscriber,
+            ]);
+        }
+
+        $subscriber = NewsletterSubscriber::create([
+            'email' => $email,
+            'source' => $validated['source'] ?? 'saas_landing',
+            'status' => 'subscribed',
+            'subscribed_at' => now(),
+            'ip_address' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+        ]);
 
         return response()->json([
-            'message' => $subscriber->wasRecentlyCreated
-                ? 'Votre email est enregistre dans la newsletter.'
-                : 'Cet email est deja inscrit a la newsletter.',
+            'message' => 'Votre adresse e-mail a été enregistrée dans la newsletter.',
+            'already_exists' => false,
             'subscriber' => $subscriber,
-        ], $subscriber->wasRecentlyCreated ? 201 : 200);
+        ], 201);
     }
 
     public function storePlan(Request $request)
@@ -673,6 +686,22 @@ class SaasController extends Controller
         ]);
     }
 
+    public function contactMessages(Request $request)
+    {
+        $query = ContactMessage::query()->latest();
+        $this->applyAdminListingFilters($query, $request, ['email'], ['name', 'email', 'phone', 'subject', 'message']);
+
+        return response()->json($query->paginate($this->adminPerPage($request)));
+    }
+
+    public function newsletterSubscribers(Request $request)
+    {
+        $query = NewsletterSubscriber::query()->latest();
+        $this->applyAdminListingFilters($query, $request, ['email'], ['email', 'source', 'status']);
+
+        return response()->json($query->paginate($this->adminPerPage($request)));
+    }
+
     public function auditTrail()
     {
         return response()->json([
@@ -867,6 +896,52 @@ class SaasController extends Controller
         ]);
 
         return $this->storeRestaurant(new Request([...$validated, 'status' => 'trial']));
+    }
+
+    private function applyAdminListingFilters($query, Request $request, array $emailColumns, array $searchColumns): void
+    {
+        if ($search = trim((string) $request->query('search', ''))) {
+            $query->where(function ($subQuery) use ($search, $searchColumns) {
+                foreach ($searchColumns as $column) {
+                    $subQuery->orWhere($column, 'like', "%{$search}%");
+                }
+            });
+        }
+
+        if ($email = trim((string) $request->query('email', ''))) {
+            $query->where(function ($subQuery) use ($email, $emailColumns) {
+                foreach ($emailColumns as $column) {
+                    $subQuery->orWhere($column, 'like', "%{$email}%");
+                }
+            });
+        }
+
+        if ($date = trim((string) $request->query('date', ''))) {
+            $query->whereDate('created_at', $date);
+        }
+
+        if ($month = (int) $request->query('month')) {
+            $query->whereMonth('created_at', $month);
+        }
+
+        if ($year = (int) $request->query('year')) {
+            $query->whereYear('created_at', $year);
+        }
+    }
+
+    private function adminPerPage(Request $request): int
+    {
+        return min(max((int) $request->query('per_page', 10), 5), 50);
+    }
+
+    private function countRestaurantsForPlan(string $planSlug): int
+    {
+        $needle = strtolower($planSlug);
+
+        return Restaurant::whereHas('plan', function ($query) use ($needle) {
+            $query->whereRaw('LOWER(slug) like ?', ["%{$needle}%"])
+                ->orWhereRaw('LOWER(name) like ?', ["%{$needle}%"]);
+        })->count();
     }
 
     private function paymentMethods(): array

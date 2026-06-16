@@ -162,7 +162,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!this.isValidEmail(email)) {
-      this.newsletterMessage = 'Adresse email invalide. Verifiez le format puis reessayez.';
+      this.newsletterMessage = 'Adresse e-mail invalide. Vérifiez le format, puis réessayez.';
       this.newsletterStatus = 'error';
       this.hideNewsletterMessageAfterDelay(12000);
       return;
@@ -177,14 +177,16 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       finalize(() => this.isNewsletterSubmitting = false),
     ).subscribe({
       next: (response) => {
-        this.newsletterMessage = response.message || 'Votre email est enregistre dans la newsletter.';
+        this.newsletterMessage = response.message || 'Votre adresse e-mail a été enregistrée dans la newsletter.';
         this.newsletterStatus = 'success';
         this.newsletterEmail = '';
-        this.hideNewsletterMessageAfterDelay(5000);
+        this.cdr.detectChanges();
+        this.hideNewsletterMessageAfterDelay(7000);
       },
       error: (error) => {
         this.newsletterMessage = this.publicErrorMessage(error, "Impossible d'inscrire cet email pour le moment.");
         this.newsletterStatus = 'error';
+        this.cdr.detectChanges();
         this.hideNewsletterMessageAfterDelay(12000);
       },
     });
@@ -195,7 +197,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       name: this.contactForm.name.trim(),
       email: this.contactForm.email.trim(),
       phone: this.contactForm.phone.trim(),
-      subject: this.contactForm.subject.trim() || '',
+      subject: this.contactForm.subject.trim() || 'Contact restaurant',
       message: this.contactForm.message.trim(),
     };
 
@@ -207,7 +209,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!this.isValidEmail(payload.email)) {
-      this.contactMessage = 'Adresse email invalide. Verifiez le format puis reessayez.';
+      this.contactMessage = 'Adresse e-mail invalide. Vérifiez le format, puis réessayez.';
       this.contactStatus = 'error';
       this.hideContactMessageAfterDelay(12000);
       return;
@@ -231,7 +233,8 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
           subject: '',
           message: '',
         };
-        this.hideContactMessageAfterDelay(5000);
+        this.cdr.detectChanges();
+        this.hideContactMessageAfterDelay(7000);
       },
       error: (error) => {
         if (error?.name === 'TimeoutError') {
@@ -241,6 +244,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
           this.contactMessage = this.publicErrorMessage(error, "Impossible d'envoyer le message pour le moment.");
           this.contactStatus = 'error';
         }
+        this.cdr.detectChanges();
         this.hideContactMessageAfterDelay(12000);
       },
     });
