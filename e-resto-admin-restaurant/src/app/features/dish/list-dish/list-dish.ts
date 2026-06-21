@@ -8,6 +8,7 @@ import { STORAGE_ROOT } from "../../../services/api-url";
 import { FormsModule } from "@angular/forms";
 import { CategoryService } from "../../../services/category/category-service";
 import { CategoryDto } from "../../../models/category/CategoryDto";
+import { AppPermissionService } from "../../../services/auth/permission-service";
 
 @Component({
     selector: "app-list-dish",
@@ -19,6 +20,7 @@ import { CategoryDto } from "../../../models/category/CategoryDto";
 export class ListDish implements OnInit {
     private dishService = inject(DishService);
     private categoryService = inject(CategoryService);
+    private permissions = inject(AppPermissionService);
     readonly storageRoot = STORAGE_ROOT;
 
     // État des données
@@ -64,6 +66,10 @@ export class ListDish implements OnInit {
     ngOnInit(): void {
         this.loadCategories();
         this.loadDish();
+    }
+
+    canAccess(permission: string): boolean {
+        return this.permissions.has(permission);
     }
     isLoading = signal<boolean>(false);
 

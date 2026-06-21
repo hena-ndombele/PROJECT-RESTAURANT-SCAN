@@ -27,10 +27,29 @@
         </label>
         <label>
           <span>Mot de passe</span>
-          <input [(ngModel)]="password" name="password" type="password" placeholder="Votre mot de passe" autocomplete="current-password" required>
+          <div class="password-field">
+            <input [(ngModel)]="password"
+                   name="password"
+                   [type]="showPassword ? 'text' : 'password'"
+                   placeholder="Votre mot de passe"
+                   autocomplete="current-password"
+                   required>
+            <button type="button"
+                    class="password-toggle"
+                    (click)="togglePasswordVisibility()"
+                    [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+              <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+            </button>
+          </div>
         </label>
         <button class="primary-action" type="submit" [disabled]="loading">
-          {{ loading ? 'Connexion...' : 'Se connecter' }}
+          @if (loading) {
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span>Connexion...</span>
+          } @else {
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span>Se connecter</span>
+          }
         </button>
         <p class="message" role="alert" *ngIf="message"><i class="bi bi-exclamation-triangle-fill"></i>{{ message }}</p>
       </form>

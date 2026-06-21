@@ -122,7 +122,7 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-warning py-3 fw-black rounded-0 text-black shadow-sm d-flex align-items-center justify-content-center" [disabled]="dishForm.invalid || isLoading()">
+                        <button type="submit" class="btn dynamic-primary py-3 fw-black rounded-0 text-black shadow-sm d-flex align-items-center justify-content-center" [disabled]="dishForm.invalid || isLoading()">
                             <span *ngIf="isLoading()" class="spinner-border spinner-border-sm me-2"></span>
                             <i class="bi bi-check-circle me-1"></i> {{ isLoading() ? 'IN PROGRESS...' : 'SAVE CHANGES' }}
                         </button>

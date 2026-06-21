@@ -5,7 +5,7 @@
         <button id="toggleBtn"
                 class="d-none d-lg-inline-flex btn btn-sidebar-toggle shadow-sm"
                 (click)="toggleSidebar()"
-                [title]="isSidebarCollapsed ? 'DÃ©velopper' : 'RÃ©duire'">
+                [title]="isSidebarCollapsed ? 'Developper' : 'Reduire'">
             <i class="ti fs-5"
                [ngClass]="isSidebarCollapsed ? 'ti-layout-sidebar-right-expand' : 'ti-layout-sidebar-left-collapse'"></i>
         </button>
@@ -193,34 +193,42 @@
         <ul class="nav flex-column ps-2 pe-2 gap-1">
             <li class="nav-label mt-2">{{ 'sidebar.mainMenu' | translate }}</li>
 
+            @if (canAccess('dashboard.view')) {
             <li>
                 <a routerLink="/dashboard" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active"
                    class="nav-link" (click)="closeMobileSidebar()">
                     <i class="ti ti-smart-home"></i><span class="nav-text">{{ 'sidebar.dashboard' | translate }}</span>
                 </a>
             </li>
+            }
 
+            @if (canAccess('agents.list')) {
             <li>
                 <a routerLink="/agents/list-agent" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-users"></i><span class="nav-text">{{ 'sidebar.employee' | translate }}</span>
                 </a>
             </li>
+            }
 
-
+            @if (canAccess('categories.list')) {
             <li>
                 <a routerLink="/category/list-category" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-category"></i><span class="nav-text">{{ 'sidebar.category' | translate }}</span>
                 </a>
             </li>
+            }
+            @if (canAccess('plats.list')) {
             <li>
                 <a routerLink="/dish/list-dish" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-tools-kitchen-2"></i><span class="nav-text">{{ 'sidebar.dishes' | translate }}</span>
                 </a>
             </li>
+            }
 
+            @if (canAccess('orders.list')) {
             <li>
                 <a routerLink="/orders/list" routerLinkActive="active"
                    class="nav-link d-flex align-items-center"
@@ -236,19 +244,22 @@
                     }
                 </a>
             </li>
+            }
 
+            @if (canAccess('tables.list')) {
             <li>
                 <a routerLink="/tables/list-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.tables' | translate }}</span>
                 </a>
             </li>
+            }
 
-            @if (canUse('reservations')) {
+            @if (canUse('reservations') && canAccess('reservations.list')) {
             <li>
                 <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.reservations' | translate }}</span>
+                    <i class="ti ti-calendar-event"></i><span class="nav-text">Reservations</span>
                     @if (pendingReservationsCount > 0) {
                         <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
                             {{ pendingReservationsCount }}
@@ -258,15 +269,17 @@
             </li>
             }
 
+            @if (canAccess('settings.view')) {
             <li>
                 <a routerLink="/restaurant/settings" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-settings"></i><span class="nav-text">{{ 'sidebar.settings' | translate }}</span>
                 </a>
             </li>
+            }
 
 
-            @if (canUse('feedback')) {
+            @if (canUse('feedback') && canAccess('feedback.list')) {
             <li>
                 <a routerLink="/feedback/list" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
@@ -277,19 +290,23 @@
 
             <li class="nav-label mt-4">{{ 'sidebar.administration' | translate }}</li>
             @if (canUse('roles')) {
+            @if (canAccess('roles.list')) {
             <li>
                 <a routerLink="/identity/list-roles" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-shield-lock"></i><span class="nav-text">RÃ´les</span>
+                    <i class="ti ti-shield-lock"></i><span class="nav-text">Roles</span>
                 </a>
             </li>
             }
+            }
 
+            @if (canAccess('users.list')) {
             <li>
                 <a routerLink="/identity/list-users" routerLinkActive="active" class="nav-link" (click)="closeMobileSidebar()">
                     <i class="ti ti-user-cog"></i><span class="nav-text">{{ 'sidebar.users' | translate }}</span>
                 </a>
             </li>
+            }
         </ul>
     </div>
 </aside>
@@ -344,6 +361,78 @@
             <span>Assistant</span>
         </button>
     </section>
+}
+
+@if (installPromptOpen) {
+    <div class="install-backdrop">
+        <section class="install-card" role="dialog" aria-modal="true" aria-labelledby="installAppTitle">
+            <button type="button" class="install-close" aria-label="Fermer" (click)="dismissInstallPrompt()">
+                <i class="ti ti-x"></i>
+            </button>
+
+            <div class="install-head">
+                <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+                <div>
+                    <h2 id="installAppTitle">Installer Restaurant Scan</h2>
+                    <p>Ajoutez l'application sur votre appareil pour acceder plus vite a votre dashboard.</p>
+                </div>
+            </div>
+
+            @if (iosInstallHelp && !installAvailable) {
+                <div class="install-ios-help">
+                    <span><i class="ti ti-share-3"></i> Appuyez sur Partager</span>
+                    <span><i class="ti ti-square-plus"></i> Puis choisissez Ajouter a l'ecran d'accueil</span>
+                </div>
+            }
+
+            @if (manualInstallHelp && !iosInstallHelp && !installAvailable) {
+                <div class="install-ios-help">
+                    <span><i class="ti ti-device-desktop-down"></i> Utilisez l'icone d'installation dans la barre d'adresse ou le menu du navigateur.</span>
+                    <span><i class="ti ti-refresh"></i> Apres une desinstallation, rechargez la page si le bouton natif n'apparait pas encore.</span>
+                </div>
+            }
+
+            <button class="install-primary" type="button" (click)="installApp()">
+                <i class="ti ti-download"></i>
+                {{ iosInstallHelp && !installAvailable ? 'Voir comment installer' : "Ajouter a l'ecran d'accueil" }}
+            </button>
+            <button class="install-secondary" type="button" (click)="dismissInstallPrompt()">Plus tard</button>
+        </section>
+    </div>
+}
+
+@if (incomingOrder; as order) {
+    <div class="global-order-backdrop">
+        <section class="global-order-modal" role="dialog" aria-modal="true" aria-labelledby="incomingOrderTitle">
+            <button type="button" class="global-order-close" aria-label="Fermer" (click)="dismissIncomingOrder()">
+                <i class="ti ti-x"></i>
+            </button>
+
+            <div class="global-order-icon">
+                <i class="ti ti-bell-ringing"></i>
+            </div>
+
+            <span class="global-order-eyebrow">Commande recue</span>
+            <h2 id="incomingOrderTitle">Nouvelle commande !</h2>
+
+            <div class="global-order-grid">
+                <div><span>Table</span><strong>{{ order.table?.name || 'Table inconnue' }}</strong></div>
+                <div><span>Client</span><strong>{{ order.customer_name || order.customer_phone || 'Client QR' }}</strong></div>
+                <div><span>Service</span><strong>{{ orderTypeLabel(order) }}</strong></div>
+                <div><span>Articles</span><strong>{{ orderItemsCount(order) }}</strong></div>
+                <div><span>Total</span><strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong></div>
+                <div><span>Suivi</span><strong>{{ order.tracking_code || 'N/A' }}</strong></div>
+            </div>
+
+            <div class="global-order-actions">
+                <button class="btn btn-outline-secondary" type="button" (click)="dismissIncomingOrder()">Ignorer</button>
+                <button class="btn btn-primary" type="button" (click)="openIncomingOrder()">
+                    <i class="ti ti-shopping-cart-check"></i>
+                    Voir la commande
+                </button>
+            </div>
+        </section>
+    </div>
 }
 
 

@@ -41,7 +41,7 @@
 
     <div class="billing-toggle" aria-label="Choisir le cycle de facturation">
       <button [class.active]="billingCycle === 'monthly'" type="button" (click)="billingCycle = 'monthly'">Mensuel</button>
-      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="billingCycle = 'yearly'">Annuel <span>2 mois offerts</span></button>
+      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="billingCycle = 'yearly'">Annuel <span>tarif reduit</span></button>
     </div>
 
     <p class="sync-note" *ngIf="errorMessage">{{ errorMessage }}</p>
@@ -67,9 +67,7 @@
         </div>
 
         <ul>
-          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_tables, 'tables QR', 'Tables QR illimitées') }}</li>
-          <li><i class="bi bi-check-circle-fill"></i>{{ limitLabel(plan.max_users, 'utilisateurs équipe', 'Utilisateurs illimités') }}</li>
-          <li *ngFor="let feature of plan.features"><i class="bi bi-check-circle-fill"></i>{{ feature }}</li>
+          <li *ngFor="let detail of planDetails(plan)"><i class="bi bi-check-circle-fill"></i>{{ detail }}</li>
           <li class="limitation" *ngFor="let limitation of plan.limitations"><i class="bi bi-x-circle"></i>{{ limitation }}</li>
         </ul>
 

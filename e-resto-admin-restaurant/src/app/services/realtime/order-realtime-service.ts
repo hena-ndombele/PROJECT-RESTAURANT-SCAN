@@ -4,6 +4,7 @@ import { Order } from "../../models/orders/OrderDto";
 import { AuthService } from "../auth/auth-service";
 import { OderService } from "../orders/oder-service";
 import { ReservationDto } from "../reservation/reservation-service";
+import { API_ROOT } from "../api-url";
 
 interface OrderNotification {
     id: string;
@@ -24,6 +25,7 @@ export class OrderRealtimeService {
 
     private socket?: WebSocket;
     private reconnectTimer?: ReturnType<typeof setTimeout>;
+    private pollingTimer?: ReturnType<typeof setInterval>;
     private connected = false;
     private started = false;
 
@@ -43,11 +45,13 @@ export class OrderRealtimeService {
         this.started = true;
         this.loadInitialOrders();
         this.connect();
+        this.startPollingFallback();
     }
 
     stop(): void {
         this.started = false;
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        if (this.pollingTimer) clearInterval(this.pollingTimer);
         this.socket?.close();
         this.socket = undefined;
         this.connected = false;
@@ -59,9 +63,43 @@ export class OrderRealtimeService {
     }
 
     private loadInitialOrders(): void {
-        this.orderService.list({ year: String(new Date().getFullYear()) }).subscribe({
+        this.orderService.list({ active_only: true }).subscribe({
             next: (orders) => this.orders.set(orders),
             error: () => this.orders.set([])
+        });
+    }
+
+    private startPollingFallback(): void {
+        if (this.pollingTimer) clearInterval(this.pollingTimer);
+        this.pollingTimer = setInterval(() => {
+            if (!this.started) return;
+            this.refreshOrdersFromApi();
+        }, 8000);
+    }
+
+    private refreshOrdersFromApi(): void {
+        const knownIds = new Set(this.orders().map((order) => order.id));
+
+        this.orderService.list({ active_only: true }).subscribe({
+            next: (orders) => {
+                this.orders.set(orders);
+
+                const freshOrders = orders
+                    .filter((order) => order.id && !knownIds.has(order.id) && this.isActiveOrder(order))
+                    .slice()
+                    .reverse();
+
+                for (const order of freshOrders) {
+                    this.orderChanged$.next(order);
+                    this.addNotification(order);
+                    this.playNotificationSound();
+                }
+            },
+            error: () => {
+                if (!this.connected) {
+                    this.connectionState.set("error");
+                }
+            }
         });
     }
 
@@ -70,10 +108,11 @@ export class OrderRealtimeService {
             return;
         }
 
-        const host = window.location.hostname;
+        const apiUrl = new URL(API_ROOT);
+        const host = apiUrl.hostname || window.location.hostname;
         const key = "e-resto-key";
         const port = 8080;
-        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const protocol = apiUrl.protocol === "https:" ? "wss" : "ws";
         const url = `${protocol}://${host}:${port}/app/${key}?protocol=7&client=angular-native&version=1.0&flash=false`;
 
         this.connectionState.set("connecting");

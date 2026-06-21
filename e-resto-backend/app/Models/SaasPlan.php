@@ -31,6 +31,11 @@ class SaasPlan extends Model
         'is_active' => 'boolean',
     ];
 
+    protected $appends = [
+        'max_dishes',
+        'max_orders_per_month',
+    ];
+
     public function restaurants()
     {
         return $this->hasMany(Restaurant::class, 'saas_plan_id');
@@ -69,12 +74,22 @@ class SaasPlan extends Model
 
     public function maxTables(): ?int
     {
-        return $this->tier() === 'pro' ? null : $this->max_tables;
+        return in_array($this->tier(), ['pro', 'business'], true) ? null : $this->max_tables;
     }
 
     public function maxUsers(): ?int
     {
-        return $this->tier() === 'pro' ? null : $this->max_users;
+        return in_array($this->tier(), ['pro', 'business'], true) ? null : $this->max_users;
+    }
+
+    public function getMaxDishesAttribute(): ?int
+    {
+        return $this->maxDishes();
+    }
+
+    public function getMaxOrdersPerMonthAttribute(): ?int
+    {
+        return $this->maxOrdersPerMonth();
     }
 
     public function includedPaymentMethods(): array

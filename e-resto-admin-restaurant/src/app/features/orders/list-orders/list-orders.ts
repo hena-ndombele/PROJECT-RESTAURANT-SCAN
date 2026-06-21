@@ -9,6 +9,7 @@ import { SaasService } from "../../../services/saas/saas-service";
 import { RestaurantPlanUsage } from "../../../models/saas/saas.models";
 import { TableService } from "../../../services/table/table-service";
 import { TableDto } from "../../../models/table/TableDto";
+import { AppPermissionService } from "../../../services/auth/permission-service";
 
 @Component({
     selector: "app-list-orders",
@@ -23,6 +24,7 @@ import { TableDto } from "../../../models/table/TableDto";
 })
 export class ListOrders implements OnInit, OnDestroy {
     private readonly realtime = inject(OrderRealtimeService);
+    private readonly permissions = inject(AppPermissionService);
     private realtimeSubscription?: Subscription;
 
     orders = signal<Order[]>([]);
@@ -157,6 +159,10 @@ export class ListOrders implements OnInit, OnDestroy {
         this.realtimeSubscription?.unsubscribe();
     }
 
+    canAccess(permission: string): boolean {
+        return this.permissions.has(permission);
+    }
+
     loadOrders(): void {
         this.loading.set(true);
         this.errorMessage.set("");
@@ -176,7 +182,7 @@ export class ListOrders implements OnInit, OnDestroy {
             },
             error: (err) => {
                 this.orders.set([]);
-                this.errorMessage.set("Impossible de charger les commandes.");
+                this.errorMessage.set(err?.error?.message || err?.message || "Impossible de charger les commandes.");
                 this.loading.set(false);
             }
         });
@@ -229,6 +235,10 @@ export class ListOrders implements OnInit, OnDestroy {
     }
 
     updateOrderStatus(order: Order, status: Order["status"]): void {
+        if (!this.canAccess("orders.update-status")) {
+            this.errorMessage.set("Vous n'avez pas la permission de modifier les commandes.");
+            return;
+        }
         if (!order.id || order.status === status || this.updatingOrderId() === order.id) return;
         if (this.isStatusDisabled(order, status)) {
             this.errorMessage.set("Impossible de revenir en arriere dans le statut de la commande.");
@@ -280,6 +290,10 @@ export class ListOrders implements OnInit, OnDestroy {
     }
 
     openCashModal(order: Order): void {
+        if (!this.canAccess("orders.update-status")) {
+            this.errorMessage.set("Vous n'avez pas la permission de modifier le paiement des commandes.");
+            return;
+        }
         this.cashOrder.set(order);
         this.cashReceivedAmount.set(this.orderTotal(order));
         this.errorMessage.set("");
@@ -304,6 +318,10 @@ export class ListOrders implements OnInit, OnDestroy {
     }
 
     confirmCashPayment(): void {
+        if (!this.canAccess("orders.update-status")) {
+            this.errorMessage.set("Vous n'avez pas la permission de modifier le paiement des commandes.");
+            return;
+        }
         const order = this.cashOrder();
         if (!order?.id || this.updatingPaymentId() === order.id || !this.cashAmountIsEnough()) return;
 

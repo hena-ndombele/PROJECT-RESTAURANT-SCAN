@@ -3,6 +3,8 @@
 :root {
   --dashboard-primary: #F9A11B;
   --dashboard-primary-rgb: 249, 161, 27;
+  --dashboard-button-accent: #FFD166;
+  --dashboard-button-bg: linear-gradient(135deg, #FFD166, #F9A11B, #D71920);
   --dashboard-secondary: #111318;
   --dashboard-surface: #FFF7ED;
 }
@@ -26,6 +28,35 @@ body.restaurant-theme .btn-primary {
   color: #111318 !important;
 }
 
+body.restaurant-theme .btn-primary,
+body.restaurant-theme button.btn-primary,
+body.restaurant-theme input[type="submit"].btn-primary,
+body.restaurant-theme .modal-footer .btn-primary,
+body.restaurant-theme .save-main,
+body.restaurant-theme .brand-action,
+body.restaurant-theme .dynamic-primary {
+  background: var(--dashboard-button-bg) !important;
+  border-color: transparent !important;
+  color: #111318 !important;
+  box-shadow: 0 10px 22px rgba(var(--dashboard-primary-rgb), .24);
+}
+
+body.restaurant-theme .btn-primary:hover,
+body.restaurant-theme .btn-primary:focus {
+  filter: brightness(.96);
+  transform: translateY(-1px);
+}
+
+body.restaurant-theme .btn-outline-primary {
+  background: transparent !important;
+}
+
+body.restaurant-theme .btn-outline-primary:hover,
+body.restaurant-theme .btn-outline-primary:focus {
+  background: var(--dashboard-button-bg) !important;
+  color: #111318 !important;
+}
+
 body.restaurant-theme .btn-outline-primary {
   --bs-btn-color: var(--dashboard-primary);
   --bs-btn-border-color: var(--dashboard-primary);
@@ -42,6 +73,15 @@ body.restaurant-theme .spinner-border.text-primary {
 
 body.restaurant-theme .bg-primary {
   background-color: var(--dashboard-primary) !important;
+}
+
+body.restaurant-theme .border-primary,
+body.restaurant-theme .dynamic-border {
+  border-color: var(--dashboard-primary) !important;
+}
+
+body.restaurant-theme .dynamic-icon {
+  color: var(--dashboard-primary) !important;
 }
 
 body.restaurant-theme .bg-primary.bg-opacity-10 {
@@ -64,6 +104,24 @@ input[type="button"],
 input[type="submit"],
 input[type="reset"] {
   border-radius: 8px !important;
+}
+
+body.restaurant-theme .spinner-border.text-warning,
+body.restaurant-theme .spinner-border.text-primary,
+body.restaurant-theme .spinner-grow.text-primary {
+  color: var(--dashboard-primary) !important;
+}
+
+body.restaurant-theme .modal .btn-outline-primary,
+body.restaurant-theme .btn-outline-primary {
+  color: var(--dashboard-primary) !important;
+  border-color: var(--dashboard-primary) !important;
+}
+
+body.restaurant-theme .modal .btn-outline-primary:hover,
+body.restaurant-theme .btn-outline-primary:hover {
+  background: var(--dashboard-primary) !important;
+  color: #111318 !important;
 }
 
 img[src*="assets/logo/e-resto-logo"],
@@ -125,6 +183,69 @@ body.dashboard-dark-theme .form-select,
 body.dashboard-dark-theme .input-group-text {
   background-color: #0f172a !important;
   color: #e5e7eb !important;
+}
+
+body.dashboard-dark-theme .modal-content {
+  background: #111827 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #374151 !important;
+}
+
+body.dashboard-dark-theme .modal-header,
+body.dashboard-dark-theme .modal-footer {
+  border-color: #374151 !important;
+}
+
+body.dashboard-dark-theme .modal-title,
+body.dashboard-dark-theme .modal h1,
+body.dashboard-dark-theme .modal h2,
+body.dashboard-dark-theme .modal h3,
+body.dashboard-dark-theme .modal h4,
+body.dashboard-dark-theme .modal h5,
+body.dashboard-dark-theme .modal h6 {
+  color: #f9fafb !important;
+}
+
+body.dashboard-dark-theme .modal .text-dark {
+  color: #f9fafb !important;
+}
+
+body.dashboard-dark-theme .modal .text-muted {
+  color: #9ca3af !important;
+}
+
+body.dashboard-dark-theme .modal .btn-close {
+  filter: invert(1) grayscale(100%);
+}
+
+body.dashboard-dark-theme .modal .card,
+body.dashboard-dark-theme .modal .detail-box,
+body.dashboard-dark-theme .modal .info-line,
+body.dashboard-dark-theme .modal .photo-picker,
+body.dashboard-dark-theme .modal .qr-print-card,
+body.dashboard-dark-theme .modal .employee-badge {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+
+body.dashboard-dark-theme .modal input,
+body.dashboard-dark-theme .modal select,
+body.dashboard-dark-theme .modal textarea {
+  background: #0f172a !important;
+  color: #f9fafb !important;
+  border-color: #374151 !important;
+}
+
+body.dashboard-dark-theme .modal input::placeholder,
+body.dashboard-dark-theme .modal textarea::placeholder {
+  color: #64748b !important;
+}
+
+body.dashboard-dark-theme .modal .btn-secondary {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #f9fafb !important;
 }
 
 body.dashboard-dark-theme .table {

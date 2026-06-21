@@ -5,6 +5,7 @@
       <h1><i class="bi bi-gear-fill"></i> Parametres du restaurant</h1>
       <p>Ces informations personnalisent le menu que le client voit apres scan du QR code.</p>
     </div>
+    @if (canUpdateSettings()) {
     <button class="save-main" type="button" [disabled]="saving()" (click)="save()">
       @if (saving()) {
         <span class="spinner-border spinner-border-sm me-2"></span>
@@ -14,42 +15,66 @@
         Sauvegarder tout
       }
     </button>
+    }
   </header>
 
-  <!-- @if (message()) {
+  <div class="settings-live-status">
+    <i class="bi bi-broadcast-pin"></i>
+    <span>Synchronisation interface active</span>
+  </div>
+
+  @if (message()) {
     <div class="alert alert-success">{{ message() }}</div>
   }
   @if (error()) {
     <div class="alert alert-danger">{{ error() }}</div>
   }
-  @if (!canCustomize()) {
-    <div class="alert alert-warning">
-      La personnalisation du menu client est reservee aux plans Pro et Business. Vous pouvez modifier les informations de base du restaurant, mais le logo, les couleurs, le slogan et l'URL publique restent verrouilles.
-    </div>
-  } -->
-
-  @if (loading()) {
+  <!-- @if (loading()) {
     <section class="settings-card text-center">
       <span class="spinner-border text-warning"></span>
       <p class="mt-3 mb-0">Chargement des parametres...</p>
     </section>
-  } @else {
+  } @else { -->
     <section class="settings-card">
       <h2><i class="bi bi-shop-window"></i> Logo du restaurant</h2>
       <div class="logo-row">
-        <label class="logo-picker">
+        <div class="logo-picker">
           @if (logoPreview()) {
             <img [src]="logoPreview()!" alt="Logo restaurant">
           } @else {
             <i class="bi bi-image"></i>
           }
-          <input type="file" accept="image/png,image/jpeg,image/webp" [disabled]="!canCustomize()" (change)="onLogoSelected($event)">
-          <span>Ajouter un logo</span>
-        </label>
+        </div>
         <div>
           <strong>Logo du menu client</strong>
           <p>Affiche en haut de l'application client. Format recommande : carre, minimum 200x200px.</p>
+          <label class="logo-change-btn brand-action">
+            <i class="bi bi-upload me-1"></i>
+            Changer le logo
+            <input type="file" accept="image/png,image/jpeg,image/webp" [disabled]="!canCustomize()" (change)="onLogoSelected($event)">
+          </label>
         </div>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <h2><i class="bi bi-bar-chart-fill"></i> Capacite du restaurant</h2>
+      <div class="settings-stats">
+        <article>
+          <span>Tables</span>
+          <strong>{{ planUsage()?.usage?.tables || 0 }}</strong>
+          <small>{{ planUsage()?.messages?.tables || 'Tables configurees' }}</small>
+        </article>
+        <article>
+          <span>Utilisateurs</span>
+          <strong>{{ planUsage()?.usage?.users || 0 }}</strong>
+          <small>{{ planUsage()?.messages?.users || 'Comptes actifs' }}</small>
+        </article>
+        <article>
+          <span>Plats</span>
+          <strong>{{ planUsage()?.usage?.dishes || 0 }}</strong>
+          <small>{{ planUsage()?.messages?.dishes || 'Plats publies' }}</small>
+        </article>
       </div>
     </section>
 
@@ -58,34 +83,42 @@
       <div class="form-grid">
         <label>
           <span>Nom du restaurant *</span>
-          <input [(ngModel)]="restaurant.name" name="restaurant_name">
+          <input [(ngModel)]="restaurant.name" name="restaurant_name" [disabled]="!canUpdateSettings()">
         </label>
         <label>
-          <span>Nom du proprietaire</span>
-          <input [(ngModel)]="restaurant.owner_name" name="owner_name">
+          <span>Nom du propriétaire</span>
+          <input [(ngModel)]="restaurant.owner_name" name="owner_name" [disabled]="!canUpdateSettings()">
         </label>
         <label>
           <span>Telephone</span>
-          <input [(ngModel)]="restaurant.owner_phone" name="owner_phone">
+          <input [(ngModel)]="restaurant.owner_phone" name="owner_phone" [disabled]="!canUpdateSettings()">
         </label>
         <label>
           <span>WhatsApp commandes hors restaurant</span>
-          <input [(ngModel)]="restaurant.settings.whatsapp_order_phone" name="whatsapp_order_phone" placeholder="+243...">
+          <input [(ngModel)]="restaurant.settings.whatsapp_order_phone" name="whatsapp_order_phone" [disabled]="!canUpdateSettings()" placeholder="+243...">
         </label>
         <label>
           <span>Ville</span>
-          <input [(ngModel)]="restaurant.city" name="city">
+          <input [(ngModel)]="restaurant.city" name="city" [disabled]="!canUpdateSettings()">
         </label>
         <label class="wide">
           <span>Adresse</span>
-          <input [(ngModel)]="restaurant.address" name="address" placeholder="Ex: Bandalungwa, Kinshasa">
+          <input [(ngModel)]="restaurant.address" name="address" [disabled]="!canUpdateSettings()" placeholder="Ex: Bandalungwa, Kinshasa">
         </label>
         <label>
           <span>Devise par defaut</span>
-          <select [(ngModel)]="restaurant.currency" name="currency">
+          <select [(ngModel)]="restaurant.currency" name="currency" [disabled]="!canUpdateSettings()">
             <option value="CDF">CDF</option>
             <option value="USD">USD</option>
           </select>
+        </label>
+        <label>
+          <span>Heure d'ouverture</span>
+          <input type="time" [(ngModel)]="restaurant.settings.opening_time" name="opening_time" [disabled]="!canUpdateSettings()">
+        </label>
+        <label>
+          <span>Heure de fermeture</span>
+          <input type="time" [(ngModel)]="restaurant.settings.closing_time" name="closing_time" [disabled]="!canUpdateSettings()">
         </label>
       </div>
     </section>
@@ -114,7 +147,7 @@
                     (click)="selectPrimary(color)"
                     [attr.aria-label]="'Choisir ' + color"></button>
           }
-          <input type="color" [(ngModel)]="restaurant.settings.theme.primary" name="primary_color" [disabled]="!canCustomize()">
+          <input type="color" [(ngModel)]="restaurant.settings.theme.primary" name="primary_color" [disabled]="!canCustomize()" (change)="onColorInput()" (input)="onColorInput()">
         </div>
       </div>
 
@@ -129,7 +162,7 @@
                     (click)="selectBackground(color)"
                     [attr.aria-label]="'Choisir ' + color"></button>
           }
-          <input type="color" [(ngModel)]="restaurant.settings.theme.background" name="background_color" [disabled]="!canCustomize()">
+          <input type="color" [(ngModel)]="restaurant.settings.theme.background" name="background_color" [disabled]="!canCustomize()" (change)="onColorInput()" (input)="onColorInput()">
         </div>
       </div>
     </section>
@@ -141,8 +174,8 @@
         <a [href]="menuUrl()" target="_blank" rel="noopener">Ouvrir <i class="bi bi-arrow-up-right"></i></a>
       </div>
       <label>
-        <span>Modifier le slug</span>
-        <input [(ngModel)]="restaurant.slug" name="slug" [disabled]="!canCustomize()" placeholder="mon-restaurant">
+        <span>Slug du menu</span>
+        <input [value]="restaurant.slug || 'mon-restaurant'" name="slug_readonly" disabled>
       </label>
       <label>
         <span>Lien Google Maps</span>
@@ -157,5 +190,5 @@
         <input [(ngModel)]="restaurant.settings.description" name="description" [disabled]="!canCustomize()" placeholder="Menu digital QR code">
       </label>
     </section>
-  }
+  <!-- } -->
 </main>

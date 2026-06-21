@@ -621,7 +621,7 @@ export class App implements OnInit {
     }).subscribe({
       next: () => {
         this.ownerPassword = '';
-        this.message.set('Mot de passe proprietaire reinitialise.');
+        this.message.set('Mot de passe propriétaire reinitialise.');
       },
       error: (error) => this.showError(error),
     });

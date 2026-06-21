@@ -145,7 +145,7 @@
 
   /* État LIBRE (Vert) */
   .table-top.libre {
-    border-color: #10b981;
+    border-color: var(--dashboard-primary, #10b981);
     background: linear-gradient(145deg, #ffffff, #f0fdf4);
   }
 
@@ -161,15 +161,55 @@
 
   /* État COMMANDE (Bleu) */
   .table-top.ordering {
-    border-color: #3b82f6;
+    border-color: var(--dashboard-primary, #3b82f6);
     background: linear-gradient(145deg, #ffffff, #f0fdf4);
   }
 
   /* État RÉSERVÉ / COMMANDE (Bleu) */
   .table-top.ordering, .table-top.reserved {
-    border-color: #3b82f6;
+    border-color: var(--dashboard-primary, #3b82f6);
     /* Correction du dégradé : f0f9ff est un bleu très clair */
     background: linear-gradient(145deg, #ffffff, #f0f9ff);
+  }
+
+  .table-id {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 68px;
+    min-height: 44px;
+    padding: 2px 12px;
+    border: 2px solid var(--dashboard-primary, #F9A11B);
+    border-radius: 12px;
+    background: rgba(var(--dashboard-primary-rgb, 249, 161, 27), .12);
+  }
+
+  :host-context(body.dashboard-dark-theme) .container-fluid {
+    background: #0f172a !important;
+  }
+
+  :host-context(body.dashboard-dark-theme) .table-top.libre,
+  :host-context(body.dashboard-dark-theme) .table-top.ordering,
+  :host-context(body.dashboard-dark-theme) .table-top.reserved {
+    background: linear-gradient(145deg, #111827, #1f2937);
+    border-color: var(--dashboard-primary, #F9A11B);
+  }
+
+  :host-context(body.dashboard-dark-theme) .table-leg {
+    background: rgba(30, 41, 59, .85);
+    border-color: #374151;
+  }
+
+  :host-context(body.dashboard-dark-theme) .btn-white,
+  :host-context(body.dashboard-dark-theme) .btn-light-glass {
+    background: #111827;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  :host-context(body.dashboard-dark-theme) .table-id {
+    color: #f9fafb !important;
+    background: rgba(var(--dashboard-primary-rgb, 249, 161, 27), .16);
   }
   /* Animation de pulsation pour le texte de chargement */
   .animate-pulse {

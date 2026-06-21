@@ -17,9 +17,11 @@
       </div>
     </div>
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
+      @if (canAccess('roles.create')) {
       <button class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#roleModal" (click)="openCreate()">
         <i class="ti ti-plus me-1"></i> Create Role
       </button>
+      }
     </div>
   </header>
 
@@ -46,7 +48,6 @@
         <tr>
           <th class="ps-4 py-3 text-muted text-uppercase small fw-bold" style="width: 80px">#</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Role</th>
-          <th class="py-3 text-muted text-uppercase small fw-bold">Permissions</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Dates</th>
           <th class="py-3 text-muted text-uppercase small fw-bold text-center">Actions</th>
         </tr>
@@ -54,7 +55,7 @@
         <tbody>
           @if (isLoading()) {
             <tr>
-              <td colspan="5" class="text-center py-5">
+              <td colspan="4" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status"></div>
                 <p class="mt-3 text-muted fw-medium">Data recovery...</p>
               </td>
@@ -68,17 +69,6 @@
                   <small class="text-muted">{{ role.guard_name || 'web' }}</small>
                 </td>
                 <td>
-                  @if ((role.permissions?.length ?? 0) > 0) {
-                    <div class="d-flex flex-wrap gap-1">
-                      @for (permission of role.permissions; track permission.id) {
-                        <span class="badge text-bg-light border">{{ permission.name }}</span>
-                      }
-                    </div>
-                  } @else {
-                    <span class="text-muted small">No permission assigned</span>
-                  }
-                </td>
-                <td>
                   <div class="d-flex flex-column">
                     <span class="small"><i class="bi bi-calendar-plus me-1 text-success"></i>{{ role.created_at | date:'dd MMM yyyy' }}</span>
                     <span class="small text-muted"><i class="bi bi-pencil me-1"></i>{{ role.updated_at | date:'dd/MM/yyyy HH:mm' }}</span>
@@ -86,21 +76,25 @@
                 </td>
                 <td class="text-center pe-4">
                   <div class="d-flex gap-2 justify-content-center">
+                    @if (canAccess('roles.update')) {
                     <button class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center"
                             style="width: 35px; height: 35px;" data-bs-toggle="modal"
                             data-bs-target="#roleModal" (click)="openEdit(role)">
                       <i class="ti ti-edit fs-4"></i>
                     </button>
+                    }
+                    @if (canAccess('roles.delete')) {
                     <button class="btn btn-outline-danger d-inline-flex align-items-center justify-content-center"
                             style="width: 35px; height: 35px;" (click)="confirmDelete(role)">
                       <i class="ti ti-trash fs-4"></i>
                     </button>
+                    }
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="text-center py-5">
+                <td colspan="4" class="text-center py-5">
                   <h5 class="text-muted fw-normal">No role found</h5>
                 </td>
               </tr>
@@ -109,7 +103,7 @@
         </tbody>
         <tfoot class="bg-light">
         <tr>
-          <td colspan="5" class="py-3 px-4">
+          <td colspan="4" class="py-3 px-4">
             <div class="d-flex justify-content-between align-items-center">
               <div class="text-muted small">Page display <strong>{{ currentPage() }}</strong> sur <strong>{{ totalPages() || 1 }}</strong></div>
               <nav aria-label="Page navigation">
@@ -158,16 +152,49 @@
             }
           </div>
           <label class="form-label">Permissions</label>
-          <div class="border rounded-3 p-3" style="max-height: 260px; overflow: auto;">
-            @for (permission of permissions(); track permission.id) {
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" [id]="'rolePermission' + permission.id"
-                       [checked]="isPermissionSelected(permission.name)"
-                       (change)="onPermissionChange(permission.name, $event)">
-                <label class="form-check-label" [for]="'rolePermission' + permission.id">{{ permission.name }}</label>
+          <div class="permission-manager border rounded-3">
+            <div class="permission-groups">
+              @for (group of permissionGroups(); track group.key) {
+                <button type="button" class="permission-group"
+                        [class.active]="activeGroup().key === group.key"
+                        (click)="selectGroup(group.key)">
+                  <span>{{ group.label }}</span>
+                  <small>{{ selectedCount(group) }} / {{ group.permissions.length }}</small>
+                </button>
+              } @empty {
+                <p class="text-muted mb-0 p-3">Aucune permission disponible.</p>
+              }
+            </div>
+
+            @if (activeGroup(); as group) {
+              <div class="permission-panel">
+                <div class="permission-panel-header">
+                  <div>
+                    <h6 class="mb-1">{{ group.label }}</h6>
+                    <p class="mb-0 text-muted small">{{ group.description }}</p>
+                  </div>
+                  <label class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox"
+                           [checked]="isGroupFullySelected(group)"
+                           (change)="toggleGroup(group, $any($event.target).checked)">
+                    <span class="form-check-label small fw-bold">Tout</span>
+                  </label>
+                </div>
+
+                <div class="permission-list">
+                  @for (permission of group.permissions; track permission.id) {
+                    <label class="permission-item" [for]="'rolePermission' + permission.id">
+                      <input class="form-check-input" type="checkbox" [id]="'rolePermission' + permission.id"
+                             [checked]="isPermissionSelected(permission.name)"
+                             (change)="onPermissionChange(permission.name, $event)">
+                      <span>
+                        <strong>{{ permissionActionLabel(permission.name) }}</strong>
+                        <small>{{ permissionDescription(permission.name) }}</small>
+                      </span>
+                    </label>
+                  }
+                </div>
               </div>
-            } @empty {
-              <p class="text-muted mb-0">No permission available.</p>
             }
           </div>
         </form>

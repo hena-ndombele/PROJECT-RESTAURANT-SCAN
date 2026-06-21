@@ -1,106 +1,88 @@
 <button type="button"
         class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
-        style="width: 35px; height: 35px; border: 2px solid; background-color: transparent;"
+        style="width: 35px; height: 35px;"
         data-bs-toggle="modal"
         [attr.data-bs-target]="'#showAgentModal' + agentDetail.id">
     <i class="ti ti-eye fs-4"></i>
 </button>
 
-
 <div class="modal fade" id="showAgentModal{{agentDetail.id}}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-
-            <div class="modal-header bg-primary text-white border-0 py-3">
-                <div class="d-flex align-items-center">
-                    <div class="bg-black bg-opacity-20 p-2 rounded-3 me-3">
-                        <i class="bi bi-person-badge fs-4"></i>
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-3">
+                        <i class="bi bi-person-badge fs-4 text-primary"></i>
                     </div>
-                    <h5 class="modal-title fw-bold" style="color:black">Employee Details</h5>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Details employe</h5>
+                        <small class="text-muted">{{ agentDetail.email }}</small>
+                    </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="modal-body p-0">
-                <div class="row g-0">
-                    <div class="col-md-4 bg-light border-end p-4 text-center">
-                        <div class="mx-auto bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mb-3"
-                             style="width: 90px; height: 90px;">
-                            <span class="fs-2  text-primary">
-                                {{ agentDetail.first_name.charAt(0) }}{{ agentDetail.last_name.charAt(0) }}
-                            </span>
-                        </div>
-                        <h5 class=" mb-1 text-dark">{{ agentDetail.first_name }} {{ agentDetail.last_name }}</h5>
-                        <p class="small text-muted mb-3 text-truncate">{{ agentDetail.email }}</p>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="border rounded-3 p-4 text-center h-100">
+                            <div class="agent-photo mx-auto mb-3">
+                                @if (agentDetail.photo_url) {
+                                    <img [src]="agentDetail.photo_url" alt="Photo employe">
+                                } @else {
+                                    <span>{{ initials() }}</span>
+                                }
+                            </div>
+                            <h4 class="fw-bold mb-1">{{ agentDetail.first_name }} {{ agentDetail.last_name }}</h4>
+                            <p class="text-primary fw-bold mb-2">{{ agentDetail.fonction || 'Fonction non renseignee' }}</p>
+                            <span class="badge text-bg-success text-uppercase">{{ agentDetail.status || 'active' }}</span>
 
-                        <div class="d-flex flex-column gap-2 align-items-center">
-                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2">
-                                <i class="bi bi-check-circle-fill me-1"></i> Actif
-                            </span>
-                        </div>
+                            <button type="button" class="btn badge-reprint-btn w-100 mt-4" [disabled]="isBadgeGenerating" (click)="downloadBadge()">
+                                @if (isBadgeGenerating) {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    Generation...
+                                } @else {
+                                    <i class="ti ti-download me-2"></i>
+                                    Telecharger le badge
+                                }
+                            </button>
 
-                        <div class="mt-4 pt-3 border-top text-start">
-                            <label class="small text-muted text-uppercase fw-bold mb-2 d-block" style="font-size: 0.7rem;">Date d'adhésion</label>
-                            <div class="d-flex align-items-center small fw-medium">
-                                <i class="bi bi-calendar3 me-2 text-primary"></i>
-                                {{ agentDetail.created_at | date:'dd MMMM yyyy' }}
+                            <div class="mt-4 pt-3 border-top text-start">
+                                <div class="info-line">
+                                    <span>Matricule</span>
+                                    <strong>{{ agentDetail.matricule || 'Non genere' }}</strong>
+                                </div>
+                                <div class="info-line">
+                                    <span>Compte user</span>
+                                    <strong>{{ agentDetail.user_id ? 'Active' : 'Non active' }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-8 p-4">
-                        <h6 class="fw-bold text-uppercase small text-muted mb-4 border-bottom pb-2" style="letter-spacing: 0.5px;">
-                            Informations de contact
-                        </h6>
-
+                    <div class="col-lg-8">
                         <div class="row g-3">
-                            <div class="col-sm-6">
-                                <label class="small text-muted d-block mb-1">Prénom</label>
-                                <div class="text-dark p-2 bg-light rounded">{{ agentDetail.first_name }}</div>
-                            </div>
-                            <div class="col-sm-6">
-                                <label class="small text-muted d-block mb-1">Nom</label>
-                                <div class="text-dark p-2 bg-light rounded">{{ agentDetail.last_name }}</div>
-                            </div>
+                            <div class="col-md-6"><div class="detail-box"><span>Prenom</span><strong>{{ agentDetail.first_name }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Nom</span><strong>{{ agentDetail.last_name }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Email</span><strong>{{ agentDetail.email }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Telephone</span><strong>{{ agentDetail.phone_number || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Fonction</span><strong>{{ agentDetail.fonction || 'Non renseignee' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Niveau d'etude</span><strong>{{ agentDetail.education_level || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Contrat</span><strong>{{ agentDetail.contract_type || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Horaire</span><strong>{{ agentDetail.shift || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Date d'embauche</span><strong>{{ agentDetail.hired_at ? (agentDetail.hired_at | date:'dd MMM yyyy') : 'Non renseignee' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Contact urgence</span><strong>{{ agentDetail.emergency_contact_name || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Telephone urgence</span><strong>{{ agentDetail.emergency_contact_phone || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-12"><div class="detail-box"><span>Adresse</span><strong>{{ agentDetail.address || 'Non renseignee' }}</strong></div></div>
+                        </div>
 
-                            <div class="col-sm-7">
-                                <label class="small text-muted d-block mb-1">Adresse Email</label>
-                                <div class="fw-medium text-dark p-2 bg-light rounded text-truncate">
-                                    <i class="bi bi-envelope me-2 text-primary"></i>{{ agentDetail.email }}
-                                </div>
-                            </div>
-                            <div class="col-sm-5">
-                                <label class="small text-muted d-block mb-1">Téléphone</label>
-                                <div class="text-dark p-2 bg-light rounded">
-                                    <i class="bi bi-telephone me-2 text-primary"></i>{{ agentDetail.phone_number || 'Non renseigné' }}
-                                </div>
-                            </div>
-
-                            <div class="col-sm-5">
-                                <label class="small text-muted d-block mb-1">Adresse Résidentielle</label>
-                                <div class="fw-medium text-dark p-2 bg-light rounded">
-                                    <i class="bi bi-geo-alt me-2 text-primary"></i>{{ agentDetail.address || 'Aucune adresse' }}
-                                </div>
-                            </div>
-                            <div class="col-sm-5">
-                                <label class="small text-muted d-block mb-1">Fonction</label>
-                                <div class="fw-medium text-dark p-2 bg-light rounded">
-                                    <i class="bi-person-badge me-2 text-primary"></i>{{ agentDetail.fonction || 'Aucune Fonction' }}
-                                </div>
-                            </div>
-
-                            <div class="col-12 mt-3">
-                                <div class="small text-muted p-2 border-top">
-                                    <i class="bi bi-clock-history me-1"></i>
-                                    Dernière modification le {{ agentDetail.updated_at | date:'dd/MM/yyyy à HH:mm' }}
-                                </div>
-                            </div>
+                        <div class="small text-muted mt-4 pt-3 border-top">
+                            Cree le {{ agentDetail.created_at | date:'dd/MM/yyyy HH:mm' }} -
+                            Derniere modification le {{ agentDetail.updated_at | date:'dd/MM/yyyy HH:mm' }}
                         </div>
                     </div>
                 </div>
             </div>
-
-
         </div>
     </div>
 </div>

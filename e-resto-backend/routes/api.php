@@ -65,6 +65,7 @@ Route::post('/public/contact', [ContactController::class, 'store']);
 Route::post('/public/reservations', [ReservationController::class, 'store']);
 Route::post('/public/Réservations', [ReservationController::class, 'store']);
 Route::post('/public/feedbacks', [FeedbackController::class, 'store']);
+Route::get('/public/employees/verify/{id}', [AgentController::class, 'verify']);
 
 
 Route::middleware('auth:sanctum')->group(function () {

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Code de verification Restaurant Scan</title>
+    <title>Code de vérification Restaurant Scan</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f6fb;color:#111827;font-family:Arial,Helvetica,sans-serif;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6fb;padding:28px 12px;">
@@ -13,7 +13,7 @@
                         <td style="padding:30px;background:linear-gradient(135deg,#ff7a1a,#d71920);color:#ffffff;text-align:center;">
                             <img src="<?php echo e($message->embed(public_path('assets/logo.png'))); ?>" alt="Restaurant Scan" width="112" height="72" style="display:inline-block;border-radius:12px;margin-bottom:14px;object-fit:contain;background:#ffffff;">
                             <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#fff3d6;font-weight:700;">Connexion securisee</div>
-                            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;">Votre code de verification</h1>
+                            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;">Votre code de vérification</h1>
                         </td>
                     </tr>
                     <tr>

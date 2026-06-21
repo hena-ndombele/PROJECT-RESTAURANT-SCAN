@@ -1,6 +1,6 @@
 <button type="button"
-        class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center"
-        style="width: 35px; height: 35px; border: 1px solid #ff8200; background-color: transparent;"
+        class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center dynamic-border"
+        style="width: 35px; height: 35px; background-color: transparent;"
         data-bs-toggle="modal"
         [attr.data-bs-target]="'#updateCategoryModal' + categoryId">
     <i class="ti ti-edit fs-4"></i>
@@ -26,8 +26,8 @@
 
                     <div class="d-flex align-items-center gap-4 mb-4 p-3 bg-light rounded-3">
                         <div class="position-relative">@if (imagePreview) {
-                            <img [src]="imagePreview" alt="Preview" class="rounded shadow-sm"
-                                 style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #ff8200">
+                            <img [src]="imagePreview" alt="Preview" class="rounded shadow-sm dynamic-border"
+                                 style="width: 100px; height: 100px; object-fit: cover; border: 3px solid">
                         } @else if (categoryDetail?.image) {
                             <img [src]="IMAGE_URL + categoryDetail?.image" alt="Current" class="rounded shadow-sm"
                                  style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #dee2e6">

@@ -18,7 +18,9 @@
         </div>
         <div class="col-md-5 text-md-end mt-3 mt-md-0">
             <div class="d-flex gap-2 justify-content-md-end">
+                @if (canAccess('agents.create')) {
                 <app-create-agent></app-create-agent>
+                }
                 <button class="btn border d-inline-flex align-items-center px-3" style="background: green;color:white" (click)="exportToExcel()">
                     <i class="bi bi-file-excel me-2" style="color:white"></i> Export File
                 </button>
@@ -91,9 +93,13 @@
                                 </td>
                                 <td class="text-center pe-4">
                                     <div class="d-flex gap-2 justify-content-center">
+                                        @if (canAccess('agents.update')) {
                                         <app-update-agent [agentId]="agent.id"></app-update-agent>
+                                        }
                                         <app-show-agent [agent]="agent"></app-show-agent>
+                                        @if (canAccess('agents.delete')) {
                                         <app-delete-agent [agentId]="agent.id"></app-delete-agent>
+                                        }
                                     </div>
                                 </td>
                             </tr>

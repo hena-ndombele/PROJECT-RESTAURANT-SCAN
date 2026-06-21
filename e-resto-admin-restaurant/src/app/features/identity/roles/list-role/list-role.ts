@@ -6,6 +6,14 @@ import { PermissionDto } from "../../../../models/permissions/PermissionDto";
 import { RoleDto } from "../../../../models/roles/RoleDto";
 import { PermissionService } from "../../../../services/permissions/permission-service";
 import { RoleService } from "../../../../services/roles/role-service";
+import { AppPermissionService } from "../../../../services/auth/permission-service";
+
+interface PermissionGroup {
+  key: string;
+  label: string;
+  description: string;
+  permissions: PermissionDto[];
+}
 
 @Component({
   selector: "app-list-role",
@@ -17,6 +25,7 @@ import { RoleService } from "../../../../services/roles/role-service";
 export class ListRole implements OnInit {
   private roleService = inject(RoleService);
   private permissionService = inject(PermissionService);
+  private permissionsService = inject(AppPermissionService);
 
   isLoading = signal(true);
   isSaving = signal(false);
@@ -27,6 +36,33 @@ export class ListRole implements OnInit {
   pageSize = 10;
   selectedRole = signal<RoleDto | null>(null);
   selectedPermissionNames = signal<string[]>([]);
+  activePermissionGroup = signal("dashboard");
+
+  private readonly moduleLabels: Record<string, { label: string; description: string }> = {
+    dashboard: { label: "Tableau de bord", description: "Acces aux statistiques et indicateurs." },
+    agents: { label: "Employes", description: "Gestion des fiches employes et badges." },
+    users: { label: "Users", description: "Creation des acces de connexion." },
+    roles: { label: "Roles", description: "Gestion des roles et autorisations." },
+    permissions: { label: "Permissions", description: "Consultation des autorisations disponibles." },
+    categories: { label: "Categories", description: "Gestion des categories du menu." },
+    plats: { label: "Plats", description: "Gestion des plats et prix." },
+    tables: { label: "Tables", description: "Gestion des tables et QR codes." },
+    reservations: { label: "Reservations", description: "Gestion des reservations clients." },
+    orders: { label: "Commandes", description: "Suivi et traitement des commandes." },
+    feedback: { label: "Avis clients", description: "Consultation des retours clients." },
+    settings: { label: "Parametres", description: "Configuration du restaurant." },
+    profile: { label: "Profil", description: "Profil personnel et mot de passe." },
+  };
+
+  private readonly actionLabels: Record<string, string> = {
+    list: "Voir la liste",
+    view: "Afficher les details",
+    create: "Creer",
+    update: "Modifier",
+    delete: "Supprimer",
+    "update-status": "Changer le statut",
+    "change-password": "Changer le mot de passe",
+  };
 
   roleForm = new FormGroup({
     name: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
@@ -57,9 +93,45 @@ export class ListRole implements OnInit {
 
   pagesArray = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
 
+  permissionGroups = computed<PermissionGroup[]>(() => {
+    const groups = new Map<string, PermissionDto[]>();
+
+    this.permissions().forEach((permission) => {
+      const [moduleKey] = permission.name.split(".");
+      if (moduleKey === "account-requests") {
+        return;
+      }
+      const key = moduleKey || "other";
+      groups.set(key, [...(groups.get(key) ?? []), permission]);
+    });
+
+    return Array.from(groups.entries()).map(([key, permissions]) => {
+      const meta = this.moduleLabels[key] ?? {
+        label: this.humanize(key),
+        description: "Autorisations du module.",
+      };
+
+      return {
+        key,
+        label: meta.label,
+        description: meta.description,
+        permissions: permissions.sort((a, b) => this.permissionActionLabel(a.name).localeCompare(this.permissionActionLabel(b.name))),
+      };
+    });
+  });
+
+  activeGroup = computed(() => {
+    const groups = this.permissionGroups();
+    return groups.find((group) => group.key === this.activePermissionGroup()) ?? groups[0] ?? null;
+  });
+
   ngOnInit(): void {
     this.loadRoles();
     this.loadPermissions();
+  }
+
+  canAccess(permission: string): boolean {
+    return this.permissionsService.has(permission);
   }
 
   loadRoles(): void {
@@ -76,13 +148,20 @@ export class ListRole implements OnInit {
 
   loadPermissions(): void {
     this.permissionService.list().subscribe({
-      next: (response) => this.permissions.set(response.data ?? []),
+      next: (response) => {
+        this.permissions.set(response.data ?? []);
+        const firstGroup = this.permissionGroups()[0]?.key;
+        if (firstGroup && !this.permissionGroups().some((group) => group.key === this.activePermissionGroup())) {
+          this.activePermissionGroup.set(firstGroup);
+        }
+      },
     });
   }
 
   openCreate(): void {
     this.selectedRole.set(null);
     this.selectedPermissionNames.set([]);
+    this.activePermissionGroup.set(this.permissionGroups()[0]?.key ?? "dashboard");
     this.roleForm.reset({ name: "" });
   }
 
@@ -90,6 +169,7 @@ export class ListRole implements OnInit {
     this.selectedRole.set(role);
     this.roleForm.patchValue({ name: role.name });
     this.selectedPermissionNames.set((role.permissions ?? []).map((permission) => permission.name));
+    this.activePermissionGroup.set(this.permissionGroups()[0]?.key ?? "dashboard");
   }
 
   onPermissionChange(permissionName: string, event: Event): void {
@@ -102,6 +182,40 @@ export class ListRole implements OnInit {
 
   isPermissionSelected(permissionName: string): boolean {
     return this.selectedPermissionNames().includes(permissionName);
+  }
+
+  selectGroup(groupKey: string): void {
+    this.activePermissionGroup.set(groupKey);
+  }
+
+  isGroupFullySelected(group: PermissionGroup): boolean {
+    return group.permissions.every((permission) => this.isPermissionSelected(permission.name));
+  }
+
+  selectedCount(group: PermissionGroup): number {
+    return group.permissions.filter((permission) => this.isPermissionSelected(permission.name)).length;
+  }
+
+  toggleGroup(group: PermissionGroup, checked: boolean): void {
+    const names = group.permissions.map((permission) => permission.name);
+    const current = this.selectedPermissionNames();
+
+    this.selectedPermissionNames.set(
+      checked
+        ? Array.from(new Set([...current, ...names]))
+        : current.filter((name) => !names.includes(name))
+    );
+  }
+
+  permissionActionLabel(permissionName: string): string {
+    const action = permissionName.split(".").slice(1).join(".");
+    return this.actionLabels[action] ?? this.humanize(action || permissionName);
+  }
+
+  permissionDescription(permissionName: string): string {
+    const [moduleKey] = permissionName.split(".");
+    const moduleName = this.moduleLabels[moduleKey]?.label ?? this.humanize(moduleKey);
+    return `${moduleName} - ${this.permissionActionLabel(permissionName)}`;
   }
 
   saveRole(): void {
@@ -159,6 +273,12 @@ export class ListRole implements OnInit {
 
   permissionNames(role: RoleDto): string {
     return (role.permissions ?? []).map((permission) => permission.name).join(", ");
+  }
+
+  private humanize(value: string): string {
+    return value
+      .replace(/[-_.]/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
   onSearch(event: Event): void {

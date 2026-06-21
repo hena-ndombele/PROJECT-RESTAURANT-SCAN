@@ -12,11 +12,11 @@ class PlatController extends Controller
 {
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/plats/get_plats",
      * summary="Lister les plats",
      * tags={"Plats"},
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Liste des plats"
      * )
@@ -32,21 +32,21 @@ class PlatController extends Controller
 
 
     /**
-     * @OA\Post(
+     * @OldOA\\Post(
      * path="/api/plats/create-plats",
      * summary="Créer un plat",
      * tags={"Plats"},
-     * @OA\RequestBody(
+     * @OldOA\\RequestBody(
      * required=true,
-     * @OA\MediaType(
+     * @OldOA\\MediaType(
      * mediaType="multipart/form-data",
-     * @OA\Schema(
+     * @OldOA\\Schema(
      * required={"name","price","category_id"},
-     * @OA\Property(property="name", type="string", example="Pizza"),
-     * @OA\Property(property="description", type="string", example="Pizza fromage"),
-     * @OA\Property(property="price", type="number", example=12.5),
-     * @OA\Property(property="category_id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
-     * @OA\Property(
+     * @OldOA\\Property(property="name", type="string", example="Pizza"),
+     * @OldOA\\Property(property="description", type="string", example="Pizza fromage"),
+     * @OldOA\\Property(property="price", type="number", example=12.5),
+     * @OldOA\\Property(property="category_id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
+     * @OldOA\\Property(
      * property="image",
      * type="string",
      * format="binary",
@@ -55,7 +55,7 @@ class PlatController extends Controller
      * )
      * )
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=201,
      * description="Plat créé avec succès"
      * )
@@ -126,18 +126,18 @@ public function store(Request $request)
 
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/plats/{id}",
      * summary="Afficher un plat",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID du plat",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Plat trouvé"
      * )
@@ -153,26 +153,26 @@ public function store(Request $request)
 
 
     /**
-     * @OA\Post(
+     * @OldOA\\Post(
      * path="/api/plats/{id}",
      * summary="Mettre à jour un plat",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID du plat",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\RequestBody(
-     * @OA\MediaType(
+     * @OldOA\\RequestBody(
+     * @OldOA\\MediaType(
      * mediaType="multipart/form-data",
-     * @OA\Schema(
-     * @OA\Property(property="name", type="string", example="Burger"),
-     * @OA\Property(property="description", type="string", example="Burger viande"),
-     * @OA\Property(property="price", type="number", example=15),
-     * @OA\Property(property="category_id", type="string", format="uuid"),
-     * @OA\Property(
+     * @OldOA\\Schema(
+     * @OldOA\\Property(property="name", type="string", example="Burger"),
+     * @OldOA\\Property(property="description", type="string", example="Burger viande"),
+     * @OldOA\\Property(property="price", type="number", example=15),
+     * @OldOA\\Property(property="category_id", type="string", format="uuid"),
+     * @OldOA\\Property(
      * property="image",
      * type="string",
      * format="binary"
@@ -180,7 +180,7 @@ public function store(Request $request)
      * )
      * )
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Plat mis à jour"
      * )
@@ -243,18 +243,18 @@ public function update(Request $request, $id)
 
 
     /**
-     * @OA\Delete(
+     * @OldOA\\Delete(
      * path="/api/plats/{id}",
      * summary="Supprimer un plat",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID du plat",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Plat supprimé"
      * )
@@ -278,18 +278,18 @@ public function update(Request $request, $id)
     }
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/search-plats",
      * summary="Rechercher des plats",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="query",
      * in="query",
      * required=true,
      * description="Mot clé de recherche",
-     * @OA\Schema(type="string", example="pizza")
+     * @OldOA\\Schema(type="string", example="pizza")
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Résultat de recherche"
      * )

@@ -8,6 +8,8 @@
   max_restaurants: number;
   max_tables: number | null;
   max_users: number | null;
+  max_dishes?: number | null;
+  max_orders_per_month?: number | null;
   features: string[];
   is_popular: boolean;
 }

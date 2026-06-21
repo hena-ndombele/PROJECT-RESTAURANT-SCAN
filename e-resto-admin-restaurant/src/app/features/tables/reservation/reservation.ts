@@ -1,10 +1,11 @@
 import { CommonModule, DatePipe } from "@angular/common";
-import { Component, OnDestroy, OnInit, computed, signal } from "@angular/core";
+import { Component, OnDestroy, OnInit, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { SaasService } from "../../../services/saas/saas-service";
 import { ReservationDto, ReservationService, ReservationStatus } from "../../../services/reservation/reservation-service";
 import { OrderRealtimeService } from "../../../services/realtime/order-realtime-service";
 import { Subscription } from "rxjs";
+import { AppPermissionService } from "../../../services/auth/permission-service";
 
 @Component({
   selector: "app-reservation",
@@ -14,6 +15,7 @@ import { Subscription } from "rxjs";
   standalone: true
 })
 export class Reservation implements OnInit, OnDestroy {
+  private permissions = inject(AppPermissionService);
   Reservations = signal<ReservationDto[]>([]);
 
   selectedReservation = signal<ReservationDto | null>(null);
@@ -83,6 +85,10 @@ export class Reservation implements OnInit, OnDestroy {
     this.realtimeSubscription?.unsubscribe();
   }
 
+  canAccess(permission: string): boolean {
+    return this.permissions.has(permission);
+  }
+
   loadUsage(): void {
     this.saasService.restaurantUsage().subscribe({
       next: (usage) => this.upgradeRequired.set(usage.permissions?.can_use_reservations === false),
@@ -129,6 +135,10 @@ export class Reservation implements OnInit, OnDestroy {
   }
 
   updateStatus(reservation: ReservationDto, status: ReservationStatus): void {
+    if (!this.canAccess("reservations.update")) {
+      this.errorMessage.set("Vous n'avez pas la permission de modifier le statut des reservations.");
+      return;
+    }
     if (!reservation.id || this.updatingId() === reservation.id) return;
     if (status === "cancelled" && !this.cancellationReason().trim()) {
       this.cancellationReason.set(window.prompt("Motif d'annulation ?") || "");
@@ -163,6 +173,10 @@ export class Reservation implements OnInit, OnDestroy {
   }
 
   deleteReservation(reservation: ReservationDto): void {
+    if (!this.canAccess("reservations.delete")) {
+      this.errorMessage.set("Vous n'avez pas la permission de supprimer les reservations.");
+      return;
+    }
     if (!window.confirm("Supprimer cette reservation ?")) return;
     this.reservationService.delete(reservation.id).subscribe({
       next: () => {

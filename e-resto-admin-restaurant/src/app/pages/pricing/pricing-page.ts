@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SaasPlan } from '../../models/saas/saas.models';
+import { SaasService } from '../../services/saas/saas-service';
 
 type PricingPlan = SaasPlan & {
   installation_fee: number;
@@ -16,7 +17,7 @@ type PricingPlan = SaasPlan & {
   styleUrl: './pricing-page.scss',
 
 })
-export class PricingPage {
+export class PricingPage implements OnInit {
   plans: PricingPlan[] = [
     {
       id: 'starter',
@@ -56,8 +57,9 @@ export class PricingPage {
       monthly_price: 30,
       currency: 'USD',
       max_restaurants: 5,
-      max_tables: 20,
-      max_users: 15,
+      max_tables: null,
+      max_users: null,
+      max_dishes: null,
       features: ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dedié', 'Onboarding personnalisé', 'Multi-restaurants'],
       installation_fee: 15,
       limitations: [],
@@ -68,7 +70,24 @@ export class PricingPage {
   selectingPlanSlug = '';
   billingCycle: 'monthly' | 'yearly' = 'monthly';
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private saas: SaasService) {}
+
+  ngOnInit(): void {
+    this.saas.plans().subscribe({
+      next: (plans) => {
+        if (plans.length) {
+          this.plans = plans
+            .filter((plan) => ['starter', 'pro', 'business'].includes(String(plan.slug).toLowerCase()))
+            .sort((left, right) => this.planOrder(left) - this.planOrder(right))
+            .map((plan) => this.decoratePlan(plan));
+          this.errorMessage = '';
+        }
+      },
+      error: () => {
+        this.errorMessage = 'Plans locaux affiches. Demarrez Laravel sur le port 8000 pour synchroniser les tarifs.';
+      },
+    });
+  }
 
   choosePlan(plan: PricingPlan): void {
     this.errorMessage = '';
@@ -80,6 +99,7 @@ export class PricingPage {
       slug: plan.slug,
       price: this.paymentAmount(plan),
       monthly_price: Number(plan.monthly_price),
+      annual_monthly_price: this.annualMonthlyPrice(plan),
       currency: plan.currency,
       installation_fee: plan.installation_fee,
       cycle: this.billingCycle,
@@ -92,12 +112,12 @@ export class PricingPage {
 
   displayPrice(plan: SaasPlan): number {
     const monthlyPrice = Number(plan.monthly_price ?? 0);
-    return this.billingCycle === 'yearly' ? monthlyPrice * 10 / 12 : monthlyPrice;
+    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice(plan) : monthlyPrice;
   }
 
   paymentAmount(plan: SaasPlan): number {
     const monthlyPrice = Number(plan.monthly_price ?? 0);
-    return this.billingCycle === 'yearly' ? monthlyPrice * 10 : monthlyPrice;
+    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice(plan) * 12 : monthlyPrice;
   }
 
   displayCurrency(plan: SaasPlan): string {
@@ -106,5 +126,75 @@ export class PricingPage {
 
   limitLabel(value: number | null, singular: string, unlimited: string): string {
     return value === null ? unlimited : `${value} ${singular}`;
+  }
+
+  dishLimitLabel(plan: SaasPlan): string {
+    const value = plan.max_dishes ?? (plan.slug === 'starter' ? 20 : null);
+    return this.limitLabel(value, 'plats', 'Plats illimités');
+  }
+
+  visibleFeatures(plan: SaasPlan): string[] {
+    return (plan.features || []).filter((feature) => {
+      const normalized = this.normalizeLabel(feature);
+
+      return !normalized.includes('tables illimitées')
+        && !normalized.includes('utilisateurs illimitées')
+        && !normalized.includes('plats illimités')
+        && !normalized.includes('20 plats');
+    });
+  }
+
+  planDetails(plan: SaasPlan): string[] {
+    return [
+      this.limitLabel(plan.max_tables, 'tables QR', 'Tables QR illimitées'),
+      this.limitLabel(plan.max_users, 'utilisateurs et équipe', 'Utilisateurs illimités'),
+      this.dishLimitLabel(plan),
+      ...this.visibleFeatures(plan),
+    ];
+  }
+
+  private decoratePlan(plan: SaasPlan): PricingPlan {
+    const slug = String(plan.slug || plan.name).toLowerCase();
+
+    return {
+      ...plan,
+      features: plan.features || [],
+      installation_fee: slug.includes('business') ? 15 : 10,
+      limitations: this.limitationsForPlan(slug),
+    };
+  }
+
+  private limitationsForPlan(slug: string): string[] {
+    if (slug.includes('starter')) {
+      return ['Pas de statistiques detaillees', 'Pas de reservations', 'Pas de feedback client', 'Pas de personnalisation'];
+    }
+
+    if (slug.includes('pro')) {
+      return ['Pas de multi-restaurant', 'Assistant de tableau de bord avance reserve a l offre Business.'];
+    }
+
+    return [];
+  }
+
+  private normalizeLabel(value: string): string {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private planOrder(plan: SaasPlan): number {
+    const slug = String(plan.slug).toLowerCase();
+    return slug === 'starter' ? 1 : slug === 'pro' ? 2 : slug === 'business' ? 3 : 99;
+  }
+
+  private annualMonthlyPrice(plan: SaasPlan): number {
+    const slug = String(plan.slug || plan.name).toLowerCase();
+
+    if (slug.includes('starter')) return 12;
+    if (slug.includes('pro')) return 20;
+    if (slug.includes('business')) return 25;
+
+    return Number(plan.monthly_price ?? 0);
   }
 }

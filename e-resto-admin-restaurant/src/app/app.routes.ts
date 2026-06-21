@@ -27,36 +27,39 @@ import {RestaurantCheckout} from "./pages/restaurant-checkout/restaurant-checkou
 import {RestaurantLogin} from "./pages/restaurant-login/restaurant-login";
 import {RestaurantSettings} from "./pages/restaurant-settings/restaurant-settings";
 import {Otp} from "./features/auth/otp/otp";
+import {EmployeeVerify} from "./pages/employee-verify/employee-verify";
 
 export const routes: Routes = [
 
   { path: '', component: SaasLanding, title: 'Restaura Scan- Plateforme restaurant' },
-  { path: 'pricing', component: PricingPage, title: 'Pricing Restaura Scan' },
-  { path: 'restaurant/signup', component: RestaurantSignup, title: 'Creation compte restaurant - Restaura Scan' },
-  { path: 'restaurant/checkout', component: RestaurantCheckout, title: 'Paiement abonnement - Restaura Scan' },
-  { path: 'restaurant/login', component: RestaurantLogin, title: 'Connexion restaurant - Restaura Scan' },
-  { path: 'auth/otp', component: Otp, title: 'Verification OTP - Restaura Scan' },
+  { path: 'pricing', component: PricingPage, title: 'Pricing Restaurant Scan' },
+  { path: 'restaurant/signup', component: RestaurantSignup, title: 'Creation compte restaurant - Restaurant Scan' },
+  { path: 'restaurant/checkout', component: RestaurantCheckout, title: 'Paiement abonnement - Restaurant Scan' },
+  { path: 'restaurant/login', component: RestaurantLogin, title: 'Connexion restaurant - Restaurant Scan' },
+  { path: 'auth/otp', component: Otp, title: 'Verification OTP - Restaurant Scan' },
+  { path: 'employee/verify/:id', component: EmployeeVerify, title: 'Verification badge employe - Restaurant Scan' },
 
   {
     path: '',
     component: DashboardLayoutComponent,
     children: [
-      { path: 'dashboard', component: Dashboard, title: 'Dashboard - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'agents/list-agent', component: ListAgent, title: 'Agents - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'category/list-category', component: ListCategory, title: 'Category', canActivate: [AuthGuard] },
-      { path: 'tables/list-table', component: ListTable, title: 'Tables - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'auth/profile', component: Profile, title: 'Profile', canActivate: [AuthGuard] },
-      { path: 'feedback/list', component: ListFeedback, title: 'FeedBack', canActivate: [AuthGuard] },
-      { path: 'orders/list', component: ListOrders, title: 'Orders', canActivate: [AuthGuard] },
-      { path: 'restaurant/settings', component: RestaurantSettings, title: 'Parametres restaurant - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'dish/list-dish', component: ListDish, title: 'Dish - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'dish/show/:id', component: ShowDish, title: 'Dish - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'dish/edit/:id', component: UpdateDish, title: 'Update Dish - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'dish/create', component: CreateDish, title: 'Dish - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'identity/list-roles', component: ListRole, title: 'Role - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'identity/list-users', component: ListUser, title: 'Users - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'table/floor-table', component: FloorTable, title: 'Floor Table - Restaura Scan', canActivate: [AuthGuard] },
-      { path: 'table/reservation-table', component: Reservation, title: 'Reservation Table - Restaura Scan', canActivate: [AuthGuard] },
+      { path: 'dashboard', component: Dashboard, title: 'Dashboard - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'dashboard.view' } },
+      { path: 'agents/list-agent', component: ListAgent, title: 'Agents - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'agents.list' } },
+      { path: 'category/list-category', component: ListCategory, title: 'Category', canActivate: [AuthGuard], data: { permission: 'categories.list' } },
+      { path: 'tables/list-table', component: ListTable, title: 'Tables - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'tables.list' } },
+      { path: 'table/list-table', redirectTo: 'tables/list-table', pathMatch: 'full' },
+      { path: 'auth/profile', component: Profile, title: 'Profile', canActivate: [AuthGuard], data: { permission: 'profile.view' } },
+      { path: 'feedback/list', component: ListFeedback, title: 'FeedBack', canActivate: [AuthGuard], data: { permission: 'feedback.list' } },
+      { path: 'orders/list', component: ListOrders, title: 'Orders', canActivate: [AuthGuard], data: { permission: 'orders.list' } },
+      { path: 'restaurant/settings', component: RestaurantSettings, title: 'Parametres restaurant - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'settings.view' } },
+      { path: 'dish/list-dish', component: ListDish, title: 'Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.list' } },
+      { path: 'dish/show/:id', component: ShowDish, title: 'Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.view' } },
+      { path: 'dish/edit/:id', component: UpdateDish, title: 'Update Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.update' } },
+      { path: 'dish/create', component: CreateDish, title: 'Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.create' } },
+      { path: 'identity/list-roles', component: ListRole, title: 'Role - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'roles.list' } },
+      { path: 'identity/list-users', component: ListUser, title: 'Users - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'users.list' } },
+      { path: 'table/floor-table', component: FloorTable, title: 'Floor Table - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'tables.list' } },
+      { path: 'table/reservation-table', component: Reservation, title: 'Reservation Table - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'reservations.list' } },
       { path: 'create-product', component: CreateProductPageComponent, title: 'Create Product - InApp Inventory Dashboard' },
       { path: 'reports', component: ReportsPageComponent, title: 'Reports - InApp Inventory Dashboard' },
       { path: 'docs', component: DocsPageComponent, title: 'Documentation - InApp Inventory Dashboard' }

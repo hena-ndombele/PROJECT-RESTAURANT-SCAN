@@ -14,6 +14,11 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
  * )
  *
  * @OA\Server(
+ *     url="https://api.restaurascan.com",
+ *     description="Serveur production"
+ * )
+ *
+ * @OA\Server(
  *     url="http://localhost:8000",
  *     description="Serveur local"
  * )

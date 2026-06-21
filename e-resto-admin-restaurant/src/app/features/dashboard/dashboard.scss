@@ -3,49 +3,75 @@
     min-height: 100vh;
 }
 
-.dashboard-hero {
+.dashboard-promo {
+    position: relative;
+    min-height: 230px;
+    display: flex;
     align-items: center;
-    background: linear-gradient(135deg, #111827 0%, #1f2937 48%, #0f766e 100%);
+    justify-content: space-between;
+    overflow: hidden;
     border-radius: 8px;
     color: #fff;
-    display: flex;
-    justify-content: space-between;
-    padding: 28px;
+    padding: clamp(24px, 4vw, 42px);
+    background:
+        linear-gradient(90deg, rgba(5, 9, 18, .95) 0%, rgba(5, 9, 18, .78) 46%, rgba(5, 9, 18, .16) 100%),
+        url('/assets/landing/pricing-menu-digital-bg.png') center / cover no-repeat;
+    box-shadow: 0 22px 44px rgba(15, 23, 42, .13);
 }
 
-.dashboard-hero h1 {
-    font-size: 2rem;
-    font-weight: 800;
+.dashboard-promo > div:first-child {
+    max-width: 560px;
+    position: relative;
+    z-index: 1;
 }
 
-.dashboard-hero p {
-    color: rgba(255, 255, 255, 0.75);
+.dashboard-promo h1 {
+    margin: 0 0 8px;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1;
+    font-weight: 950;
+}
+
+.dashboard-promo p {
+    max-width: 520px;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 1rem;
+    line-height: 1.6;
 }
 
 .eyebrow {
-    color: #7dd3fc;
+    color: #fbbf24;
     display: inline-flex;
     font-size: 0.75rem;
-    font-weight: 800;
+    font-weight: 950;
     letter-spacing: 0;
     margin-bottom: 8px;
     text-transform: uppercase;
 }
 
-.hero-actions {
+.promo-action {
+    display: inline-flex;
     align-items: center;
-    display: flex;
-    gap: 10px;
+    gap: 8px;
+    min-height: 42px;
+    margin-top: 20px;
+    padding: 0 18px;
+    border-radius: 999px;
+    color: #111827;
+    background: #fff;
+    font-weight: 900;
+    text-decoration: none;
 }
 
-.last-sync {
-    align-items: center;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 999px;
-    display: inline-flex;
-    gap: 6px;
-    padding: 8px 12px;
+.promo-action:hover {
+    color: #111827;
+    background: #fef3c7;
+}
+
+.promo-side {
+    align-self: flex-start;
+    position: relative;
+    z-index: 1;
 }
 
 .dashboard-loading,
@@ -71,7 +97,7 @@
     align-items: center;
     display: flex;
     gap: 16px;
-    min-height: 128px;
+    min-height: 118px;
     padding: 20px;
 }
 
@@ -132,8 +158,8 @@
 }
 
 .tone-warning .metric-icon {
-    background: #fef3c7;
-    color: #d97706;
+    background: rgba(var(--dashboard-primary-rgb, 249, 161, 27), .14);
+    color: var(--dashboard-primary, #F9A11B);
 }
 
 .summary-card {
@@ -141,6 +167,143 @@
     flex-direction: column;
     min-height: 116px;
     padding: 20px;
+}
+
+.wallet-section {
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+}
+
+.wallet-section-head {
+    margin-bottom: 14px;
+}
+
+.wallet-section-head h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.2rem;
+    font-weight: 950;
+}
+
+.wallet-card {
+    position: relative;
+    min-height: 174px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    padding: 18px;
+    border-radius: 8px;
+    color: #fff;
+    background: #111827;
+    box-shadow: 0 18px 34px rgba(17, 24, 39, .12);
+}
+
+.wallet-card::after {
+    content: '';
+    position: absolute;
+    right: -34px;
+    bottom: -42px;
+    width: 130px;
+    height: 130px;
+    border: 22px solid rgba(255, 255, 255, .12);
+    border-radius: 50%;
+}
+
+.wallet-card.currency-cdf {
+    background: linear-gradient(135deg, #1f2937, #b45309);
+}
+
+.wallet-card.currency-usd {
+    background: linear-gradient(135deg, #111827, #047857);
+}
+
+.wallet-top,
+.wallet-bottom {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.wallet-top span,
+.wallet-bottom span {
+    font-weight: 900;
+}
+
+.wallet-top span {
+    color: rgba(255, 255, 255, .72);
+    font-size: .78rem;
+    text-transform: uppercase;
+}
+
+.wallet-top i {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 8px;
+    color: #111827;
+    background: #fff;
+    font-size: 1.25rem;
+}
+
+.wallet-card strong {
+    position: relative;
+    z-index: 1;
+    display: block;
+    margin: 18px 0;
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    line-height: 1;
+    font-weight: 950;
+}
+
+.wallet-bottom small {
+    color: rgba(255, 255, 255, .72);
+    font-weight: 800;
+    text-align: right;
+}
+
+:host-context(body.dashboard-dark-theme) .wallet-section {
+    border-color: #374151;
+    background: #111827;
+    box-shadow: 0 18px 34px rgba(0, 0, 0, .22);
+}
+
+:host-context(body.dashboard-dark-theme) .wallet-section-head h2 {
+    color: #f9fafb;
+}
+
+:host-context(body.dashboard-dark-theme) .wallet-card.currency-cdf {
+    background: linear-gradient(135deg, #171923, #92400e);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, .28);
+}
+
+:host-context(body.dashboard-dark-theme) .wallet-card.currency-usd {
+    background: linear-gradient(135deg, #171923, #065f46);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, .28);
+}
+
+:host-context(body.dashboard-dark-theme) .wallet-top i {
+    color: #fbbf24;
+    background: rgba(255, 255, 255, .1);
+    border: 1px solid rgba(255, 255, 255, .14);
+}
+
+:host-context(body.dashboard-dark-theme) .status-item {
+    border-color: #374151;
+    background: #0f172a;
+}
+
+:host-context(body.dashboard-dark-theme) .metric-content span,
+:host-context(body.dashboard-dark-theme) .panel-header p,
+:host-context(body.dashboard-dark-theme) .status-item small {
+    color: #9ca3af;
 }
 
 .summary-card strong {
@@ -420,18 +583,29 @@
 }
 
 @media (max-width: 767.98px) {
-    .dashboard-hero,
+    .dashboard-promo,
     .panel-header {
         align-items: stretch;
         flex-direction: column;
     }
 
-    .hero-actions {
-        justify-content: space-between;
+    .dashboard-promo {
+        min-height: 260px;
+        background:
+            linear-gradient(180deg, rgba(5, 9, 18, .92), rgba(5, 9, 18, .72)),
+            url('/assets/landing/pricing-menu-digital-bg.png') center / cover no-repeat;
     }
 
-    .dashboard-hero h1 {
+    .dashboard-promo h1 {
         font-size: 1.55rem;
+    }
+
+    .promo-side {
+        align-self: stretch;
+    }
+
+    .promo-side .btn {
+        width: 100%;
     }
 
     .onboarding-backdrop {

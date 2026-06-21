@@ -6,6 +6,7 @@ import { CategoryDto } from "../../../models/category/CategoryDto";
 import { DeleteCategory } from "../delete-category/delete-category";
 import { UpdateCategory } from "../update-category/update-category";
 import { STORAGE_ROOT } from "../../../services/api-url";
+import { AppPermissionService } from "../../../services/auth/permission-service";
 
 @Component({
   selector: "app-list-category",
@@ -16,6 +17,7 @@ import { STORAGE_ROOT } from "../../../services/api-url";
 })
 export class ListCategory implements OnInit {
   private categoryService = inject(CategoryService);
+  private permissions = inject(AppPermissionService);
   readonly storageRoot = STORAGE_ROOT;
   isLoading = signal<boolean>(true);
 
@@ -56,6 +58,10 @@ export class ListCategory implements OnInit {
 
   ngOnInit(): void {
     this.loadCategories();
+  }
+
+  canAccess(permission: string): boolean {
+    return this.permissions.has(permission);
   }
 
   pagesArray = computed(() => {

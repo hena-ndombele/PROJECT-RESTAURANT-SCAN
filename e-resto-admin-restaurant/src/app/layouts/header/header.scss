@@ -1,0 +1,33 @@
+.topbar {
+  gap: 14px;
+}
+
+.topbar-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  margin-right: auto;
+  padding: 0 12px;
+  border: 1px solid #fee4b9;
+  border-radius: 8px;
+  color: #111827;
+  background: #fff8ed;
+  font-weight: 900;
+}
+
+.topbar-clock i {
+  color: #f59e0b;
+  font-size: 1.1rem;
+}
+
+.topbar-clock small {
+  color: #6b7280;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .topbar-clock small {
+    display: none;
+  }
+}

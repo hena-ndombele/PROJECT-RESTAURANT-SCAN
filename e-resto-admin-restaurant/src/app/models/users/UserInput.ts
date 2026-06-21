@@ -1,7 +1,8 @@
 export interface UserInput {
-  first_name: string;
-  last_name: string;
-  email: string;
+  agent_id?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
   phone_number?: string | null;
   address?: string | null;
   password?: string | null;

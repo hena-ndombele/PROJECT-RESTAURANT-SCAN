@@ -1,19 +1,27 @@
 import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { DatePipe, NgClass } from "@angular/common";
+import { DatePipe, DecimalPipe, NgClass } from "@angular/common";
 import { AuthService } from "../../services/auth/auth-service";
 import Swal from "sweetalert2";
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from "@angular/forms";
-import introJs from 'intro.js';
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { OrderRealtimeService } from "../../services/realtime/order-realtime-service";
 import { ThemeService } from "../../services/theme/theme-service";
 import { ReservationService } from "../../services/reservation/reservation-service";
 import { Subscription } from "rxjs";
+import { AppPermissionService } from "../../services/auth/permission-service";
+import { STORAGE_ROOT } from "../../services/api-url";
+import { Order } from "../../models/orders/OrderDto";
+
+interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: string[];
+    readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+    prompt(): Promise<void>;
+}
 
 @Component({
     selector: 'app-dashboard-layout',
-    imports: [RouterLink, RouterLinkActive, RouterOutlet, NgClass, ReactiveFormsModule, FormsModule, TranslateModule, DatePipe],
+    imports: [RouterLink, RouterLinkActive, RouterOutlet, NgClass, ReactiveFormsModule, FormsModule, TranslateModule, DatePipe, DecimalPipe],
     styleUrl: "./dashboard-layout.scss",
     templateUrl: './dashboard-layout.html',
     standalone: true
@@ -29,8 +37,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected theme = inject(ThemeService);
     private translate = inject(TranslateService);
     private reservationService = inject(ReservationService);
+    private permissions = inject(AppPermissionService);
     private reservationBadgeTimer?: ReturnType<typeof setInterval>;
     private reservationCreatedSubscription?: Subscription;
+    private orderChangedSubscription?: Subscription;
+    private deferredInstallPrompt?: BeforeInstallPromptEvent;
+    private installDismissedForCurrentView = false;
+    private installPromptCheckTimer?: ReturnType<typeof setTimeout>;
 
     passwordForm: FormGroup;
 
@@ -69,6 +82,11 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected pendingReservationsCount = 0;
     protected assistantOpen = false;
     protected assistantInput = '';
+    protected installPromptOpen = false;
+    protected installAvailable = false;
+    protected iosInstallHelp = false;
+    protected manualInstallHelp = false;
+    protected incomingOrder: Order | null = null;
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
             from: 'bot',
@@ -76,9 +94,29 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         },
     ];
 
+    private handleRestaurantSettingsUpdated = (event: Event): void => {
+        const restaurant = (event as CustomEvent).detail;
+        if (!restaurant) return;
+
+        this.syncRestaurantData(restaurant);
+        this.subscriptionInfo = this.buildSubscriptionInfo(restaurant);
+        this.applyRestaurantTheme(restaurant);
+        this.cdref.detectChanges();
+    };
+
     ngOnInit(): void {
+        this.prepareInstallPrompt();
+        window.addEventListener('restaurant-settings-updated', this.handleRestaurantSettingsUpdated);
         this.translate.use(this.currentLang);
         this.orderRealtime.start();
+        this.orderChangedSubscription = this.orderRealtime.orderChanged$.subscribe((order) => {
+            if (this.router.url.startsWith('/orders/list')) {
+                return;
+            }
+
+            this.incomingOrder = order;
+            this.cdref.detectChanges();
+        });
         const userData = this.authService.getUserData();
         const restaurantSession = localStorage.getItem('restaurant_session');
         const restaurant = restaurantSession ? JSON.parse(restaurantSession) : userData?.restaurant;
@@ -90,19 +128,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             };
         }
 
-        if (restaurant) {
-            this.restaurantData = {
-                name: restaurant.name || 'Restaurant Scan',
-                logo: restaurant.logo_url || (restaurant.logo ? `http://127.0.0.1:8000/storage/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
-                city: restaurant.city || '',
-                owner_phone: restaurant.owner_phone || '',
-                features: {
-                    ...this.featuresFromPlan(restaurant.plan),
-                    ...(restaurant.features || {}),
-                },
-                theme: restaurant.theme || restaurant.settings?.theme || restaurant.settings || {},
-            };
-        }
+        this.syncRestaurantData(restaurant);
 
         this.subscriptionInfo = this.buildSubscriptionInfo(restaurant);
         this.applyRestaurantTheme(restaurant);
@@ -122,18 +148,31 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         if (userData && userData.is_first_login) {
             setTimeout(() => {
-                this.startFirstLoginGuide();
+                this.openFirstLoginPasswordModal();
             }, 500);
         }
+
+        this.scheduleInstallPromptCheck(1200);
     }
 
     ngOnDestroy(): void {
         this.orderRealtime.stop();
+        this.cleanupBlockingOverlays();
         document.body.classList.remove('restaurant-theme');
+        this.setBrowserThemeColor('#111318');
+        window.removeEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+        window.removeEventListener('appinstalled', this.handleAppInstalled);
+        window.removeEventListener('focus', this.handleInstallFocusCheck);
+        window.removeEventListener('restaurant-settings-updated', this.handleRestaurantSettingsUpdated);
+        document.removeEventListener('visibilitychange', this.handleInstallVisibilityCheck);
+        if (this.installPromptCheckTimer) {
+            clearTimeout(this.installPromptCheckTimer);
+        }
         if (this.reservationBadgeTimer) {
             clearInterval(this.reservationBadgeTimer);
         }
         this.reservationCreatedSubscription?.unsubscribe();
+        this.orderChangedSubscription?.unsubscribe();
     }
 
     currentLang = localStorage.getItem('app_lang') || 'fr';
@@ -170,8 +209,46 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         setTimeout(() => this.orderRealtime.markNotificationsRead(), 1200);
     }
 
+    protected dismissIncomingOrder(): void {
+        this.incomingOrder = null;
+    }
+
+    protected openIncomingOrder(): void {
+        this.incomingOrder = null;
+        this.router.navigate(['/orders/list']);
+    }
+
+    protected orderItemsCount(order: Order): number {
+        return (order.items || []).reduce((total, item) => total + Number(item.quantity || 0), 0);
+    }
+
+    protected orderTypeLabel(order: Order): string {
+        if (order.order_type === 'remote') return 'En ligne';
+        return order.order_type === 'takeaway' ? 'A emporter' : 'Sur place';
+    }
+
     protected canUse(feature: string): boolean {
         return Boolean(this.restaurantData.features?.[feature]);
+    }
+
+    protected canAccess(permission: string): boolean {
+        return this.permissions.has(permission);
+    }
+
+    private syncRestaurantData(restaurant: any): void {
+        if (!restaurant) return;
+
+        this.restaurantData = {
+            name: restaurant.name || 'Restaurant Scan',
+            logo: restaurant.logo_url || (restaurant.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
+            city: restaurant.city || '',
+            owner_phone: restaurant.owner_phone || '',
+            features: {
+                ...this.featuresFromPlan(restaurant.plan),
+                ...(restaurant.features || {}),
+            },
+            theme: restaurant.theme || restaurant.settings?.theme || restaurant.settings || {},
+        };
     }
 
     private loadReservationBadge(): void {
@@ -217,20 +294,47 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         };
         const canCustomize = Boolean(features.customization);
         const theme = restaurant?.theme || restaurant?.settings?.theme || restaurant?.settings || {};
+        const hasCustomTheme = canCustomize && this.hasCustomizedTheme(theme);
         const primary = this.normalizeColor(canCustomize ? theme.primary_color || theme.primary || theme.accent : null, defaultTheme.primary);
         const secondary = this.normalizeColor(canCustomize ? theme.secondary_color || theme.secondary : null, defaultTheme.secondary);
         const surface = this.normalizeColor(canCustomize ? theme.background_color || theme.background || theme.surface : null, defaultTheme.surface);
         const primaryRgb = this.hexToRgb(primary);
+        const buttonBackground = hasCustomTheme
+            ? primary
+            : 'linear-gradient(135deg, #FFD166, #F9A11B, #D71920)';
 
         document.body.classList.add('restaurant-theme');
         document.documentElement.style.setProperty('--dashboard-primary', primary);
         document.documentElement.style.setProperty('--dashboard-primary-rgb', primaryRgb);
+        document.documentElement.style.setProperty('--dashboard-button-accent', secondary === defaultTheme.secondary ? '#FFD166' : secondary);
+        document.documentElement.style.setProperty('--dashboard-button-bg', buttonBackground);
         document.documentElement.style.setProperty('--dashboard-secondary', secondary);
         document.documentElement.style.setProperty('--dashboard-surface', surface);
         document.documentElement.style.setProperty('--bs-primary', primary);
         document.documentElement.style.setProperty('--bs-primary-rgb', primaryRgb);
         document.documentElement.style.setProperty('--bs-link-color', primary);
         document.documentElement.style.setProperty('--bs-link-hover-color', secondary);
+        this.setBrowserThemeColor(primary);
+    }
+
+    private hasCustomizedTheme(theme: any): boolean {
+        if (theme?.customized === true || theme?.is_customized === true) {
+            return true;
+        }
+
+        const primary = this.normalizeColor(theme?.primary_color || theme?.primary || theme?.accent, '');
+        return Boolean(primary && !['#ff7a1a', '#ff9f1a', '#f9a11b'].includes(primary.toLowerCase()));
+    }
+
+    private setBrowserThemeColor(color: string): void {
+        let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.name = 'theme-color';
+            document.head.appendChild(meta);
+        }
+
+        meta.content = color;
     }
 
     private normalizeColor(value: any, fallback: string): string {
@@ -258,6 +362,36 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
     protected toggleAssistant(): void {
         this.assistantOpen = !this.assistantOpen;
+    }
+
+    protected async installApp(): Promise<void> {
+        if (this.deferredInstallPrompt) {
+            const prompt = this.deferredInstallPrompt;
+            this.deferredInstallPrompt = undefined;
+            this.installAvailable = false;
+            this.manualInstallHelp = false;
+            await prompt.prompt();
+            const choice = await prompt.userChoice;
+
+            if (choice.outcome === 'accepted') {
+                this.installPromptOpen = false;
+            } else {
+                this.dismissInstallPrompt();
+            }
+            return;
+        }
+
+        if (this.iosInstallHelp) {
+            this.manualInstallHelp = true;
+            return;
+        }
+
+        this.manualInstallHelp = true;
+    }
+
+    protected dismissInstallPrompt(): void {
+        this.installPromptOpen = false;
+        this.installDismissedForCurrentView = true;
     }
 
     protected askAssistant(question?: string): void {
@@ -310,6 +444,112 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         }
 
         return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, reservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
+    }
+
+    private prepareInstallPrompt(): void {
+        window.addEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+        window.addEventListener('appinstalled', this.handleAppInstalled);
+        window.addEventListener('focus', this.handleInstallFocusCheck);
+        document.addEventListener('visibilitychange', this.handleInstallVisibilityCheck);
+        this.refreshInstallHelpState();
+    }
+
+    private handleBeforeInstallPrompt = (event: Event): void => {
+        event.preventDefault();
+        this.deferredInstallPrompt = event as BeforeInstallPromptEvent;
+        this.installAvailable = true;
+        this.manualInstallHelp = false;
+        void this.maybeShowInstallPrompt();
+        this.cdref.detectChanges();
+    };
+
+    private handleAppInstalled = (): void => {
+        this.deferredInstallPrompt = undefined;
+        this.installAvailable = false;
+        this.installPromptOpen = false;
+        this.manualInstallHelp = false;
+        this.cdref.detectChanges();
+    };
+
+    private handleInstallFocusCheck = (): void => {
+        this.scheduleInstallPromptCheck(400);
+    };
+
+    private handleInstallVisibilityCheck = (): void => {
+        if (!document.hidden) {
+            this.scheduleInstallPromptCheck(400);
+        }
+    };
+
+    private scheduleInstallPromptCheck(delay = 0): void {
+        if (this.installPromptCheckTimer) {
+            clearTimeout(this.installPromptCheckTimer);
+        }
+
+        this.installPromptCheckTimer = setTimeout(() => {
+            void this.maybeShowInstallPrompt(true);
+        }, delay);
+    }
+
+    private async maybeShowInstallPrompt(allowManualFallback = false): Promise<void> {
+        this.refreshInstallHelpState();
+
+        if (this.installPromptOpen || this.isStandaloneApp() || this.installDismissedForCurrentView) {
+            return;
+        }
+
+        const installed = await this.isAppInstalled();
+        if (installed) {
+            this.handleAppInstalled();
+            return;
+        }
+
+        const canShowFallback = allowManualFallback && this.hasInstallContext();
+        if (this.installAvailable || this.iosInstallHelp || canShowFallback) {
+            this.manualInstallHelp = !this.installAvailable && !this.iosInstallHelp;
+            this.installPromptOpen = true;
+            this.cdref.detectChanges();
+        }
+    }
+
+    private refreshInstallHelpState(): void {
+        this.iosInstallHelp = this.isIosDevice() && !this.isStandaloneApp();
+        if (this.installAvailable || this.iosInstallHelp) {
+            this.manualInstallHelp = false;
+        }
+    }
+
+    private isStandaloneApp(): boolean {
+        return window.matchMedia('(display-mode: standalone)').matches
+            || Boolean((navigator as any).standalone);
+    }
+
+    private async isAppInstalled(): Promise<boolean> {
+        if (this.isStandaloneApp()) {
+            return true;
+        }
+
+        const getInstalledRelatedApps = (navigator as any).getInstalledRelatedApps;
+        if (typeof getInstalledRelatedApps !== 'function') {
+            return false;
+        }
+
+        try {
+            const relatedApps = await getInstalledRelatedApps.call(navigator);
+            return Array.isArray(relatedApps) && relatedApps.length > 0;
+        } catch {
+            return false;
+        }
+    }
+
+    private hasInstallContext(): boolean {
+        const host = window.location.hostname;
+        const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+        return window.location.protocol === 'https:' || isLocalhost;
+    }
+
+    private isIosDevice(): boolean {
+        return /iphone|ipad|ipod/i.test(navigator.userAgent);
     }
 
     private buildSubscriptionInfo(restaurant: any): {
@@ -468,13 +708,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         this.authService.logout().subscribe({
             next: () => {
-                const modalElement = document.getElementById('logoutModal');
-                if (modalElement) {
-                    const modalInstance = (window as any).bootstrap?.Modal.getInstance(modalElement);
-                    modalInstance?.hide();
-                }
+                this.cleanupBlockingOverlays();
                 this.isLoading = false;
-                this.router.navigate(['/restaurant/login']);
+                this.router.navigate(['/restaurant/login'], { replaceUrl: true });
             },
             error: (err) => {
                 Swal.fire({
@@ -485,59 +721,49 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     confirmButtonText: 'Try again'
                 });
                 localStorage.clear();
+                this.cleanupBlockingOverlays();
                 this.isLoading = false;
-                this.router.navigate(['/restaurant/login']);
+                this.router.navigate(['/restaurant/login'], { replaceUrl: true });
             }
         });
     }
 
-    startFirstLoginGuide() {
-        const guideAlreadyShown = localStorage.getItem('guide_shown');
-        if (guideAlreadyShown) return;
+    private openFirstLoginPasswordModal(): void {
+        const promptKey = `first_login_password_prompt_${this.userData?.email || this.userData?.firstName || 'user'}`;
+        if (sessionStorage.getItem(promptKey)) {
+            return;
+        }
 
-        const intro = introJs();
+        this.cleanupIntroOverlay();
+        const modalElement = document.getElementById('changePasswordModal');
+        const bootstrapModal = (window as any).bootstrap?.Modal;
 
-        intro.setOptions({
-            steps: [
-                {
-                    element: '#profileIcon',
-                    intro: "Bienvenue Hena ! Cliquez sur votre profil pour acceder aux parametres.",
-                    position: 'bottom'
-                },
-                {
-                    element: '#userDropdown',
-                    intro: "Pour votre securite, veuillez changer votre mot de passe temporaire ici.",
-                    position: 'left'
-                }
-            ],
-            doneLabel: 'Compris !',
-            nextLabel: 'Suivant',
-            prevLabel: 'Precedent',
-            exitOnOverlayClick: false,
-            showStepNumbers: false
+        if (modalElement && bootstrapModal) {
+            sessionStorage.setItem(promptKey, 'true');
+            bootstrapModal.getOrCreateInstance(modalElement).show();
+        }
+    }
+
+    private cleanupIntroOverlay(): void {
+        document.querySelectorAll('.introjs-overlay, .introjs-helperLayer, .introjs-tooltipReferenceLayer, .introjs-disableInteraction')
+            .forEach((element) => element.remove());
+        document.body.classList.remove('introjs-open');
+    }
+
+    private cleanupBlockingOverlays(): void {
+        ['logoutModal', 'changePasswordModal'].forEach((id) => {
+            const modalElement = document.getElementById(id);
+            const modalInstance = modalElement ? (window as any).bootstrap?.Modal.getInstance(modalElement) : null;
+            modalInstance?.hide();
+            modalInstance?.dispose?.();
         });
 
-        intro.onbeforechange((targetElement: HTMLElement) => {
-            if (targetElement.id === 'userDropdown') {
-                const profileBtn = document.getElementById('profileIcon');
-                const dropdownMenu = document.querySelector('.dropdown-menu');
-
-                if (profileBtn && !dropdownMenu?.classList.contains('show')) {
-                    profileBtn.click();
-                }
-            }
-
-            return true;
-        });
-
-        intro.oncomplete(() => {
-            localStorage.setItem('guide_shown', 'true');
-        });
-
-        intro.onexit(() => {
-            localStorage.setItem('guide_shown', 'true');
-        });
-
-        intro.start();
+        this.installPromptOpen = false;
+        this.cleanupIntroOverlay();
+        document.querySelectorAll('.modal-backdrop, .offcanvas-backdrop, .swal2-container')
+            .forEach((element) => element.remove());
+        document.body.classList.remove('modal-open', 'swal2-shown', 'swal2-height-auto');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
     }
 }

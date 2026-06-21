@@ -128,7 +128,7 @@ class OrderController extends Controller
                     $table->update(['status' => Table::STATUS_OCCUPIED]);
                 }
 
-                broadcast(new OrderPlaced($order->load(['table', 'items.plat', 'latestPayment'])))->toOthers();
+                $this->broadcastSafely(new OrderPlaced($order->load(['table', 'items.plat', 'latestPayment'])));
 
                 return response()->json([
                     'message' => 'Commande reussie',
@@ -187,7 +187,7 @@ class OrderController extends Controller
 
                 $this->releaseTableIfComplete($order);
 
-                broadcast(new OrderStatusUpdated($order))->toOthers();
+                $this->broadcastSafely(new OrderStatusUpdated($order));
 
                 return response()->json([
                     'message' => 'Statut mis a jour avec succes',
@@ -223,7 +223,7 @@ class OrderController extends Controller
 
                 $this->cancelOrder($order, $validated['cancellation_reason'], null, 'client');
                 $this->releaseTableIfComplete($order);
-                broadcast(new OrderStatusUpdated($order))->toOthers();
+                $this->broadcastSafely(new OrderStatusUpdated($order));
 
                 return response()->json([
                     'message' => 'Commande annulee',
@@ -389,7 +389,7 @@ class OrderController extends Controller
                     }
                 }
 
-                broadcast(new OrderStatusUpdated($order))->toOthers();
+                $this->broadcastSafely(new OrderStatusUpdated($order));
 
                 return response()->json([
                     'message' => 'Commande modifiee avec succes',
@@ -449,7 +449,7 @@ class OrderController extends Controller
 
                 $payment->update(['metadata' => $metadata]);
                 $freshOrder = $order->fresh(['table', 'items.plat', 'latestPayment']);
-                broadcast(new OrderStatusUpdated($freshOrder))->toOthers();
+                $this->broadcastSafely(new OrderStatusUpdated($freshOrder));
 
                 return response()->json([
                     'message' => 'Demande d addition envoyee au restaurant.',
@@ -508,7 +508,7 @@ class OrderController extends Controller
                 ]);
 
                 $this->releaseTableIfComplete($order);
-                broadcast(new OrderStatusUpdated($order))->toOthers();
+                $this->broadcastSafely(new OrderStatusUpdated($order));
 
                 return response()->json([
                     'message' => 'Paiement mis a jour avec succes',
@@ -543,7 +543,7 @@ class OrderController extends Controller
         if ($payment->order) {
             $payment->order->update(['payment_status' => $status]);
             $this->releaseTableIfComplete($payment->order);
-            broadcast(new OrderStatusUpdated($payment->order))->toOthers();
+            $this->broadcastSafely(new OrderStatusUpdated($payment->order));
         }
 
         return response()->json(['message' => 'Callback paiement commande traite']);
@@ -554,6 +554,7 @@ class OrderController extends Controller
         $restaurant = $request->user()?->restaurant()->with('plan')->first();
         if ($restaurant
             && !$restaurant->plan?->allows('analytics')
+            && !$request->boolean('active_only')
             && ($request->has('month') || $request->has('year'))) {
             return response()->json([
                 'message' => 'Les statistiques mensuelles et annuelles sont reservees aux plans Pro et Business.',
@@ -577,8 +578,8 @@ class OrderController extends Controller
             $query->whereYear('created_at', $request->year);
         }
 
-        if (!$request->hasAny(['day', 'month', 'year'])) {
-            $query->whereDate('created_at', Carbon::today());
+        if ($request->boolean('active_only')) {
+            $query->whereNotIn('status', ['delivered', 'cancelled']);
         }
 
         return response()->json($query->orderBy('created_at', 'desc')->get());
@@ -742,6 +743,15 @@ class OrderController extends Controller
             . "Note: " . ($order->note ?: '-');
 
         return 'https://wa.me/' . $digits . '?text=' . rawurlencode($message);
+    }
+
+    private function broadcastSafely(object $event): void
+    {
+        try {
+            broadcast($event)->toOthers();
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function resolveOrderTable(array $validated, string $orderType): Table

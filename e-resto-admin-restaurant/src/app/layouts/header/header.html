@@ -5,6 +5,11 @@
     <button id="mobileBtn" class="btn btn-light btn-icon btn-sm d-lg-none me-2" (click)="openMobileSidebar()">
         <i class="ti ti-layout-sidebar-left-expand"></i>
     </button>
+    <div class="topbar-clock">
+        <i class="ti ti-clock-hour-4"></i>
+        <span>{{ now | date:'HH:mm:ss' }}</span>
+        <small>{{ now | date:'dd/MM/yyyy' }}</small>
+    </div>
     <div>
         <ul class="list-unstyled d-flex align-items-center mb-0 gap-1">
             <li>

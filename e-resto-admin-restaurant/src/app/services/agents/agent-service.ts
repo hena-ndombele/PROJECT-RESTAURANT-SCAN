@@ -22,15 +22,20 @@ export class AgentService
     return this.http.delete(`${this.apiUrl}/agents/delete/${id}`);
   }
 
-  create(formData: AgentInput): Observable<any> {
+  create(formData: AgentInput | FormData): Observable<any> {
     return this.http.post(`${this.apiUrl}/agents/create`, formData);
   }
 
-  update(id: string, data: AgentInput): Observable<any> {
+  update(id: string, data: AgentInput | FormData): Observable<any> {
+    if (data instanceof FormData) {
+      data.append('_method', 'PUT');
+      return this.http.post(`${this.apiUrl}/agents/update/${id}`, data);
+    }
+
     return this.http.put(`${this.apiUrl}/agents/update/${id}`, data);
   }
 
-  show(id: string): Observable<AgentDto> {
-    return this.http.get<AgentDto>(`${this.apiUrl}/agents/show/${id}`);
+  show(id: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/agents/show/${id}`);
   }
 }

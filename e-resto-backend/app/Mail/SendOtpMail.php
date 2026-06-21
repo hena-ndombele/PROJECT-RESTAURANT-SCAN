@@ -18,7 +18,7 @@ class SendOtpMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Code de verification Restaurant Scan')
+        return $this->subject('Code de vérification Restaurant Scan')
                     ->view('emails.otp')
                     ->with(['otp' => $this->otp]);
     }

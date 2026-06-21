@@ -1,5 +1,9 @@
-const scannedHostApiUrl = `${window.location.protocol}//${window.location.hostname}:8000/api`;
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || scannedHostApiUrl;
+const localHosts = ['localhost', '127.0.0.1', '::1'];
+const productionHosts = ['restaurascan.com', 'www.restaurascan.com', 'admin.restaurascan.com'];
+const scannedHostApiUrl = productionHosts.includes(window.location.hostname)
+  ? 'https://api.restaurascan.com/api'
+  : `${localHosts.includes(window.location.hostname) ? 'http:' : window.location.protocol}//${window.location.hostname}:8000/api`;
+export const API_BASE_URL = window.__E_RESTO_API_ROOT__ || import.meta.env.VITE_API_BASE_URL || scannedHostApiUrl;
 
 export class HttpError extends Error {
   constructor(message, details) {

@@ -1,0 +1,102 @@
+<main class="verify-page">
+  <section class="verify-shell">
+    <a class="brand" routerLink="/">
+      <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+      <span>Restaurant Scan</span>
+    </a>
+
+    @if (loading()) {
+      <article class="verify-card loading-card">
+        <span class="spinner-border text-warning"></span>
+        <h1>Verification du badge</h1>
+        <p>Lecture du QR code en cours...</p>
+      </article>
+    } @else if (error()) {
+      <article class="verify-card invalid-card">
+        <div class="status-icon invalid"><i class="bi bi-x-lg"></i></div>
+        <h1>Badge non valide</h1>
+        <p>{{ error() }}</p>
+        <a routerLink="/" class="verify-action">Retour accueil</a>
+      </article>
+    } @else if (data(); as result) {
+      <article class="verify-card">
+        <div class="restaurant-line">
+          @if (result.restaurant.logo_url) {
+            <img [src]="result.restaurant.logo_url" alt="Logo restaurant">
+          } @else {
+            <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+          }
+          <div>
+            <span>Restaurant</span>
+            <strong>{{ result.restaurant.name }}</strong>
+            <small>{{ result.restaurant.city || 'Ville non renseignee' }}{{ result.restaurant.country ? ' - ' + result.restaurant.country : '' }}</small>
+          </div>
+        </div>
+
+        <div class="status-banner" [class.inactive]="!result.employee.is_active">
+          <div class="status-icon">
+            <i [class]="result.employee.is_active ? 'bi bi-check2' : 'bi bi-exclamation-triangle'"></i>
+          </div>
+          <div>
+            <span>{{ result.employee.is_active ? 'Badge valide' : 'Badge a verifier' }}</span>
+            <strong>{{ result.employee.status || 'active' }}</strong>
+          </div>
+        </div>
+
+        <div class="employee-profile">
+          <div class="employee-photo">
+            @if (result.employee.photo_url) {
+              <img [src]="result.employee.photo_url" alt="Photo employe">
+            } @else {
+              <span>{{ initials() }}</span>
+            }
+          </div>
+          <h1>{{ result.employee.full_name }}</h1>
+          <p>{{ result.employee.fonction || 'Fonction non renseignee' }}</p>
+        </div>
+
+        <section class="info-section">
+          <h2>Identite</h2>
+          <div class="detail-grid">
+            <div><span>Matricule</span><strong>{{ result.employee.matricule }}</strong></div>
+            <div><span>Compte user</span><strong>{{ result.employee.has_user_account ? 'Active' : 'Non active' }}</strong></div>
+            <div><span>Email</span><strong>{{ result.employee.email || 'Non renseigne' }}</strong></div>
+            <div><span>Telephone</span><strong>{{ result.employee.phone_number || 'Non renseigne' }}</strong></div>
+            <div class="wide"><span>Adresse</span><strong>{{ result.employee.address || 'Non renseignee' }}</strong></div>
+          </div>
+        </section>
+
+        <section class="info-section">
+          <h2>Travail</h2>
+          <div class="detail-grid">
+            <div><span>Fonction</span><strong>{{ result.employee.fonction || 'Non renseignee' }}</strong></div>
+            <div><span>Contrat</span><strong>{{ result.employee.contract_type || 'Non renseigne' }}</strong></div>
+            <div><span>Horaire</span><strong>{{ result.employee.shift || 'Non renseigne' }}</strong></div>
+            <div><span>Niveau d'etude</span><strong>{{ result.employee.education_level || 'Non renseigne' }}</strong></div>
+            <div><span>Date embauche</span><strong>{{ result.employee.hired_at ? (result.employee.hired_at | date:'dd/MM/yyyy') : 'Non renseignee' }}</strong></div>
+            <div><span>Cree le</span><strong>{{ result.employee.created_at | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          </div>
+        </section>
+
+        <section class="info-section">
+          <h2>Urgence & verification</h2>
+          <div class="detail-grid">
+            <div><span>Contact urgence</span><strong>{{ result.employee.emergency_contact_name || 'Non renseigne' }}</strong></div>
+            <div><span>Telephone urgence</span><strong>{{ result.employee.emergency_contact_phone || 'Non renseigne' }}</strong></div>
+            <div><span>Verification</span><strong>{{ result.verified_at | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+            <div><span>Derniere MAJ</span><strong>{{ result.employee.updated_at | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          </div>
+        </section>
+
+        <section class="info-section restaurant-details">
+          <h2>Restaurant</h2>
+          <div class="detail-grid">
+            <div><span>Responsable</span><strong>{{ result.restaurant.owner_name || 'Non renseigne' }}</strong></div>
+            <div><span>Telephone</span><strong>{{ result.restaurant.owner_phone || 'Non renseigne' }}</strong></div>
+            <div class="wide"><span>Adresse restaurant</span><strong>{{ result.restaurant.address || 'Non renseignee' }}</strong></div>
+          </div>
+        </section>
+      </article>
+    }
+  </section>
+</main>

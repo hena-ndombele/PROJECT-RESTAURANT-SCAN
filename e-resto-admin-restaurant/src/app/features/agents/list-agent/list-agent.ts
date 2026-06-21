@@ -7,6 +7,7 @@ import {DeleteAgent} from "../delete-agent/delete-agent";
 import {UpdateAgent} from "../update-agent/update-agent";
 import {ShowAgent} from "../show-agent/show-agent";
 import * as XLSX from 'xlsx';
+import {AppPermissionService} from "../../../services/auth/permission-service";
 
 @Component({
   selector: "app-list-agent",
@@ -23,6 +24,7 @@ import * as XLSX from 'xlsx';
 })
 export class ListAgent {
   private agentService = inject(AgentService);
+  private permissions = inject(AppPermissionService);
   isLoading = signal<boolean>(true);
 
   // Signaux d'état
@@ -61,6 +63,10 @@ export class ListAgent {
 
   ngOnInit(): void {
     this.loadCategories();
+  }
+
+  canAccess(permission: string): boolean {
+    return this.permissions.has(permission);
   }
 
   pagesArray = computed(() => {

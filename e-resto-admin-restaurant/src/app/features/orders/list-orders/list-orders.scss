@@ -83,6 +83,7 @@
 
 .orders-loading,
 .empty-orders {
+  grid-column: 1 / -1;
   min-height: 220px;
   display: grid;
   place-items: center;

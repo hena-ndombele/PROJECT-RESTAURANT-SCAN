@@ -10,9 +10,11 @@
                     <button class="btn btn-outline-success fw-black rounded-0 px-4 shadow-sm" type="button" (click)="exportExcel()">
                         <i class="ti ti-file-spreadsheet me-1"></i>EXPORT EXCEL
                     </button>
-                    <a routerLink="/dish/create" class="btn btn-warning fw-black rounded-0 px-4 shadow-sm">
+                    @if (canAccess('plats.create')) {
+                    <a routerLink="/dish/create" class="btn dynamic-primary fw-black rounded-0 px-4 shadow-sm">
                         <i class="ti ti-plus me-1"></i>ADD A DISH
                     </a>
+                    }
                 </div>
             </div>
         </div>
@@ -74,13 +76,19 @@
                         </div>
                         <div class="card-footer bg-white p-0 border-top border-2">
                             <div class="d-flex w-100">
+                                @if (canAccess('plats.update')) {
                                 <button class="btn border-end flex-fill rounded-0 py-2" [routerLink]="['/dish/edit', dish.id]"><i class="ti ti-edit text-primary"></i></button>
+                                }
 
+                                @if (canAccess('plats.view')) {
                                 <a [routerLink]="['/dish/show', dish.id]" class="btn border-end flex-fill rounded-0 py-2">
                                     <i class="ti ti-eye text-secondary"></i>
                                 </a>
+                                }
 
+                                @if (canAccess('plats.delete')) {
                                 <app-delete-dish [dishId]="dish.id"></app-delete-dish>
+                                }
                             </div>
                         </div>
                     </div>

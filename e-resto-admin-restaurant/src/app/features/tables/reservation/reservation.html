@@ -118,17 +118,19 @@
           @if (reservation.special_requests) {
             <p class="reservation-note">{{ reservation.special_requests }}</p>
           }
-          <div class="reservation-actions">
-            @if (reservation.status === 'pending') {
-              <button class="btn btn-primary btn-sm" type="button" (click)="updateStatus(reservation, 'confirmed')">Confirmer</button>
-            }
-            @if (reservation.status === 'confirmed') {
-              <button class="btn btn-info btn-sm" type="button" (click)="updateStatus(reservation, 'seated')">Installer</button>
-            }
-            @if (reservation.status === 'seated') {
-              <button class="btn btn-success btn-sm" type="button" (click)="updateStatus(reservation, 'completed')">Terminer</button>
-            }
-          </div>
+          @if (canAccess('reservations.update')) {
+            <div class="reservation-actions">
+              @if (reservation.status === 'pending') {
+                <button class="btn btn-primary btn-sm" type="button" (click)="updateStatus(reservation, 'confirmed')">Confirmer</button>
+              }
+              @if (reservation.status === 'confirmed') {
+                <button class="btn btn-info btn-sm" type="button" (click)="updateStatus(reservation, 'seated')">Installer</button>
+              }
+              @if (reservation.status === 'seated') {
+                <button class="btn btn-success btn-sm" type="button" (click)="updateStatus(reservation, 'completed')">Terminer</button>
+              }
+            </div>
+          }
         </article>
       } @empty {
         <div class="empty-Reservations">
@@ -178,14 +180,18 @@
         </div>
 
         <div class="modal-footer border-0 flex-wrap gap-2">
-          @for (status of statusOptions; track status.value) {
-            <button class="btn btn-sm" [ngClass]="statusClass(status.value)" type="button" [disabled]="updatingId() === reservation.id || reservation.status === status.value" (click)="updateStatus(reservation, status.value)">
-              {{ status.label }}
+          @if (canAccess('reservations.update')) {
+            @for (status of statusOptions; track status.value) {
+              <button class="btn btn-sm" [ngClass]="statusClass(status.value)" type="button" [disabled]="updatingId() === reservation.id || reservation.status === status.value" (click)="updateStatus(reservation, status.value)">
+                {{ status.label }}
+              </button>
+            }
+          }
+          @if (canAccess('reservations.delete')) {
+            <button class="btn btn-outline-danger btn-sm ms-auto" type="button" (click)="deleteReservation(reservation)">
+              Supprimer
             </button>
           }
-          <button class="btn btn-outline-danger btn-sm ms-auto" type="button" (click)="deleteReservation(reservation)">
-            Supprimer
-          </button>
         </div>
       </div>
     </div>

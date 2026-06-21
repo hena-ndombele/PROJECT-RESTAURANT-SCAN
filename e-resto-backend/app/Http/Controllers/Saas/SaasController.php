@@ -155,7 +155,7 @@ class SaasController extends Controller
             'saas_plan_id' => 'required|string|max:80',
         ], [
             'restaurant_name.required' => 'Le nom du restaurant est obligatoire.',
-            'owner_name.required' => 'Le nom du proprietaire est obligatoire.',
+            'owner_name.required' => 'Le nom du propriétaire est obligatoire.',
             'owner_email.required' => 'L adresse email est obligatoire.',
             'owner_email.email' => 'L adresse email est invalide.',
             'owner_email.unique' => 'Cette adresse email possede deja un compte.',
@@ -287,7 +287,7 @@ class SaasController extends Controller
             $plan = $restaurant->plan ?: SaasPlan::where('slug', 'starter')->firstOrFail();
             $billingCycle = $validated['billing_cycle'] ?? 'monthly';
             $amount = $billingCycle === 'yearly'
-                ? (float) $plan->monthly_price * 10
+                ? $this->annualMonthlyPrice($plan) * 12
                 : (float) $plan->monthly_price;
 
             $payment = Payment::create([
@@ -872,7 +872,7 @@ class SaasController extends Controller
         }
 
         return response()->json([
-            'message' => 'Mot de passe proprietaire reinitialise.',
+            'message' => 'Mot de passe propriétaire reinitialise.',
             'owner' => $owner,
         ]);
     }
@@ -962,11 +962,14 @@ class SaasController extends Controller
             'description' => 'Menu digital QR code',
             'google_maps_url' => null,
             'whatsapp_order_phone' => null,
+            'opening_time' => '08:00',
+            'closing_time' => '22:00',
             'theme' => [
                 'primary' => '#ff7a1a',
                 'secondary' => '#d71920',
                 'background' => '#fff7ef',
                 'dark' => '#111111',
+                'customized' => false,
             ],
             'payment_methods' => ['cash'],
         ];
@@ -1017,6 +1020,16 @@ class SaasController extends Controller
                 'currency' => $payment->currency,
             ]
         );
+    }
+
+    private function annualMonthlyPrice(SaasPlan $plan): float
+    {
+        return match ($plan->tier()) {
+            'starter' => 12.0,
+            'pro' => 20.0,
+            'business' => 25.0,
+            default => (float) $plan->monthly_price,
+        };
     }
 
     private function refreshBillingStatus(Restaurant $restaurant): void
@@ -1193,7 +1206,7 @@ class SaasController extends Controller
         return [
             'token' => $user->createToken('restaurant-dashboard', ['*'], $expiresAt)->plainTextToken,
             'token_expires_at' => $expiresAt->toIso8601String(),
-            'user' => $user->load('restaurant.plan', 'restaurant.subscription'),
+            'user' => $user->load('roles.permissions', 'agent', 'restaurant.plan', 'restaurant.subscription'),
             'restaurant' => $this->restaurantPayload($user->restaurant),
         ];
     }
@@ -1223,7 +1236,7 @@ class SaasController extends Controller
 
     private function regenerateTableQrCodes(Restaurant $restaurant): void
     {
-        $frontendUrl = rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/');
+        $frontendUrl = rtrim(env('CLIENT_FRONTEND_URL', 'https://restaurascan.com'), '/');
         $restaurant->tables()->get()->each(function (Table $table) use ($restaurant, $frontendUrl) {
             $url = $frontendUrl . '/?' . http_build_query([
                 'table_id' => $table->id,
@@ -1284,8 +1297,8 @@ class SaasController extends Controller
                 'description' => 'Pour les équipes structurées et les restaurants multi-sites.',
                 'monthly_price' => 30,
                 'max_restaurants' => 5,
-                'max_tables' => 20,
-                'max_users' => 15,
+                'max_tables' => null,
+                'max_users' => null,
                 'features' => ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dedié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
             ],
         ];

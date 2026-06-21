@@ -1,6 +1,6 @@
-import {Component, Input, signal} from "@angular/core";
-import {FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
-import {TableService} from "../../../services/table/table-service";
+import { Component, Input, signal } from "@angular/core";
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from "@angular/forms";
+import { TableService } from "../../../services/table/table-service";
 import Swal from "sweetalert2";
 
 @Component({
@@ -15,84 +15,71 @@ import Swal from "sweetalert2";
 })
 export class CreateTable {
     @Input() disabled = false;
-    @Input() limitMessage = '';
+    @Input() limitMessage = "";
 
     isLoading = false;
-
-    // Utilisation de signaux pour les états si nécessaire (optionnel selon votre logique de template)
-    name = signal('');
+    name = signal("");
 
     constructor(private tableService: TableService) {}
 
-    // 1. Mise à jour du formulaire avec 'capacity'
     tableForm = new FormGroup({
-        name: new FormControl('', [Validators.required]),
-        capacity: new FormControl('', [Validators.required, Validators.min(1)]), // Ajouté
+        name: new FormControl("", [Validators.required]),
+        capacity: new FormControl("", [Validators.required, Validators.min(1)]),
     });
 
-    onSubmit() {
+    onSubmit(): void {
         if (this.disabled) {
             Swal.fire({
-                title: 'Forfait atteint',
-                text: this.limitMessage || 'Votre forfait ne permet pas de creer plus de tables.',
-                icon: 'warning',
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Compris'
+                title: "Forfait atteint",
+                text: this.limitMessage || "Votre forfait ne permet pas de creer plus de tables.",
+                icon: "warning",
+                confirmButtonColor: "#d33",
+                confirmButtonText: "Compris"
             });
             return;
         }
 
-        if (this.tableForm.valid) {
-            this.isLoading = true;
-            const formData = new FormData();
-
-            // --- LOGIQUE DE FORMATAGE ---
-            const rawName = this.tableForm.value.name || '';
-
-            // On cherche une transition entre lettres (\D) et chiffres (\d)
-            // pour insérer un espace, puis on nettoie les espaces en trop.
-            const formattedName = rawName
-                .replace(/(\D+)(\d+)/g, '$1 $2') // Ajoute l'espace (ex: TABLE1 -> TABLE 1)
-                .replace(/\s+/g, ' ')            // Évite les doubles espaces si l'utilisateur en a déjà mis un
-                .toUpperCase()                   // Force en MAJUSCULES pour la cohérence
-                .trim();                         // Supprime les espaces au début/fin
-
-            // Ajout au FormData
-            formData.append('name', formattedName);
-            formData.append('capacity', this.tableForm.value.capacity!.toString());
-
-            this.createTable(formData);
-        } else {
+        if (this.tableForm.invalid) {
             this.tableForm.markAllAsTouched();
+            return;
         }
+
+        const formData = new FormData();
+        const formattedName = (this.tableForm.value.name || "")
+            .replace(/(\D+)(\d+)/g, "$1 $2")
+            .replace(/\s+/g, " ")
+            .toUpperCase()
+            .trim();
+
+        formData.append("name", formattedName);
+        formData.append("capacity", this.tableForm.value.capacity!.toString());
+
+        this.createTable(formData);
     }
 
-    createTable(data: FormData) {
+    createTable(data: FormData): void {
         this.isLoading = true;
         this.tableService.create(data).subscribe({
-            next: (response) => {
+            next: () => {
                 this.isLoading = false;
                 Swal.fire({
-                    title: 'Succès !',
-                    text:
-                        'The table was successfully created.',
-                    icon: 'success',
-                    confirmButtonText: 'Close',
+                    title: "Succes",
+                    text: "La table a ete creee avec succes.",
+                    icon: "success",
+                    confirmButtonText: "Fermer",
                     timer: 2000,
-                    confirmButtonColor: '#28a745'
-                }).then(() => {
-                    // Note : Pensez à utiliser le Router plutôt que reload() pour une meilleure UX
-                    window.location.reload();
-                });
+                    confirmButtonColor: "#28a745"
+                }).then(() => window.location.reload());
             },
             error: (err) => {
                 this.isLoading = false;
+                const duplicateName = err.error?.errors?.name?.[0];
                 Swal.fire({
-                    title: 'Erreur',
-                    text: err.error?.message || 'Erreur lors de la création.',
-                    icon: 'error',
-                    confirmButtonColor: '#d33',
-                    confirmButtonText: 'Réessayer'
+                    title: "Erreur",
+                    text: duplicateName || err.error?.message || "Erreur lors de la creation.",
+                    icon: "error",
+                    confirmButtonColor: "#d33",
+                    confirmButtonText: "Reessayer"
                 });
             }
         });

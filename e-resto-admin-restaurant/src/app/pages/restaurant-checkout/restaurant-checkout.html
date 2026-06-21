@@ -47,15 +47,10 @@
               <span>Montant debite maintenant</span>
               <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
             </div>
-            <div>
-              <span>Installation unique</span>
-              <strong>{{ installationFee | number:'1.0-0' }} FC</strong>
-            </div>
           </div>
 
           <p class="billing-note">
-            {{ billingCycle === 'yearly' ? 'Vous profitez de 12 mois d acces pour le prix de 10 mois.' : 'Le paiement active un mois d acces.' }}
-            Les frais d'installation sont factures separement.
+            {{ billingCycle === 'yearly' ? 'Vous profitez du tarif annuel reduit pour 12 mois d acces.' : 'Le paiement active un mois d acces.' }}
           </p>
         </div>
 

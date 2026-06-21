@@ -10,7 +10,7 @@
 
                 <h1 class="display-4 fw-bold mb-3">CODE OTP</h1>
                 <p class="fs-5 opacity-75">
-                    Entrez le code de verification envoyé par email pour sécuriser votre compte restaurant.
+                  Entrez le code de vérification envoyé par e-mail pour sécuriser votre compte restaurant.
                 </p>
             </div>
         </div>
@@ -28,14 +28,14 @@
                              style="border-radius: 0; object-fit: contain; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border:1px solid black">
                     </span>
                             </a>
-                            <h1 class="card-title h4" style="font-weight: bolder">Verification du compte</h1>
-                            <p class="text-muted small mt-3">Nous avons envoye un code a 5 chiffres a {{ email }}.</p>
+                            <h1 class="card-title h4" style="font-weight: bolder">Vérification du compte</h1>
+                            <p class="text-muted small mt-3">Nous avons envoyé un code à 5 chiffres a {{ email }}.</p>
                         </div>
 
                         <form class="needs-validation mt-4" (ngSubmit)="verifyOtp()" novalidate>
 
                             <div class="mb-4">
-                                <label class="form-label d-block text-center mb-3">Code de verification</label>
+                                <label class="form-label d-block text-center mb-3">Code de vérification</label>
                                 <div class="d-flex justify-content-between gap-2 otp-container">
                                     <input type="text" maxlength="1" class="form-control otp-input text-center fs-4 fw-bold"
                                            #otp1 (keyup)="onKeyUp($event, 0)" required>
@@ -50,21 +50,21 @@
                                 </div>
                             </div>
 
-                            <button class="btn btn-primary w-100 py-2 d-flex align-items-center justify-content-center"
+                            <button class="btn otp-submit-btn w-100 py-2 d-flex align-items-center justify-content-center"
                                     type="submit"
                                     [disabled]="isLoading">
 
                                 <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
 
-                                <span>{{ isLoading ? 'Verification...' : 'Verifier le code' }}</span>
+                                <span>{{ isLoading ? 'Verification...' : 'Vérifier le code' }}</span>
 
                                 <i *ngIf="!isLoading" class="bi bi-shield-check ms-2"></i>
                             </button>
                             <br/>
 
                             <div class="text-center">
-                                <p class="small text-muted mb-0">Vous n'avez pas recu le code ?</p>
-                                <button type="button" class="btn btn-link btn-sm p-0" style="color: blue" (click)="resendCode()" [disabled]="isResending">
+                                <p class="small text-muted mb-0">Vous n'avez pas reçu le code ?</p>
+                                <button type="button" class="btn otp-link-btn btn-sm p-0" (click)="resendCode()" [disabled]="isResending">
                                     {{ isResending ? 'Renvoi...' : 'Renvoyer le code' }}
                                 </button>
 
@@ -76,9 +76,20 @@
                     </div>
                 </div>
 
-                <p class="text-center text-muted mt-4 small">© 2026 Restaurant Scan. All rights reserved.</p>
+                <p class="text-center text-muted mt-4 small">© 2026 Restaurant Scan. Tous droits réservés.</p>
             </div>
         </div>
 
+    </div>
+</div>
+
+<div class="otp-toast" *ngIf="toastMessage" [ngClass]="toastType" role="status" aria-live="polite">
+    <button type="button" class="toast-close" aria-label="Fermer le message" (click)="hideToast()">
+        <i class="bi bi-x-lg"></i>
+    </button>
+    <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+    <div>
+        <strong>{{ toastType === 'success' ? 'Code renvoye' : 'Erreur' }}</strong>
+        <span>{{ toastMessage }}</span>
     </div>
 </div>

@@ -138,6 +138,8 @@ class MenuController extends Controller
             'app_name' => $settings['app_name'] ?? $restaurant->name,
             'slogan' => $settings['slogan'] ?? null,
             'whatsapp_order_phone' => $settings['whatsapp_order_phone'] ?? $restaurant->owner_phone,
+            'opening_time' => $settings['opening_time'] ?? '08:00',
+            'closing_time' => $settings['closing_time'] ?? '22:00',
             'theme' => $settings['theme'] ?? [],
             'can_feedback' => (bool) $restaurant->plan?->allows('feedback'),
             'can_Réservations' => (bool) $restaurant->plan?->allows('Réservations'),

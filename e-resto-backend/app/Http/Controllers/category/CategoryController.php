@@ -11,11 +11,11 @@ class CategoryController extends Controller
 {
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/category/list",
      * summary="Lister toutes les catégories",
      * tags={"Categories"},
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Liste des catégories"
      * )
@@ -30,19 +30,19 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Post(
+     * @OldOA\\Post(
      * path="/api/category/create",
      * summary="Créer une catégorie",
      * tags={"Categories"},
-     * @OA\RequestBody(
+     * @OldOA\\RequestBody(
      * required=true,
-     * @OA\JsonContent(
+     * @OldOA\\JsonContent(
      * required={"name"},
-     * @OA\Property(property="name", type="string", example="Moteur"),
-     * @OA\Property(property="description", type="string", example="Pièces du moteur")
+     * @OldOA\\Property(property="name", type="string", example="Moteur"),
+     * @OldOA\\Property(property="description", type="string", example="Pièces du moteur")
      * )
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=201,
      * description="Catégorie créée avec succès"
      * )
@@ -83,19 +83,19 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/get_category/{id}",
      * summary="Afficher une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID de la catégorie",
-     * @OA\Schema(type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000")
+     * @OldOA\\Schema(type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000")
      * ),
-     * @OA\Response(response=200, description="Catégorie trouvée"),
-     * @OA\Response(response=404, description="Catégorie non trouvée")
+     * @OldOA\\Response(response=200, description="Catégorie trouvée"),
+     * @OldOA\\Response(response=404, description="Catégorie non trouvée")
      * )
      */
     public function show($id)
@@ -108,24 +108,24 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Put(
+     * @OldOA\\Put(
      * path="/update_category/{id}",
      * summary="Mettre à jour une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID de la catégorie",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\RequestBody(
-     * @OA\JsonContent(
-     * @OA\Property(property="name", type="string", example="Frein"),
-     * @OA\Property(property="description", type="string", example="Pièces de freinage")
+     * @OldOA\\RequestBody(
+     * @OldOA\\JsonContent(
+     * @OldOA\\Property(property="name", type="string", example="Frein"),
+     * @OldOA\\Property(property="description", type="string", example="Pièces de freinage")
      * )
      * ),
-     * @OA\Response(response=200, description="Catégorie mise à jour")
+     * @OldOA\\Response(response=200, description="Catégorie mise à jour")
      * )
      */
     public function update(Request $request, $id)
@@ -161,18 +161,18 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Delete(
+     * @OldOA\\Delete(
      * path="/api/delete_category/{id}",
      * summary="Supprimer une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID de la catégorie",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\Response(response=200, description="Catégorie supprimée")
+     * @OldOA\\Response(response=200, description="Catégorie supprimée")
      * )
      */
     public function destroy($id)
@@ -192,17 +192,17 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/category/search",
      * summary="Rechercher une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="query",
      * in="query",
      * required=true,
-     * @OA\Schema(type="string", example="moteur")
+     * @OldOA\\Schema(type="string", example="moteur")
      * ),
-     * @OA\Response(response=200, description="Résultats de la recherche")
+     * @OldOA\\Response(response=200, description="Résultats de la recherche")
      * )
      */
     public function search(Request $request)

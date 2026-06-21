@@ -1,58 +1,66 @@
+@if (tableDetail; as detail) {
 <button type="button"
         class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
-        style="width: 35px; height: 35px; border: 2px solid; background-color: transparent;"
+        style="width: 35px; height: 35px; border: 2px solid var(--bs-secondary); background-color: transparent;"
         data-bs-toggle="modal"
-        [attr.data-bs-target]="'#showTableModal' + tableDetail.id">
+        [attr.data-bs-target]="'#showTableModal' + detail.id">
     <i class="ti ti-eye fs-4"></i>
 </button>
 
-<div class="modal fade" id="showTableModal{{tableDetail.id}}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="showTableModal{{detail.id}}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg">
-            <div class="modal-header  pb-0">
+            <div class="modal-header pb-0">
                 <h5 class="modal-title fw-bold text-dark" style="text-align: center">TABLE DETAILS</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <div class="modal-body p-4">
-                @if (tableDetail) {
-                    <div [id]="'printArea' + tableDetail.id" class="text-center p-5 "
-                         style="background: #ffffff; border: 1px solid #eaeaea; position: relative;">
-
-                        <div class="mb-3">
-                            <img src="assets/logo/e-resto-logo.png" alt="Logo" style="height: 60px; object-fit: contain; border-radius: 0; border:2px solid black">
+                <div [id]="'printArea' + detail.id" class="qr-print-card menu-qr-card">
+                    <div class="menu-qr-left">
+                        <div class="qr-container position-relative">
+                            @if (detail.qr_url) {
+                                <img [src]="detail.qr_url"
+                                     alt="QR Code"
+                                     class="main-table-qr">
+                                <div class="qr-center-logo">
+                                    <img [src]="restaurantLogo()" alt="Logo">
+                                </div>
+                            } @else {
+                                <div class="qr-empty">
+                                    QR code indisponible
+                                </div>
+                            }
                         </div>
-
-                        <h2 class="fw-black text-dark mb-4" style="font-size: 22px; font-weight: 900;">
-                            SCAN TO ORDER
-                        </h2>
-
-                        <div class="qr-container d-inline-block position-relative p-3 rounded-4 shadow-sm mb-4"
-                             style="border: 2px solid #f1f1f1; background: white; border: 1px solid black">
-                            <img [src]="tableDetail.qr_url"
-                                 alt="QR Code"
-                                 style="width: 250px; height: 250px; display: block;">
-                            <div class="qr-center-logo">
-                                <img src="assets/logo/e-resto-logo.png" style="width: 64px; height: 45px; background: white; padding: 3px; border-radius: 0; border: 1px solid #F9A11B; object-fit: contain;">
-                            </div>
-                        </div>
-
-                        <h1 class="display-4 fw-bold mb-0" style="color: white; font-weight: 900; text-transform: uppercase;font-size: 25px; border: 1px solid black; background: black">
-                            {{ tableDetail.name }}
-                        </h1>
                     </div>
-                }
+
+                    <div class="menu-qr-right">
+                        <img [src]="restaurantLogo()" alt="Logo" class="qr-restaurant-logo">
+                        <span class="scan-eyebrow">SCAN FOR OUR</span>
+                        <strong class="scan-title">MENU</strong>
+                        <p>Scannez le QR code pour commander directement depuis votre table.</p>
+                        <h1 class="table-name-preview">{{ detail.name }}</h1>
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer border-0 px-4 pb-3">
-                @if (tableDetail) {
-                    <button type="button" class="btn  w-100 py-2 d-flex align-items-center justify-content-center" (click)="printQRCode()" style="background: #F9A11B; ">
-                        <i class="ti ti-printer me-2 fs-4"></i>
-                        <span class="">PRINT QR CODE</span>
-                    </button>
-                }
+                <button type="button"
+                        class="btn btn-success w-100 py-2 d-flex align-items-center justify-content-center"
+                        [disabled]="!detail.qr_url"
+                        (click)="printQRCode()">
+                    <i class="ti ti-printer me-2 fs-4"></i>
+                    <span>PRINT QR CODE</span>
+                </button>
+                <button type="button"
+                        class="btn btn-danger w-100 py-2 d-flex align-items-center justify-content-center mt-2"
+                        [disabled]="!detail.qr_url"
+                        (click)="downloadQRCode()">
+                    <i class="ti ti-download me-2 fs-4"></i>
+                    <span>TELECHARGER PNG</span>
+                </button>
             </div>
-
         </div>
     </div>
 </div>
+}

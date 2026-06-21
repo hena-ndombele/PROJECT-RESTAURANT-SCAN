@@ -17,22 +17,17 @@
       </div>
     </div>
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
+      @if (canAccess('users.create')) {
       <button class="btn btn-primary text-black"
               [disabled]="userLimitReached()"
               data-bs-toggle="modal"
               [attr.data-bs-target]="userLimitReached() ? null : '#userModal'"
               (click)="openCreate()">
-        <i class="ti ti-plus me-1"></i> Create User
+        <i class="ti ti-plus me-1"></i> Ajouter User
       </button>
+      }
     </div>
   </header>
-
-  @if (planUsage()) {
-    <div class="alert" [ngClass]="userLimitReached() ? 'alert-warning' : 'alert-info'">
-      Plan {{ planUsage()?.plan?.name || 'non configure' }} :
-      {{ userLimitMessage() }}
-    </div>
-  }
 
   <div class="card border-0 mb-4 shadow-sm">
     <div class="card-body p-3">
@@ -100,15 +95,19 @@
                 </td>
                 <td class="text-center pe-4">
                   <div class="d-flex gap-2 justify-content-center">
+                    @if (canAccess('users.update')) {
                     <button class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center"
                             style="width: 35px; height: 35px;" data-bs-toggle="modal"
                             data-bs-target="#userModal" (click)="openEdit(user)">
                       <i class="ti ti-edit fs-4"></i>
                     </button>
+                    }
+                    @if (canAccess('users.delete')) {
                     <button class="btn btn-outline-danger d-inline-flex align-items-center justify-content-center"
                             style="width: 35px; height: 35px;" (click)="confirmDelete(user)">
                       <i class="ti ti-trash fs-4"></i>
                     </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -151,68 +150,45 @@
 </div>
 
 <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow text-start">
       <div class="modal-header">
         <div>
           <h5 class="modal-title fs-3 mb-1 fw-bolder" id="userModalLabel">
-            {{ selectedUser() ? 'Update User' : 'Create User' }}
+            {{ selectedUser() ? 'Modifier User' : 'Ajouter User' }}
           </h5>
-          <p class="mb-0 text-muted small">Manage account and roles</p>
+          <p class="mb-0 text-muted small">
+            {{ selectedUser() ? 'Modifier le compte et les roles' : 'Selectionner un employe et son role' }}
+          </p>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-4">
         <form [formGroup]="userForm" id="userForm" (ngSubmit)="saveUser()">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">First Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" formControlName="first_name">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Last Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" formControlName="last_name">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Email <span class="text-danger">*</span></label>
-              <input type="email" class="form-control" formControlName="email">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Phone</label>
-              <input type="text" class="form-control" formControlName="phone_number">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Address</label>
-              <input type="text" class="form-control" formControlName="address">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Password {{ selectedUser() ? '' : '*' }}</label>
-              <input type="password" class="form-control" formControlName="password" placeholder="Leave empty to keep current password">
-            </div>
-          </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">User / Employe <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="agent_id" (change)="onAgentSelected($event)">
+                  <option value="">Selectionner un employe</option>
+                  @for (agent of selectedUser() ? agents() : availableAgents(); track agent.id) {
+                    <option [value]="agent.id">{{ agent.email }}</option>
+                  }
+                </select>
+              </div>
 
-          <div class="row">
-            <div class="col-md-12 mb-3">
-              <label class="form-label">Roles</label>
-              @if (!canManageRoles()) {
-                <div class="alert alert-warning py-2">
-                  La gestion des Rôles et permissions est reservee au plan Business.
-                </div>
-              }
-              <div class="border rounded-3 p-3" style="max-height: 220px; overflow: auto;">
-                @for (role of roles(); track role.id) {
-                  <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" [id]="'userRole' + role.id"
-                           [disabled]="!canManageRoles()"
-                           [checked]="isRoleSelected(role.name)" (change)="onRoleChange(role.name, $event)">
-                    <label class="form-check-label" [for]="'userRole' + role.id">{{ role.name }}</label>
-                  </div>
-                } @empty {
-                  <p class="text-muted mb-0">No role available.</p>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Role <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="role_name">
+                  <option value="">Selectionner un role</option>
+                  @for (role of roles(); track role.id) {
+                    <option [value]="role.name">{{ role.name }}</option>
+                  }
+                </select>
+                @if (roles().length === 0) {
+                  <small class="text-danger">Aucun role disponible. Creez d'abord un role dans le menu Role.</small>
                 }
               </div>
             </div>
-          </div>
         </form>
       </div>
       <div class="modal-footer d-flex gap-2">
@@ -225,7 +201,7 @@
           } @else {
             <i class="bi bi-check-circle me-1"></i>
           }
-          Save User
+          {{ selectedUser() ? 'Enregistrer' : 'Ajouter User et envoyer le mail' }}
         </button>
       </div>
     </div>

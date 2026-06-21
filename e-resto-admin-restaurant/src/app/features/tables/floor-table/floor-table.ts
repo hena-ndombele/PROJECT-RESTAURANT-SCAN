@@ -1,11 +1,13 @@
 import { Component, inject, OnInit, signal } from "@angular/core";
 import { TableService } from "../../../services/table/table-service";
 import { NgClass } from "@angular/common";
+import { RouterLink } from "@angular/router";
 
 @Component({
     selector: "app-floor-table",
     imports: [
-        NgClass
+        NgClass,
+        RouterLink
     ],
     templateUrl: "./floor-table.html",
     styleUrl: "./floor-table.scss",

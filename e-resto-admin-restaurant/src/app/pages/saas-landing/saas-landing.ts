@@ -76,7 +76,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       },
       error: () => {
         this.isLoading = false;
-        this.message = "Impossible de charger les donnees SaaS pour le moment.";
+        this.message = "Impossible de charger les données SaaS pour le moment.";
       },
     });
   }
@@ -140,7 +140,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     this.isSubmitting = true;
     this.saas.registerInterest(this.lead).subscribe({
       next: () => {
-        this.message = 'Abonnement initialise. Redirection vers votre espace restaurant...';
+        this.message = 'Abonnement initialisé. Redirection vers votre espace restaurant...';
         this.lead = { name: '', owner_name: '', owner_email: '', owner_phone: '', city: '', saas_plan_id: this.lead.saas_plan_id };
         this.isSubmitting = false;
         setTimeout(() => this.router.navigate(['/dashboard']), 700);
@@ -155,7 +155,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   submitNewsletter(): void {
     const email = this.newsletterEmail.trim();
     if (!email) {
-      this.newsletterMessage = 'Ajoutez votre email pour recevoir les nouveautes.';
+      this.newsletterMessage = 'Ajoutez votre email pour recevoir les nouveautés.';
       this.newsletterStatus = 'error';
       this.hideNewsletterMessageAfterDelay(12000);
       return;
@@ -224,7 +224,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       finalize(() => this.isContactSubmitting = false),
     ).subscribe({
       next: (response) => {
-        this.contactMessage = response.message || 'Message envoye. Nous revenons vers vous rapidement.';
+        this.contactMessage = response.message || 'Message envoyé. Nous reviendrons vers vous rapidement.';
         this.contactStatus = 'success';
         this.contactForm = {
           name: '',
@@ -238,7 +238,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
       },
       error: (error) => {
         if (error?.name === 'TimeoutError') {
-          this.contactMessage = 'Votre demande a peut-etre ete enregistree, mais la reponse du serveur prend trop de temps. Reessayez si le message ne part pas.';
+          this.contactMessage = 'Le serveur met trop de temps à répondre. Veuillez réessayer.';
           this.contactStatus = 'success';
         } else {
           this.contactMessage = this.publicErrorMessage(error, "Impossible d'envoyer le message pour le moment.");
@@ -252,7 +252,16 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
 
   displayPrice(plan: SaasPlan): number {
     const price = Number(plan.monthly_price ?? 0);
-    return this.billingCycle === 'yearly' ? Math.round(price * 0.75) : price;
+    if (this.billingCycle !== 'yearly') {
+      return price;
+    }
+
+    const slug = String(plan.slug || plan.name).toLowerCase();
+    if (slug.includes('starter')) return 12;
+    if (slug.includes('pro')) return 20;
+    if (slug.includes('business')) return 25;
+
+    return price;
   }
 
   private startCtaStatsAnimation(): void {

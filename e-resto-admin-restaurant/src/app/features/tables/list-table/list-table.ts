@@ -8,6 +8,7 @@ import {ShowTable} from "../show-table/show-table";
 import {RouterLink} from "@angular/router";
 import {SaasService} from "../../../services/saas/saas-service";
 import {RestaurantPlanUsage} from "../../../models/saas/saas.models";
+import {AppPermissionService} from "../../../services/auth/permission-service";
 
 
 @Component({
@@ -26,7 +27,9 @@ import {RestaurantPlanUsage} from "../../../models/saas/saas.models";
 export class ListTable implements OnInit {
     private tableService = inject(TableService);
     private saasService = inject(SaasService);
+    private permissions = inject(AppPermissionService);
     isLoading = signal<boolean>(true);
+    errorMessage = signal<string>("");
 
     // Signaux d'état
     tables = signal<TableDto[]>([]);
@@ -98,6 +101,10 @@ export class ListTable implements OnInit {
         this.loadPlanUsage();
     }
 
+    canAccess(permission: string): boolean {
+        return this.permissions.has(permission);
+    }
+
     pagesArray = computed(() => {
         const total = this.totalPages();
         return Array.from({length: total}, (_, i) => i + 1);
@@ -105,21 +112,28 @@ export class ListTable implements OnInit {
 
     loadTables(): void {
         this.isLoading.set(true);
+        this.errorMessage.set("");
         this.tableService.list().subscribe({
             next: (response: any) => {
-                if (response) {
-                    this.tables.set(response);
-                } else {
-                    this.tables.set([]);
-                }
+                const tables = this.resolveTablesResponse(response);
+                this.tables.set(tables);
 
                 this.isLoading.set(false);
                 this.currentPage.set(1);
             },
             error: (err) => {
+                this.tables.set([]);
+                this.errorMessage.set(err?.error?.message || err?.message || "Impossible de charger les tables.");
                 this.isLoading.set(false);
             }
         });
+    }
+
+    private resolveTablesResponse(response: any): TableDto[] {
+        if (Array.isArray(response)) return response;
+        if (Array.isArray(response?.data)) return response.data;
+        if (Array.isArray(response?.tables)) return response.tables;
+        return [];
     }
 
     loadPlanUsage(): void {

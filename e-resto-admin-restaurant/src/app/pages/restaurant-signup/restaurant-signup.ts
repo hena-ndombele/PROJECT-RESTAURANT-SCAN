@@ -65,7 +65,7 @@ export class RestaurantSignup implements OnInit {
     this.message = '';
 
     if (!this.account.owner_email || !this.account.password || !this.account.password_confirmation) {
-      this.message = 'Completez votre email et votre mot de passe.';
+      this.message = 'Saisissez votre adresse e-mail et votre mot de passe.';
       return;
     }
 
@@ -272,16 +272,45 @@ export class RestaurantSignup implements OnInit {
   }
 
   private validationMessage(error: any): string {
+    if (error?.status === 0) {
+      return "Impossible de joindre le serveur. Verifiez que Laravel est demarre sur le port 8000.";
+    }
+
     if (error?.name === 'TimeoutError') {
       return 'La creation prend trop de temps. Si vous avez recu le code par email, ouvrez la page OTP pour verifier votre compte.';
     }
 
     const errors = error?.error?.errors;
     if (errors && typeof errors === 'object') {
+      if (Array.isArray(errors.owner_email) && errors.owner_email.length) {
+        return 'Ce compte existe déjà. Connectez-vous ou utilisez une autre adresse email.';
+      }
+
+      if (Array.isArray(errors.password) && errors.password.length) {
+        return errors.password.join(' ');
+      }
+
+      if (Array.isArray(errors.saas_plan_id) && errors.saas_plan_id.length) {
+        return 'Le plan selectionne est invalide. Retournez sur la page Tarifs et choisissez un plan.';
+      }
+
       const messages = Object.values(errors).flat().filter((message) => typeof message === 'string');
       if (messages.length) {
         return messages.join(' ');
       }
+    }
+
+    if (error?.status === 422) {
+      const message = String(error?.error?.message || '').toLowerCase();
+      if (message.includes('email') || message.includes('compte') || message.includes('unique')) {
+        return 'Ce compte existe deja. Connectez-vous ou utilisez une autre adresse email.';
+      }
+
+      return error?.error?.message || 'Certaines informations sont invalides. Corrigez les champs indiques puis reessayez.';
+    }
+
+    if (error?.status >= 500) {
+      return 'Erreur serveur pendant la creation du compte. Verifiez Laravel, la base de donnees et les logs.';
     }
 
     return error?.error?.message || 'Creation impossible. Verifiez les informations.';

@@ -1,4 +1,4 @@
-import { CommonModule, DatePipe, DecimalPipe } from "@angular/common";
+import { CommonModule, DecimalPipe } from "@angular/common";
 import { AfterViewInit, Component, OnDestroy, OnInit, computed, inject, signal } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import ApexCharts, { ApexOptions } from "apexcharts";
@@ -33,6 +33,8 @@ interface CurrencyRevenue {
     count: number;
 }
 
+type RevenuePeriod = "today" | "month" | "year";
+
 interface OnboardingStep {
     eyebrow: string;
     title: string;
@@ -46,7 +48,6 @@ interface OnboardingStep {
     selector: "app-dashboard",
     imports: [
         CommonModule,
-        DatePipe,
         DecimalPipe,
         RouterLink,
         Footer
@@ -136,11 +137,11 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
 
     readonly statusSummary = computed(() => {
         const labels: Record<DashboardStatus, string> = {
-            pending: "Recues",
-            preparing: "En preparation",
-            ready: "Pretes",
+            pending: "Reçues",
+            preparing: "En préparation",
+            ready: "Prêtes",
             delivered: "Servies",
-            cancelled: "Annulees"
+            cancelled: "Annulées"
         };
 
         return (Object.keys(labels) as DashboardStatus[]).map((status) => ({
@@ -183,7 +184,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         {
             eyebrow: "14 jours d'essai gratuit - plan complet",
             title: "Bienvenue sur Restaurant Scan",
-            description: "Votre restaurant entre dans l'ere digitale. En quelques minutes, vos clients pourront consulter votre menu et commander depuis leur telephone.",
+            description: "Votre restaurant entre dans l'ère digitale. En quelques minutes, vos clients pourront consulter votre menu et commander dépuis leur téléphone.",
             icon: "ti ti-hand-wave",
             tone: "orange",
             bullets: ["Tableau de bord en Temps réel", "Menu QR accessible sans application", "Commandes centralisees dans votre espace"]
@@ -249,27 +250,33 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
             tone: "primary"
         },
         {
-            label: "Chiffre du jour",
-            value: this.formatRevenueList(this.revenueTodayByCurrency()),
-            hint: "Revenus payes par devise",
-            icon: "ti ti-currency-dollar",
-            tone: "success"
-        },
-        {
-            label: "Plats disponibles",
-            value: `${this.availableDishes()}/${this.dishes().length}`,
-            hint: `${this.categories().length} categories actives`,
-            icon: "ti ti-tools-kitchen-2",
-            tone: "info"
-        },
-        {
             label: "Occupation tables",
             value: `${this.occupancyRate()}%`,
-            hint: `${this.occupiedTables()}/${this.tables().length} tables occupees`,
+            hint: `${this.occupiedTables()}/${this.tables().length} tables occupées`,
             icon: "ti ti-armchair",
             tone: "warning"
         }
     ]);
+
+    revenueAmount(period: string, currency: string): number {
+        return this.revenueCollection(period).find((item) => item.currency === currency)?.amount ?? 0;
+    }
+
+    revenueCount(period: string, currency: string): number {
+        return this.revenueCollection(period).find((item) => item.currency === currency)?.count ?? 0;
+    }
+
+    revenuePeriodOrders(period: string): number {
+        if (period === "today") return this.todayOrders().length;
+        if (period === "month") return this.monthOrders().length;
+        return this.yearOrders().length;
+    }
+
+    revenuePeriodLabel(period: string): string {
+        if (period === "today") return "Aujourd'hui";
+        if (period === "month") return "Ce mois";
+        return "Cette annee";
+    }
 
     ngOnInit(): void {
         this.realtime.start();
@@ -400,6 +407,12 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         this.renderCustomerChart();
     }
 
+    private revenueCollection(period: string): CurrencyRevenue[] {
+        if (period === "today") return this.revenueTodayByCurrency();
+        if (period === "month") return this.revenueMonthByCurrency();
+        return this.revenueYearByCurrency();
+    }
+
     private openOnboardingForFirstVisit(): void {
         if (localStorage.getItem(this.onboardingStorageKey()) === "done") {
             return;
@@ -478,7 +491,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
             series,
             chart: { height: 250, type: "donut" },
             colors: ["#0d6efd", "#16a34a", "#dc3545"],
-            labels: ["En cours", "Terminees", "Annulees"],
+            labels: ["En cours", "Terminées", "Annulées"],
             legend: { position: "bottom", fontFamily: "Inter, Poppins, sans-serif" },
             dataLabels: { enabled: false },
             plotOptions: {

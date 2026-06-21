@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize, timeout } from 'rxjs';
+import { catchError, EMPTY, finalize, timeout } from 'rxjs';
 import { SaasService } from '../../services/saas/saas-service';
+import { API_ROOT } from '../../services/api-url';
 
 @Component({
   selector: 'app-restaurant-login',
@@ -12,9 +13,10 @@ import { SaasService } from '../../services/saas/saas-service';
   templateUrl: './restaurant-login.html',
   styleUrl: './restaurant-login.scss',
 })
-export class RestaurantLogin implements OnDestroy {
+export class RestaurantLogin implements OnInit, OnDestroy {
   email = '';
   password = '';
+  showPassword = false;
   message = '';
   loading = false;
   private messageTimer?: ReturnType<typeof setTimeout>;
@@ -22,7 +24,13 @@ export class RestaurantLogin implements OnDestroy {
   constructor(
     private router: Router,
     private saas: SaasService,
+    private cdr: ChangeDetectorRef,
   ) {}
+
+  ngOnInit(): void {
+    this.loading = false;
+    this.cleanupBlockingOverlays();
+  }
 
   ngOnDestroy(): void {
     this.clearMessageTimer();
@@ -37,7 +45,7 @@ export class RestaurantLogin implements OnDestroy {
     this.clearMessageTimer();
 
     const email = this.email.trim();
-    const password = this.password;
+    const password = this.password.trim();
 
     if (!email || !password) {
       this.message = 'Renseignez votre email et votre mot de passe.';
@@ -51,14 +59,21 @@ export class RestaurantLogin implements OnDestroy {
       return;
     }
 
-    this.loading = true;
+    this.setLoading(true);
     this.saas.login({ email, password }).pipe(
       timeout(15000),
-      finalize(() => this.loading = false),
+      catchError((error) => {
+        this.handleLoginError(error, false);
+        return EMPTY;
+      }),
+      finalize(() => this.setLoading(false)),
     ).subscribe({
       next: (response) => this.completeLogin(response),
-      error: (error) => this.handleLoginError(error, false),
     });
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
   }
 
   private completeLogin(response: any): void {
@@ -70,10 +85,20 @@ export class RestaurantLogin implements OnDestroy {
     localStorage.setItem('user_data', JSON.stringify(response.user));
     localStorage.setItem('restaurant_session', JSON.stringify(response.restaurant));
     localStorage.setItem('restaurant_login_at', new Date().toISOString());
-    this.router.navigate(['/dashboard']);
+    this.cleanupBlockingOverlays();
+    this.router.navigate(['/dashboard'], { replaceUrl: true });
+  }
+
+  private cleanupBlockingOverlays(): void {
+    document.body.classList.remove('modal-open', 'swal2-shown', 'swal2-height-auto');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+    document.body.style.removeProperty('pointer-events');
+    document.querySelectorAll('.modal-backdrop, .offcanvas-backdrop, .swal2-container').forEach((element) => element.remove());
   }
 
   private handleLoginError(error: any, google: boolean): void {
+    this.setLoading(false);
     this.message = this.validationMessage(error);
     this.hideMessageAfterDelay();
 
@@ -86,11 +111,13 @@ export class RestaurantLogin implements OnDestroy {
     if (google && error?.status === 404) {
       this.message = 'Ce compte Google ne possede pas encore d espace restaurant. Creez votre compte pour continuer.';
     }
+
+    this.cdr.detectChanges();
   }
 
   private validationMessage(error: any): string {
     if (error?.status === 0) {
-      return "Impossible de joindre le serveur. Verifiez que l'API Laravel est demarree sur le port 8000.";
+      return `Impossible de joindre le serveur (${API_ROOT}). Verifiez que l'API Laravel est demarree sur le port 8000.`;
     }
 
     if (error?.name === 'TimeoutError') {
@@ -121,6 +148,7 @@ export class RestaurantLogin implements OnDestroy {
     this.messageTimer = setTimeout(() => {
       this.message = '';
       this.messageTimer = undefined;
+      this.cdr.detectChanges();
     }, delay);
   }
 
@@ -129,5 +157,10 @@ export class RestaurantLogin implements OnDestroy {
       clearTimeout(this.messageTimer);
       this.messageTimer = undefined;
     }
+  }
+
+  private setLoading(value: boolean): void {
+    this.loading = value;
+    this.cdr.detectChanges();
   }
 }

@@ -96,7 +96,7 @@
 
                                     <button class="btn  w-100 py-2 fw-bold d-flex align-items-center justify-content-center "
                                             type="submit"
-                                            [disabled]="loginForm.invalid || isLoading" style="background: #F9A11B">
+                                            [disabled]="loginForm.invalid || isLoading" style="background: var(--dashboard-button-bg); color: #111827;">
                                         <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2"></span>
                                         <span>{{ isLoading ? 'Authenticating...' : 'Sign In' }}</span>
                                         <i *ngIf="!isLoading" class="bi bi-arrow-right-short ms-1 fs-5"></i>

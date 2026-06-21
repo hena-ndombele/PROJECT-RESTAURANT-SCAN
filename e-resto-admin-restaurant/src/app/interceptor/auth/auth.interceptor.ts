@@ -15,16 +15,31 @@ function isExpired(): boolean {
     return Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now());
 }
 
+function isPublicAuthRequest(url: string): boolean {
+    return [
+        '/saas/login',
+        '/saas/google/login',
+        '/saas/signup',
+        '/auth/login',
+        '/auth/verify-otp',
+        '/admin/auth/login',
+        '/admin/auth/verify-otp',
+        '/otp/request',
+        '/public/',
+    ].some((path) => url.includes(path));
+}
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+    const skipAuthHandling = isPublicAuthRequest(req.url);
     const token = localStorage.getItem('auth_token') || localStorage.getItem('restaurant_token');
 
-    if (token && isExpired()) {
+    if (!skipAuthHandling && token && isExpired()) {
         clearSession();
         window.location.href = '/restaurant/login';
         return throwError(() => new Error('Session expired'));
     }
 
-    if (token) {
+    if (token && !skipAuthHandling) {
         const cloned = req.clone({
             setHeaders: {
                 Authorization: `Bearer ${token}`

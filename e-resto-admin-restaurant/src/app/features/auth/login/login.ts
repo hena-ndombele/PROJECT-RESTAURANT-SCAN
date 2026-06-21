@@ -50,6 +50,11 @@ export class Login {
             .subscribe({
                 next: (res) => {
                     localStorage.setItem('temp_token', res.token);
+                    if (res.dev_otp) {
+                        localStorage.setItem('dev_otp', String(res.dev_otp));
+                    } else {
+                        localStorage.removeItem('dev_otp');
+                    }
 
                     const Toast = Swal.mixin({
                         toast: true,
@@ -61,7 +66,7 @@ export class Login {
 
                     Toast.fire({
                         icon: 'success',
-                        title: 'Valid login details. Check your email inbox.'
+                        title: res.dev_otp ? `Code OTP local: ${res.dev_otp}` : 'Valid login details. Check your email inbox.'
                     });
 
                     this.router.navigate(['/auth/otp']);

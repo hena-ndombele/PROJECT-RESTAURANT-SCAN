@@ -17,12 +17,13 @@ export class OderService {
     //     return this.http.get<CategoryDto[]>(`${this.apiUrl}/orders`);
     // }
 
-    list(filters: { day?: string, month?: string, year?: string }): Observable<Order[]> {
+    list(filters: { day?: string, month?: string, year?: string, active_only?: boolean | string } = {}): Observable<Order[]> {
         let params = new HttpParams();
 
         if (filters.day) params = params.set('day', filters.day);
         if (filters.month) params = params.set('month', filters.month);
         if (filters.year) params = params.set('year', filters.year);
+        if (filters.active_only !== undefined) params = params.set('active_only', String(filters.active_only ? 1 : 0));
 
         return this.http.get<any>(this.apiUrl, { params }).pipe(
             map(response => {

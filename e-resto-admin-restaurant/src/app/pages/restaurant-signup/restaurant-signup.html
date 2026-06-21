@@ -82,8 +82,8 @@
               </label>
 
               <label>
-                <span>Nom du proprietaire *</span>
-                <input [(ngModel)]="account.owner_name" name="owner_name" placeholder="Nom Proprietaire" autocomplete="name" required>
+                <span>Nom du propriétaire *</span>
+                <input [(ngModel)]="account.owner_name" name="owner_name" placeholder="Nom Propriétaire" autocomplete="name" required>
               </label>
 
               <div class="grid-2">
@@ -108,7 +108,7 @@
               <div class="actions-row">
                 <button class="secondary-action" type="button" (click)="goBack()" [disabled]="creating"><i class="bi bi-arrow-left"></i> Retour</button>
                 <button class="primary-action" type="submit" [disabled]="creating || planLoading">
-                  {{ creating ? 'Creation...' : planLoading ? 'Chargement du plan...' : 'Creer mon compte' }}
+                  {{ creating ? 'Création...' : planLoading ? 'Chargement du plan...' : 'Créer mon compte' }}
                 </button>
               </div>
             </div>
@@ -117,7 +117,7 @@
           <p class="message" role="alert" *ngIf="message"><i class="bi bi-exclamation-triangle-fill"></i>{{ message }}</p>
         </form>
 
-        <div class="signin-link">Deja un compte ? <a routerLink="/restaurant/login">Se connecter</a></div>
+        <div class="signin-link">Déjà un compte ? <a routerLink="/restaurant/login">Se connecter</a></div>
       </ng-container>
     </div>
   </section>

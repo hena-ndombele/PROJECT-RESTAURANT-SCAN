@@ -19,6 +19,9 @@ export class Otp implements OnInit {
   isLoading = false;
   isResending = false;
   digits = ["", "", "", "", ""];
+  toastMessage = "";
+  toastType: "success" | "error" = "success";
+  private toastTimer?: ReturnType<typeof setTimeout>;
 
   @ViewChild("otp1") otp1!: ElementRef<HTMLInputElement>;
   @ViewChild("otp2") otp2!: ElementRef<HTMLInputElement>;
@@ -41,6 +44,10 @@ export class Otp implements OnInit {
     this.email = this.route.snapshot.queryParamMap.get("email")
       || localStorage.getItem("restaurant_owner_email")
       || "";
+    const devOtp = localStorage.getItem("dev_otp");
+    if (devOtp) {
+      this.showToast(`Code OTP local: ${devOtp}`, "success");
+    }
 
     this.authService.currentEmail.subscribe((email) => {
       this.email = email || this.email;
@@ -85,6 +92,7 @@ export class Otp implements OnInit {
     this.authService.verifyOtp(this.email, fullCode).subscribe({
       next: (res) => {
         this.isLoading = false;
+        localStorage.removeItem("dev_otp");
         if (this.source === "signup") {
           this.showClientUrlDialog(res);
           return;
@@ -116,18 +124,28 @@ export class Otp implements OnInit {
     this.authService.requestOtp(this.email).subscribe({
       next: (response) => {
         this.isResending = false;
-        Swal.fire({
-          title: "Code renvoye",
-          text: response.message || "Un nouveau code OTP a ete envoye.",
-          icon: "success",
-          confirmButtonColor: "#F9A11B",
-        });
+        if ((response as any).dev_otp) {
+          localStorage.setItem("dev_otp", String((response as any).dev_otp));
+          this.showToast(`Code OTP local: ${(response as any).dev_otp}`, "success");
+          return;
+        }
+        this.showToast(response.message || "Un nouveau code OTP a ete envoye a votre adresse email.", "success");
       },
       error: (err) => {
         this.isResending = false;
-        this.error = err.error?.message || "Impossible de renvoyer le code OTP.";
+        const message = err.error?.message || "Impossible de renvoyer le code OTP.";
+        this.error = message;
+        this.showToast(message, "error");
       },
     });
+  }
+
+  hideToast(): void {
+    this.toastMessage = "";
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = undefined;
+    }
   }
 
   private showClientUrlDialog(response: any): void {
@@ -174,5 +192,12 @@ export class Otp implements OnInit {
       .trim()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
+  }
+
+  private showToast(message: string, type: "success" | "error"): void {
+    this.hideToast();
+    this.toastMessage = message;
+    this.toastType = type;
+    this.toastTimer = setTimeout(() => this.hideToast(), 5200);
   }
 }

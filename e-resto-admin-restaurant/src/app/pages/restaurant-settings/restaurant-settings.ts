@@ -3,6 +3,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SaasService } from '../../services/saas/saas-service';
 import { ThemeService } from '../../services/theme/theme-service';
+import { AppPermissionService } from '../../services/auth/permission-service';
+import { RestaurantPlanUsage } from '../../models/saas/saas.models';
 
 @Component({
   selector: 'app-restaurant-settings',
@@ -13,6 +15,7 @@ import { ThemeService } from '../../services/theme/theme-service';
 })
 export class RestaurantSettings implements OnInit {
   private readonly saas = inject(SaasService);
+  private readonly permissions = inject(AppPermissionService);
   readonly theme = inject(ThemeService);
 
   loading = signal(false);
@@ -20,9 +23,14 @@ export class RestaurantSettings implements OnInit {
   message = signal('');
   error = signal('');
   logoPreview = signal<string | null>(null);
+  planUsage = signal<RestaurantPlanUsage | null>(null);
   logoData: string | null = null;
 
   canCustomize(): boolean {
+    if (!this.canUpdateSettings()) {
+      return false;
+    }
+
     if (this.restaurant?.features) {
       return this.restaurant.features.customization === true;
     }
@@ -30,6 +38,10 @@ export class RestaurantSettings implements OnInit {
     const slug = String(this.restaurant?.plan?.slug || '').toLowerCase();
     const name = String(this.restaurant?.plan?.name || '').toLowerCase();
     return ['pro', 'business'].some((plan) => slug.includes(plan) || name.includes(plan));
+  }
+
+  canUpdateSettings(): boolean {
+    return this.permissions.has('settings.update');
   }
 
   restaurant: any = {
@@ -45,9 +57,11 @@ export class RestaurantSettings implements OnInit {
       app_name: '',
       slogan: '',
       description: '',
-      google_maps_url: '',
-      whatsapp_order_phone: '',
-      theme: {
+        google_maps_url: '',
+        whatsapp_order_phone: '',
+        opening_time: '08:00',
+        closing_time: '22:00',
+        theme: {
         primary: '#ff9f1a',
         secondary: '#d71920',
         background: '#fff7ef',
@@ -60,6 +74,7 @@ export class RestaurantSettings implements OnInit {
 
   ngOnInit(): void {
     this.loadRestaurant();
+    this.loadUsage();
   }
 
   loadRestaurant(): void {
@@ -105,14 +120,23 @@ export class RestaurantSettings implements OnInit {
   selectPrimary(color: string): void {
     if (!this.canCustomize()) return;
     this.restaurant.settings.theme.primary = color;
+    this.restaurant.settings.theme.customized = true;
+    this.applyRestaurantTheme(this.restaurant);
   }
 
   selectBackground(color: string): void {
     if (!this.canCustomize()) return;
     this.restaurant.settings.theme.background = color;
+    this.restaurant.settings.theme.customized = true;
+    this.applyRestaurantTheme(this.restaurant);
   }
 
   save(): void {
+    if (!this.canUpdateSettings()) {
+      this.error.set("Vous n'avez pas la permission de modifier les parametres du restaurant.");
+      return;
+    }
+
     this.saving.set(true);
     this.message.set('');
     this.error.set('');
@@ -127,12 +151,13 @@ export class RestaurantSettings implements OnInit {
     };
 
     if (this.canCustomize()) {
-      payload.slug = this.slugify(this.restaurant.slug || this.restaurant.name);
       payload.logo_data = this.logoData;
       payload.settings = this.customizableSettingsPayload();
     } else {
       payload.settings = {
         whatsapp_order_phone: this.restaurant.settings.whatsapp_order_phone,
+        opening_time: this.restaurant.settings.opening_time,
+        closing_time: this.restaurant.settings.closing_time,
       };
     }
 
@@ -142,7 +167,9 @@ export class RestaurantSettings implements OnInit {
         this.logoPreview.set(this.restaurant.logo_url || null);
         this.logoData = null;
         localStorage.setItem('restaurant_session', JSON.stringify(this.restaurant));
-        this.message.set('Parametres sauvegardes. Le menu client utilisera ces informations au prochain chargement.');
+        this.applyRestaurantTheme(this.restaurant);
+        this.broadcastRestaurantSettings(this.restaurant);
+        this.message.set('Parametres sauvegardes. Les changements sont appliques dans votre espace.');
         this.saving.set(false);
       },
       error: (error) => {
@@ -174,10 +201,13 @@ export class RestaurantSettings implements OnInit {
         description: settings.description || 'Menu digital QR code',
         google_maps_url: settings.google_maps_url || '',
         whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '',
+        opening_time: settings.opening_time || '08:00',
+        closing_time: settings.closing_time || '22:00',
         theme: {
           primary: theme.primary || '#ff9f1a',
           secondary: theme.secondary || '#d71920',
           background: theme.background || '#fff7ef',
+          customized: theme.customized === true || theme.is_customized === true,
         },
       },
     };
@@ -200,11 +230,75 @@ export class RestaurantSettings implements OnInit {
       description: this.restaurant.settings.description,
       google_maps_url: this.restaurant.settings.google_maps_url,
       whatsapp_order_phone: this.restaurant.settings.whatsapp_order_phone,
+      opening_time: this.restaurant.settings.opening_time,
+      closing_time: this.restaurant.settings.closing_time,
       theme: {
         primary: this.restaurant.settings.theme.primary,
         secondary: this.restaurant.settings.theme.secondary,
         background: this.restaurant.settings.theme.background,
+        customized: true,
       },
     };
+  }
+
+  onColorInput(): void {
+    if (!this.canCustomize()) return;
+    this.restaurant.settings.theme.customized = true;
+    this.applyRestaurantTheme(this.restaurant);
+  }
+
+  private loadUsage(): void {
+    this.saas.restaurantUsage().subscribe({
+      next: (usage) => this.planUsage.set(usage),
+      error: () => this.planUsage.set(null),
+    });
+  }
+
+  private broadcastRestaurantSettings(restaurant: any): void {
+    window.dispatchEvent(new CustomEvent('restaurant-settings-updated', {
+      detail: restaurant,
+    }));
+  }
+
+  private applyRestaurantTheme(restaurant: any): void {
+    const theme = restaurant?.settings?.theme || restaurant?.theme || {};
+    const primary = this.normalizeColor(theme.primary_color || theme.primary || theme.accent, '#F9A11B');
+    const secondary = this.normalizeColor(theme.secondary_color || theme.secondary, '#111318');
+    const surface = this.normalizeColor(theme.background_color || theme.background || theme.surface, '#FFF7ED');
+    const primaryRgb = this.hexToRgb(primary);
+    const buttonBackground = theme.customized === true || theme.is_customized === true
+      ? primary
+      : 'linear-gradient(135deg, #FFD166, #F9A11B, #D71920)';
+
+    document.body.classList.add('restaurant-theme');
+    document.documentElement.style.setProperty('--dashboard-primary', primary);
+    document.documentElement.style.setProperty('--dashboard-primary-rgb', primaryRgb);
+    document.documentElement.style.setProperty('--dashboard-button-accent', secondary);
+    document.documentElement.style.setProperty('--dashboard-button-bg', buttonBackground);
+    document.documentElement.style.setProperty('--dashboard-secondary', secondary);
+    document.documentElement.style.setProperty('--dashboard-surface', surface);
+    document.documentElement.style.setProperty('--bs-primary', primary);
+    document.documentElement.style.setProperty('--bs-primary-rgb', primaryRgb);
+    document.documentElement.style.setProperty('--bs-link-color', primary);
+    document.documentElement.style.setProperty('--bs-link-hover-color', secondary);
+  }
+
+  private normalizeColor(value: any, fallback: string): string {
+    const color = String(value || '').trim();
+    return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color) ? color : fallback;
+  }
+
+  private hexToRgb(hex: string): string {
+    let clean = hex.replace('#', '').trim();
+    if (clean.length === 3) {
+      clean = clean.split('').map((char) => char + char).join('');
+    }
+
+    const value = Number.parseInt(clean, 16);
+    if (Number.isNaN(value)) {
+      return '249, 161, 27';
+    }
+
+    return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
   }
 }

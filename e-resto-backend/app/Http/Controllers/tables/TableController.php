@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class TableController extends Controller
@@ -15,9 +16,16 @@ class TableController extends Controller
         $restaurant = $request->user()?->restaurant;
 
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('tables', 'name')->where(fn ($query) => $query->where('restaurant_id', $restaurant?->id)),
+            ],
             'capacity' => 'required|integer|min:1',
             'server_phone' => 'nullable|string|max:20',
+        ], [
+            'name.unique' => 'Ce nom de table existe deja.',
         ]);
 
         $tableLimit = $restaurant?->plan?->maxTables();
@@ -68,7 +76,24 @@ class TableController extends Controller
     public function update(Request $request, $id)
     {
         $table = $this->scopedTables($request)->findOrFail($id);
-        $table->update($request->only(['name', 'capacity', 'server_phone', 'status']));
+        $validated = $request->validate([
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('tables', 'name')
+                    ->where(fn ($query) => $query->where('restaurant_id', $request->user()?->restaurant_id))
+                    ->ignore($table->id),
+            ],
+            'capacity' => 'sometimes|required|integer|min:1',
+            'server_phone' => 'nullable|string|max:20',
+            'status' => 'sometimes|string|max:50',
+        ], [
+            'name.unique' => 'Ce nom de table existe deja.',
+        ]);
+
+        $table->update($validated);
 
         return response()->json([
             'message' => 'Table mise a jour',
@@ -120,7 +145,7 @@ class TableController extends Controller
             $query['restaurant_slug'] = $slug;
         }
 
-        return rtrim(env('CLIENT_FRONTEND_URL', 'http://localhost:5173'), '/') . '/?' . http_build_query($query);
+        return rtrim(env('CLIENT_FRONTEND_URL', 'https://restaurascan.com'), '/') . '/?' . http_build_query($query);
     }
 
     private function generateTableQrCode(Table $table, string $url): string

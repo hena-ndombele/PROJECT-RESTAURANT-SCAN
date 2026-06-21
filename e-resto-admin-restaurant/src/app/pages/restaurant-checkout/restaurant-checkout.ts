@@ -44,16 +44,30 @@ export class RestaurantCheckout implements OnDestroy {
   }
 
   get paymentAmount(): number {
-    return this.billingCycle === 'yearly' ? this.monthlyPrice * 10 : this.monthlyPrice;
+    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice * 12 : this.monthlyPrice;
   }
 
   get monthlyEquivalent(): number {
-    return this.billingCycle === 'yearly' ? this.paymentAmount / 12 : this.monthlyPrice;
+    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice : this.monthlyPrice;
   }
 
   get installationFee(): number {
     const slug = String(this.restaurant.plan?.slug || this.planName).toLowerCase();
     return Number(this.selectedPlan.installation_fee ?? (slug.includes('business') ? 30_000 : 20_000));
+  }
+
+  private get annualMonthlyPrice(): number {
+    if (Number(this.selectedPlan.annual_monthly_price) > 0) {
+      return Number(this.selectedPlan.annual_monthly_price);
+    }
+
+    const slug = String(this.restaurant.plan?.slug || this.selectedPlan.slug || this.planName).toLowerCase();
+
+    if (slug.includes('starter')) return 12;
+    if (slug.includes('pro')) return 20;
+    if (slug.includes('business')) return 25;
+
+    return this.monthlyPrice;
   }
 
   get walletHint(): string {

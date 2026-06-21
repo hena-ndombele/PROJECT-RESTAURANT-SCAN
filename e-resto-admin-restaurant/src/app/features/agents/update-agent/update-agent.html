@@ -1,109 +1,96 @@
 <button type="button"
         class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center"
-        style="width: 35px; height: 35px; border: 1px solid #ff8200; background-color: transparent;"
+        style="width: 35px; height: 35px;"
         data-bs-toggle="modal"
         [attr.data-bs-target]="'#updateEmployeeModal' + agentId">
     <i class="ti ti-edit fs-4"></i>
 </button>
 
-
-
-
-<div class="modal fade" [id]="'updateEmployeeModal' + agentId" tabindex="-1" aria-labelledby="createAgentModal" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal fade" [id]="'updateEmployeeModal' + agentId" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow text-start">
-
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" id="createTableModal" style="font-weight: bolder">Update Employee ({{agentDetail?.first_name}} {{agentDetail?.last_name}})</h5>
+                    <h5 class="modal-title fs-3 mb-1 fw-bolder">Modifier employe</h5>
+                    <p class="mb-0 text-muted small">{{ agentDetail?.first_name }} {{ agentDetail?.last_name }}</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <div class="modal-body p-4">
-                <form [formGroup]="agentForm" (ngSubmit)="onSubmit()">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="productName" class="form-label">First Name <span style="color:red">*</span></label>
-                            <input type="text" class="form-control" id="productName" formControlName="first_name" placeholder="First Name">
-                            @if (agentForm.get('first_name')?.invalid && agentForm.get('first_name')?.touched) {
-                                <small class="text-danger">First Name is required.</small>
-                            }
+                <form [formGroup]="agentForm" id="updateEmployeeForm{{agentId}}" (ngSubmit)="onSubmit()">
+                    <div class="row g-3">
+                        <div class="col-lg-3">
+                            <div class="photo-picker">
+                                @if (photoPreview) {
+                                    <img [src]="photoPreview" alt="Photo employe">
+                                } @else {
+                                    <span><i class="ti ti-camera"></i> Photo</span>
+                                }
+                            </div>
+                            <label class="photo-change-btn dynamic-primary mt-3 w-100">
+                                <i class="ti ti-camera me-1"></i>
+                                Changer la photo
+                                <input type="file" accept="image/*" (change)="onPhotoSelected($event)">
+                            </label>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label for="productName" class="form-label">Last Name <span style="color:red">*</span></label>
-                            <input type="text" class="form-control" id="lastName" formControlName="last_name" placeholder="Last Name">
-                            @if (agentForm.get('last_name')?.invalid && agentForm.get('last_name')?.touched) {
-                                <small class="text-danger">Last Name is required.</small>
-                            }
+                        <div class="col-lg-9">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">Prenom <span class="text-danger">*</span></label><input class="form-control" formControlName="first_name"></div>
+                                <div class="col-md-6"><label class="form-label">Nom <span class="text-danger">*</span></label><input class="form-control" formControlName="last_name"></div>
+                                <div class="col-md-6"><label class="form-label">Email <span class="text-danger">*</span></label><input class="form-control" formControlName="email"></div>
+                                <div class="col-md-6"><label class="form-label">Telephone <span class="text-danger">*</span></label><input class="form-control" formControlName="phone_number"></div>
+                                <div class="col-md-6"><label class="form-label">Fonction <span class="text-danger">*</span></label><input class="form-control" formControlName="fonction"></div>
+                                <div class="col-md-6"><label class="form-label">Matricule</label><input class="form-control" formControlName="matricule"></div>
+                                <div class="col-md-6"><label class="form-label">Niveau d'etude</label><input class="form-control" formControlName="education_level"></div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Statut</label>
+                                    <select class="form-select" formControlName="status">
+                                        <option value="active">Actif</option>
+                                        <option value="inactive">Inactif</option>
+                                        <option value="trial">Essai</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Contrat</label>
+                                    <select class="form-select" formControlName="contract_type">
+                                        <option value="CDI">CDI</option>
+                                        <option value="CDD">CDD</option>
+                                        <option value="Stage">Stage</option>
+                                        <option value="Extra">Extra</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Horaire</label>
+                                    <select class="form-select" formControlName="shift">
+                                        <option value="Jour">Jour</option>
+                                        <option value="Soir">Soir</option>
+                                        <option value="Nuit">Nuit</option>
+                                        <option value="Flexible">Flexible</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4"><label class="form-label">Date d'embauche</label><input type="date" class="form-control" formControlName="hired_at"></div>
+                                <div class="col-md-6"><label class="form-label">Contact urgence</label><input class="form-control" formControlName="emergency_contact_name"></div>
+                                <div class="col-md-6"><label class="form-label">Telephone urgence</label><input class="form-control" formControlName="emergency_contact_phone"></div>
+                                <div class="col-12"><label class="form-label">Adresse <span class="text-danger">*</span></label><textarea class="form-control" rows="3" formControlName="address"></textarea></div>
+                            </div>
                         </div>
-
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="productName" class="form-label">Email <span style="color:red">*</span></label>
-                            <input type="text" class="form-control" id="email" formControlName="email" placeholder="Email">
-                            @if (agentForm.get('email')?.invalid && agentForm.get('email')?.touched) {
-                                <small class="text-danger">Email is required.</small>
-                            }
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label for="phone_number" class="form-label">Phone Number <span style="color:red">*</span></label>
-                            <input type="text" class="form-control" id="phone_number" formControlName="phone_number" placeholder="Phone Number">
-                            @if (agentForm.get('phone_number')?.invalid && agentForm.get('phone_number')?.touched) {
-                                <small class="text-danger">Phone Numberis required.</small>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="productName" class="form-label">Education Level </label>
-                            <input type="text" class="form-control" id="education_level" formControlName="education_level" placeholder="Education Level">
-                            @if (agentForm.get('education_level')?.invalid && agentForm.get('education_level')?.touched) {
-                                <small class="text-danger">Education Level is required.</small>
-                            }
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label for="productName" class="form-label">Function <span style="color:red">*</span></label>
-                            <input type="text" class="form-control" id="function" formControlName="fonction" placeholder="Function">
-                            @if (agentForm.get('fonction')?.invalid && agentForm.get('fonction')?.touched) {
-                                <small class="text-danger">Function is required.</small>
-                            }
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="address" class="form-label">Address <span style="color:red">*</span></label>
-                        <textarea class="form-control" id="address" formControlName="address" rows="4"
-                                  placeholder="Enter Address "></textarea>
-                        @if (agentForm.get('address')?.invalid && agentForm.get('address')?.touched) {
-                            <small class="text-danger">Description is required.</small>
-                        }
-                    </div>
-
-                    <div class="modal-footer d-flex gap-2">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <i class="bi bi-x-circle me-1"></i> Cancel
-                        </button>
-
-                        <button type="submit"
-                                class="btn btn-primary text-black"
-                                [disabled]="agentForm.invalid || isLoading">
-                            @if (isLoading) {
-                                <span class="spinner-border spinner-border-sm me-1"></span>
-                            }
-                            <i class="bi bi-save me-1"></i>
-                            Update Agent
-                        </button>
                     </div>
                 </form>
             </div>
 
-
+            <div class="modal-footer d-flex gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> Annuler
+                </button>
+                <button type="submit" [attr.form]="'updateEmployeeForm' + agentId" class="btn btn-primary text-black" [disabled]="agentForm.invalid || isLoading">
+                    @if (isLoading) {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-save me-1"></i> Enregistrer
+                </button>
+            </div>
         </div>
     </div>
 </div>

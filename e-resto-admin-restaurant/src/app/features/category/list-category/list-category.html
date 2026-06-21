@@ -18,7 +18,9 @@
         </div>
         <div class="col-md-5 text-md-end mt-3 mt-md-0">
             <div class="d-flex gap-2 justify-content-md-end">
+                @if (canAccess('categories.create')) {
                 <app-create-category></app-create-category>
+                }
 
             </div>
         </div>
@@ -102,8 +104,12 @@
                             </td>
                             <td class="text-center pe-4">
                                 <div class="d-flex gap-2 justify-content-center">
+                                    @if (canAccess('categories.update')) {
                                     <app-update-category [categoryId]="cat.id"></app-update-category>
+                                    }
+                                    @if (canAccess('categories.delete')) {
                                     <app-delete-category [categoryId]="cat.id"></app-delete-category>
+                                    }
                                 </div>
                             </td>
                         </tr>

@@ -18,11 +18,11 @@
           <label>Mot de passe<input [(ngModel)]="loginForm.password" name="password" type="password" required autocomplete="current-password"></label>
         } @else {
           <div class="otp-box">
-            <label>Code de verification</label>
+            <label>Code de vérification</label>
             <div class="otp-inputs">
               <input *ngFor="let digit of otpDigits; let index = index" [value]="digit" (input)="setOtpDigit($event, index)" (keydown)="handleOtpKeydown($event, index)" inputmode="numeric" maxlength="1" required>
             </div>
-            <small>Nous avons envoye un code a 5 chiffres a {{ loginForm.email }}.</small>
+            <small>Nous avons envoyé un code à 5 chiffres à {{ loginForm.email }}.</small>
           </div>
           <div class="otp-actions">
             <button type="button" class="text-btn" (click)="resendAdminOtp()" [disabled]="otpResending()">{{ otpResending() ? 'Renvoi...' : 'Renvoyer le code' }}</button>
@@ -241,9 +241,9 @@
     <section class="modal-card wide" (click)="$event.stopPropagation()">
       <header><div><span class="eyebrow">{{ restaurantForm.id ? 'Modification' : 'Nouveau compte' }}</span><h2>{{ restaurantForm.id ? 'Modifier le restaurant' : 'Creer un restaurant' }}</h2></div><button class="close-btn" (click)="restaurantModalOpen.set(false)">Ã—</button></header>
       <form (ngSubmit)="saveRestaurant()">
-        <div class="form-grid"><label>Nom restaurant<input [(ngModel)]="restaurantForm.name" name="restaurant_name" required></label><label>Responsable<input [(ngModel)]="restaurantForm.owner_name" name="owner_name" required></label><label>Email proprietaire<input [(ngModel)]="restaurantForm.owner_email" name="owner_email" type="email" required></label><label>Telephone<input [(ngModel)]="restaurantForm.owner_phone" name="owner_phone"></label><label>Ville<input [(ngModel)]="restaurantForm.city" name="city"></label><label>Devise<select [(ngModel)]="restaurantForm.currency" name="currency"><option value="CDF">CDF</option><option value="USD">USD</option></select></label><label>Statut<select [(ngModel)]="restaurantForm.status" name="status"><option value="trial">Essai</option><option value="active">Actif</option><option value="past_due">En retard</option><option value="suspended">Suspendu</option></select></label><label>Plan<select [(ngModel)]="restaurantForm.saas_plan_id" name="saas_plan_id"><option *ngFor="let plan of plans()" [value]="plan.id">{{ plan.name }}</option></select></label></div>
+        <div class="form-grid"><label>Nom restaurant<input [(ngModel)]="restaurantForm.name" name="restaurant_name" required></label><label>Responsable<input [(ngModel)]="restaurantForm.owner_name" name="owner_name" required></label><label>Email propriétaire<input [(ngModel)]="restaurantForm.owner_email" name="owner_email" type="email" required></label><label>Telephone<input [(ngModel)]="restaurantForm.owner_phone" name="owner_phone"></label><label>Ville<input [(ngModel)]="restaurantForm.city" name="city"></label><label>Devise<select [(ngModel)]="restaurantForm.currency" name="currency"><option value="CDF">CDF</option><option value="USD">USD</option></select></label><label>Statut<select [(ngModel)]="restaurantForm.status" name="status"><option value="trial">Essai</option><option value="active">Actif</option><option value="past_due">En retard</option><option value="suspended">Suspendu</option></select></label><label>Plan<select [(ngModel)]="restaurantForm.saas_plan_id" name="saas_plan_id"><option *ngFor="let plan of plans()" [value]="plan.id">{{ plan.name }}</option></select></label></div>
         <label *ngIf="!restaurantForm.id">Mot de passe initial<input [(ngModel)]="restaurantForm.owner_password" name="owner_password" placeholder="Eresto@2026 par defaut"></label>
-        <div class="reset-box" *ngIf="restaurantForm.id"><label>Nouveau mot de passe proprietaire<input [(ngModel)]="ownerPassword" name="reset_password" placeholder="Minimum 6 caracteres"></label><button type="button" class="btn ghost" (click)="resetOwnerPassword()">Reinitialiser</button></div>
+        <div class="reset-box" *ngIf="restaurantForm.id"><label>Nouveau mot de passe propriétaire<input [(ngModel)]="ownerPassword" name="reset_password" placeholder="Minimum 6 caracteres"></label><button type="button" class="btn ghost" (click)="resetOwnerPassword()">Reinitialiser</button></div>
         <footer><button type="button" class="btn ghost" (click)="restaurantModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">{{ saving() ? 'Enregistrement...' : 'Enregistrer' }}</button></footer>
       </form>
     </section>
