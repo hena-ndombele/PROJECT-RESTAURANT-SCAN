@@ -22,6 +22,7 @@ export function useCart() {
   };
 
   const clearCart = () => setItems([]);
+  const replaceItems = (nextItems) => setItems(nextItems);
 
   const totals = useMemo(() => {
     const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -30,5 +31,5 @@ export function useCart() {
     return { totalQuantity, totalAmount, currency };
   }, [items]);
 
-  return { items, totals, addItem, updateQuantity, clearCart };
+  return { items, totals, addItem, updateQuantity, clearCart, replaceItems };
 }

@@ -25,6 +25,8 @@ class User extends Authenticatable
         'phone_number',
         'address',
         'password',
+        'restaurant_id',
+        'agent_id',
         'otp_code',
         'is_first_login',
         'otp_expires_at',
@@ -36,7 +38,12 @@ class User extends Authenticatable
 
     public function agent()
     {
-        return $this->hasOne(Agent::class);
+        return $this->belongsTo(Agent::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
     }
     protected $hidden = [
         'password',

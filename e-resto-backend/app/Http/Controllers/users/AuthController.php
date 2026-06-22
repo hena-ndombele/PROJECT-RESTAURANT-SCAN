@@ -3,41 +3,24 @@
 namespace App\Http\Controllers\users;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Mail\AccountCreatedMail;
 use App\Mail\SendOtpMail;
-use App\Models\User;
+use App\Models\Agent;
 use App\Models\Otp;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Carbon\Carbon;
-use App\Mail\AccountCreatedMail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
-
-    /**
-     * @OA\Post(
-     *     path="/api/auth/login",
-     *     summary="Connexion utilisateur",
-     *     tags={"Auth"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"email","password"},
-     *             @OA\Property(property="email", type="string", example="user@email.com"),
-     *             @OA\Property(property="password", type="string", example="password123")
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="OTP envoyé"),
-     *     @OA\Response(response=401, description="Identifiants incorrects")
-     * )
-     */
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -47,115 +30,174 @@ class AuthController extends Controller
             return response()->json(['message' => 'Identifiants incorrects'], 401);
         }
 
+        if (!$user->restaurant_id) {
+            return response()->json(['message' => 'Ce compte utilisateur n est lie a aucun restaurant.'], 403);
+        }
+
         $otpCode = rand(10000, 99999);
-
         Otp::where('user_id', $user->id)->delete();
-
         Otp::create([
-            'user_id'   => $user->id,
-            'code'      => $otpCode,
-            'expires_at'=> Carbon::now()->addMinutes(5),
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => Carbon::now()->addMinutes(5),
+        ]);
+
+        $mailSent = true;
+        try {
+            Mail::to($user->email)->send(new SendOtpMail($otpCode));
+        } catch (\Throwable) {
+            $mailSent = false;
+        }
+
+        return response()->json([
+            'message' => $mailSent
+                ? 'Un code OTP a ete envoye a votre adresse email.'
+                : 'Le code OTP a ete genere, mais l email n a pas pu etre envoye en local.',
+            'dev_otp' => app()->environment('local') && !$mailSent ? $otpCode : null,
+        ]);
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|digits:5',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !$user->restaurant_id) {
+            return response()->json(['message' => 'Utilisateur introuvable'], 404);
+        }
+
+        $otp = Otp::where('user_id', $user->id)
+            ->where('code', $request->otp)
+            ->where('expires_at', '>=', Carbon::now())
+            ->first();
+
+        if (!$otp) {
+            return response()->json(['message' => 'OTP invalide ou expire'], 400);
+        }
+
+        $otp->delete();
+
+        $expiresAt = $this->tokenExpiresAt();
+        $token = $user->createToken('API Token', ['*'], $expiresAt)->plainTextToken;
+        $user->load('roles.permissions', 'restaurant.plan', 'restaurant.subscription', 'agent');
+
+        return response()->json([
+            'message' => 'Connexion reussie',
+            'token' => $token,
+            'token_expires_at' => $expiresAt->toIso8601String(),
+            'user' => $user,
+            'restaurant' => $user->restaurant,
+        ]);
+    }
+
+    public function adminLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        $user = User::with('roles')->where('email', $request->email)->first();
+
+        if (!$user || $user->restaurant_id || !$user->hasRole('admin') || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Identifiants administrateur incorrects.'], 401);
+        }
+
+        $otpCode = rand(10000, 99999);
+        Otp::where('user_id', $user->id)->delete();
+        Otp::create([
+            'user_id' => $user->id,
+            'code' => $otpCode,
+            'expires_at' => Carbon::now()->addMinutes(5),
         ]);
 
         Mail::to($user->email)->send(new SendOtpMail($otpCode));
 
         return response()->json([
-            'message' => 'Un code OTP a été envoyé à votre adresse email.'
+            'message' => 'Un code OTP a ete envoye a votre adresse email.',
         ]);
     }
 
-
-    /**
-     * @OA\Post(
-     *     path="/api/auth/verify-otp",
-     *     summary="Vérifier OTP",
-     *     tags={"Auth"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"email","otp"},
-     *             @OA\Property(property="email", type="string", example="user@email.com"),
-     *             @OA\Property(property="otp", type="string", example="12345")
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="Connexion réussie")
-     * )
-     */
-    public function verifyOtp(Request $request)
+    public function adminVerifyOtp(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
-            'otp'   => 'required|digits:5',
+            'otp' => 'required|digits:5',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::with('roles')->where('email', $request->email)->first();
 
-        if (!$user) {
-            return response()->json(['message' => 'Utilisateur introuvable'], 404);
+        if (!$user || $user->restaurant_id || !$user->hasRole('admin')) {
+            return response()->json(['message' => 'Administrateur introuvable.'], 404);
         }
 
         $otp = Otp::where('user_id', $user->id)
-                  ->where('code', $request->otp)
-                  ->where('expires_at', '>=', Carbon::now())
-                  ->first();
+            ->where('code', $request->otp)
+            ->where('expires_at', '>=', Carbon::now())
+            ->first();
 
         if (!$otp) {
-            return response()->json(['message' => 'OTP invalide ou expiré'], 400);
+            return response()->json(['message' => 'OTP invalide ou expire.'], 400);
         }
 
         $otp->delete();
-
-        $token = $user->createToken('API Token')->plainTextToken;
+        $expiresAt = $this->tokenExpiresAt();
+        $token = $user->createToken('Admin API Token', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json([
-            'message' => 'Connexion réussie',
-            'token'   => $token,
-            'user'    => $user,
+            'message' => 'Connexion administrateur reussie.',
+            'token' => $token,
+            'token_expires_at' => $expiresAt->toIso8601String(),
+            'user' => $user,
         ]);
     }
 
-
-    /**
-     * @OA\Post(
-     *     path="/api/auth/register",
-     *     summary="Créer un employé",
-     *     tags={"Users"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"first_name","last_name","email","phone_number","role"},
-     *             @OA\Property(property="first_name", type="string", example="Jean"),
-     *             @OA\Property(property="last_name", type="string", example="Dupont"),
-     *             @OA\Property(property="email", type="string", example="jean@email.com"),
-     *             @OA\Property(property="phone_number", type="string", example="243900000000"),
-     *             @OA\Property(property="address", type="string", example="Kinshasa"),
-     *             @OA\Property(property="role", type="string", example="serveur")
-     *         )
-     *     ),
-     *     @OA\Response(response=201, description="Utilisateur créé")
-     * )
-     */
     public function register(Request $request)
     {
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+
+        if ($restaurant && $restaurant->plan) {
+            $limit = $restaurant->plan->maxUsers();
+            if ($limit !== null && $limit > 0 && $restaurant->users()->count() >= $limit) {
+                return response()->json([
+                    'message' => "Limite d'utilisateurs atteinte pour le plan {$restaurant->plan->name}.",
+                ], 422);
+            }
+        }
+
         $validated = $request->validate([
-            'first_name'   => 'required|string|max:100',
-            'last_name'    => 'required|string|max:100',
-            'email'        => 'required|string|email|unique:users',
-            'phone_number' => 'required|string|max:20',
-            'address'      => 'nullable|string|max:255',
-            'password'     => 'nullable|string|min:6',
-            'role'         => 'nullable|string|exists:roles,name',
-            'roles'        => 'nullable|array',
-            'roles.*'      => 'string|exists:roles,name',
+            'agent_id' => 'required|uuid|exists:agents,id',
+            'role' => 'nullable|string|exists:roles,name',
+            'roles' => 'nullable|array',
+            'roles.*' => 'string|exists:roles,name',
         ]);
 
+        $agent = Agent::query()
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($validated['agent_id']);
+
+        if ($agent->user_id || User::where('agent_id', $agent->id)->exists() || User::where('email', $agent->email)->exists()) {
+            return response()->json([
+                'message' => 'Cet employe possede deja un compte utilisateur.',
+            ], 422);
+        }
+
+        $plainPassword = $this->temporaryPassword();
+
         $user = User::create([
-            'first_name'   => $validated['first_name'],
-            'last_name'    => $validated['last_name'],
-            'email'        => $validated['email'],
-            'phone_number' => $validated['phone_number'],
-            'address'      => $validated['address'] ?? null,
-            'password'     => Hash::make($validated['password'] ?? '12345678'),
+            'first_name' => $agent->first_name,
+            'last_name' => $agent->last_name,
+            'email' => $agent->email,
+            'phone_number' => $agent->phone_number,
+            'address' => $agent->address,
+            'restaurant_id' => $request->user()?->restaurant_id,
+            'agent_id' => $agent->id,
+            'password' => Hash::make($plainPassword),
+            'is_first_login' => true,
         ]);
 
         $roles = $validated['roles'] ?? [];
@@ -167,27 +209,37 @@ class AuthController extends Controller
             $user->syncRoles(array_values(array_unique($roles)));
         }
 
-        Mail::to($user->email)->send(new AccountCreatedMail($user));
+        $agent->update(['user_id' => $user->id]);
+        Mail::to($user->email)->send(new AccountCreatedMail($user, $plainPassword));
 
         return response()->json([
-            'message' => 'Employé créé avec succès',
-            'data'    => $user
+            'message' => 'Utilisateur cree avec succes. Un email de connexion a ete envoye.',
+            'data' => $user->load('roles.permissions', 'agent'),
         ], 201);
     }
 
+    private function temporaryPassword(): string
+    {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $groups = [];
 
-    /**
-     * @OA\Get(
-     *     path="/api/users/list",
-     *     summary="Lister utilisateurs",
-     *     tags={"Users"},
-     *     security={{"sanctum":{}}},
-     *     @OA\Response(response=200, description="Liste utilisateurs")
-     * )
-     */
+        for ($group = 0; $group < 3; $group++) {
+            $part = '';
+            for ($index = 0; $index < 4; $index++) {
+                $part .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
+            $groups[] = $part;
+        }
+
+        return 'RS-' . implode('-', $groups);
+    }
+
     public function index()
     {
-        $users = User::with('roles')->paginate(10);
+        $users = User::with('roles.permissions', 'agent')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->paginate(10);
+
         return response()->json($users);
     }
 
@@ -201,30 +253,41 @@ class AuthController extends Controller
         $otpCode = rand(10000, 99999);
 
         Otp::where('user_id', $user->id)->delete();
-
         Otp::create([
             'user_id' => $user->id,
             'code' => $otpCode,
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
 
-        Mail::to($user->email)->send(new SendOtpMail($otpCode));
+        $mailSent = true;
+        try {
+            Mail::to($user->email)->send(new SendOtpMail($otpCode));
+        } catch (\Throwable) {
+            $mailSent = false;
+        }
 
         return response()->json([
-            'message' => 'Un nouveau code OTP a ete envoye a votre adresse email.',
+            'message' => $mailSent
+                ? 'Un nouveau code OTP a ete envoye a votre adresse email.'
+                : 'Le code OTP a ete regenere, mais l email n a pas pu etre envoye en local.',
+            'dev_otp' => app()->environment('local') && !$mailSent ? $otpCode : null,
         ]);
     }
 
     public function show($id)
     {
-        $user = User::with('roles')->findOrFail($id);
+        $user = User::with('roles.permissions', 'agent')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         return response()->json($user);
     }
 
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::query()
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         $validated = $request->validate([
             'first_name' => 'sometimes|string|max:100',
@@ -259,13 +322,20 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Utilisateur mis a jour avec succes',
-            'data' => $user->load('roles'),
+            'data' => $user->load('roles.permissions', 'agent'),
         ]);
     }
 
     public function destroy($id)
     {
-        $user = User::findOrFail($id);
+        $user = User::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
+
+        if ($user->agent_id) {
+            Agent::where('id', $user->agent_id)->update(['user_id' => null]);
+        }
+
         $user->tokens()->delete();
         $user->delete();
 
@@ -284,54 +354,28 @@ class AuthController extends Controller
             ], 400);
         }
 
-        $users = User::with('roles')
-            ->where('first_name', 'LIKE', "%{$query}%")
-            ->orWhere('last_name', 'LIKE', "%{$query}%")
-            ->orWhere('email', 'LIKE', "%{$query}%")
-            ->orWhere('phone_number', 'LIKE', "%{$query}%")
+        $users = User::with('roles.permissions', 'agent')
+            ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
+            ->where(function ($builder) use ($query) {
+                $builder->where('first_name', 'LIKE', "%{$query}%")
+                    ->orWhere('last_name', 'LIKE', "%{$query}%")
+                    ->orWhere('email', 'LIKE', "%{$query}%")
+                    ->orWhere('phone_number', 'LIKE', "%{$query}%");
+            })
             ->paginate(10);
 
         return response()->json($users);
     }
 
-
-    /**
-     * @OA\Post(
-     *     path="/api/logout",
-     *     summary="Déconnexion",
-     *     tags={"Auth"},
-     *     security={{"sanctum":{}}},
-     *     @OA\Response(response=200, description="Déconnexion réussie")
-     * )
-     */
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Déconnexion réussie'
+            'message' => 'Deconnexion reussie',
         ]);
     }
 
-
-    /**
-     * @OA\Post(
-     *     path="/api/auth/change-password",
-     *     summary="Changer mot de passe",
-     *     tags={"Auth"},
-     *     security={{"sanctum":{}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"current_password","new_password","new_password_confirmation"},
-     *             @OA\Property(property="current_password", type="string"),
-     *             @OA\Property(property="new_password", type="string"),
-     *             @OA\Property(property="new_password_confirmation", type="string")
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="Mot de passe changé")
-     * )
-     */
     public function changePassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -341,8 +385,8 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validation échouée',
-                'errors' => $validator->errors()
+                'message' => 'Validation echouee',
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -350,7 +394,7 @@ class AuthController extends Controller
 
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json([
-                'message' => 'Mot de passe actuel incorrect'
+                'message' => 'Mot de passe actuel incorrect',
             ], 400);
         }
 
@@ -359,9 +403,13 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json([
-            'message' => 'Mot de passe changé avec succès',
-            'is_first_login' => $user->is_first_login
+            'message' => 'Mot de passe change avec succes',
+            'is_first_login' => $user->is_first_login,
         ]);
     }
 
+    private function tokenExpiresAt(): Carbon
+    {
+        return Carbon::now()->addMinutes((int) env('AUTH_TOKEN_TTL_MINUTES', 1440));
+    }
 }

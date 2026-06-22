@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ContactMessageReceivedMail;
 use App\Models\ContactMessage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class ContactController extends Controller
 {
@@ -20,8 +22,16 @@ class ContactController extends Controller
 
         $message = ContactMessage::create($validated);
 
+        app()->terminating(function () use ($message) {
+            try {
+                $recipient = config('mail.from.address') ?: 'restaurantScan2026@gmail.com';
+                Mail::to($recipient)->send(new ContactMessageReceivedMail($message));
+            } catch (\Throwable) {
+            }
+        });
+
         return response()->json([
-            'message' => 'Message envoyee avec succes',
+            'message' => 'Message envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
             'data' => $message,
         ], 201);
     }

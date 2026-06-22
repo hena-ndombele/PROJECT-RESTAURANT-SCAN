@@ -12,11 +12,11 @@ class PlatController extends Controller
 {
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/plats/get_plats",
      * summary="Lister les plats",
      * tags={"Plats"},
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Liste des plats"
      * )
@@ -24,27 +24,29 @@ class PlatController extends Controller
      */
     public function index()
     {
-        $plats = Plat::with('category')->paginate(10);
+        $plats = Plat::with('category')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->paginate(10);
         return response()->json($plats);
     }
 
 
     /**
-     * @OA\Post(
+     * @OldOA\\Post(
      * path="/api/plats/create-plats",
      * summary="Créer un plat",
      * tags={"Plats"},
-     * @OA\RequestBody(
+     * @OldOA\\RequestBody(
      * required=true,
-     * @OA\MediaType(
+     * @OldOA\\MediaType(
      * mediaType="multipart/form-data",
-     * @OA\Schema(
+     * @OldOA\\Schema(
      * required={"name","price","category_id"},
-     * @OA\Property(property="name", type="string", example="Pizza"),
-     * @OA\Property(property="description", type="string", example="Pizza fromage"),
-     * @OA\Property(property="price", type="number", example=12.5),
-     * @OA\Property(property="category_id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
-     * @OA\Property(
+     * @OldOA\\Property(property="name", type="string", example="Pizza"),
+     * @OldOA\\Property(property="description", type="string", example="Pizza fromage"),
+     * @OldOA\\Property(property="price", type="number", example=12.5),
+     * @OldOA\\Property(property="category_id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
+     * @OldOA\\Property(
      * property="image",
      * type="string",
      * format="binary",
@@ -53,7 +55,7 @@ class PlatController extends Controller
      * )
      * )
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=201,
      * description="Plat créé avec succès"
      * )
@@ -61,6 +63,15 @@ class PlatController extends Controller
      */
 public function store(Request $request)
 {
+    $restaurant = $request->user()?->restaurant()->with('plan')->first();
+    $dishLimit = $restaurant?->plan?->maxDishes();
+    if ($restaurant && $dishLimit !== null && $restaurant->plats()->count() >= $dishLimit) {
+        return response()->json([
+            'message' => "Limite de {$dishLimit} plats atteinte pour le plan {$restaurant->plan?->name}.",
+            'requires_upgrade' => true,
+        ], 422);
+    }
+
     $validatedData = $request->validate([
         'name' => 'required|string',
         'description' => 'required|string',
@@ -70,9 +81,9 @@ public function store(Request $request)
         'preparation_time' => 'nullable|integer', // Temps en minutes
         'is_available' => 'nullable|boolean',     // Disponibilité
         'ingredients' => 'nullable|array',         // Tableau d'ingrédients
-        'image_principale' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image_principale' => 'required|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
     ]);
 
     // Extraction des données textuelles et numériques
@@ -84,6 +95,7 @@ public function store(Request $request)
         'category_id', 
         'preparation_time'
     ]);
+    $data['restaurant_id'] = $request->user()?->restaurant_id;
 
     // Gestion de la disponibilité (Force le boolean si envoyé via FormData)
     $data['is_available'] = $request->boolean('is_available', true);
@@ -114,18 +126,18 @@ public function store(Request $request)
 
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/plats/{id}",
      * summary="Afficher un plat",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID du plat",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Plat trouvé"
      * )
@@ -133,32 +145,34 @@ public function store(Request $request)
      */
     public function show($id)
     {
-        $plat = Plat::with('category')->findOrFail($id);
+        $plat = Plat::with('category')
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
         return response()->json($plat);
     }
 
 
     /**
-     * @OA\Post(
+     * @OldOA\\Post(
      * path="/api/plats/{id}",
      * summary="Mettre à jour un plat",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID du plat",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\RequestBody(
-     * @OA\MediaType(
+     * @OldOA\\RequestBody(
+     * @OldOA\\MediaType(
      * mediaType="multipart/form-data",
-     * @OA\Schema(
-     * @OA\Property(property="name", type="string", example="Burger"),
-     * @OA\Property(property="description", type="string", example="Burger viande"),
-     * @OA\Property(property="price", type="number", example=15),
-     * @OA\Property(property="category_id", type="string", format="uuid"),
-     * @OA\Property(
+     * @OldOA\\Schema(
+     * @OldOA\\Property(property="name", type="string", example="Burger"),
+     * @OldOA\\Property(property="description", type="string", example="Burger viande"),
+     * @OldOA\\Property(property="price", type="number", example=15),
+     * @OldOA\\Property(property="category_id", type="string", format="uuid"),
+     * @OldOA\\Property(
      * property="image",
      * type="string",
      * format="binary"
@@ -166,7 +180,7 @@ public function store(Request $request)
      * )
      * )
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Plat mis à jour"
      * )
@@ -174,7 +188,9 @@ public function store(Request $request)
      */
 public function update(Request $request, $id)
 {
-    $plat = Plat::findOrFail($id);
+    $plat = Plat::query()
+        ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+        ->findOrFail($id);
 
     $validatedData = $request->validate([
         'name' => 'sometimes|string|max:255',
@@ -185,9 +201,9 @@ public function update(Request $request, $id)
         'preparation_time' => 'nullable|integer',
         'is_available' => 'nullable|boolean',
         'ingredients' => 'nullable|array',
-        'image_principale' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'image_principale' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
     ]);
 
     // On récupère les données validées
@@ -227,18 +243,18 @@ public function update(Request $request, $id)
 
 
     /**
-     * @OA\Delete(
+     * @OldOA\\Delete(
      * path="/api/plats/{id}",
      * summary="Supprimer un plat",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID du plat",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Plat supprimé"
      * )
@@ -246,7 +262,9 @@ public function update(Request $request, $id)
      */
     public function destroy($id)
     {
-        $plat = Plat::findOrFail($id);
+        $plat = Plat::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         if ($plat->image && Storage::disk('public')->exists($plat->image)) {
             Storage::disk('public')->delete($plat->image);
@@ -260,18 +278,18 @@ public function update(Request $request, $id)
     }
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/search-plats",
      * summary="Rechercher des plats",
      * tags={"Plats"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="query",
      * in="query",
      * required=true,
      * description="Mot clé de recherche",
-     * @OA\Schema(type="string", example="pizza")
+     * @OldOA\\Schema(type="string", example="pizza")
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Résultat de recherche"
      * )
@@ -282,8 +300,11 @@ public function update(Request $request, $id)
         $query = $request->input('query');
 
         $plats = Plat::with('category')
-            ->where('name', 'LIKE', "%{$query}%")
-            ->orWhere('description', 'LIKE', "%{$query}%")
+            ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
+            ->where(function ($builder) use ($query) {
+                $builder->where('name', 'LIKE', "%{$query}%")
+                    ->orWhere('description', 'LIKE', "%{$query}%");
+            })
             ->paginate(10);
 
         return response()->json($plats);

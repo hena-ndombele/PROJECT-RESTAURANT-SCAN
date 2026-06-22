@@ -12,6 +12,7 @@ class Reservation extends Model
     use HasUuids;
 
     protected $fillable = [
+        'restaurant_id',
         'table_id',
         'name',
         'phone',
@@ -20,12 +21,21 @@ class Reservation extends Model
         'reservation_date',
         'reservation_time',
         'special_requests',
+        'internal_note',
+        'cancellation_reason',
         'status',
+        'source',
+        'confirmed_at',
+        'seated_at',
+        'completed_at',
     ];
 
     protected $casts = [
         'reservation_date' => 'date',
         'guests' => 'integer',
+        'confirmed_at' => 'datetime',
+        'seated_at' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     protected $keyType = 'string';
@@ -34,5 +44,10 @@ class Reservation extends Model
     public function table()
     {
         return $this->belongsTo(Table::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
     }
 }

@@ -11,11 +11,11 @@ class CategoryController extends Controller
 {
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/category/list",
      * summary="Lister toutes les catégories",
      * tags={"Categories"},
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=200,
      * description="Liste des catégories"
      * )
@@ -23,24 +23,26 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::all();
+        $categories = Category::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->get();
         return response()->json($categories);
     }
 
     /**
-     * @OA\Post(
+     * @OldOA\\Post(
      * path="/api/category/create",
      * summary="Créer une catégorie",
      * tags={"Categories"},
-     * @OA\RequestBody(
+     * @OldOA\\RequestBody(
      * required=true,
-     * @OA\JsonContent(
+     * @OldOA\\JsonContent(
      * required={"name"},
-     * @OA\Property(property="name", type="string", example="Moteur"),
-     * @OA\Property(property="description", type="string", example="Pièces du moteur")
+     * @OldOA\\Property(property="name", type="string", example="Moteur"),
+     * @OldOA\\Property(property="description", type="string", example="Pièces du moteur")
      * )
      * ),
-     * @OA\Response(
+     * @OldOA\\Response(
      * response=201,
      * description="Catégorie créée avec succès"
      * )
@@ -49,7 +51,7 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|unique:categories,name',
+            'name' => 'required|string',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
@@ -67,6 +69,7 @@ class CategoryController extends Controller
         }
 
         $category = Category::create([
+            'restaurant_id' => $request->user()?->restaurant_id,
             'name' => $request->name,
             'description' => $request->description,
             'image' => $imagePath,
@@ -80,55 +83,59 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/get_category/{id}",
      * summary="Afficher une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID de la catégorie",
-     * @OA\Schema(type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000")
+     * @OldOA\\Schema(type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000")
      * ),
-     * @OA\Response(response=200, description="Catégorie trouvée"),
-     * @OA\Response(response=404, description="Catégorie non trouvée")
+     * @OldOA\\Response(response=200, description="Catégorie trouvée"),
+     * @OldOA\\Response(response=404, description="Catégorie non trouvée")
      * )
      */
     public function show($id)
     {
         // FindOrFail fonctionne automatiquement avec les strings/UUID
-        $category = Category::findOrFail($id);
+        $category = Category::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
         return response()->json($category);
     }
 
     /**
-     * @OA\Put(
+     * @OldOA\\Put(
      * path="/update_category/{id}",
      * summary="Mettre à jour une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID de la catégorie",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\RequestBody(
-     * @OA\JsonContent(
-     * @OA\Property(property="name", type="string", example="Frein"),
-     * @OA\Property(property="description", type="string", example="Pièces de freinage")
+     * @OldOA\\RequestBody(
+     * @OldOA\\JsonContent(
+     * @OldOA\\Property(property="name", type="string", example="Frein"),
+     * @OldOA\\Property(property="description", type="string", example="Pièces de freinage")
      * )
      * ),
-     * @OA\Response(response=200, description="Catégorie mise à jour")
+     * @OldOA\\Response(response=200, description="Catégorie mise à jour")
      * )
      */
     public function update(Request $request, $id)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::query()
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         $request->validate([
-            'name' => 'sometimes|string|unique:categories,name,' . $category->id,
+            'name' => 'sometimes|string',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
@@ -154,23 +161,25 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Delete(
+     * @OldOA\\Delete(
      * path="/api/delete_category/{id}",
      * summary="Supprimer une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="id",
      * in="path",
      * required=true,
      * description="UUID de la catégorie",
-     * @OA\Schema(type="string", format="uuid")
+     * @OldOA\\Schema(type="string", format="uuid")
      * ),
-     * @OA\Response(response=200, description="Catégorie supprimée")
+     * @OldOA\\Response(response=200, description="Catégorie supprimée")
      * )
      */
     public function destroy($id)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::query()
+            ->when(request()->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->findOrFail($id);
 
         // Nettoyage de l'image lors de la suppression
         if ($category->image) {
@@ -183,17 +192,17 @@ class CategoryController extends Controller
     }
 
     /**
-     * @OA\Get(
+     * @OldOA\\Get(
      * path="/api/category/search",
      * summary="Rechercher une catégorie",
      * tags={"Categories"},
-     * @OA\Parameter(
+     * @OldOA\\Parameter(
      * name="query",
      * in="query",
      * required=true,
-     * @OA\Schema(type="string", example="moteur")
+     * @OldOA\\Schema(type="string", example="moteur")
      * ),
-     * @OA\Response(response=200, description="Résultats de la recherche")
+     * @OldOA\\Response(response=200, description="Résultats de la recherche")
      * )
      */
     public function search(Request $request)
@@ -204,8 +213,12 @@ class CategoryController extends Controller
             return response()->json(['message' => 'Veuillez fournir un terme de recherche.'], 400);
         }
 
-        $categories = Category::where('name', 'LIKE', "%{$query}%")
-                            ->orWhere('description', 'LIKE', "%{$query}%")
+        $categories = Category::query()
+                            ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
+                            ->where(function ($builder) use ($query) {
+                                $builder->where('name', 'LIKE', "%{$query}%")
+                                    ->orWhere('description', 'LIKE', "%{$query}%");
+                            })
                             ->get();
 
         return response()->json([

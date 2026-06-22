@@ -1,0 +1,199 @@
+<div class="reservation-page container-fluid py-4 bg-light min-vh-100">
+  <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div class="d-flex align-items-center">
+      <div class="page-icon me-3"><i class="bi bi-calendar2-check"></i></div>
+      <div>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
+            <li class="breadcrumb-item">Restaurant Scan</li>
+            <li class="breadcrumb-item active text-primary">Réservations</li>
+          </ol>
+        </nav>
+        <h1 class="h3 mb-0 fw-bold text-dark">Gestion des Réservations</h1>
+      </div>
+    </div>
+    <button class="btn btn-outline-secondary" type="button" (click)="loadReservations()">
+      <i class="bi bi-arrow-clockwise me-1"></i> Actualiser
+    </button>
+  </header>
+
+  @if (upgradeRequired()) {
+    <div class="alert alert-warning border-0 shadow-sm">
+      <strong>Fonctionnalite Pro.</strong>
+      Les Réservations sont disponibles avec les plans Pro et Business.
+    </div>
+  }
+
+  <section class="reservation-summary mb-4">
+    <article>
+      <span>Demandes</span>
+      <strong>{{ Reservations().length }}</strong>
+      <small>Total charge</small>
+    </article>
+    <article>
+      <span>A confirmer</span>
+      <strong>{{ statusTabs()[1].count }}</strong>
+      <small>Action restaurant requise</small>
+    </article>
+    <article>
+      <span>Confirmees</span>
+      <strong>{{ statusTabs()[2].count }}</strong>
+      <small>Tables bloquees</small>
+    </article>
+  </section>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small fw-bold text-muted text-uppercase">Date</label>
+          <input class="form-control bg-transparent" type="date" [ngModel]="dateFilter()" (ngModelChange)="dateFilter.set($event); loadReservations()">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold text-muted text-uppercase">Statut</label>
+          <select class="form-select bg-transparent" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); loadReservations()">
+            <option value="all">Tous</option>
+            @for (status of statusOptions; track status.value) {
+              <option [value]="status.value">{{ status.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold text-muted text-uppercase">Recherche</label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+            <input class="form-control bg-transparent" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Nom, telephone, email, table...">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-outline-secondary w-100" type="button" (click)="dateFilter.set(''); statusFilter.set('all'); searchTerm.set(''); loadReservations()">Reset</button>
+        </div>
+      </div>
+
+      <div class="status-tabs mt-4">
+        @for (tab of statusTabs(); track tab.value) {
+          <button class="status-tab" [class.active]="statusFilter() === tab.value" type="button" (click)="statusFilter.set(tab.value); loadReservations()">
+            <span>{{ tab.label }}</span>
+            <strong>{{ tab.count }}</strong>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-danger border-0 shadow-sm" *ngIf="errorMessage()">{{ errorMessage() }}</div>
+  <div class="alert alert-success border-0 shadow-sm" *ngIf="successMessage()">{{ successMessage() }}</div>
+
+  @if (loading()) {
+    <div class="reservation-loading">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted fw-medium">Chargement des Réservations...</p>
+    </div>
+  } @else {
+    <section class="reservation-grid">
+      @for (reservation of filteredReservations(); track reservation.id) {
+        <article class="reservation-card status-{{ reservation.status }}">
+          <div class="reservation-card-head">
+            <div>
+              <strong class="reservation-client-name">{{ reservation.name }}</strong>
+              <span class="reservation-reference">#{{ reservation.id.slice(0, 8).toUpperCase() }} · {{ reservation.phone }}</span>
+            </div>
+            <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="openReservation(reservation)" title="Voir les details">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+
+          <div class="reservation-badges">
+            <span class="badge rounded-pill" [ngClass]="statusClass(reservation.status)">{{ statusLabel(reservation.status) }}</span>
+            <span class="badge rounded-pill bg-dark">{{ reservation.guests }} pers.</span>
+            <span class="badge rounded-pill bg-secondary">{{ reservation.table?.name || 'A assigner' }}</span>
+          </div>
+
+          <div class="reservation-meta">
+            <div><span>Date</span><strong>{{ reservation.reservation_date | date:'dd/MM/yyyy' }}</strong></div>
+            <div><span>Heure</span><strong>{{ reservation.reservation_time }}</strong></div>
+            <div><span>Email</span><strong>{{ reservation.email }}</strong></div>
+            <div><span>Source</span><strong>{{ reservation.source || 'qr_client' }}</strong></div>
+          </div>
+          @if (reservation.special_requests) {
+            <p class="reservation-note">{{ reservation.special_requests }}</p>
+          }
+          @if (canAccess('reservations.update')) {
+            <div class="reservation-actions">
+              @if (reservation.status === 'pending') {
+                <button class="btn btn-primary btn-sm" type="button" (click)="updateStatus(reservation, 'confirmed')">Confirmer</button>
+              }
+              @if (reservation.status === 'confirmed') {
+                <button class="btn btn-info btn-sm" type="button" (click)="updateStatus(reservation, 'seated')">Installer</button>
+              }
+              @if (reservation.status === 'seated') {
+                <button class="btn btn-success btn-sm" type="button" (click)="updateStatus(reservation, 'completed')">Terminer</button>
+              }
+            </div>
+          }
+        </article>
+      } @empty {
+        <div class="empty-Reservations">
+          <i class="bi bi-calendar-x"></i>
+          <h5>Aucune reservation trouvee</h5>
+        </div>
+      }
+    </section>
+  }
+
+  @if (selectedReservation(); as reservation) {
+    <div class="reservation-modal-backdrop">
+      <div class="reservation-modal">
+        <div class="reservation-modal-hero">
+          <div>
+            <span>Reservation #{{ reservation.id.slice(0, 8).toUpperCase() }}</span>
+            <h2>{{ reservation.name }}</h2>
+            <p>{{ reservation.reservation_date | date:'dd MMM yyyy' }} a {{ reservation.reservation_time }}</p>
+          </div>
+          <button class="btn btn-light" type="button" (click)="closeReservation()"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-grid">
+            <div><span>Statut</span><strong>{{ statusLabel(reservation.status) }}</strong></div>
+            <div><span>Table</span><strong>{{ reservation.table?.name || 'A assigner' }}</strong></div>
+            <div><span>Personnes</span><strong>{{ reservation.guests }}</strong></div>
+            <div><span>Telephone</span><strong>{{ reservation.phone }}</strong></div>
+            <div><span>Email</span><strong>{{ reservation.email }}</strong></div>
+            <div><span>Source</span><strong>{{ reservation.source || 'qr_client' }}</strong></div>
+          </div>
+
+          @if (reservation.special_requests) {
+            <div class="reservation-note mt-3">
+              <strong>Demande client</strong>
+              <p>{{ reservation.special_requests }}</p>
+            </div>
+          }
+
+          <label class="form-label small fw-bold text-muted text-uppercase mt-3">Note interne</label>
+          <textarea class="form-control" rows="3" [ngModel]="internalNote()" (ngModelChange)="internalNote.set($event)" placeholder="Ex: placer en terrasse, appeler avant confirmation..."></textarea>
+
+          @if (reservation.status !== 'cancelled') {
+            <label class="form-label small fw-bold text-muted text-uppercase mt-3">Motif si annulation</label>
+            <textarea class="form-control" rows="2" [ngModel]="cancellationReason()" (ngModelChange)="cancellationReason.set($event)" placeholder="Table indisponible, client a demande l'annulation..."></textarea>
+          }
+        </div>
+
+        <div class="modal-footer border-0 flex-wrap gap-2">
+          @if (canAccess('reservations.update')) {
+            @for (status of statusOptions; track status.value) {
+              <button class="btn btn-sm" [ngClass]="statusClass(status.value)" type="button" [disabled]="updatingId() === reservation.id || reservation.status === status.value" (click)="updateStatus(reservation, status.value)">
+                {{ status.label }}
+              </button>
+            }
+          }
+          @if (canAccess('reservations.delete')) {
+            <button class="btn btn-outline-danger btn-sm ms-auto" type="button" (click)="deleteReservation(reservation)">
+              Supprimer
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

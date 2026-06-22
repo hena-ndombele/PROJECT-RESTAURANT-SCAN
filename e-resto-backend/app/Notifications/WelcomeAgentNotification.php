@@ -37,7 +37,7 @@ class WelcomeAgentNotification extends Notification
    public function toMail($notifiable)
     {
         return (new MailMessage)
-            ->subject('Bienvenue dans l\'équipe - Vos accès E-Resto')
+            ->subject('Bienvenue dans l\'équipe - Vos accès Restaurant Scan')
             ->greeting('Bonjour ' . $notifiable->name . ' !')
             ->line('Votre compte agent a été créé avec succès.')
             ->line('Voici vos identifiants de connexion :')

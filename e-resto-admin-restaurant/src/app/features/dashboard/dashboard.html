@@ -1,0 +1,167 @@
+<div class="dashboard-shell container-fluid py-4">
+    <div class="dashboard-promo mb-4">
+        <div>
+            <span class="eyebrow">Restaurant Scan Dashboard</span>
+            <h1 class="mb-1">Tableau de bord
+</h1>
+            <p class="mb-0">Suivez les commandes, les tables et les revenus par devise depuis votre espace restaurant.</p>
+            <a routerLink="/orders/list" class="promo-action">
+                Voir les commandes <i class="ti ti-arrow-right"></i>
+            </a>
+        </div>
+        <div class="promo-side">
+            <button class="btn btn-light btn-sm" type="button" [disabled]="refreshing()" (click)="loadDashboard(true)">
+                @if (refreshing()) {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                } @else {
+                    <i class="ti ti-refresh me-1"></i>
+                }
+                Actualiser
+            </button>
+        </div>
+    </div>
+<!-- 
+    @if (errorMessage()) {
+        <div class="alert alert-danger border-0 shadow-sm">{{ errorMessage() }}</div>
+    }
+    @if (!canViewAnalytics()) {
+        <div class="alert alert-warning border-0 shadow-sm">
+            Les Statistiques detaillées sont reservees aux plans Pro et Business. Le plan Starter garde le suivi operationnel du jour.
+        </div>
+    } -->
+
+    <!-- @if (loading()) {
+        <div class="dashboard-loading mb-3">
+            <div class="spinner-border spinner-border-sm text-primary"></div>
+            <span>Chargement du dashboard...</span>
+        </div>
+    } -->
+
+        <div class="row g-3 mb-4">
+            @for (card of kpiCards(); track card.label) {
+                <div class="col-12 col-md-6">
+                    <div class="metric-card tone-{{ card.tone }}">
+                        <div class="metric-icon">
+                            <i [class]="card.icon"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span>{{ card.label }}</span>
+                            <strong>{{ card.value }}</strong>
+                            <small>{{ card.hint }}</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="wallet-section mb-4">
+            <div class="wallet-section-head">
+                <span class="eyebrow">Wallet restaurant</span>
+                <h2>Revenus payés par devise
+</h2>
+            </div>
+            <div class="row g-3">
+                @for (period of ['today', 'month', 'year']; track period) {
+                    @for (walletCurrency of ['CDF', 'USD']; track walletCurrency) {
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="wallet-card currency-{{ walletCurrency.toLowerCase() }}">
+                                <div class="wallet-top">
+                                    <span>{{ revenuePeriodLabel(period) }}</span>
+                                    <i class="ti" [ngClass]="walletCurrency === 'CDF' ? 'ti-cash-banknote' : 'ti-credit-card'"></i>
+                                </div>
+                                <strong>{{ revenueAmount(period, walletCurrency) | number:'1.0-2' }}</strong>
+                                <div class="wallet-bottom">
+                                    <span>{{ walletCurrency }}</span>
+                                    <small>{{ revenueCount(period, walletCurrency) }} paiement(s) / {{ revenuePeriodOrders(period) }} commande(s)</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-xl-8">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Performance 7 jours</h2>
+                            <p>Commandes et revenus encaissés ou servis.</p>
+                        </div>
+                        <a routerLink="/orders/list" class="btn btn-outline-primary btn-sm">
+                            <i class="ti ti-list-details me-1"></i>
+                            Commandes
+                        </a>
+                    </div>
+                    <div id="salesPurchaseChart" class="chart-box"></div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-4">
+                <div class="panel-card h-100">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Etat du service</h2>
+                            <p>Répartition des commandes du jour.</p>
+                        </div>
+                    </div>
+                    <div id="customerChart" class="chart-box chart-small"></div>
+                    <div class="status-grid">
+                        @for (item of statusSummary(); track item.status) {
+                            <div class="status-item">
+                                <span class="badge rounded-pill" [ngClass]="item.className">{{ item.count }}</span>
+                                <small>{{ item.label }}</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    @if (onboardingOpen()) {
+        <div class="onboarding-backdrop">
+            <section class="onboarding-modal tone-{{ currentOnboardingStep().tone }}" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+                <div class="onboarding-progress">
+                    <span [style.width.%]="((onboardingStepIndex() + 1) / onboardingSteps.length) * 100"></span>
+                </div>
+                <div class="onboarding-top">
+                    <span>{{ onboardingStepIndex() + 1 }} / {{ onboardingSteps.length }}</span>
+                    <button type="button" (click)="skipOnboarding()">Passer <i class="ti ti-x"></i></button>
+                </div>
+                <div class="onboarding-content">
+                    <div class="onboarding-icon">
+                        <i [class]="currentOnboardingStep().icon"></i>
+                    </div>
+                    <span class="onboarding-eyebrow">{{ currentOnboardingStep().eyebrow }}</span>
+                    <h2 id="onboardingTitle">{{ currentOnboardingStep().title }}</h2>
+                    <p>{{ currentOnboardingStep().description }}</p>
+                    <div class="onboarding-list">
+                        @for (bullet of currentOnboardingStep().bullets; track bullet) {
+                            <div>
+                                <i class="ti ti-check"></i>
+                                <span>{{ bullet }}</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="onboarding-dots" aria-hidden="true">
+                        @for (step of onboardingSteps; track step.title; let index = $index) {
+                            <span [class.active]="index === onboardingStepIndex()"></span>
+                        }
+                    </div>
+                </div>
+                <div class="onboarding-actions">
+                    <button class="onboarding-secondary" type="button" [disabled]="onboardingStepIndex() === 0" (click)="previousOnboardingStep()">
+                        <i class="ti ti-arrow-left"></i> Retour
+                    </button>
+                    <button class="onboarding-primary" type="button" (click)="nextOnboardingStep()">
+                        {{ onboardingStepIndex() === onboardingSteps.length - 1 ? 'Commencer maintenant' : 'Suivant' }}
+                        <i class="ti" [ngClass]="onboardingStepIndex() === onboardingSteps.length - 1 ? 'ti-rocket' : 'ti-arrow-right'"></i>
+                    </button>
+                </div>
+            </section>
+        </div>
+    }
+
+    <app-footer></app-footer>
+</div>

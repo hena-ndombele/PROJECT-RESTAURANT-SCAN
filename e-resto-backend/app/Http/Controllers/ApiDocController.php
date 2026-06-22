@@ -8,9 +8,14 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 
 /**
  * @OA\Info(
- *     title="E-RESTO API",
+ *     title="Restaurant Scan API",
  *     version="1.0.0",
- *     description="Documentation des endpoints de mon application E-RESTO"
+ *     description="Documentation des endpoints de mon application Restaurant Scan"
+ * )
+ *
+ * @OA\Server(
+ *     url="https://api.restaurascan.com",
+ *     description="Serveur production"
  * )
  *
  * @OA\Server(

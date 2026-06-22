@@ -3,117 +3,205 @@
 namespace App\Http\Controllers\tables;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Table;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class TableController extends Controller
 {
-
-
-
-public function store(Request $request)
-{
-    // 1. Validation rigoureuse
-    $request->validate([
-        'name' => 'required|string|max:100|unique:tables,name',
-        'capacity' => 'required|integer|min:1',
-        'server_phone' => 'nullable|string|max:20',
-    ]);
-
-    // 2. Création de la table avec les nouveaux champs
-    $table = Table::create([
-        'name' => $request->name,
-        'capacity' => $request->capacity,
-        'status' => 'Libre', // Statut par défaut
-        'server_phone' => $request->server_phone,
-    ]);
-
-    // 3. Préparer l'URL du menu
-    $frontendUrl = "http://172.20.10.3:5173"; // Port par défaut de Vite/React
-$url = "{$frontendUrl}/menu?table_id={$table->id}";
-    // $url = url("/menu?table_id={$table->id}");
-
-    // 4. Génération du QR (Syntaxe identique à votre version fonctionnelle)
-    $qrImage = QrCode::format('svg')
-        ->size(400)
-        ->errorCorrection('H')
-        ->margin(2)
-        ->merge(public_path('assets/logo1.png'), .25, true)
-        ->generate($url);
-
-    // 5. Stockage (Utilisation de votre ancienne méthode de vérification de dossier)
-    $qrPath = "qrcodes/table_{$table->id}.svg";
-    if (!Storage::disk('public')->exists('qrcodes')) {
-        Storage::disk('public')->makeDirectory('qrcodes');
-    }
-    Storage::disk('public')->put($qrPath, $qrImage);
-
-    // 6. Mise à jour du chemin dans la DB
-    $table->qr_code = $qrPath;
-    $table->save();
-
-    return response()->json([
-        'message' => 'Table créée avec succès',
-        'table' => $table,
-        'qr_url' => asset("storage/{$qrPath}")
-    ]);
-}
-
-
-
-    // Lister toutes les tables avec QR
-   public function index()
-{
-    $tables = Table::all()->map(function($table) {
-        return [
-            'id' => $table->id,
-            'name' => $table->name,
-            'capacity' => $table->capacity,
-            'status' => $table->status,
-            'status_color' => match($table->status) {
-                'Libre' => 'green',
-                'Occupée' => 'yellow',
-                'Réservée' => 'blue',
-                default => 'gray'
-            },
-            'qr_url' => $table->qr_code ? asset("storage/{$table->qr_code}") : null,
-            'created_at' => $table->created_at ? $table->created_at->toIso8601ZuluString() : null,
-            'updated_at' => $table->updated_at ? $table->updated_at->toIso8601ZuluString() : null,
-        ];
-    });
-
-    return response()->json($tables);
-}
-
-    public function show($id)
+    public function store(Request $request)
     {
-        $table = Table::findOrFail($id);
-        return response()->json($table);
+        $restaurant = $request->user()?->restaurant;
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('tables', 'name')->where(fn ($query) => $query->where('restaurant_id', $restaurant?->id)),
+            ],
+            'capacity' => 'required|integer|min:1',
+            'server_phone' => 'nullable|string|max:20',
+        ], [
+            'name.unique' => 'Ce nom de table existe deja.',
+        ]);
+
+        $tableLimit = $restaurant?->plan?->maxTables();
+        if ($restaurant && $restaurant->plan && $tableLimit !== null && $restaurant->tables()->count() >= $tableLimit) {
+            return response()->json([
+                'message' => "Limite de tables atteinte pour le plan {$restaurant->plan->name}.",
+            ], 422);
+        }
+
+        $table = Table::create([
+            'restaurant_id' => $restaurant?->id,
+            'name' => $validated['name'],
+            'capacity' => $validated['capacity'],
+            'status' => 'Libre',
+            'server_phone' => $validated['server_phone'] ?? null,
+        ]);
+
+        $url = $this->menuUrl($table);
+        $qrPath = $this->generateTableQrCode($table, $url);
+
+        $table->update(['qr_code' => $qrPath]);
+
+        return response()->json([
+            'message' => 'Table creee avec succes',
+            'table' => $this->tablePayload($table),
+            'qr_url' => $this->publicStorageUrl($qrPath),
+            'menu_url' => $url,
+        ], 201);
     }
 
+    public function index(Request $request)
+    {
+        $tables = $this->scopedTables($request)
+            ->latest()
+            ->get()
+            ->map(fn ($table) => $this->tablePayload($table));
+
+        return response()->json($tables);
+    }
+
+    public function show(Request $request, $id)
+    {
+        $table = $this->scopedTables($request)->findOrFail($id);
+
+        return response()->json($this->tablePayload($table));
+    }
+
+    public function qrCode(string $filename)
+    {
+        if (!preg_match('/^table_[A-Za-z0-9\-]+\.svg$/', $filename)) {
+            abort(404);
+        }
+
+        $path = "qrcodes/{$filename}";
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return response(Storage::disk('public')->get($path), 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'public, max-age=31536000',
+        ]);
+    }
     public function update(Request $request, $id)
     {
-        $table = Table::findOrFail($id);
-        $table->update($request->only(['name', 'server_phone']));
+        $table = $this->scopedTables($request)->findOrFail($id);
+        $validated = $request->validate([
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('tables', 'name')
+                    ->where(fn ($query) => $query->where('restaurant_id', $request->user()?->restaurant_id))
+                    ->ignore($table->id),
+            ],
+            'capacity' => 'sometimes|required|integer|min:1',
+            'server_phone' => 'nullable|string|max:20',
+            'status' => 'sometimes|string|max:50',
+        ], [
+            'name.unique' => 'Ce nom de table existe deja.',
+        ]);
+
+        $table->update($validated);
+
         return response()->json([
-            'message' => 'Table mise à jour',
-            'table' => $table
+            'message' => 'Table mise a jour',
+            'table' => $this->tablePayload($table->fresh()),
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $table = Table::findOrFail($id);
+        $table = $this->scopedTables($request)->findOrFail($id);
         $table->delete();
-        return response()->json(['message' => 'Table supprimée']);
+
+        return response()->json(['message' => 'Table supprimee']);
+    }
+
+    private function scopedTables(Request $request)
+    {
+        return Table::query()
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId));
+    }
+
+    private function tablePayload(Table $table): array
+    {
+        return [
+            'id' => $table->id,
+            'restaurant_id' => $table->restaurant_id,
+            'name' => $table->name,
+            'capacity' => $table->capacity,
+            'status' => $table->status,
+            'server_phone' => $table->server_phone,
+            'status_color' => match ($table->status) {
+                'Libre' => 'green',
+                'Occupee', 'Occupée' => 'yellow',
+                'Reservee', 'Réservée' => 'blue',
+                default => 'gray',
+            },
+            'qr_url' => $table->qr_code ? $this->publicStorageUrl($table->qr_code) : null,
+            'menu_url' => $this->menuUrl($table),
+            'created_at' => $table->created_at?->toIso8601String(),
+            'updated_at' => $table->updated_at?->toIso8601String(),
+        ];
+    }
+
+    private function publicStorageUrl(string $path): string
+    {
+        return rtrim(request()->getSchemeAndHttpHost(), '/') . '/api/table-qrcodes/' . rawurlencode(basename($path));
+    }
+    private function menuUrl(Table $table): string
+    {
+        $query = ['table_id' => $table->id];
+        $slug = $table->restaurant?->slug;
+        if ($slug) {
+            $query['restaurant_slug'] = $slug;
+        }
+
+        return rtrim(env('CLIENT_FRONTEND_URL', 'https://restaurascan.com'), '/') . '/?' . http_build_query($query);
+    }
+
+    private function generateTableQrCode(Table $table, string $url): string
+    {
+        $qrImage = QrCode::format('svg')
+            ->size(400)
+            ->errorCorrection('H')
+            ->margin(2)
+            ->generate($url);
+
+        $qrImage = $this->injectRestaurantLogo($qrImage, $table);
+        $qrPath = "qrcodes/table_{$table->id}.svg";
+        if (!Storage::disk('public')->exists('qrcodes')) {
+            Storage::disk('public')->makeDirectory('qrcodes');
+        }
+        Storage::disk('public')->put($qrPath, $qrImage);
+
+        return $qrPath;
+    }
+
+    private function injectRestaurantLogo(string $svg, Table $table): string
+    {
+        $restaurant = $table->restaurant;
+        if (!$restaurant?->logo || !Storage::disk('public')->exists($restaurant->logo)) {
+            return $svg;
+        }
+
+        $logoPath = Storage::disk('public')->path($restaurant->logo);
+        $mime = mime_content_type($logoPath) ?: 'image/png';
+        $logoData = base64_encode((string) file_get_contents($logoPath));
+        $logo = sprintf(
+            '<rect x="154" y="154" width="92" height="92" rx="18" fill="#fff"/><image href="data:%s;base64,%s" x="164" y="164" width="72" height="72" preserveAspectRatio="xMidYMid meet"/>',
+            $mime,
+            $logoData
+        );
+
+        return str_replace('</svg>', $logo . '</svg>', $svg);
     }
 }
-
-
-
-
-
-
-

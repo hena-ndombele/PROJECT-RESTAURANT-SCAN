@@ -1,0 +1,3494 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Restaurant Scan API",
+        "description": "Documentation des endpoints de mon application Restaurant Scan",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://api.restaurascan.com",
+            "description": "Serveur production"
+        },
+        {
+            "url": "http://localhost:8000",
+            "description": "Serveur local"
+        }
+    ],
+    "paths": {
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Connexion utilisateur restaurant",
+                "operationId": "16e5ef129828b658046dbde03ae477cf",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP ou token"
+                    },
+                    "401": {
+                        "description": "Identifiants incorrects"
+                    }
+                }
+            }
+        },
+        "/api/auth/verify-otp": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verifier OTP restaurant",
+                "operationId": "b983410dae164d6f5e5e792f161ae409",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OtpPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Session creee"
+                    }
+                }
+            }
+        },
+        "/api/admin/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Connexion admin plateforme",
+                "operationId": "4703b5c92bd784e9f56122b0116b1a5e",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP ou token"
+                    }
+                }
+            }
+        },
+        "/api/admin/auth/verify-otp": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verifier OTP admin plateforme",
+                "operationId": "3533a6c835e498ce4e772e013fd54fa9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OtpPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Session admin creee"
+                    }
+                }
+            }
+        },
+        "/api/otp/request": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Renvoyer un code OTP",
+                "operationId": "cc1307624b3b657caf15226d598d62ef",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP envoye"
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Deconnecter l'utilisateur courant",
+                "operationId": "ec9fc8f7b34200988522ad5ed021e6cd",
+                "responses": {
+                    "200": {
+                        "description": "Deconnexion reussie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/change-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Changer le mot de passe",
+                "operationId": "b56ec7837035b86a29bc7d6c89e7c41a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "current_password",
+                                    "new_password",
+                                    "new_password_confirmation"
+                                ],
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string"
+                                    },
+                                    "new_password": {
+                                        "type": "string"
+                                    },
+                                    "new_password_confirmation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mot de passe modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/overview": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Vue publique SaaS",
+                "operationId": "f835b5a9763a8ec5905f830dd474c1fb",
+                "responses": {
+                    "200": {
+                        "description": "Metriques publiques"
+                    }
+                }
+            }
+        },
+        "/api/saas/plans": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Lister les plans SaaS",
+                "operationId": "b351420130b4e8a45ab5416f3eb166f7",
+                "responses": {
+                    "200": {
+                        "description": "Plans actifs"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: creer un plan",
+                "operationId": "d1b911f58c6d45661b0e6496aafc5f23",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlanPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Plan cree"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/newsletter": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Inscription newsletter",
+                "operationId": "9544e441f81fd77c082a41e630da77e3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "source": {
+                                        "type": "string",
+                                        "example": "saas_landing"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Inscrit"
+                    }
+                }
+            }
+        },
+        "/api/saas/signup": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Creer un compte restaurant",
+                "operationId": "5bf841b367830145b0bea4fa29b5a447",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaasSignupPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Restaurant cree"
+                    },
+                    "422": {
+                        "description": "Validation"
+                    }
+                }
+            }
+        },
+        "/api/saas/login": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Connexion proprietaire restaurant",
+                "operationId": "4df3b53d2ca88ac4bcc40b9f562d02a7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Session restaurant"
+                    }
+                }
+            }
+        },
+        "/api/saas/google/config": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Configuration Google OAuth",
+                "operationId": "7a873be0e2f07067d8e9ff550c01a3d9",
+                "responses": {
+                    "200": {
+                        "description": "Config"
+                    }
+                }
+            }
+        },
+        "/api/saas/google/login": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Connexion/inscription via Google",
+                "operationId": "c9b0decd105bd2052b1aba22cc47c3f8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "credential"
+                                ],
+                                "properties": {
+                                    "credential": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Session Google"
+                    }
+                }
+            }
+        },
+        "/api/saas/checkout/mobile-money": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Lancer paiement abonnement mobile money",
+                "operationId": "0eeed578e361926f7390f0a40525fcf4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "restaurant_id": {
+                                        "$ref": "#/components/schemas/Uuid"
+                                    },
+                                    "saas_plan_id": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    },
+                                    "billing_cycle": {
+                                        "type": "string",
+                                        "enum": [
+                                            "monthly",
+                                            "annual"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Paiement initialise"
+                    }
+                }
+            }
+        },
+        "/api/saas/checkout/mobile-money/{payment}": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Statut paiement abonnement",
+                "operationId": "e05247b2f04e58f81a81bba90d3f89b9",
+                "parameters": [
+                    {
+                        "name": "payment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statut paiement"
+                    }
+                }
+            }
+        },
+        "/api/saas/payment-callback": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Callback paiement abonnement",
+                "operationId": "9e656b1be715fe1bc79061d71125adf4",
+                "responses": {
+                    "200": {
+                        "description": "Callback traite"
+                    }
+                }
+            }
+        },
+        "/api/saas/register-interest": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Enregistrer une demande/interet",
+                "operationId": "43f183c140fe37440bba9c97203785cf",
+                "responses": {
+                    "201": {
+                        "description": "Demande enregistree"
+                    }
+                }
+            }
+        },
+        "/api/saas/me": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Session restaurant courante",
+                "operationId": "ed5c6587bca12380220a5f7daf5e9cb2",
+                "responses": {
+                    "200": {
+                        "description": "Profil courant"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/restaurant/usage": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Usage et limites du restaurant",
+                "operationId": "a768ccc88403b476171321ea67f1f3d5",
+                "responses": {
+                    "200": {
+                        "description": "Usage"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/restaurant/profile": {
+            "put": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Modifier profil/parametres restaurant",
+                "operationId": "d311ea2b5adeaa2babf90343a62956da",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RestaurantProfilePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Restaurant modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/plans/{plan}": {
+            "put": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: modifier un plan",
+                "operationId": "359153271e0066370c4721f7c2e260a1",
+                "parameters": [
+                    {
+                        "name": "plan",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlanPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Plan modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: supprimer un plan",
+                "operationId": "61c8f158c319466851c2a398a0ccaa59",
+                "parameters": [
+                    {
+                        "name": "plan",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Plan supprime"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/wallet/balance": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: solde wallet",
+                "operationId": "2fa1bd5268ef7062c3f6fb438f6f5c73",
+                "responses": {
+                    "200": {
+                        "description": "Solde"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/support": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: centre support",
+                "operationId": "54f79548545c51e9f550e42e3fb1d26e",
+                "responses": {
+                    "200": {
+                        "description": "Support"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/contact-messages": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: messages contact",
+                "operationId": "b7c09c4d81d3b5e4b9fc232572a9e14d",
+                "responses": {
+                    "200": {
+                        "description": "Messages"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/newsletter-subscribers": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: abonnes newsletter",
+                "operationId": "5301f588ddd04814818c0b3e29bd09b3",
+                "responses": {
+                    "200": {
+                        "description": "Abonnes"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/audit": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: audit trail",
+                "operationId": "633a0b4cd0b6a9ec50a176901ed1e92e",
+                "responses": {
+                    "200": {
+                        "description": "Audit"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/payments": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: paiements",
+                "operationId": "b103ffbed1484b30d797aa279580b074",
+                "responses": {
+                    "200": {
+                        "description": "Paiements"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/restaurants": {
+            "get": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: restaurants",
+                "operationId": "dc5e6f78c1ad4eb2c051a9a80ea297a6",
+                "responses": {
+                    "200": {
+                        "description": "Restaurants"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: creer restaurant",
+                "operationId": "a16e69d292e8ae9b0544cafe77263920",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RestaurantProfilePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Restaurant cree"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/restaurants/{restaurant}": {
+            "put": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: modifier restaurant",
+                "operationId": "f3fdf82d5fbbefecde40474e3c70ca7d",
+                "parameters": [
+                    {
+                        "name": "restaurant",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RestaurantProfilePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Restaurant modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: supprimer restaurant",
+                "operationId": "26d3ac6d596564de0a1d78179f5c8cb2",
+                "parameters": [
+                    {
+                        "name": "restaurant",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Restaurant supprime"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/saas/restaurants/{restaurant}/reset-owner-password": {
+            "post": {
+                "tags": [
+                    "SaaS"
+                ],
+                "summary": "Admin: reinitialiser mot de passe proprietaire",
+                "operationId": "7adda26541ae6bf703cae892fb9f1af1",
+                "parameters": [
+                    {
+                        "name": "restaurant",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mot de passe reinitialise"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/public/menu": {
+            "get": {
+                "tags": [
+                    "Public Client"
+                ],
+                "summary": "Menu public client",
+                "operationId": "787ff01f0066400c4d0c01890175bc02",
+                "parameters": [
+                    {
+                        "name": "table_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "restaurant_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "restaurant_slug",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Menu public"
+                    }
+                }
+            }
+        },
+        "/api/public/contact": {
+            "post": {
+                "tags": [
+                    "Public Client"
+                ],
+                "summary": "Message contact public",
+                "operationId": "3a374a5fa40fcf0e61c66fb3ba4f200f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContactPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Message cree"
+                    }
+                }
+            }
+        },
+        "/api/public/reservations": {
+            "post": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Creer reservation publique",
+                "operationId": "7004f9e5ff294e558e73e745d1742129",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReservationPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Reservation creee"
+                    }
+                }
+            }
+        },
+        "/api/public/feedbacks": {
+            "post": {
+                "tags": [
+                    "Feedbacks"
+                ],
+                "summary": "Creer feedback public",
+                "operationId": "3291129478701c400396a9726f028f16",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FeedbackPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Feedback cree"
+                    }
+                }
+            }
+        },
+        "/api/public/employees/verify/{id}": {
+            "get": {
+                "tags": [
+                    "Agents"
+                ],
+                "summary": "Verifier badge employe public",
+                "operationId": "14b4c3deb68e69b4ceff863d1ac49b4b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Badge valide"
+                    },
+                    "404": {
+                        "description": "Badge invalide"
+                    }
+                }
+            }
+        },
+        "/api/agents/create": {
+            "post": {
+                "tags": [
+                    "Agents"
+                ],
+                "summary": "Creer un employe",
+                "operationId": "eb74d0e46139f467b0088618c9f2588c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgentPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Employe cree"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/agents/list": {
+            "get": {
+                "tags": [
+                    "Agents"
+                ],
+                "summary": "Lister les employes",
+                "operationId": "bfcc669e1c5190c35a2e4daea4922288",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/agents/show/{id}": {
+            "get": {
+                "tags": [
+                    "Agents"
+                ],
+                "summary": "Afficher un employe",
+                "operationId": "b1247c7156745176f3e83deb4ef0385b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Employe"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/agents/update/{id}": {
+            "put": {
+                "tags": [
+                    "Agents"
+                ],
+                "summary": "Modifier un employe",
+                "operationId": "f86da684d17b9d3a4441638380ddd67f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgentPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employe modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/agents/delete/{id}": {
+            "delete": {
+                "tags": [
+                    "Agents"
+                ],
+                "summary": "Supprimer un employe",
+                "operationId": "ef95e2865186b8036b71364532dcce6a",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Employe supprime"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Ajouter un employe comme user",
+                "operationId": "f29a1fe3df2f64ed68b4e2c7d3e77ff0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Utilisateur cree"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/users/list": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Lister les users",
+                "operationId": "cd7743ec8107d33ff7610d3331fe94a6",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/users/search": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Rechercher les users",
+                "operationId": "9f07df58b2f50a78fe0a42c0e3d769bb",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultats"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/users/{id}": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Afficher un user",
+                "operationId": "5f340b666e8b2ae00249f426f7653699",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Utilisateur"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Modifier un user",
+                "operationId": "3c42ee58c926a3244f7151f1788370e3",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Utilisateur modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Supprimer un user",
+                "operationId": "3aae8f7c63ecd17b1354b0f2ffde320f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Utilisateur supprime"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/roles": {
+            "get": {
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Lister les roles",
+                "operationId": "434dba06090fbb8a396d30a3b272c282",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Creer un role",
+                "operationId": "a74c40540f7b2715bf68fe9eb7f92eb4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RolePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Role cree"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/roles/search": {
+            "get": {
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Rechercher les roles",
+                "operationId": "12b2681250632483732abd75e3886c38",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultats"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/roles/{id}": {
+            "get": {
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Afficher un role",
+                "operationId": "e7dac2900430f21d811322ef8a131f58",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Modifier un role",
+                "operationId": "6e26576a79a57b705fe312b1cad3f235",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RolePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Role modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Supprimer un role",
+                "operationId": "37ea075e4942276aabad8c165d51dbed",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role supprime"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/roles/{id}/permissions": {
+            "put": {
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Synchroniser permissions role",
+                "operationId": "d5bf31e2a8befd222c626e4884e54190",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "permissions"
+                                ],
+                                "properties": {
+                                    "permissions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "orders.list",
+                                            "orders.update"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Permissions mises a jour"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/permissions": {
+            "get": {
+                "tags": [
+                    "Permissions"
+                ],
+                "summary": "Lister les permissions",
+                "operationId": "aeb059b6798b0ea644fd94f64a63af9f",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/permissions/search": {
+            "get": {
+                "tags": [
+                    "Permissions"
+                ],
+                "summary": "Rechercher permissions",
+                "operationId": "da1b33ceb89ae664d7702036189566c0",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultats"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/permissions/{id}": {
+            "get": {
+                "tags": [
+                    "Permissions"
+                ],
+                "summary": "Afficher permission",
+                "operationId": "700439c665da1af88f0df7711da057e7",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Permission"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/category/list": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Lister categories",
+                "operationId": "e3ec5e8634744fb8adb41441a920544f",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/category/create": {
+            "post": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Creer categorie",
+                "operationId": "05b1b7f23fb65b741c54f6058f9b928a",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Categorie creee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/category/search": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Rechercher categories",
+                "operationId": "1ca643dd8993a821c6ab2ed391af4ee8",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultats"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/category/{id}": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Afficher categorie",
+                "operationId": "29cd2ef2ea9d7d0ab3d2c4694351b6bc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Categorie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Modifier categorie JSON",
+                "operationId": "3c5c3a4e2634913c3cba82ba71c08077",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Categorie modifiee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Modifier categorie multipart",
+                "operationId": "9ccd90833b60633194a375411ca457c4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Categorie modifiee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Supprimer categorie",
+                "operationId": "4396e9292de4cea1fcc7c9d9222ec62e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Categorie supprimee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/plats/list": {
+            "get": {
+                "tags": [
+                    "Plats"
+                ],
+                "summary": "Lister plats",
+                "operationId": "6bdb20f033b165218a130cf90449ffc6",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/plats/create": {
+            "post": {
+                "tags": [
+                    "Plats"
+                ],
+                "summary": "Creer plat",
+                "operationId": "a6476e1bf1e34a473bb6ee635e720c00",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlatPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Plat cree"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/search-plats": {
+            "get": {
+                "tags": [
+                    "Plats"
+                ],
+                "summary": "Rechercher plats",
+                "operationId": "ae52c71ffb35dbfa03fcb10b0a23bae8",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultats"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/plats/{id}": {
+            "get": {
+                "tags": [
+                    "Plats"
+                ],
+                "summary": "Afficher plat",
+                "operationId": "1ecfaa3be92b994c20cc366d85c3a22d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Plat"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Plats"
+                ],
+                "summary": "Modifier plat JSON",
+                "operationId": "17bc235227d2b41acb1a7b24a060a5a9",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlatPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Plat modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Plats"
+                ],
+                "summary": "Modifier plat multipart",
+                "operationId": "ab92f112e0510fc2c35e57baea436354",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlatPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Plat modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Plats"
+                ],
+                "summary": "Supprimer plat",
+                "operationId": "a96927cd354c04cb3607591f0277890f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Plat supprime"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/tables": {
+            "get": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Lister tables",
+                "operationId": "f9f9d879833e43255fa11078e19eba64",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Creer table et QR code",
+                "operationId": "9b86eca5b2509a58a653d15a5aa3caaa",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TablePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Table creee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/tables/{id}": {
+            "get": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Afficher table",
+                "operationId": "4b48ae4d33ae43d07ab1e538f7e4ccf5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Table"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Modifier table",
+                "operationId": "63a12cdee9a884c166a87d693818e1b2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TablePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Table modifiee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Supprimer table",
+                "operationId": "a8502bf36cf3dc91421d95f633547fb2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Table supprimee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/orders": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Lister commandes restaurant",
+                "operationId": "955b334e6e3ebc80abef3072a0d00cd5",
+                "parameters": [
+                    {
+                        "name": "day",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "month",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "year",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Creer commande client",
+                "operationId": "0776245490cff7cb3659b83cbdbe6036",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OrderPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Commande creee"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Vider historique commandes",
+                "operationId": "9edc25f2fc63204d2341a98937dd5817",
+                "responses": {
+                    "200": {
+                        "description": "Historique vide"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/track": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Retrouver commande client",
+                "operationId": "e0279b9fb650789653f8a96fbe0dd96c",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "order_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "table_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "phone",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Commande trouvee"
+                    }
+                }
+            }
+        },
+        "/api/orders/payment-callback": {
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Callback paiement commande",
+                "operationId": "27ee1504bfb698d0ff1bea093ae24d52",
+                "responses": {
+                    "200": {
+                        "description": "Callback traite"
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/cancel": {
+            "patch": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Annuler commande cote client",
+                "operationId": "334bd7aac2a5ac641391563d85fc1b0e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "cancellation_reason"
+                                ],
+                                "properties": {
+                                    "cancellation_reason": {
+                                        "type": "string",
+                                        "example": "Erreur de commande"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Commande annulee"
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/items": {
+            "patch": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Modifier articles avant preparation",
+                "operationId": "2a1fb4bda23c53820fe47323d5527882",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OrderPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Articles modifies"
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/request-bill": {
+            "patch": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Demander addition",
+                "operationId": "d931da85aca7e0a49af74197a9864ed2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Addition demandee"
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Afficher commande",
+                "operationId": "dd54c267279a650ab50976fb4a71ec42",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Commande"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Supprimer commande",
+                "operationId": "54c34216c6a32962410d6d877c2aa228",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Commande supprimee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Changer statut commande",
+                "operationId": "0c5d1b593fc0b67da5fe85c76b777ed5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pending",
+                                            "preparing",
+                                            "ready",
+                                            "delivered",
+                                            "cancelled"
+                                        ],
+                                        "example": "ready"
+                                    },
+                                    "cancellation_reason": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Statut modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/orders/{id}/payment": {
+            "patch": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Changer paiement commande",
+                "operationId": "a304bd3bbedd9120a09b7782ab86d8ab",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "payment_status"
+                                ],
+                                "properties": {
+                                    "payment_status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "unpaid",
+                                            "pending",
+                                            "paid",
+                                            "failed",
+                                            "refunded"
+                                        ],
+                                        "example": "paid"
+                                    },
+                                    "method": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "received_amount": {
+                                        "type": "number",
+                                        "nullable": true
+                                    },
+                                    "note": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Paiement modifie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/feedbacks": {
+            "get": {
+                "tags": [
+                    "Feedbacks"
+                ],
+                "summary": "Lister feedbacks restaurant",
+                "operationId": "f503831e2c0077566d3efa5ad4eb31c5",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/reservations": {
+            "get": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Lister reservations",
+                "operationId": "2598a5cf0af45ee3c7d2c6fd486519ce",
+                "responses": {
+                    "200": {
+                        "description": "Liste"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/reservations/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Changer statut reservation",
+                "operationId": "1a37f754619639fa5ed6a88d8bafbc27",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pending",
+                                            "confirmed",
+                                            "cancelled",
+                                            "completed"
+                                        ],
+                                        "example": "confirmed"
+                                    },
+                                    "cancellation_reason": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reservation modifiee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/reservations/{id}": {
+            "delete": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Supprimer reservation",
+                "operationId": "d34691b7c6d8187b08f2cc994d44c6e7",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reservation supprimee"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Uuid": {
+                "type": "string",
+                "format": "uuid",
+                "example": "019edc53-3fa2-7013-821f-b44c62ca24eb"
+            },
+            "MessageResponse": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Operation reussie"
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorResponse": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Une erreur est survenue"
+                    },
+                    "errors": {
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "LoginPayload": {
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "restaurant@example.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "example": "secret123"
+                    }
+                },
+                "type": "object"
+            },
+            "OtpPayload": {
+                "required": [
+                    "email",
+                    "otp"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "restaurant@example.com"
+                    },
+                    "otp": {
+                        "type": "string",
+                        "example": "123456"
+                    }
+                },
+                "type": "object"
+            },
+            "SaasSignupPayload": {
+                "required": [
+                    "restaurant_name",
+                    "owner_name",
+                    "owner_email",
+                    "owner_phone",
+                    "saas_plan_id"
+                ],
+                "properties": {
+                    "restaurant_name": {
+                        "type": "string",
+                        "example": "Restaurant Chic"
+                    },
+                    "legal_name": {
+                        "type": "string",
+                        "example": "Restaurant Chic SARL",
+                        "nullable": true
+                    },
+                    "owner_name": {
+                        "type": "string",
+                        "example": "Hena Ndombele"
+                    },
+                    "owner_email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "owner@example.com"
+                    },
+                    "owner_phone": {
+                        "type": "string",
+                        "example": "+243900000000"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": "secret123",
+                        "nullable": true
+                    },
+                    "password_confirmation": {
+                        "type": "string",
+                        "example": "secret123",
+                        "nullable": true
+                    },
+                    "google_credential": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "address": {
+                        "type": "string",
+                        "example": "Kinshasa",
+                        "nullable": true
+                    },
+                    "city": {
+                        "type": "string",
+                        "example": "Kinshasa",
+                        "nullable": true
+                    },
+                    "country": {
+                        "type": "string",
+                        "example": "CD",
+                        "nullable": true
+                    },
+                    "currency": {
+                        "type": "string",
+                        "enum": [
+                            "USD",
+                            "CDF"
+                        ],
+                        "example": "USD"
+                    },
+                    "saas_plan_id": {
+                        "type": "string",
+                        "example": "business"
+                    }
+                },
+                "type": "object"
+            },
+            "PlanPayload": {
+                "required": [
+                    "name",
+                    "monthly_price",
+                    "annual_price"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Business"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "example": "business"
+                    },
+                    "monthly_price": {
+                        "type": "number",
+                        "example": 30
+                    },
+                    "annual_price": {
+                        "type": "number",
+                        "example": 25
+                    },
+                    "currency": {
+                        "type": "string",
+                        "example": "USD"
+                    },
+                    "max_users": {
+                        "type": "integer",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "max_tables": {
+                        "type": "integer",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "max_plats": {
+                        "type": "integer",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "max_orders_per_month": {
+                        "type": "integer",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "features": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Plats illimites",
+                            "Tables illimitees"
+                        ]
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "RestaurantProfilePayload": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Restaurant Chic"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "example": "restaurant-chic"
+                    },
+                    "owner_phone": {
+                        "type": "string",
+                        "example": "+243900000000"
+                    },
+                    "address": {
+                        "type": "string",
+                        "example": "Kinshasa"
+                    },
+                    "city": {
+                        "type": "string",
+                        "example": "Kinshasa"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "enum": [
+                            "USD",
+                            "CDF"
+                        ],
+                        "example": "USD"
+                    },
+                    "primary_color": {
+                        "type": "string",
+                        "example": "#F9A11B"
+                    },
+                    "logo": {
+                        "description": "Base64 ou chemin selon le formulaire",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "settings": {
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "AgentPayload": {
+                "required": [
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "phone_number",
+                    "address",
+                    "education_level",
+                    "fonction",
+                    "matricule"
+                ],
+                "properties": {
+                    "first_name": {
+                        "type": "string",
+                        "example": "Jean"
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "example": "Dupont"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "agent@example.com"
+                    },
+                    "phone_number": {
+                        "type": "string",
+                        "example": "+243900000000"
+                    },
+                    "address": {
+                        "type": "string",
+                        "example": "Kinshasa"
+                    },
+                    "education_level": {
+                        "type": "string",
+                        "example": "Licence"
+                    },
+                    "fonction": {
+                        "type": "string",
+                        "example": "Serveur"
+                    },
+                    "matricule": {
+                        "type": "string",
+                        "example": "EMP-001"
+                    },
+                    "photo": {
+                        "type": "string",
+                        "format": "binary",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UserPayload": {
+                "required": [
+                    "agent_id",
+                    "role"
+                ],
+                "properties": {
+                    "agent_id": {
+                        "$ref": "#/components/schemas/Uuid"
+                    },
+                    "role": {
+                        "type": "string",
+                        "example": "manager"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "manager",
+                            "caissier"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "RolePayload": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "manager"
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "orders.list",
+                            "orders.update"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "CategoryPayload": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Burgers"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "binary",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "PlatPayload": {
+                "required": [
+                    "name",
+                    "price",
+                    "category_id"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Pizza"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "price": {
+                        "type": "number",
+                        "example": 14
+                    },
+                    "currency": {
+                        "type": "string",
+                        "enum": [
+                            "USD",
+                            "CDF"
+                        ],
+                        "example": "USD"
+                    },
+                    "category_id": {
+                        "$ref": "#/components/schemas/Uuid"
+                    },
+                    "preparation_time": {
+                        "type": "integer",
+                        "example": 20,
+                        "nullable": true
+                    },
+                    "ingredients": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Fromage",
+                            "Tomate"
+                        ]
+                    },
+                    "is_available": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "binary",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "TablePayload": {
+                "required": [
+                    "name",
+                    "capacity"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "TABLE 4"
+                    },
+                    "capacity": {
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "server_phone": {
+                        "type": "string",
+                        "example": "+243900000000",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Libre",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "OrderPayload": {
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "table_id": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/Uuid"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "restaurant_id": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/Uuid"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "restaurant_slug": {
+                        "type": "string",
+                        "example": "restaurant-chic",
+                        "nullable": true
+                    },
+                    "order_type": {
+                        "type": "string",
+                        "enum": [
+                            "dine_in",
+                            "takeaway",
+                            "remote"
+                        ],
+                        "example": "dine_in"
+                    },
+                    "note": {
+                        "type": "string",
+                        "example": "Sans piment",
+                        "nullable": true
+                    },
+                    "payment_method": {
+                        "type": "string",
+                        "enum": [
+                            "cash"
+                        ],
+                        "example": "cash"
+                    },
+                    "customer_name": {
+                        "type": "string",
+                        "example": "Client",
+                        "nullable": true
+                    },
+                    "customer_phone": {
+                        "type": "string",
+                        "example": "+243900000000",
+                        "nullable": true
+                    },
+                    "customer_email": {
+                        "type": "string",
+                        "format": "email",
+                        "nullable": true
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "required": [
+                                "plat_id",
+                                "quantity"
+                            ],
+                            "properties": {
+                                "plat_id": {
+                                    "$ref": "#/components/schemas/Uuid"
+                                },
+                                "quantity": {
+                                    "type": "integer",
+                                    "example": 2
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "ReservationPayload": {
+                "required": [
+                    "restaurant_id",
+                    "name",
+                    "phone",
+                    "reservation_date",
+                    "reservation_time",
+                    "guests"
+                ],
+                "properties": {
+                    "restaurant_id": {
+                        "$ref": "#/components/schemas/Uuid"
+                    },
+                    "table_id": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/Uuid"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Client"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "example": "+243900000000"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "nullable": true
+                    },
+                    "reservation_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-06-21"
+                    },
+                    "reservation_time": {
+                        "type": "string",
+                        "example": "19:30"
+                    },
+                    "guests": {
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "note": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "FeedbackPayload": {
+                "required": [
+                    "order_id",
+                    "rating"
+                ],
+                "properties": {
+                    "order_id": {
+                        "$ref": "#/components/schemas/Uuid"
+                    },
+                    "rating": {
+                        "type": "integer",
+                        "maximum": 5,
+                        "minimum": 1,
+                        "example": 5
+                    },
+                    "comment": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "recommended": {
+                        "type": "boolean",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ContactPayload": {
+                "required": [
+                    "name",
+                    "email",
+                    "message"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Client"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "client@example.com"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Bonjour"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "sanctum": {
+                "type": "apiKey",
+                "description": "Bearer {token}",
+                "name": "Authorization",
+                "in": "header"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Authentification, OTP et session"
+        },
+        {
+            "name": "SaaS",
+            "description": "Landing, plans, abonnement, restaurants et paiement SaaS"
+        },
+        {
+            "name": "Public Client",
+            "description": "Endpoints publics utilises par l'application client"
+        },
+        {
+            "name": "Users",
+            "description": "Gestion des utilisateurs autorises a se connecter"
+        },
+        {
+            "name": "Roles",
+            "description": "Gestion des roles et permissions"
+        },
+        {
+            "name": "Permissions",
+            "description": "Liste et recherche des permissions"
+        },
+        {
+            "name": "Agents",
+            "description": "Gestion des employes et verification badge"
+        },
+        {
+            "name": "Categories",
+            "description": "Gestion des categories du menu"
+        },
+        {
+            "name": "Plats",
+            "description": "Gestion des plats"
+        },
+        {
+            "name": "Tables",
+            "description": "Gestion des tables et QR codes"
+        },
+        {
+            "name": "Orders",
+            "description": "Commandes client et traitement restaurant"
+        },
+        {
+            "name": "Reservations",
+            "description": "Reservations publiques et gestion restaurant"
+        },
+        {
+            "name": "Feedbacks",
+            "description": "Avis clients"
+        }
+    ]
+}

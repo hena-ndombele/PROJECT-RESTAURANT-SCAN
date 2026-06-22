@@ -1,0 +1,60 @@
+<main class="auth-page">
+  <aside class="auth-visual">
+    <img class="auth-photo" src="assets/images/image12.jfif" alt="QR code menu digital Restaurant Scan">
+    <a class="visual-brand" routerLink="/">
+      <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+      <span>Restaurant Scan</span>
+    </a>
+    <div class="visual-copy">
+      <span>Restaurant Scan</span>
+      <h2>Pilotez votre restaurant depuis un espace clair.</h2>
+      <p>Menu QR, commandes, tables et rapports restent accessibles au même endroit.</p>
+    </div>
+  </aside>
+
+  <section class="auth-panel">
+    <div class="auth-card">
+      <a class="form-logo" routerLink="/" aria-label="Retour a l'accueil">
+        <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+      </a>
+      <h1>Se connecter</h1>
+      <p class="intro">Connectez-vous pour reprendre le pilotage de votre restaurant.</p>
+
+      <form (ngSubmit)="login()" novalidate>
+        <label>
+          <span>Adresse email</span>
+          <input [(ngModel)]="email" name="email" type="email" placeholder="nom@email.com" autocomplete="email" required>
+        </label>
+        <label>
+          <span>Mot de passe</span>
+          <div class="password-field">
+            <input [(ngModel)]="password"
+                   name="password"
+                   [type]="showPassword ? 'text' : 'password'"
+                   placeholder="Votre mot de passe"
+                   autocomplete="current-password"
+                   required>
+            <button type="button"
+                    class="password-toggle"
+                    (click)="togglePasswordVisibility()"
+                    [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+              <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+            </button>
+          </div>
+        </label>
+        <button class="primary-action" type="submit" [disabled]="loading">
+          @if (loading) {
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span>Connexion...</span>
+          } @else {
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span>Se connecter</span>
+          }
+        </button>
+        <p class="message" role="alert" *ngIf="message"><i class="bi bi-exclamation-triangle-fill"></i>{{ message }}</p>
+      </form>
+
+      <p class="switch-link">Pas encore de compte ? <a routerLink="/pricing">Choisir un plan</a></p>
+    </div>
+  </section>
+</main>

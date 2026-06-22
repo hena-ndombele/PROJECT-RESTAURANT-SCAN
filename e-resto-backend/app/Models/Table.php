@@ -11,16 +11,19 @@ class Table extends Model
     use HasFactory;
     use HasUuids;
 
-    // Définition des statuts pour une utilisation propre dans le code
+    // Definition des statuts pour une utilisation propre dans le code
     const STATUS_FREE = 'Libre';
-    const STATUS_OCCUPIED = 'Occupée';
+    const STATUS_OCCUPIED = "Occup\u{00E9}e";
+    const STATUS_RESERVED = "R\u{00E9}serv\u{00E9}e";
     const STATUS_ORDERING = 'Commande en cours';
 
     protected $fillable = [
+        'restaurant_id',
         'name',
         'capacity',    // Ajouté
         'status',      // Ajouté
         'qr_code',
+        'server_phone',
 
     ];
 protected $keyType = 'string';
@@ -38,6 +41,11 @@ protected $keyType = 'string';
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
     }
 
     /**

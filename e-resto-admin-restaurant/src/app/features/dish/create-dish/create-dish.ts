@@ -1,0 +1,173 @@
+import { CommonModule } from "@angular/common";
+import { Component, OnInit, inject, signal } from "@angular/core";
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
+import { Router } from "@angular/router";
+import { CategoryDto } from "../../../models/category/CategoryDto";
+import { CategoryService } from "../../../services/category/category-service";
+import { DishService } from "../../../services/dish/dish-service";
+
+@Component({
+    selector: "app-create-dish",
+    standalone: true,
+    imports: [CommonModule, ReactiveFormsModule],
+    templateUrl: "./create-dish.html",
+    styleUrl: "./create-dish.scss",
+})
+export class CreateDish implements OnInit {
+    dishForm!: FormGroup;
+    ingredients: string[] = [];
+    isLoading = signal<boolean>(false);
+    submitAttempted = signal<boolean>(false);
+    formError = signal<string>("");
+
+    selectedFile: File | null = null;
+    thumb1File: File | null = null;
+    thumb2File: File | null = null;
+
+    previewUrl: string | null = null;
+    thumb1Preview: string | null = null;
+    thumb2Preview: string | null = null;
+
+    categories = signal<CategoryDto[]>([]);
+
+    private categoryService = inject(CategoryService);
+    private dishService = inject(DishService);
+    private fb = inject(FormBuilder);
+    private router = inject(Router);
+
+    ngOnInit(): void {
+        this.dishForm = this.fb.group({
+            name: ["", [Validators.required, Validators.minLength(3)]],
+            description: ["", [Validators.required, Validators.minLength(10)]],
+            price: [0, [Validators.required, Validators.min(0)]],
+            currency: ["CDF", Validators.required],
+            category_id: ["", Validators.required],
+            preparation_time: [30, [Validators.required, Validators.min(1)]],
+            is_available: [true],
+        });
+
+        this.loadCategories();
+    }
+
+    loadCategories(): void {
+        this.categoryService.list().subscribe({
+            next: (data) => {
+                this.categories.set(data);
+                if (!data.length) {
+                    this.formError.set("Creez d'abord une categorie avant d'ajouter un plat.");
+                }
+            },
+            error: (err) => {
+                this.formError.set("Impossible de charger les categories de ce restaurant. Reconnectez-vous puis reessayez.");
+            },
+        });
+    }
+
+    onFileChange(event: Event, type: "main" | "thumb1" | "thumb2"): void {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+
+        if (type === "main") this.selectedFile = file;
+        if (type === "thumb1") this.thumb1File = file;
+        if (type === "thumb2") this.thumb2File = file;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            if (type === "main") this.previewUrl = result;
+            if (type === "thumb1") this.thumb1Preview = result;
+            if (type === "thumb2") this.thumb2Preview = result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    addIngredient(event: Event): void {
+        event.preventDefault();
+        const input = event.target as HTMLInputElement;
+        const value = input.value.trim();
+
+        if (value && !this.ingredients.includes(value)) {
+            this.ingredients.push(value);
+            input.value = "";
+        }
+    }
+
+    removeIngredient(index: number): void {
+        this.ingredients.splice(index, 1);
+    }
+
+    onSubmit(): void {
+        this.submitAttempted.set(true);
+        this.formError.set("");
+
+        if (this.dishForm.invalid) {
+            this.dishForm.markAllAsTouched();
+            this.formError.set("Completez les champs obligatoires avant de publier le plat.");
+            return;
+        }
+
+        if (!this.selectedFile) {
+            this.formError.set("Ajoutez une image principale pour ce plat.");
+            return;
+        }
+
+        this.isLoading.set(true);
+        this.dishService.create(this.buildFormData()).subscribe({
+            next: () => {
+                this.isLoading.set(false);
+                this.router.navigate(["/dish/list-dish"]);
+            },
+            error: (err) => {
+                this.isLoading.set(false);
+                if (err.status === 422) {
+                    this.formError.set("Erreur validation : " + JSON.stringify(err.error.errors));
+                    return;
+                }
+                this.formError.set(err.error?.message || "Une erreur est survenue lors de la creation du plat.");
+            },
+        });
+    }
+
+    resetForm(): void {
+        this.dishForm.reset({
+            name: "",
+            description: "",
+            price: 0,
+            currency: "CDF",
+            category_id: "",
+            preparation_time: 30,
+            is_available: true,
+        });
+        this.ingredients = [];
+        this.selectedFile = null;
+        this.thumb1File = null;
+        this.thumb2File = null;
+        this.previewUrl = null;
+        this.thumb1Preview = null;
+        this.thumb2Preview = null;
+        this.submitAttempted.set(false);
+        this.formError.set("");
+    }
+
+    private buildFormData(): FormData {
+        const formValue = this.dishForm.value;
+        const formData = new FormData();
+
+        formData.append("name", formValue.name);
+        formData.append("description", formValue.description);
+        formData.append("price", formValue.price.toString());
+        formData.append("currency", formValue.currency);
+        formData.append("category_id", formValue.category_id);
+        formData.append("preparation_time", formValue.preparation_time.toString());
+        formData.append("is_available", formValue.is_available ? "1" : "0");
+
+        this.ingredients.forEach((ingredient) => formData.append("ingredients[]", ingredient));
+
+        if (this.selectedFile) formData.append("image_principale", this.selectedFile);
+        if (this.thumb1File) formData.append("image_secondaire_1", this.thumb1File);
+        if (this.thumb2File) formData.append("image_secondaire_2", this.thumb2File);
+
+        return formData;
+    }
+}

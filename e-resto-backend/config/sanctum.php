@@ -17,7 +17,7 @@ return [
 
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
         '%s%s',
-        'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
+        'localhost,localhost:3000,localhost:4200,localhost:5173,127.0.0.1,127.0.0.1:8000,127.0.0.1:4200,127.0.0.1:5173,restaurascan.com,www.restaurascan.com,admin.restaurascan.com,api.restaurascan.com,::1',
         Sanctum::currentApplicationUrlWithPort(),
         // Sanctum::currentRequestHost(),
     ))),
@@ -47,7 +47,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => env('SANCTUM_EXPIRATION', env('AUTH_TOKEN_TTL_MINUTES', 1440)),
 
     /*
     |--------------------------------------------------------------------------

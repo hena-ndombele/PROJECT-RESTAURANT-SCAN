@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createOrder, getOrder } from '../features/cart/orderApi';
+import { cancelOrder, createOrder, getOrder, requestBill, trackOrder, updateOrderItems } from '../features/cart/orderApi';
 import { buildReceiptPdf } from '../features/cart/receiptPdf';
 import { useCart } from '../features/cart/useCart';
-import { sendContactMessage } from '../features/contact/contactApi';
+import { submitFeedback } from '../features/feedback/feedbackApi';
 import { getPublicMenu } from '../features/menu/menuApi';
 import { createReservation } from '../features/reservation/reservationApi';
 import { getEcho } from '../shared/api/realtime';
@@ -29,6 +29,11 @@ const fallbackCategoryImages = [
 
 const ACTIVE_ORDER_STORAGE_KEY = 'e-resto-active-order-id';
 const ACTIVE_ORDER_STATUS_STORAGE_KEY = 'e-resto-active-order-status';
+const ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY = 'e-resto-active-order-tracking-code';
+const ACTIVE_ORDER_BY_TABLE_PREFIX = 'e-resto-active-order-table-';
+const FEEDBACK_STORAGE_PREFIX = 'e-resto-feedback-';
+let notificationAudioContext;
+let notificationAudioUnlocked = false;
 
 const staticPlats = [
   {
@@ -70,27 +75,87 @@ function useTableId() {
   return useMemo(() => new URLSearchParams(window.location.search).get('table_id'), []);
 }
 
+function useOrderIdFromUrl() {
+  return useMemo(() => new URLSearchParams(window.location.search).get('order_id'), []);
+}
+
+function useRestaurantSlug() {
+  return useMemo(() => new URLSearchParams(window.location.search).get('restaurant_slug'), []);
+}
+
 export function App() {
   const tableId = useTableId();
+  const orderIdFromUrl = useOrderIdFromUrl();
+  const restaurantSlug = useRestaurantSlug();
   const cart = useCart();
   const [menu, setMenu] = useState({ categories: [], plats: [] });
+  const [scannedTable, setScannedTable] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [activeView, setActiveView] = useState('menu');
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedPlat, setSelectedPlat] = useState(null);
-  const [cartOpen, setCartOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
+  const [editingOrder, setEditingOrder] = useState(null);
   const [snackbar, setSnackbar] = useState(null);
   const [backToTop, setBackToTop] = useState(false);
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [menuError, setMenuError] = useState('');
+  const [recoveryNotice, setRecoveryNotice] = useState('');
+  const [feedbackOrder, setFeedbackOrder] = useState(null);
+  const [orderConfirmation, setOrderConfirmation] = useState(null);
+  const [brand, setBrand] = useState({
+    name: 'Restaurant Scan',
+    id: '',
+    logo_url: '/img/logo/e-resto-logo.png',
+    slogan: 'Fast Food & Restaurant',
+    description: 'Fast Food & Restaurant',
+    can_feedback: false,
+    can_Réservations: false,
+    can_mobile_money: false,
+    can_chatbot: false,
+    whatsapp_order_phone: '',
+    payment_methods: ['cash'],
+    theme: {
+      primary: '#F9A11B',
+      secondary: '#111111',
+      background: '#fff7ef',
+    },
+  });
+  const [cancelledOrderModal, setCancelledOrderModal] = useState(null);
 
   useEffect(() => {
-    getPublicMenu()
-      .then(setMenu)
-      .catch(() => {
-        setMenuError("Le menu backend n'est pas disponible pour le moment.");
-        setMenu({
+    const prepare = () => prepareCustomerNotifications();
+
+    window.addEventListener('click', prepare, { once: true });
+    window.addEventListener('pointerdown', prepare, { once: true });
+    window.addEventListener('touchstart', prepare, { once: true });
+    window.addEventListener('keydown', prepare, { once: true });
+
+    return () => {
+      window.removeEventListener('click', prepare);
+      window.removeEventListener('pointerdown', prepare);
+      window.removeEventListener('touchstart', prepare);
+      window.removeEventListener('keydown', prepare);
+    };
+  }, []);
+
+  useEffect(() => {
+    getPublicMenu(tableId ? { table_id: tableId } : (restaurantSlug ? { restaurant_slug: restaurantSlug } : {}))
+      .then((response) => {
+        setMenu(response);
+        setScannedTable(response.table || null);
+        if (response.restaurant) {
+          const nextBrand = buildClientBrand(response.restaurant);
+          setBrand(nextBrand);
+          applyClientTheme(nextBrand);
+        }
+      })
+      .catch((error) => {
+        setMenuError(tableId
+          ? (error.message || "Cette table n'est pas disponible pour commander.")
+          : "Le menu backend n'est pas disponible pour le moment.");
+        setMenu(tableId ? { categories: [], plats: [] } : {
           categories: [
             { id: 'burgers', name: 'Burgers', plats_count: 1 },
             { id: 'pizza', name: 'Pizza', plats_count: 1 },
@@ -100,38 +165,88 @@ export function App() {
         });
       })
       .finally(() => setLoadingMenu(false));
-  }, []);
+  }, [restaurantSlug, tableId]);
 
   useEffect(() => {
-    const storedOrderId = localStorage.getItem(ACTIVE_ORDER_STORAGE_KEY);
-    if (!storedOrderId) return;
+    const tableOrderId = tableId ? localStorage.getItem(`${ACTIVE_ORDER_BY_TABLE_PREFIX}${tableId}`) : null;
+    const storedOrderId = orderIdFromUrl || tableOrderId || localStorage.getItem(ACTIVE_ORDER_STORAGE_KEY);
+    const storedTrackingCode = new URLSearchParams(window.location.search).get('tracking_code')
+      || localStorage.getItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY);
+    if (!storedOrderId && !storedTrackingCode) {
+      if (tableId) {
+        setRecoveryNotice('Entrez le code de suivi affiche apres l envoi de votre commande pour la retrouver.');
+      }
+      return;
+    }
 
     const storedStatus = localStorage.getItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
 
-    getOrder(storedOrderId)
+    const restoreRequest = storedTrackingCode
+      ? trackOrder({
+        order_id: storedOrderId || undefined,
+        code: storedTrackingCode || undefined,
+        table_id: tableId || undefined,
+      })
+      : getOrder(storedOrderId);
+
+    restoreRequest
       .then((order) => {
         setActiveOrder(order);
-        localStorage.setItem(ACTIVE_ORDER_STATUS_STORAGE_KEY, order.status);
+        if (order.status === 'cancelled') {
+          const notification = {
+            type: 'error',
+            title: statusLabels[order.status] ?? 'Commande annulee',
+            message: getStatusNotificationMessage(order.status),
+          };
+          setSnackbar(notification);
+          setCancelledOrderModal(order);
+          playOrderNotificationSound('error');
+          notifyBrowser(notification.title, notification.message);
+          clearRememberedOrder(tableId);
+          return;
+        }
+
+        if (order.status === 'delivered') {
+          clearRememberedOrder(tableId);
+          return;
+        }
+
+        rememberActiveOrder(order, tableId, Boolean(orderIdFromUrl));
 
         if (storedStatus && storedStatus !== order.status) {
-          setSnackbar({
+          const notification = {
             type: order.status === 'cancelled' ? 'error' : 'success',
             title: statusLabels[order.status] ?? 'Statut mis a jour',
             message: getStatusNotificationMessage(order.status),
-          });
+          };
+          setSnackbar(notification);
+          playOrderNotificationSound(notification.type);
+          notifyBrowser(notification.title, notification.message);
         } else {
           setSnackbar({
             type: 'info',
             title: 'Suivi restaure',
-            message: `Votre commande est toujours ${statusLabels[order.status]?.toLowerCase() ?? order.status}.`,
+            message: `Votre commande est ${statusLabels[order.status]?.toLowerCase() ?? order.status}.`,
           });
+          setTimeout(() => {
+            document.getElementById('order-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 180);
         }
       })
-      .catch(() => {
-        localStorage.removeItem(ACTIVE_ORDER_STORAGE_KEY);
-        localStorage.removeItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
+      .catch((error) => {
+        if (tableId && !storedOrderId && !storedTrackingCode) {
+          setRecoveryNotice(error.message || 'Entrez votre code de suivi pour retrouver votre commande.');
+          setSnackbar({
+            type: 'info',
+            title: 'Commande a identifier',
+            message: error.message || 'Entrez votre code de suivi pour retrouver votre commande.',
+          });
+        }
+        if (storedOrderId || storedTrackingCode) {
+          clearRememberedOrder(tableId);
+        }
       });
-  }, []);
+  }, [orderIdFromUrl, tableId]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -142,6 +257,14 @@ export function App() {
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!brand.can_feedback || !activeOrder?.id || !canShowFeedbackForOrder(activeOrder)) return;
+    if (localStorage.getItem(`${FEEDBACK_STORAGE_PREFIX}${activeOrder.id}`)) return;
+
+    const feedbackTimer = window.setTimeout(() => setFeedbackOrder(activeOrder), 600);
+    return () => window.clearTimeout(feedbackTimer);
+  }, [brand.can_feedback, activeOrder?.id, activeOrder?.status, activeOrder?.order_type]);
 
   const filteredPlats = menu.plats.filter((plat) => {
     const matchesCategory = selectedCategory === 'all' || plat.category?.id === selectedCategory;
@@ -154,15 +277,24 @@ export function App() {
 
   return (
     <>
-      <TopBar />
+      <TopBar brand={brand} />
       <Navbar
+        brand={brand}
         onSearch={() => setSearchOpen(true)}
         cartCount={cart.totals.totalQuantity}
+        activeView={activeView}
         activeOrder={activeOrder}
-        onTrackOrder={() => {
-          document.getElementById('order-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
-        onCart={() => setCartOpen(true)}
+        scannedTable={scannedTable}
+        hasTable={Boolean(tableId)}
+        onView={setActiveView}
+      />
+      <MobileBottomNav
+        brand={brand}
+        cartCount={cart.totals.totalQuantity}
+        activeView={activeView}
+        activeOrder={activeOrder}
+        hasTable={Boolean(tableId)}
+        onView={setActiveView}
       />
       <SearchOverlay
         open={searchOpen}
@@ -172,62 +304,135 @@ export function App() {
         onClose={() => setSearchOpen(false)}
         onPickCategory={(id) => {
           setSelectedCategory(id);
+          setActiveView('menu');
           setSearchOpen(false);
           document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
         }}
       />
-      <Hero />
-      <Marquee />
-      <CategorySection
-        categories={menu.categories}
-        selectedCategory={selectedCategory}
-        onSelect={setSelectedCategory}
-      />
-      <AboutSection />
-      <MenuSection
-        loading={loadingMenu}
-        error={menuError}
-        categories={menu.categories}
-        plats={filteredPlats}
-        selectedCategory={selectedCategory}
-        onCategory={setSelectedCategory}
-        onDetails={openDetails}
-      />
-      <DealSection />
-      <GallerySection />
-      <ChefsSection />
-      <TestimonialsSection />
-      <ReservationSection tableId={tableId} />
-      <OrderStatusTracker
-        order={activeOrder}
-        onOrderUpdate={setActiveOrder}
-        onStatusNotification={(notification) => setSnackbar(notification)}
-      />
-      <ReceiptSection order={activeOrder} />
-      <BlogSection />
-      <NewsletterSection />
-      <ContactSection />
-      <Footer />
+      <main className="client-app-shell">
+        {activeView === 'menu' && (
+          <div className="menu-view">
+            <MenuSection
+              loading={loadingMenu}
+              error={menuError}
+              scannedTable={scannedTable}
+              categories={menu.categories}
+              plats={filteredPlats}
+              search={search}
+              selectedCategory={selectedCategory}
+              onSearch={setSearch}
+              onCategory={setSelectedCategory}
+              onDetails={openDetails}
+            />
+          </div>
+        )}
+        {activeView === 'cart' && (
+          <CartPage
+            tableId={tableId}
+            brand={brand}
+            cart={cart}
+            onOrderCreated={(order) => {
+              rememberActiveOrder(order, tableId, true);
+              setActiveOrder(order);
+              setOrderConfirmation(order);
+              setEditingOrder(null);
+              setSnackbar({
+                type: 'success',
+                title: 'Commande envoyee',
+                message: 'Votre suivi de commande est maintenant actif.',
+              });
+              setActiveView('orders');
+            }}
+            editingOrder={editingOrder}
+            onOrderUpdated={(order) => {
+              rememberActiveOrder(order, tableId, true);
+              setActiveOrder(order);
+              setEditingOrder(null);
+              setSnackbar({
+                type: 'success',
+                title: 'Commande modifiee',
+                message: 'Votre modification a ete envoyee au restaurant.',
+              });
+              setActiveView('orders');
+            }}
+            onContinueShopping={() => setActiveView('menu')}
+          />
+        )}
+        {activeView === 'orders' && (
+          <OrdersPage
+            tableId={tableId}
+            brand={brand}
+            activeOrder={activeOrder}
+            recoveryNotice={recoveryNotice}
+            onRecovered={(order) => {
+              setRecoveryNotice('');
+              rememberActiveOrder(order, tableId, true);
+              setActiveOrder(order);
+              setSnackbar({
+                type: 'success',
+                title: 'Commande retrouvee',
+                message: 'Votre suivi de commande est de nouveau actif.',
+              });
+            }}
+            onOrderUpdate={setActiveOrder}
+            onStatusNotification={(notification) => setSnackbar(notification)}
+            onCancellationModal={(order) => setCancelledOrderModal(order)}
+            onCancelOrder={async (order) => {
+              const reason = window.prompt('Pourquoi voulez-vous annuler cette commande ?');
+              if (!reason || reason.trim().length < 3) {
+                setSnackbar({
+                  type: 'error',
+                  title: 'Annulation impossible',
+                  message: 'La raison d annulation est obligatoire.',
+                });
+                return;
+              }
+
+              const response = await cancelOrder(order.id, reason.trim());
+              setActiveOrder(response.order);
+              setCancelledOrderModal(response.order);
+              playOrderNotificationSound('error');
+              setSnackbar({
+                type: 'success',
+                title: 'Commande annulee',
+                message: 'Votre commande a ete annulee avant preparation.',
+              });
+            }}
+            onEditOrder={(order) => {
+              if (order.status !== 'pending' || order.payment_status === 'paid') return;
+              cart.replaceItems((order.items ?? []).map((item) => ({
+                plat: item.plat,
+                quantity: Number(item.quantity ?? 1),
+              })).filter((item) => item.plat));
+              setEditingOrder(order);
+              setActiveView('cart');
+            }}
+          />
+        )}
+        {activeView === 'Réservations' && (
+          <ReservationPage
+            tableId={tableId}
+            brand={brand}
+            onStatus={(notification) => setSnackbar(notification)}
+          />
+        )}
+      </main>
       <MenuModal plat={selectedPlat} onClose={() => setSelectedPlat(null)} onAdd={cart.addItem} />
-      <CartDrawer
-        open={cartOpen}
-        tableId={tableId}
-        cart={cart}
-        onOrderCreated={(order) => {
-          localStorage.setItem(ACTIVE_ORDER_STORAGE_KEY, order.id);
-          localStorage.setItem(ACTIVE_ORDER_STATUS_STORAGE_KEY, order.status);
-          setActiveOrder(order);
-          setSnackbar({
-            type: 'success',
-            title: 'Commande envoyee',
-            message: 'Votre suivi de commande est maintenant actif.',
-          });
-          setCartOpen(false);
-          setTimeout(() => {
-            document.getElementById('order-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 120);
+      <CancelledOrderModal order={cancelledOrderModal} onClose={() => setCancelledOrderModal(null)} />
+      <OrderConfirmationModal order={orderConfirmation} onClose={() => setOrderConfirmation(null)} onTrack={() => {
+        setOrderConfirmation(null);
+        setActiveView('orders');
+      }} />
+      <FeedbackModal
+        order={brand.can_feedback ? feedbackOrder : null}
+        restaurantName={brand.name}
+        onClose={(submitted = false) => {
+          if (feedbackOrder?.id) {
+            localStorage.setItem(`${FEEDBACK_STORAGE_PREFIX}${feedbackOrder.id}`, submitted ? 'sent' : 'skipped');
+          }
+          setFeedbackOrder(null);
         }}
-        onClose={() => setCartOpen(false)}
+        onStatus={(notification) => setSnackbar(notification)}
       />
       <button id="btt" className={backToTop ? 'show' : ''} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
         <i className="fas fa-chevron-up"></i>
@@ -237,15 +442,15 @@ export function App() {
   );
 }
 
-function TopBar() {
+function TopBar({ brand }) {
   return (
     <div id="topbar">
       <div className="container">
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div className="top-contact d-flex flex-wrap">
-            <span><i className="fas fa-phone-alt"></i>+243 830376004</span>
-            <span><i className="fas fa-envelope"></i>e.resto2025@gmail.com</span>
-            <span><i className="fas fa-map-marker-alt"></i>Bandalugwa</span>
+            <span><i className="fas fa-phone-alt"></i>{brand.owner_phone || '+243 830376004'}</span>
+            <span><i className="fas fa-utensils"></i>{brand.name}</span>
+            <span><i className="fas fa-map-marker-alt"></i>{brand.city || brand.address || 'Restaurant'}</span>
           </div>
           <div className="d-flex align-items-center gap-3">
             <span className="ttag"><i className="fas fa-fire me-1"></i>Free Delivery Today!</span>
@@ -262,63 +467,51 @@ function TopBar() {
   );
 }
 
-function Navbar({ onSearch, cartCount, activeOrder, onTrackOrder, onCart }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const closeDrawer = () => setDrawerOpen(false);
-
-  useEffect(() => {
-    document.body.classList.toggle('mobile-nav-open', drawerOpen);
-    return () => document.body.classList.remove('mobile-nav-open');
-  }, [drawerOpen]);
+function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, scannedTable, hasTable, onView }) {
+  const navItems = [
+    ['menu', 'Menu'],
+    ['cart', 'Panier'],
+    ...(hasTable ? [['orders', 'Commandes']] : []),
+    ...(!hasTable ? [['Réservations', 'Reserver']] : []),
+  ];
 
   return (
     <nav className="navbar navbar-expand-lg" id="nav">
       <div className="container">
-        <a className="navbar-brand" href="#hero">
-          <BrandLogo />
-        </a>
-        <button
-          className="mobile-menu-toggle"
-          type="button"
-          aria-label={drawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
-          aria-expanded={drawerOpen}
-          onClick={() => setDrawerOpen((open) => !open)}
-        >
-          <i className={`fas ${drawerOpen ? 'fa-times' : 'fa-bars'}`}></i>
+        <button className="navbar-brand clean-btn" type="button" onClick={() => onView('menu')}>
+          <BrandLogo brand={brand} />
         </button>
-        <button
-          className={`mobile-drawer-backdrop clean-btn ${drawerOpen ? 'open' : ''}`}
-          aria-label="Close navigation menu"
-          onClick={closeDrawer}
-        ></button>
-        <div className={`navbar-collapse mobile-drawer ${drawerOpen ? 'open' : ''}`} id="navmenu">
-          <div className="mobile-drawer-head">
-            <BrandLogo />
-            <button className="mobile-drawer-close" type="button" aria-label="Close navigation menu" onClick={closeDrawer}>
-              <i className="fas fa-times"></i>
-            </button>
+        {scannedTable ? (
+          <div className="mobile-table-pill">
+            <i className="fas fa-location-dot"></i>
+            <span>{scannedTable.name}</span>
           </div>
+        ) : null}
+        <div className="navbar-collapse desktop-nav" id="navmenu">
           <ul className="navbar-nav mx-auto">
-            {[
-              ['#hero', 'Home'],
-              ['#about', 'About'],
-              ['#menu', 'Menu'],
-              ['#chefs', 'Chefs'],
-              ['#reservation', 'Reservation'],
-              ['#testimonials', 'Reviews'],
-              ['#contact-section', 'Contact'],
-            ].map(([href, label]) => (
-              <li className="nav-item" key={href}><a className="nav-link" href={href} onClick={closeDrawer}>{label}</a></li>
+            {navItems.map(([view, label]) => (
+              <li className="nav-item" key={view}>
+                <button
+                  className={`nav-link clean-btn ${activeView === view ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => onView(view)}
+                >
+                  {view === 'cart' ? (
+                    <span className="cart-nav-link">
+                      <i className="fas fa-shopping-cart"></i>
+                      {label}
+                      {cartCount > 0 ? <em>{cartCount}</em> : null}
+                    </span>
+                  ) : label}
+                </button>
+              </li>
             ))}
-            {activeOrder ? (
+            {hasTable && activeOrder ? (
               <li className="nav-item">
                 <button
                   className="nav-link track-order-link clean-btn"
                   type="button"
-                  onClick={() => {
-                    closeDrawer();
-                    onTrackOrder();
-                  }}
+                  onClick={() => onView('orders')}
                 >
                   <i className="fas fa-bell-concierge me-1"></i>
                   Suivi commande
@@ -328,16 +521,7 @@ function Navbar({ onSearch, cartCount, activeOrder, onTrackOrder, onCart }) {
             ) : null}
           </ul>
           <div className="nav-actions d-flex align-items-center gap-1">
-            <button id="navSearchBtn" title="Search" onClick={() => {
-              closeDrawer();
-              onSearch();
-            }}><i className="fas fa-search"></i></button>
-            <button className="nav-link nav-cta clean-btn" onClick={() => {
-              closeDrawer();
-              onCart();
-            }}>
-              <i className="fas fa-shopping-bag me-1"></i>My Cart ({cartCount})
-            </button>
+            <button id="navSearchBtn" title="Search" onClick={onSearch}><i className="fas fa-search"></i></button>
           </div>
         </div>
       </div>
@@ -345,13 +529,48 @@ function Navbar({ onSearch, cartCount, activeOrder, onTrackOrder, onCart }) {
   );
 }
 
-function BrandLogo() {
+function MobileBottomNav({ brand, cartCount, activeView, activeOrder, hasTable, onView }) {
+  const showReservationButton = !hasTable;
+
+  return (
+    <nav className="mobile-bottom-nav" aria-label="Navigation mobile">
+      <button type="button" className={`mobile-bottom-item ${activeView === 'menu' ? 'active' : ''}`} onClick={() => onView('menu')}>
+        <i className="fas fa-utensils"></i>
+        <span>Menu</span>
+      </button>
+      <button type="button" className={`mobile-bottom-item ${activeView === 'cart' ? 'active' : ''}`} onClick={() => onView('cart')}>
+        <span className="mobile-bottom-icon">
+          <i className="fas fa-shopping-cart"></i>
+          {cartCount > 0 ? <em>{cartCount}</em> : null}
+        </span>
+        <span>Panier</span>
+      </button>
+      {showReservationButton ? (
+        <button type="button" className={`mobile-bottom-item ${activeView === 'Réservations' ? 'active' : ''}`} onClick={() => onView('Réservations')}>
+          <i className="fas fa-calendar-check"></i>
+          <span>Reserver</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          className={`mobile-bottom-item ${activeView === 'orders' ? 'active' : ''} ${activeOrder ? 'has-order' : ''}`}
+          onClick={() => onView('orders')}
+        >
+          <i className="fas fa-receipt"></i>
+          <span>Commandes</span>
+        </button>
+      )}
+    </nav>
+  );
+}
+
+function BrandLogo({ brand }) {
   return (
     <div className="blogo brand-logo">
-      <img className="brand-logo-img" src="/img/logo/e-resto-logo.png" alt="E-RESTO" />
+      <img className="brand-logo-img" src={brand.logo_url || '/img/logo/e-resto-logo.png'} alt={brand.name || 'Restaurant Scan'} />
       <div>
-        <div className="bname">E-<span>RESTO</span></div>
-        <div className="bsub">Fast Food & Restaurant</div>
+        <div className="bname">{brand.name || 'Restaurant Scan'}</div>
+        <div className="bsub">{brand.slogan || brand.description || 'Fast Food & Restaurant'}</div>
       </div>
     </div>
   );
@@ -387,7 +606,7 @@ function SearchOverlay({ open, value, categories, onChange, onClose, onPickCateg
   );
 }
 
-function Hero() {
+function Hero({ brand }) {
   return (
     <section id="hero">
       <div className="hs hs1"></div>
@@ -397,8 +616,9 @@ function Hero() {
         <div className="row align-items-center g-5 hero-row">
           <div className="col-lg-6">
             <div className="hbadge"><div className="hbi"><i className="fas fa-star"></i></div><span>#1 Rated Fast Food Restaurant in New York</span></div>
-            <h1 className="htitle">Delicious <span className="hl">Fast Food</span><br />for Every Moment</h1>
-            <p className="hdesc">Experience bold flavors crafted from premium ingredients. From crispy burgers to gourmet pizzas - every bite is an adventure worth savoring.</p>
+            <h1 className="htitle">{brand.name || 'Delicious'} <span className="hl">Menu</span><br />for Every Moment</h1>
+            {brand.slogan ? <p className="restaurant-slogan">{brand.slogan}</p> : null}
+            <p className="hdesc">{brand.description || 'Experience bold flavors crafted from premium ingredients. From crispy burgers to gourmet pizzas - every bite is an adventure worth savoring.'}</p>
             <div className="d-flex flex-wrap gap-3 mb-2">
               <a href="#menu" className="btn-red"><i className="fas fa-utensils"></i>Explore Menu</a>
               <a href="https://www.youtube.com/watch?v=RXv_uIN6e-Y" className="btn-play">
@@ -473,60 +693,81 @@ function CategoryCard({ category, active, image, onSelect }) {
   );
 }
 
-function AboutSection() {
-  return (
-    <section id="about">
-      <div className="container">
-        <div className="row align-items-center g-5">
-          <div className="col-lg-5">
-            <div className="astack">
-              <div className="aexp"><span className="anum">12+</span><small>Years of<br />Excellence</small></div>
-              <div className="amain"><img src="/img/about1.jpg" alt="Restaurant" /></div>
-              <div className="asm"><img src="/img/about2.jpg" alt="" /></div>
-            </div>
-          </div>
-          <div className="col-lg-7">
-            <span className="slbl">Our Story</span>
-            <h2 className="stitle text-start">We Invite You to Visit<br />Our <span>Food Restaurant</span></h2>
-            <div className="sline lft"></div>
-            <p className="sdesc mb-4">Founded in 2012, Sarab began as a small corner joint with a big dream - to serve food that brings people together.</p>
-            {[
-              ['leaf', '100% Fresh Ingredients', 'We source locally and sustainably for maximum freshness.'],
-              ['award', 'Award-Winning Recipes', 'Our signature recipes are crafted with care and consistency.'],
-              ['shipping-fast', 'Lightning-Fast Delivery', 'Order online and get hot, fresh food without the wait.'],
-            ].map(([icon, title, text]) => (
-              <div className="fti" key={title}>
-                <div className="ftico r"><i className={`fas fa-${icon}`}></i></div>
-                <div><h6>{title}</h6><p>{text}</p></div>
-              </div>
-            ))}
-            <a href="#menu" className="btn-red"><i className="fas fa-book-open"></i>View Full Menu</a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function MenuSection({ loading, error, categories, plats, selectedCategory, onCategory, onDetails }) {
+function MenuSection({ loading, error, scannedTable, categories, plats, search, selectedCategory, onSearch, onCategory, onDetails }) {
   return (
     <section id="menu">
       <div className="container">
         <SectionTitle eyebrow="What's Cooking" title="Our Delicious" highlight="Menu" />
+        {scannedTable ? (
+          <div className="scanned-table-banner">
+            <i className="fas fa-chair"></i>
+            <span>Vous commandez depuis</span>
+            <strong>{scannedTable.name}</strong>
+          </div>
+        ) : null}
+        <div className="menu-inline-search">
+          <i className="fas fa-search"></i>
+          <input
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Rechercher un plat..."
+            autoComplete="off"
+          />
+          {search ? (
+            <button type="button" className="clean-btn" aria-label="Effacer la recherche" onClick={() => onSearch('')}>
+              <i className="fas fa-times"></i>
+            </button>
+          ) : null}
+        </div>
         <div className="text-center mb-4">
           <button className={`filtbtn ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => onCategory('all')}>All</button>
           {categories.map((category) => (
             <button className={`filtbtn ${selectedCategory === category.id ? 'active' : ''}`} key={category.id} onClick={() => onCategory(category.id)}>{category.name}</button>
           ))}
         </div>
-        {error && <div className="client-alert">{error} Les plats de demonstration restent affiches.</div>}
-        {loading ? <div className="client-alert">Chargement du menu...</div> : null}
+        {error && (
+          <MenuStateCard
+            icon="fa-circle-exclamation"
+            title="Menu temporaire"
+            message={`${error} Les plats de demonstration restent affiches.`}
+          />
+        )}
+        {loading ? (
+          <MenuStateCard
+            icon="fa-utensils"
+            title="Chargement du menu"
+            message="Nous recuperons les plats du restaurant. Patientez quelques secondes."
+            loading
+          />
+        ) : null}
         <div className="row g-4" id="mgrid">
           {plats.map((plat, index) => <MenuCard key={plat.id} plat={plat} index={index} onDetails={onDetails} />)}
-          {!loading && plats.length === 0 ? <div className="col-12"><div className="client-alert">Aucun plat disponible dans cette categorie.</div></div> : null}
+          {!loading && plats.length === 0 ? (
+            <div className="col-12">
+              <MenuStateCard
+                icon="fa-bowl-food"
+                title="Menu en attente"
+                message="La liste des plats n'est pas encore disponible. Essayez une autre categorie ou revenez dans un instant."
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
+  );
+}
+
+function MenuStateCard({ icon, title, message, loading = false }) {
+  return (
+    <div className={`menu-state-card ${loading ? 'loading' : ''}`}>
+      <div className="menu-state-icon">
+        <i className={`fas ${icon}`}></i>
+      </div>
+      <div>
+        <strong>{title}</strong>
+        <span>{message}</span>
+      </div>
+    </div>
   );
 }
 
@@ -543,10 +784,10 @@ function MenuCard({ plat, index, onDetails }) {
         <div className="mbody">
           <div className="mcat">{plat.category?.name ?? 'Menu'}</div>
           <div className="mtit">{plat.name}</div>
-          <div className="mdesc">{plat.description}</div>
           <div className="mfoot">
             <div>
               <div className="mprice">{formatMoney(plat.price, plat.currency)}</div>
+              <div className="mtime"><i className="fas fa-clock"></i>{plat.preparation_time ?? 20} min</div>
               <div className="mstars"><i className="fas fa-star"></i> <span style={{ color: '#bbb', fontSize: '.7rem' }}>(128)</span></div>
             </div>
             <span className="madd" title="View Details"><i className="fas fa-plus"></i></span>
@@ -559,9 +800,16 @@ function MenuCard({ plat, index, onDetails }) {
 
 function MenuModal({ plat, onClose, onAdd }) {
   const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState(0);
+  const images = [
+    assetUrl(plat?.image_url || plat?.image, ''),
+    assetUrl(plat?.image_secondaire_1_url || plat?.image_secondaire_1 || plat?.secondary_image_1 || plat?.image_2, ''),
+    assetUrl(plat?.image_secondaire_2_url || plat?.image_secondaire_2 || plat?.secondary_image_2 || plat?.image_3, ''),
+  ].filter(Boolean).filter((image, index, list) => list.indexOf(image) === index);
 
   useEffect(() => {
     setQuantity(1);
+    setActiveImage(0);
   }, [plat]);
 
   if (!plat) return null;
@@ -570,9 +818,18 @@ function MenuModal({ plat, onClose, onAdd }) {
     <div id="menuPop" className="open" onClick={(event) => event.target.id === 'menuPop' && onClose()}>
       <div className="mpbox">
         <button className="mpclose" onClick={onClose}><i className="fas fa-times"></i></button>
-        <div className="row g-4">
-          <div className="col-lg-5"><img id="mpImg" className="mpimg" src={plat.image_url} alt={plat.name} /></div>
-          <div className="col-lg-7">
+        <div className="menu-detail-layout">
+          <div className="menu-detail-media">
+            <img id="mpImg" className="mpimg" src={images[activeImage] || plat.image_url} alt={plat.name} />
+            <div className={`menu-detail-thumbs ${images.length <= 1 ? 'single' : ''}`}>
+              {images.map((image, index) => (
+                <button key={image} type="button" className={`clean-btn ${activeImage === index ? 'active' : ''}`} onClick={() => setActiveImage(index)} aria-label={`Image ${index + 1}`}>
+                  <img src={image} alt="" />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="menu-detail-content">
             <div className="mcat" id="mpCat">{plat.category?.name ?? 'Menu'}</div>
             <h3 id="mpTitle">{plat.name}</h3>
             <div className="mstars" id="mpStars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i> <span>4.9 (128 reviews)</span></div>
@@ -592,7 +849,7 @@ function MenuModal({ plat, onClose, onAdd }) {
             <button className="mpaddcart" id="mpAddCart" onClick={() => {
               onAdd(plat, quantity);
               onClose();
-            }}><i className="fas fa-shopping-cart"></i>Add to Cart</button>
+            }}><i className="fas fa-shopping-cart"></i>Ajouter au panier</button>
           </div>
         </div>
       </div>
@@ -600,36 +857,217 @@ function MenuModal({ plat, onClose, onAdd }) {
   );
 }
 
-function CartDrawer({ open, tableId, cart, onClose, onOrderCreated }) {
-  const [note, setNote] = useState('');
-  const [status, setStatus] = useState({ type: '', message: '' });
-  const canSubmit = tableId && cart.items.length > 0;
+function ReservationPage({ tableId, brand, onStatus }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    guests: 2,
+    reservation_date: today,
+    reservation_time: '19:00',
+    special_requests: '',
+  });
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
-  const submitOrder = async () => {
-    if (!canSubmit) return;
-    setStatus({ type: 'loading', message: 'Envoi de la commande...' });
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const canSubmit = form.name.trim()
+    && form.phone.trim()
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+    && Number(form.guests) > 0
+    && form.reservation_date
+    && form.reservation_time
+    && (tableId || brand?.id || brand?.slug);
+
+  const submitReservation = async (event) => {
+    event.preventDefault();
+    if (!canSubmit || sending) return;
+
+    setSending(true);
+    setMessage({ type: 'loading', text: 'Envoi de la demande de reservation...' });
+
     try {
-      const response = await createOrder({
-        table_id: tableId,
-        note,
-        items: cart.items.map((item) => ({ plat_id: item.plat.id, quantity: item.quantity })),
+      const response = await createReservation({
+        table_id: tableId || undefined,
+        restaurant_id: tableId ? undefined : brand?.id,
+        restaurant_slug: tableId ? undefined : brand?.slug,
+        ...form,
+        guests: Number(form.guests),
       });
-      cart.clearCart();
-      setNote('');
-      setStatus({ type: 'success', message: 'Commande envoyee avec succes.' });
-      onOrderCreated(response.order);
+
+      setMessage({ type: 'success', text: response.message || 'Demande de reservation envoyee.' });
+      onStatus?.({
+        type: 'success',
+        title: 'Reservation envoyee',
+        message: 'Le restaurant va confirmer la disponibilite.',
+      });
+      setForm({
+        name: '',
+        phone: '',
+        email: '',
+        guests: 2,
+        reservation_date: today,
+        reservation_time: '19:00',
+        special_requests: '',
+      });
     } catch (error) {
-      setStatus({ type: 'error', message: error.message });
+      setMessage({ type: 'error', text: error.message || 'Impossible d envoyer la reservation.' });
+    } finally {
+      setSending(false);
     }
   };
 
   return (
-    <div className={`cart-panel ${open ? 'open' : ''}`}>
-      <div className="cart-panel-box">
-        <button className="mpclose" onClick={onClose}><i className="fas fa-times"></i></button>
-        <h3>My Cart</h3>
-        {!tableId && <div className="client-alert">Scannez un QR code de table pour envoyer la commande au backend.</div>}
-        {cart.items.length === 0 ? <p className="sdesc">Votre panier est vide.</p> : cart.items.map((item) => (
+    <section className="app-page reservation-page-client">
+      <div className="container">
+        <div className="cart-panel-box">
+          <div className="app-page-head">
+            <span className="slbl">Reservation</span>
+            <h2>Reserver une table</h2>
+          </div>
+          {!brand.can_Réservations ? (
+            <div className="client-alert error">Les Réservations ne sont pas activees pour ce restaurant.</div>
+          ) : (
+            <form className="mobile-money-form" onSubmit={submitReservation}>
+              <label>Nom complet</label>
+              <input className="fctrl" value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="Votre nom" />
+              <label>Telephone</label>
+              <input className="fctrl" type="tel" value={form.phone} onChange={(event) => update('phone', event.target.value)} placeholder="+243..." />
+              <label>Email</label>
+              <input className="fctrl" type="email" value={form.email} onChange={(event) => update('email', event.target.value)} placeholder="nom@email.com" />
+              <div className="reservation-form-grid">
+                <label>
+                  <span>Personnes</span>
+                  <input className="fctrl" type="number" min="1" max="50" value={form.guests} onChange={(event) => update('guests', event.target.value)} />
+                </label>
+                <label>
+                  <span>Date</span>
+                  <input className="fctrl" type="date" min={today} value={form.reservation_date} onChange={(event) => update('reservation_date', event.target.value)} />
+                </label>
+                <label>
+                  <span>Heure</span>
+                  <input className="fctrl" type="time" value={form.reservation_time} onChange={(event) => update('reservation_time', event.target.value)} />
+                </label>
+              </div>
+              <label>Demande speciale</label>
+              <textarea className="fctrl" rows="4" value={form.special_requests} onChange={(event) => update('special_requests', event.target.value)} placeholder="Ex: table calme, anniversaire, chaise enfant..." />
+              <button className="btn-red w-100 justify-content-center" type="submit" disabled={!canSubmit || sending}>
+                <i className="fas fa-calendar-check"></i>{sending ? 'Envoi...' : 'Envoyer la reservation'}
+              </button>
+              {message.text ? <div className={`client-alert ${message.type}`}>{message.text}</div> : null}
+            </form>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CartPage({ tableId, brand, cart, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping }) {
+  const [note, setNote] = useState('');
+  const [orderType, setOrderType] = useState('dine_in');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [status, setStatus] = useState({ type: '', message: '' });
+  const submittingRef = useRef(false);
+  const effectiveOrderType = tableId ? orderType : 'remote';
+  const whatsappOrderPhone = brand?.whatsapp_order_phone || brand?.owner_phone || '';
+  const canSubmit = cart.items.length > 0
+    && (tableId || brand?.id || brand?.slug)
+    && (effectiveOrderType !== 'remote' || (customerName.trim() && customerPhone.trim() && customerAddress.trim() && whatsappOrderPhone.trim()));
+  const isEditing = Boolean(editingOrder?.id);
+
+  useEffect(() => {
+    if (!editingOrder) return;
+    setNote(editingOrder.note || '');
+    setOrderType(editingOrder.order_type || 'dine_in');
+    setCustomerName(editingOrder.customer_name || '');
+    setCustomerPhone(editingOrder.customer_phone || '');
+    setCustomerAddress('');
+    setStatus({ type: 'info', message: 'Vous modifiez votre commande avant preparation.' });
+  }, [editingOrder]);
+
+  const submitOrder = async () => {
+    if (!canSubmit || submittingRef.current) return;
+    prepareCustomerNotifications();
+    submittingRef.current = true;
+    setStatus({ type: 'loading', message: isEditing ? 'Modification de la commande...' : 'Envoi de la commande...' });
+    try {
+      const payload = {
+        table_id: tableId || undefined,
+        restaurant_id: tableId ? undefined : brand?.id,
+        restaurant_slug: tableId ? undefined : brand?.slug,
+        order_type: effectiveOrderType,
+        note: effectiveOrderType === 'remote'
+          ? [note, `Adresse client: ${customerAddress}`].filter(Boolean).join('\n')
+          : note,
+        payment_method: 'cash',
+        payment_provider: null,
+        wallet_id: null,
+        customer_name: customerName || undefined,
+        customer_phone: customerPhone || undefined,
+        items: cart.items.map((item) => ({ plat_id: item.plat.id, quantity: item.quantity })),
+      };
+      const response = isEditing
+        ? await updateOrderItems(editingOrder.id, payload)
+        : await createOrder(payload);
+      cart.clearCart();
+      setNote('');
+      setOrderType('dine_in');
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerAddress('');
+      setStatus({
+        type: response.order?.payment_status === 'failed' ? 'error' : 'success',
+        message: response.order?.payment_status === 'failed'
+          ? 'Commande envoyee, mais le paiement doit etre confirme au restaurant.'
+          : isEditing ? 'Commande modifiee avec succes.' : (response.whatsapp_order_url ? 'Commande enregistree. WhatsApp va s ouvrir pour envoyer la commande au restaurant.' : 'Commande envoyee avec succes.')
+      });
+      if (response.whatsapp_order_url) {
+        window.open(response.whatsapp_order_url, '_blank', 'noopener,noreferrer');
+      }
+      if (isEditing) {
+        onOrderUpdated(response.order);
+      } else {
+        onOrderCreated(response.order);
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  return (
+    <section className="cart-page app-page" id="cart-page">
+      <div className="container">
+        <div className="cart-panel-box">
+        <div className="app-page-head">
+          <span className="slbl">Panier</span>
+          <h2>{isEditing ? 'Modifier ma commande' : 'Mon panier'}</h2>
+          <button type="button" className="receipt-share-btn" onClick={onContinueShopping}>
+            <i className="fas fa-utensils"></i>
+            Menu
+          </button>
+        </div>
+        {isEditing && (
+          <div className="client-alert info">
+            Modification autorisee tant que la commande n'est pas en preparation et pas deja payee.
+            <button type="button" className="receipt-share-btn mt-2" onClick={onContinueShopping}>
+              <i className="fas fa-plus"></i>
+              Ajouter d'autres plats
+            </button>
+          </div>
+        )}
+        {cart.items.length === 0 ? (
+          <div className="empty-page-card compact">
+            <i className="fas fa-shopping-cart"></i>
+            <strong>Votre panier est vide</strong>
+            <span>Ajoutez un plat depuis le menu pour commencer.</span>
+          </div>
+        ) : cart.items.map((item) => (
           <div className="cart-line" key={item.plat.id}>
             <div>
               <strong>{item.plat.name}</strong>
@@ -642,15 +1080,91 @@ function CartDrawer({ open, tableId, cart, onClose, onOrderCreated }) {
             </div>
           </div>
         ))}
-        <textarea className="fctrl" rows="3" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note pour la cuisine..." />
-        <div className="cart-total">
-          <span>Total</span>
-          <strong>{formatMoney(cart.totals.totalAmount, cart.totals.currency)}</strong>
-        </div>
-        <button className="btn-red w-100 justify-content-center" disabled={!canSubmit || status.type === 'loading'} onClick={submitOrder}>
-          <i className="fas fa-paper-plane"></i>Envoyer la commande
-        </button>
+        {cart.items.length > 0 && (
+          <>
+            <textarea className="fctrl" rows="3" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note pour la cuisine..." />
+            <div className="order-type-box">
+              <div className="payment-title">
+                <strong>Mode de service</strong>
+                <span>Choisissez comment le restaurant doit traiter la commande.</span>
+              </div>
+              <div className="order-type-options">
+                {tableId ? (
+                  <>
+                    <button type="button" className={`order-type-option clean-btn ${orderType === 'dine_in' ? 'active' : ''}`} onClick={() => setOrderType('dine_in')}>
+                      <i className="fas fa-utensils"></i>
+                      <span>Sur place</span>
+                    </button>
+                    <button type="button" className={`order-type-option clean-btn ${orderType === 'takeaway' ? 'active' : ''}`} onClick={() => setOrderType('takeaway')}>
+                      <i className="fas fa-bag-shopping"></i>
+                      <span>A emporter</span>
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="order-type-option clean-btn active">
+                    <i className="fab fa-whatsapp"></i>
+                    <span>Hors restaurant</span>
+                  </button>
+                )}
+              </div>
+              {!tableId && !whatsappOrderPhone ? (
+                <p className="payment-note">Le restaurant doit configurer un numero WhatsApp pour recevoir les commandes hors restaurant.</p>
+              ) : null}
+            </div>
+            {!tableId && (
+              <div className="mobile-money-form">
+                <label>Nom du client</label>
+                <input className="fctrl" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Votre nom" />
+                <label>Telephone</label>
+                <input className="fctrl" type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+243 8XX XXX XXX" />
+                <label>Adresse</label>
+                <input className="fctrl" value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} placeholder="Avenue, quartier, commune..." />
+              </div>
+            )}
+            <div className="cart-total">
+              <span>Total</span>
+              <strong>{formatMoney(cart.totals.totalAmount, cart.totals.currency)}</strong>
+            </div>
+            <button className="btn-red w-100 justify-content-center" disabled={!canSubmit || status.type === 'loading'} onClick={submitOrder}>
+              <i className="fas fa-paper-plane"></i>{isEditing ? 'Enregistrer la modification' : (!tableId ? 'Envoyer et ouvrir WhatsApp' : 'Envoyer la commande')}
+            </button>
+          </>
+        )}
         {status.message && <div className={`client-alert ${status.type}`}>{status.message}</div>}
+      </div>
+      </div>
+    </section>
+  );
+}
+
+function OrderConfirmationModal({ order, onClose, onTrack }) {
+  if (!order) return null;
+
+  const code = order.tracking_code ?? String(order.id).slice(0, 8).toUpperCase();
+
+  return (
+    <div className="order-confirmation-backdrop" role="dialog" aria-modal="true" aria-label="Commande envoyee">
+      <div className="order-confirmation-modal">
+        <button type="button" className="clean-btn order-confirmation-close" onClick={onClose} aria-label="Fermer">
+          <i className="fas fa-times"></i>
+        </button>
+        <div className="order-confirmation-icon">
+          <i className="fas fa-circle-check"></i>
+        </div>
+        <span className="slbl">Commande envoyee</span>
+        <h2>Votre commande est bien partie</h2>
+        <p>Gardez ce code pour retrouver le suivi si vous fermez l'application.</p>
+        <div className="order-confirmation-code">
+          <small>Code de suivi</small>
+          <strong>{code}</strong>
+        </div>
+        <div className="order-confirmation-actions">
+          <button type="button" className="receipt-share-btn" onClick={onClose}>Fermer</button>
+          <button type="button" className="btn-red" onClick={onTrack}>
+            <i className="fas fa-location-dot"></i>
+            Voir le suivi
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -661,7 +1175,6 @@ const orderSteps = [
   { key: 'preparing', label: 'En preparation', icon: 'fa-fire-burner', description: 'Notre equipe prepare vos plats.' },
   { key: 'ready', label: 'Prete', icon: 'fa-bell', description: 'Votre commande est prete a etre servie.' },
   { key: 'delivered', label: 'Servie', icon: 'fa-utensils', description: 'Bon appetit, votre commande est servie.' },
-  { key: 'paid', label: 'Payee', icon: 'fa-circle-check', description: 'Paiement confirme. Merci pour votre visite.' },
 ];
 
 const statusLabels = {
@@ -669,12 +1182,207 @@ const statusLabels = {
   preparing: 'En preparation',
   ready: 'Prete',
   delivered: 'Servie',
-  paid: 'Payee',
   cancelled: 'Annulee',
 };
 
-function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
+const paymentStatusLabels = {
+  unpaid: 'Paiement non confirme',
+  pending: 'Paiement en attente',
+  paid: 'Paiement confirme',
+  failed: 'Paiement echoue',
+  refunded: 'Paiement rembourse',
+};
+
+function OrdersPage({
+  tableId,
+  brand,
+  activeOrder,
+  recoveryNotice,
+  onRecovered,
+  onOrderUpdate,
+  onStatusNotification,
+  onCancellationModal,
+  onCancelOrder,
+  onEditOrder,
+}) {
+  return (
+    <section className="orders-page app-page" id="orders-page">
+      <div className="container">
+        <div className="app-page-head">
+          <span className="slbl">Commandes</span>
+          <h2>Suivi de commande</h2>
+          {activeOrder ? <span className="order-status-pill compact">{statusLabels[activeOrder.status] ?? activeOrder.status}</span> : null}
+        </div>
+      </div>
+      <OrderRecoverySection
+        tableId={tableId}
+        activeOrder={activeOrder}
+        notice={recoveryNotice}
+        onRecovered={onRecovered}
+      />
+      {!activeOrder ? (
+        <div className="container">
+          <div className="empty-page-card">
+            <i className="fas fa-receipt"></i>
+            <strong>Aucune commande active</strong>
+            <span>Votre suivi apparaitra ici apres l'envoi du panier.</span>
+          </div>
+        </div>
+      ) : null}
+      <OrderStatusTracker
+        order={activeOrder}
+        tableId={tableId}
+        onOrderUpdate={onOrderUpdate}
+        onStatusNotification={onStatusNotification}
+        onCancellationModal={onCancellationModal}
+        onCancelOrder={onCancelOrder}
+        onEditOrder={onEditOrder}
+      />
+      <ReceiptSection order={activeOrder} brand={brand} />
+    </section>
+  );
+}
+
+function getPaymentMethodLabel(order) {
+  if (order?.payment_method === 'mobile_money') {
+    const provider = String(order.payment_provider || '').replace('_', ' ').trim();
+    return provider ? provider.toUpperCase() : 'Mobile Money';
+  }
+
+  return order?.payment_method === 'cash' ? 'Cash' : (order?.payment_method || 'Non renseigne');
+}
+
+function orderItemsSignature(order) {
+  return (order?.items ?? [])
+    .map((item) => `${item.plat_id}:${item.quantity}:${item.price_at_order}`)
+    .sort()
+    .join('|');
+}
+
+function hasOrderChanged(previousOrder, nextOrder) {
+  if (!previousOrder || !nextOrder) return true;
+
+  return previousOrder.status !== nextOrder.status
+    || previousOrder.payment_status !== nextOrder.payment_status
+    || Number(previousOrder.total_amount || 0) !== Number(nextOrder.total_amount || 0)
+    || previousOrder.note !== nextOrder.note
+    || previousOrder.updated_at !== nextOrder.updated_at
+    || orderItemsSignature(previousOrder) !== orderItemsSignature(nextOrder);
+}
+
+function rememberActiveOrder(order, tableId, syncUrl = false) {
+  if (!order?.id) return;
+
+  localStorage.setItem(ACTIVE_ORDER_STORAGE_KEY, order.id);
+  localStorage.setItem(ACTIVE_ORDER_STATUS_STORAGE_KEY, order.status);
+  if (order.tracking_code) {
+    localStorage.setItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY, order.tracking_code);
+  }
+
+  if (tableId) {
+    localStorage.setItem(`${ACTIVE_ORDER_BY_TABLE_PREFIX}${tableId}`, order.id);
+  }
+
+  if (syncUrl) {
+    const url = new URL(window.location.href);
+    if (tableId) {
+      url.searchParams.set('table_id', tableId);
+    }
+    url.searchParams.set('order_id', order.id);
+    if (order.tracking_code) {
+      url.searchParams.set('tracking_code', order.tracking_code);
+    }
+    window.history.replaceState({}, '', url.toString());
+  }
+}
+
+function clearRememberedOrder(tableId) {
+  localStorage.removeItem(ACTIVE_ORDER_STORAGE_KEY);
+  localStorage.removeItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
+  localStorage.removeItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY);
+
+  if (tableId) {
+    localStorage.removeItem(`${ACTIVE_ORDER_BY_TABLE_PREFIX}${tableId}`);
+  }
+
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('order_id')) {
+    url.searchParams.delete('order_id');
+    url.searchParams.delete('tracking_code');
+    window.history.replaceState({}, '', url.toString());
+  }
+}
+
+function trackingLink(order, tableId) {
+  const url = new URL(window.location.href);
+  if (tableId) {
+    url.searchParams.set('table_id', tableId);
+  }
+  if (order?.id) {
+    url.searchParams.set('order_id', order.id);
+  }
+  if (order?.tracking_code) {
+    url.searchParams.set('tracking_code', order.tracking_code);
+  }
+  return url.toString();
+}
+
+function OrderRecoverySection({ tableId, activeOrder, notice, onRecovered }) {
+  const [code, setCode] = useState('');
+  const [status, setStatus] = useState({ type: '', message: '' });
+
+  if (activeOrder) return null;
+
+  const recover = async (event) => {
+    event.preventDefault();
+    if (!code.trim()) {
+      setStatus({ type: 'error', message: 'Entrez votre code de suivi.' });
+      return;
+    }
+
+    setStatus({ type: 'loading', message: 'Recherche de votre commande...' });
+    try {
+      const order = await trackOrder({
+        code: code.trim(),
+        table_id: tableId || undefined,
+      });
+      setCode('');
+      setStatus({ type: '', message: '' });
+      onRecovered(order);
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Commande introuvable.' });
+    }
+  };
+
+  return (
+    <section className="order-recovery-section">
+      <div className="container">
+        <form className="order-recovery-card" onSubmit={recover}>
+          <div>
+            <span className="slbl">Commande en cours</span>
+            <h2>Retrouver ma commande</h2>
+            <p>{notice || 'Entrez votre code de suivi pour retrouver votre commande et voir son statut.'}</p>
+          </div>
+          <div className="order-recovery-fields">
+            <input className="fctrl" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Code ex: A7K92B" />
+            <button className="btn-red" type="submit" disabled={status.type === 'loading'}>
+              <i className="fas fa-magnifying-glass"></i>
+              Retrouver
+            </button>
+          </div>
+          {status.message && <div className={`client-alert ${status.type}`}>{status.message}</div>}
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotification, onCancellationModal, onCancelOrder, onEditOrder }) {
   const [connectionState, setConnectionState] = useState(order ? 'Connexion au suivi...' : '');
+  const [cancelling, setCancelling] = useState(false);
+  const [requestingBill, setRequestingBill] = useState(false);
+  const [alertsEnabled, setAlertsEnabled] = useState(() => notificationAudioUnlocked || getNotificationPermission() === 'granted');
+  const [statusBanner, setStatusBanner] = useState(null);
   const lastStatusRef = useRef(null);
   const orderRef = useRef(order);
 
@@ -700,7 +1408,7 @@ function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
 
     channel.listen('.order.placed', (event) => {
       applyOrderUpdate(event.order);
-      setConnectionState('Suivi temps reel active');
+      setConnectionState('Suivi Temps réel active');
     });
 
     channel.listen('.order.status.updated', (event) => {
@@ -709,14 +1417,14 @@ function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
     });
 
     const connector = echo.connector?.pusher?.connection;
-    connector?.bind('connected', () => setConnectionState('Suivi temps reel active'));
-    connector?.bind('unavailable', () => setConnectionState('Connexion temps reel indisponible'));
-    connector?.bind('error', () => setConnectionState('Connexion temps reel a verifier'));
+    connector?.bind('connected', () => setConnectionState('Suivi Temps réel active'));
+    connector?.bind('unavailable', () => setConnectionState('Connexion Temps réel indisponible'));
+    connector?.bind('error', () => setConnectionState('Connexion Temps réel a verifier'));
 
     const pollingId = window.setInterval(() => {
       getOrder(order.id)
         .then((freshOrder) => {
-          if (orderRef.current?.status !== freshOrder.status) {
+          if (hasOrderChanged(orderRef.current, freshOrder)) {
             applyOrderUpdate(freshOrder);
             setConnectionState('Statut synchronise');
           }
@@ -734,7 +1442,7 @@ function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
   useEffect(() => {
     if (!order?.id) return;
 
-    localStorage.setItem(ACTIVE_ORDER_STORAGE_KEY, order.id);
+    rememberActiveOrder(order, tableId);
 
     const storedStatus = localStorage.getItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
     const previousStatus = lastStatusRef.current ?? storedStatus;
@@ -748,24 +1456,106 @@ function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
         message,
       };
 
+      setStatusBanner(notification);
       onStatusNotification(notification);
+      playOrderNotificationSound(notification.type);
       notifyBrowser(title, message);
+      if (order.status === 'cancelled') {
+        onCancellationModal?.(order);
+      }
+      document.getElementById('order-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     lastStatusRef.current = order.status;
-    localStorage.setItem(ACTIVE_ORDER_STATUS_STORAGE_KEY, order.status);
+    rememberActiveOrder(order, tableId);
 
-    if (['paid', 'cancelled'].includes(order.status)) {
-      localStorage.removeItem(ACTIVE_ORDER_STORAGE_KEY);
-      localStorage.removeItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
+    if (order.status === 'cancelled' || order.status === 'delivered') {
+      clearRememberedOrder(tableId);
     }
-  }, [order?.id, order?.status, onStatusNotification]);
+  }, [order?.id, order?.status, order?.payment_status, tableId, onStatusNotification]);
 
   if (!order) return null;
 
   const currentIndex = orderSteps.findIndex((step) => step.key === order.status);
   const isCancelled = order.status === 'cancelled';
   const activeStep = orderSteps[Math.max(currentIndex, 0)];
+  const canClientCancel = order.status === 'pending' && order.payment_status !== 'paid';
+  const canClientEdit = order.status === 'pending' && order.payment_status !== 'paid';
+  const billAlreadyRequested = Boolean(order.latest_payment?.metadata?.bill_requested);
+  const canRequestBill = order.payment_method === 'cash'
+    && order.payment_status !== 'paid'
+    && order.status === 'delivered';
+  const shareUrl = trackingLink(order, tableId);
+
+  const handleCancel = async () => {
+    if (!canClientCancel || cancelling) return;
+    setCancelling(true);
+    try {
+      await onCancelOrder?.(order);
+    } catch (error) {
+      onStatusNotification({
+        type: 'error',
+        title: 'Annulation impossible',
+        message: error.message || "Impossible d'annuler la commande.",
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleEnableAlerts = () => {
+    prepareCustomerNotifications();
+    playOrderNotificationSound('success');
+    setAlertsEnabled(true);
+    onStatusNotification({
+      type: 'success',
+      title: 'Alertes activees',
+      message: 'Vous recevrez un son quand le statut de votre commande change.',
+    });
+  };
+
+  const handleRequestBill = async () => {
+    if (!canRequestBill || requestingBill) return;
+    setRequestingBill(true);
+    try {
+      const response = await requestBill(order.id);
+      onOrderUpdate(response.order);
+      onStatusNotification({
+        type: 'success',
+        title: 'Addition demandee',
+        message: 'Le restaurant a recu votre demande d addition.',
+      });
+      playOrderNotificationSound('success');
+    } catch (error) {
+      onStatusNotification({
+        type: 'error',
+        title: 'Demande impossible',
+        message: error.message || "Impossible de demander l'addition.",
+      });
+    } finally {
+      setRequestingBill(false);
+    }
+  };
+
+  const shareTracking = async () => {
+    const text = [
+      `Suivi de ma commande Restaurant Scan`,
+      `Code: ${order.tracking_code ?? String(order.id).slice(0, 8).toUpperCase()}`,
+      shareUrl,
+    ].join('\n');
+
+    if (navigator.share) {
+      await navigator.share({ title: 'Suivi commande Restaurant Scan', text, url: shareUrl });
+      return;
+    }
+
+    await navigator.clipboard?.writeText(text);
+    onStatusNotification({
+      type: 'success',
+      title: 'Lien copie',
+      message: 'Le lien de suivi a ete copie.',
+    });
+  };
 
   return (
     <section id="order-tracking" className="order-tracking-section">
@@ -783,10 +1573,48 @@ function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
             </div>
           </div>
 
+          {!alertsEnabled && (
+            <div className="order-alerts-box">
+              <div>
+                <strong>Alertes commande</strong>
+                <span>Activez le son et les notifications pour etre prevenu si le statut change.</span>
+              </div>
+              <button type="button" className="order-alert-button clean-btn" onClick={handleEnableAlerts}>
+                <i className="fas fa-volume-high"></i>
+                Activer
+              </button>
+            </div>
+          )}
+
+          {statusBanner && (
+            <div className={`order-status-banner ${statusBanner.type}`}>
+              <div className="order-status-banner-icon">
+                <i className={`fas ${statusBanner.type === 'error' ? 'fa-triangle-exclamation' : 'fa-bell'}`}></i>
+              </div>
+              <div>
+                <strong>{statusBanner.title}</strong>
+                <span>{statusBanner.message}</span>
+              </div>
+              <button type="button" className="clean-btn" onClick={() => setStatusBanner(null)} aria-label="Fermer">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+          )}
+
+          {isCancelled && order.cancellation_reason && (
+            <div className="client-alert error">
+              Motif d'annulation : {order.cancellation_reason}
+            </div>
+          )}
+
           <div className="order-tracker-meta">
             <div>
               <small>Commande</small>
               <strong>#{String(order.id).slice(0, 8).toUpperCase()}</strong>
+            </div>
+            <div>
+              <small>Code suivi</small>
+              <strong>{order.tracking_code ?? 'Non disponible'}</strong>
             </div>
             <div>
               <small>Total</small>
@@ -796,7 +1624,15 @@ function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
               <small>Connexion</small>
               <strong>{connectionState || 'En attente'}</strong>
             </div>
-          </div>
+            <div>
+          <small>Paiement</small>
+          <strong>{paymentStatusLabels[order.payment_status] ?? order.payment_status ?? 'Non confirme'}</strong>
+        </div>
+            <div>
+              <small>Service</small>
+              <strong>{order.order_type === 'remote' ? 'Hors restaurant' : order.order_type === 'takeaway' ? 'A emporter' : 'Sur place'}</strong>
+            </div>
+      </div>
 
           <div className="order-steps">
             {orderSteps.map((step, index) => {
@@ -813,33 +1649,64 @@ function OrderStatusTracker({ order, onOrderUpdate, onStatusNotification }) {
               );
             })}
           </div>
+
+          <div className="order-tracking-share no-print">
+            <span>Gardez ce code pour revenir voir le statut si vous fermez la page.</span>
+            <button className="receipt-share-btn" type="button" onClick={shareTracking}>
+              <i className="fas fa-share-nodes"></i>
+              Partager le suivi
+            </button>
+          </div>
+
+          {canClientCancel && (
+            <div className="d-flex flex-wrap gap-2 no-print">
+              <button className="btn-red" type="button" onClick={() => onEditOrder?.(order)}>
+                <i className="fas fa-pen-to-square"></i>
+                Modifier ma commande
+              </button>
+              <button className="receipt-download-btn" type="button" disabled={cancelling} onClick={handleCancel}>
+                <i className="fas fa-ban"></i>
+                {cancelling ? 'Annulation...' : 'Annuler ma commande'}
+              </button>
+            </div>
+          )}
+
+          {canRequestBill && (
+            <div className="d-flex flex-wrap gap-2 no-print">
+              <button className="receipt-share-btn" type="button" disabled={requestingBill || billAlreadyRequested} onClick={handleRequestBill}>
+                <i className="fas fa-receipt"></i>
+                {billAlreadyRequested ? 'Addition deja demandee' : requestingBill ? 'Demande...' : "Demander l'addition"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
   );
 }
 
-function ReceiptSection({ order }) {
+function ReceiptSection({ order, brand }) {
   const [pdfPreview, setPdfPreview] = useState(null);
 
   useEffect(() => {
-    if (order?.status !== 'paid') return undefined;
+    if (order?.payment_status !== 'paid') return undefined;
 
-    const { doc, filename } = buildReceiptPdf(order);
+    const { doc, filename } = buildReceiptPdf(order, brand);
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     setPdfPreview({ url, filename });
 
     return () => URL.revokeObjectURL(url);
-  }, [order?.id, order?.status]);
+  }, [order?.id, order?.payment_status]);
 
-  if (order?.status !== 'paid') return null;
+  if (order?.payment_status !== 'paid') return null;
 
   const receiptNumber = `ER-${String(order.id).slice(0, 8).toUpperCase()}`;
   const paidAt = order.updated_at ? new Date(order.updated_at) : new Date();
   const items = order.items ?? [];
+  const paymentMethod = getPaymentMethodLabel(order);
 
-  const generatePdf = () => buildReceiptPdf(order);
+  const generatePdf = () => buildReceiptPdf(order, brand);
 
   const downloadPdf = () => {
     const { doc, filename } = generatePdf();
@@ -859,6 +1726,7 @@ function ReceiptSection({ order }) {
       `Recu ${receiptNumber}`,
       `Table: ${order.table?.name ?? 'N/A'}`,
       `Date: ${paidAt.toLocaleString('fr-FR')}`,
+      `Moyen de paiement: ${paymentMethod}`,
       '',
       ...items.map((item) => {
         const name = item.plat?.name ?? 'Plat';
@@ -868,14 +1736,14 @@ function ReceiptSection({ order }) {
       }),
       '',
       `Total: ${formatMoney(order.total_amount, order.currency)}`,
-      'Merci pour votre visite chez E-RESTO.',
+      `Merci pour votre visite chez ${brand?.name || 'Restaurant Scan'}.`,
     ];
 
     const text = lines.join('\n');
 
     if (navigator.share) {
       await navigator.share({
-        title: `Recu E-RESTO ${receiptNumber}`,
+        title: `Recu ${brand?.name || 'Restaurant Scan'} ${receiptNumber}`,
         text,
       });
       return;
@@ -903,10 +1771,10 @@ function ReceiptSection({ order }) {
           <div className="receipt-card" id="paid-receipt">
             <div className="receipt-top">
               <div className="receipt-brand">
-                <img src="/img/logo/e-resto-logo.png" alt="E-RESTO" />
+                <img src={brand?.logo_url || '/img/logo/e-resto-logo.png'} alt={brand?.name || 'Restaurant Scan'} />
                 <div>
-                  <strong>E-RESTO</strong>
-                  <span>Fast Food & Restaurant</span>
+                  <strong>{brand?.name || 'Restaurant Scan'}</strong>
+                  <span>{brand?.slogan || brand?.description || 'Fast Food & Restaurant'}</span>
                 </div>
               </div>
               <div className="receipt-paid">
@@ -935,8 +1803,8 @@ function ReceiptSection({ order }) {
                 <strong>{paidAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong>
               </div>
               <div>
-                <small>Statut</small>
-                <strong>Paiement confirme</strong>
+                <small>Paiement</small>
+                <strong>{paymentMethod}</strong>
               </div>
             </div>
 
@@ -977,8 +1845,8 @@ function ReceiptSection({ order }) {
             </div>
 
             <div className="receipt-footer">
-              <p>Nous esperons vous revoir bientot chez E-RESTO.</p>
-              <span>Recu genere automatiquement par E-RESTO</span>
+              <p>Nous esperons vous revoir bientot chez {brand?.name || 'Restaurant Scan'}.</p>
+              <span>Recu genere automatiquement par Restaurant Scan</span>
             </div>
           </div>
         </div>
@@ -995,7 +1863,7 @@ function ReceiptSection({ order }) {
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <iframe src={pdfPreview.url} title="Reçu PDF E-RESTO"></iframe>
+            <iframe src={pdfPreview.url} title="Reçu PDF Restaurant Scan"></iframe>
             <div className="receipt-pdf-actions">
               <button className="btn-red" onClick={downloadPdf}>
                 <i className="fas fa-download"></i>Télécharger le PDF
@@ -1009,6 +1877,203 @@ function ReceiptSection({ order }) {
       ) : null}
     </section>
   );
+}
+
+function CancelledOrderModal({ order, onClose }) {
+  if (!order) return null;
+
+  return (
+    <div className="order-modal-backdrop">
+      <div className="client-cancel-modal">
+        <div className="cancel-modal-icon"><i className="fas fa-ban"></i></div>
+        <h2>Commande annulee</h2>
+        <p>Votre commande a ete annulee. Voici les details transmis par le restaurant.</p>
+        <div className="cancel-modal-summary">
+          <div><span>Table</span><strong>{order.table?.name || 'Table inconnue'}</strong></div>
+          <div><span>Commande</span><strong>#{String(order.id).slice(0, 8).toUpperCase()}</strong></div>
+          <div><span>Total</span><strong>{formatMoney(order.total_amount, order.currency)}</strong></div>
+          <div><span>Motif</span><strong>{order.cancellation_reason || 'Non precise'}</strong></div>
+        </div>
+        <div className="cancel-modal-items">
+          {(order.items || []).map((item) => (
+            <div key={item.id}>
+              <span>x{item.quantity} {item.plat?.name || 'Plat'}</span>
+              <strong>{formatMoney(Number(item.price_at_order || item.plat?.price || 0) * Number(item.quantity || 0), order.currency)}</strong>
+            </div>
+          ))}
+        </div>
+        <button className="btn-red w-100 justify-content-center" type="button" onClick={onClose}>
+          J'ai compris
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
+  const [step, setStep] = useState(1);
+  const [ratings, setRatings] = useState({ food_rating: 0, service_rating: 0, ordering_rating: 0 });
+  const [recommended, setRecommended] = useState(null);
+  const [comment, setComment] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!order?.id) return;
+    setStep(1);
+    setRatings({ food_rating: 0, service_rating: 0, ordering_rating: 0 });
+    setRecommended(null);
+    setComment('');
+    setError('');
+  }, [order?.id]);
+
+  if (!order) return null;
+
+  const ratingRows = [
+    { key: 'food_rating', icon: 'fa-utensils', label: 'Qualite des plats' },
+    { key: 'service_rating', icon: 'fa-bolt', label: 'Rapidite du service' },
+    { key: 'ordering_rating', icon: 'fa-mobile-screen-button', label: 'Facilite de commande' },
+  ];
+  const canContinue = Object.values(ratings).every((value) => Number(value) > 0);
+
+  const sendFeedback = async () => {
+    if (sending) return;
+    setSending(true);
+    setError('');
+    try {
+      await submitFeedback({
+        order_id: order.id,
+        ...ratings,
+        recommended,
+        comment: comment.trim() || undefined,
+      });
+      onStatus?.({
+        type: 'success',
+        title: 'Merci pour votre avis',
+        message: 'Votre feedback a ete transmis au restaurant.',
+      });
+      onClose(true);
+    } catch (feedbackError) {
+      setError(feedbackError.message || "Impossible d'envoyer le feedback.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="order-modal-backdrop">
+      <div className="feedback-modal">
+        {step === 1 ? (
+          <>
+            <div className="feedback-icon"><i className="fas fa-star"></i></div>
+            <h2>Votre repas etait comment ?</h2>
+            <p>Notez votre experience chez {restaurantName || 'Restaurant Scan'}.</p>
+            <div className="feedback-rating-list">
+              {ratingRows.map((row) => (
+                <div className="feedback-rating-row" key={row.key}>
+                  <span><i className={`fas ${row.icon}`}></i>{row.label}</span>
+                  <div className="feedback-stars">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        type="button"
+                        className={`clean-btn ${ratings[row.key] >= value ? 'active' : ''}`}
+                        onClick={() => setRatings((current) => ({ ...current, [row.key]: value }))}
+                        aria-label={`${value} etoiles`}
+                        key={value}
+                      >
+                        <i className="fas fa-star"></i>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="btn-red w-100 justify-content-center" type="button" disabled={!canContinue} onClick={() => setStep(2)}>
+              Continuer <i className="fas fa-arrow-right"></i>
+            </button>
+            <button className="feedback-skip clean-btn" type="button" onClick={() => onClose(false)}>Passer</button>
+          </>
+        ) : (
+          <>
+            <div className="feedback-icon subtle"><i className="fas fa-comment-dots"></i></div>
+            <h2>Recommanderiez-vous ce restaurant ?</h2>
+            <p>Votre avis aide les autres clients.</p>
+            <div className="recommend-options">
+              <button type="button" className={`clean-btn ${recommended === true ? 'active' : ''}`} onClick={() => setRecommended(true)}>
+                <i className="fas fa-thumbs-up"></i>
+                Oui
+              </button>
+              <button type="button" className={`clean-btn ${recommended === false ? 'active' : ''}`} onClick={() => setRecommended(false)}>
+                <i className="fas fa-thumbs-down"></i>
+                Non
+              </button>
+            </div>
+            <textarea
+              className="fctrl"
+              rows="4"
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+              placeholder="Un commentaire ? Ce que vous avez aime, ce qui pourrait etre ameliore... (optionnel)"
+            />
+            {error && <div className="client-alert error">{error}</div>}
+            <div className="feedback-actions">
+              <button className="receipt-share-btn" type="button" onClick={() => setStep(1)}>Retour</button>
+              <button className="btn-red" type="button" disabled={sending || recommended === null} onClick={sendFeedback}>
+                <i className="fas fa-check"></i>{sending ? 'Envoi...' : 'Envoyer'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function buildClientBrand(restaurant) {
+  const settings = restaurant.settings || {};
+  const theme = restaurant.theme || settings.theme || {};
+  const defaultNames = ['menu digital', 'Restaurant Scan'];
+  const customName = String(settings.app_name || '').trim();
+  const hasCustomBranding = Boolean(
+    restaurant.logo_url
+    || settings.slogan
+    || (customName && !defaultNames.includes(customName.toLowerCase()))
+  );
+
+  return {
+    id: restaurant.id || '',
+    name: hasCustomBranding ? (customName || restaurant.name || 'Restaurant Scan') : 'Restaurant Scan',
+    slug: restaurant.slug || '',
+    logo_url: restaurant.logo_url || '/img/logo/e-resto-logo.png',
+    slogan: hasCustomBranding ? (settings.slogan || restaurant.slogan || '') : 'Menu digital pour restaurant',
+    description: hasCustomBranding ? (settings.description || restaurant.description || 'Menu digital QR code') : 'Scannez, commandez et suivez votre commande avec Restaurant Scan.',
+    owner_phone: restaurant.owner_phone || '',
+    whatsapp_order_phone: settings.whatsapp_order_phone || restaurant.whatsapp_order_phone || restaurant.owner_phone || '',
+    address: restaurant.address || '',
+    city: restaurant.city || '',
+    can_feedback: Boolean(restaurant.can_feedback),
+    can_Réservations: Boolean(restaurant.can_Réservations),
+    can_mobile_money: false,
+    can_chatbot: false,
+    payment_methods: ['cash'],
+    theme: {
+      primary: theme.primary || '#F9A11B',
+      secondary: theme.secondary || '#111111',
+      background: theme.background || '#fff7ef',
+    },
+  };
+}
+
+function canShowFeedbackForOrder(order) {
+  return order?.status === 'delivered'
+    || (order?.order_type === 'takeaway' && order?.status === 'ready');
+}
+
+function applyClientTheme(brand) {
+  const root = document.documentElement;
+  root.style.setProperty('--primary', brand.theme.primary);
+  root.style.setProperty('--secondary', brand.theme.secondary);
+  root.style.setProperty('--client-bg', brand.theme.background);
 }
 
 function getStatusNotificationMessage(status) {
@@ -1029,9 +2094,12 @@ function notifyBrowser(title, message) {
 
   const show = () => {
     if (Notification.permission === 'granted') {
-      new Notification(`E-RESTO - ${title}`, {
+      new Notification(`Restaurant Scan - ${title}`, {
         body: message,
         icon: '/img/logo/e-resto-logo.png',
+        badge: '/img/logo/e-resto-logo.png',
+        requireInteraction: true,
+        vibrate: [160, 80, 160],
       });
     }
   };
@@ -1042,6 +2110,90 @@ function notifyBrowser(title, message) {
   }
 
   show();
+}
+
+function getNotificationPermission() {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission;
+}
+
+function prepareCustomerNotifications() {
+  unlockNotificationAudio();
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => undefined);
+  }
+}
+
+function unlockNotificationAudio() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass || notificationAudioUnlocked) return;
+
+  notificationAudioContext = notificationAudioContext || new AudioContextClass();
+
+  const prime = () => {
+    try {
+      const oscillator = notificationAudioContext.createOscillator();
+      const gain = notificationAudioContext.createGain();
+      gain.gain.value = 0.0001;
+      oscillator.connect(gain);
+      gain.connect(notificationAudioContext.destination);
+      oscillator.start();
+      oscillator.stop(notificationAudioContext.currentTime + 0.03);
+      notificationAudioUnlocked = true;
+    } catch {
+      notificationAudioUnlocked = false;
+    }
+  };
+
+  if (notificationAudioContext.state === 'suspended') {
+    notificationAudioContext.resume().then(prime).catch(() => {
+      notificationAudioUnlocked = false;
+    });
+    return;
+  }
+
+  prime();
+}
+
+function playOrderNotificationSound(type = 'success') {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  notificationAudioContext = notificationAudioContext || new AudioContextClass();
+
+  const play = () => {
+    const now = notificationAudioContext.currentTime;
+    const frequencies = type === 'error' ? [392, 330] : [660, 880, 740];
+
+    frequencies.forEach((frequency, index) => {
+      const oscillator = notificationAudioContext.createOscillator();
+      const gain = notificationAudioContext.createGain();
+      const startAt = now + (index * 0.14);
+      const endAt = startAt + 0.11;
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(0.18, startAt + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+
+      oscillator.connect(gain);
+      gain.connect(notificationAudioContext.destination);
+      oscillator.start(startAt);
+      oscillator.stop(endAt);
+    });
+  };
+
+  if (notificationAudioContext.state === 'suspended') {
+    notificationAudioContext.resume().then(() => {
+      notificationAudioUnlocked = true;
+      play();
+    }).catch(() => undefined);
+    return;
+  }
+
+  play();
 }
 
 function OrderSnackbar({ snackbar, onClose }) {
@@ -1092,93 +2244,6 @@ function OrderSnackbar({ snackbar, onClose }) {
   );
 }
 
-function ReservationSection({ tableId }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', guests: '2', reservation_date: '', reservation_time: '19:00', special_requests: '' });
-  const [status, setStatus] = useState({ type: '', message: '' });
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setStatus({ type: 'loading', message: 'Reservation en cours...' });
-    try {
-      await createReservation({ ...form, table_id: tableId || null, guests: Number(form.guests) });
-      setStatus({ type: 'success', message: "Table reservee ! Nous confirmerons par email." });
-    } catch (error) {
-      setStatus({ type: 'error', message: error.message });
-    }
-  };
-
-  return (
-    <section id="reservation">
-      <div className="container">
-        <SectionTitle eyebrow="Book a Table" title="Make a" highlight="Reservation" description="Reserve your table for a memorable dining experience." />
-        <div className="row g-4 align-items-start">
-          <InfoPanel />
-          <div className="col-lg-8">
-            <form className="fcard" onSubmit={submit}>
-              <div className="row g-3">
-                <FormInput label="Full Name *" value={form.name} onChange={(name) => setForm({ ...form, name })} required />
-                <FormInput label="Phone Number *" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required />
-                <FormInput label="Email Address *" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required />
-                <div className="col-sm-6"><label className="flbl">Number of Guests *</label><input className="fctrl" type="number" min="1" max="50" value={form.guests} onChange={(event) => setForm({ ...form, guests: event.target.value })} /></div>
-                <FormInput label="Date *" type="date" value={form.reservation_date} onChange={(reservation_date) => setForm({ ...form, reservation_date })} required />
-                <FormInput label="Time *" type="time" value={form.reservation_time} onChange={(reservation_time) => setForm({ ...form, reservation_time })} required />
-                <div className="col-12"><label className="flbl">Special Requests</label><textarea className="fctrl" rows="3" value={form.special_requests} onChange={(event) => setForm({ ...form, special_requests: event.target.value })} placeholder="Allergies, dietary needs, special occasions..." /></div>
-                <div className="col-12"><button className="btn-red w-100 justify-content-center" disabled={status.type === 'loading'}><i className="fas fa-calendar-check"></i>Confirm Reservation</button></div>
-              </div>
-              {status.message && <div className={`sucmsg visible ${status.type}`}><i className="fas fa-check-circle"></i><p>{status.message}</p></div>}
-            </form>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ContactSection() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: 'General Inquiry', message: '' });
-  const [status, setStatus] = useState({ type: '', message: '' });
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setStatus({ type: 'loading', message: 'Envoi du message...' });
-    try {
-      await sendContactMessage(form);
-      setForm({ name: '', email: '', phone: '', subject: 'General Inquiry', message: '' });
-      setStatus({ type: 'success', message: "Message envoye ! Nous repondrons rapidement." });
-    } catch (error) {
-      setStatus({ type: 'error', message: error.message });
-    }
-  };
-
-  return (
-    <section id="contact-section">
-      <div className="container">
-        <SectionTitle eyebrow="Get In Touch" title="Contact" highlight="Us" description="Have a question, feedback, or want to plan a special event? We'd love to hear from you." />
-        <div className="row g-4">
-          <div className="col-lg-4"><ContactInfo /></div>
-          <div className="col-lg-8">
-            <form className="fcard" onSubmit={submit}>
-              <div className="row g-3">
-                <FormInput label="Your Name *" value={form.name} onChange={(name) => setForm({ ...form, name })} required />
-                <FormInput label="Email Address *" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required />
-                <FormInput label="Phone Number" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
-                <div className="col-sm-6"><label className="flbl">Subject *</label><select className="fctrl" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })}>{['General Inquiry', 'Catering & Events', 'Feedback', 'Partnership', 'Media & Press'].map((item) => <option key={item}>{item}</option>)}</select></div>
-                <div className="col-12"><label className="flbl">Message *</label><textarea className="fctrl" rows="5" value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} required placeholder="Write your message here..." /></div>
-                <div className="col-12"><button className="btn-red" disabled={status.type === 'loading'}><i className="fas fa-paper-plane"></i>Send Message</button></div>
-              </div>
-              {status.message && <div className={`sucmsg visible ${status.type}`}><i className="fas fa-check-circle"></i><p>{status.message}</p></div>}
-            </form>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FormInput({ label, value, onChange, type = 'text', required = false }) {
-  return <div className="col-sm-6"><label className="flbl">{label}</label><input className="fctrl" type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} /></div>;
-}
-
 function SectionTitle({ eyebrow, title, highlight, description }) {
   return (
     <div className="text-center mb-5">
@@ -1188,75 +2253,4 @@ function SectionTitle({ eyebrow, title, highlight, description }) {
       {description && <p className="sdesc mx-auto section-desc">{description}</p>}
     </div>
   );
-}
-
-function InfoPanel() {
-  return (
-    <div className="col-lg-4">
-      <div className="ctdark">
-        <h4>Contact Info</h4>
-        <p className="ctsub">We're happy to help you plan the perfect dining experience.</p>
-        {[
-          ['clock', 'Opening Hours', 'Wed - Sun, 9 AM - 11 PM'],
-          ['phone-alt', 'Call for Booking', '+243 830376004'],
-          ['users', 'Group Dining', 'Special menus for 10+ guests'],
-          ['map-marker-alt', 'Location', '42 Flavor Street, NY'],
-        ].map(([icon, title, text]) => (
-          <div className="ctitem" key={title}><div className="cticon"><i className={`fas fa-${icon}`}></i></div><div className="ctinfo"><strong>{title}</strong><span>{text}</span></div></div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ContactInfo() {
-  return (
-    <div className="ctdark">
-      <h4>Let's Talk</h4>
-      <p className="ctsub">We typically respond within 2 hours during business hours.</p>
-      {[
-        ['map-marker-alt', 'Address', '42 Flavor Street, Manhattan, New York, NY 10001'],
-        ['phone-alt', 'Phone', '+243 830376004'],
-        ['envelope', 'Email', 'e.resto2025@gmail.com'],
-        ['clock', 'Working Hours', 'Wed - Sun: 9 AM - 11 PM'],
-      ].map(([icon, title, text]) => <div className="ctitem" key={title}><div className="cticon"><i className={`fas fa-${icon}`}></i></div><div className="ctinfo"><strong>{title}</strong><span>{text}</span></div></div>)}
-    </div>
-  );
-}
-
-function DealSection() {
-  return <section id="offer"><div className="container"><div className="offerwrap"><div><span className="slbl">Limited Offer</span><h2>Get 30% Off Today</h2><p>Fresh burgers, crispy chicken and artisan pizza prepared in minutes.</p><a href="#menu" className="btn-red"><i className="fas fa-shopping-cart"></i>Grab the Deal</a></div><img src="/img/off-img.jpg" alt="Special offer" /></div></div></section>;
-}
-
-function GallerySection() {
-  return (
-    <section id="gallery">
-      <div className="container">
-        <SectionTitle eyebrow="Our Gallery" title="Fresh Food" highlight="Moments" />
-        <div className="row g-4">
-          {[1, 2, 3, 4, 5].map((item) => <div className="col-sm-6 col-lg-4" key={item}><div className="gitem"><img src={`/img/portfolio/work${item}.jpg`} alt="" /></div></div>)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ChefsSection() {
-  return <section id="chefs"><div className="container"><SectionTitle eyebrow="Our Team" title="Meet Our Expert" highlight="Chefs" /><div className="row g-4">{[1, 2, 3, 4].map((item) => <div className="col-sm-6 col-lg-3" key={item}><div className="chcard"><img src={`/img/chefs/${item}.jpg`} alt="" /><div className="chbody"><h5>Chef {item}</h5><div className="chrole">Executive Chef</div></div></div></div>)}</div></div></section>;
-}
-
-function TestimonialsSection() {
-  return <section id="testimonials"><div className="container"><SectionTitle eyebrow="Testimonials" title="Happy Customer" highlight="Reviews" /><div className="row g-4">{[1, 2, 3].map((item) => <div className="col-md-4" key={item}><div className="tcard"><div className="tstars">★★★★★</div><p>Fantastic food, fast service and beautiful experience.</p><div className="tauth"><img src={`/img/testimonial/${item}.jpg`} alt="" /><div><strong>Customer {item}</strong><span>Food lover</span></div></div></div></div>)}</div></div></section>;
-}
-
-function BlogSection() {
-  return <section id="blog"><div className="container"><SectionTitle eyebrow="News & Updates" title="Our Latest" highlight="Blog Posts" /><div className="row g-4">{[1, 2, 3].map((item) => <div className="col-md-6 col-lg-4" key={item}><div className="blcard"><div className="blimg"><img src={`/img/blog/${item}.jpg`} alt="" /></div><div className="blbody"><div className="bltag">Food & Health</div><div className="bltit"><a href="#">Healthy Fast Food and Fresh Ideas</a></div><a href="#" className="blmore">Read More <i className="fas fa-arrow-right"></i></a></div></div></div>)}</div></div></section>;
-}
-
-function NewsletterSection() {
-  return <section id="newsletter"><div className="nlbg"></div><div className="container"><div className="nlw text-center"><span className="slbl" style={{ color: 'rgba(255,255,255,.7)' }}>Stay Connected</span><h2 className="mb-3" style={{ color: '#fff' }}>Subscribe & Get Exclusive <span style={{ color: 'var(--secondary)' }}>Deals</span></h2><p className="mb-4" style={{ color: 'rgba(255,255,255,.78)' }}>Get 15% off your first order plus early access to new menu items</p><div className="nl-form-wrap"><input className="nlinput" type="email" placeholder="Enter your email address..." /><button className="nlbtn"><i className="fas fa-paper-plane me-1"></i>Subscribe</button></div></div></div></section>;
-}
-
-function Footer() {
-  return <footer><div className="container"><div className="row g-5"><div className="col-lg-4"><div className="footer-brand"><img src="/img/logo/e-resto-logo.png" alt="E-RESTO" /><div className="fnm">E-<span>RESTO</span></div></div><p className="fdesc">We bring the world's finest flavors together in a fast, friendly, and affordable experience.</p></div><div className="col-sm-6 col-lg-2"><div className="ftit">Quick Links</div><ul className="flinks ps-0"><li><a href="#hero"><i className="fas fa-chevron-right"></i>Home</a></li><li><a href="#menu"><i className="fas fa-chevron-right"></i>Our Menu</a></li><li><a href="#reservation"><i className="fas fa-chevron-right"></i>Reservation</a></li></ul></div><div className="col-lg-4"><div className="ftit">Get In Touch</div><div className="fci"><div className="fciico"><i className="fas fa-map-marker-alt"></i></div><div className="fciinfo"><strong>Address</strong>42 Flavor Street, Manhattan, NY 10001</div></div></div></div></div><div className="fbot"><div className="container"><p>&copy; 2026 <span>E-RESTO Restaurant</span>. All Rights Reserved.</p></div></div></footer>;
 }

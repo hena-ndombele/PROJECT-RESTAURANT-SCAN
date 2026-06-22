@@ -16,13 +16,10 @@ class SendOtpMail extends Mailable
         $this->otp = $otp;
     }
 
-      public function build()
+    public function build()
     {
-        return $this->view('emails.otp')
-                    ->with(['otp' => $this->otp])
-                    ->attach(public_path('assets/logo.png'), [
-                        'as' => 'logo.png',
-                        'mime' => 'image/png',
-                    ]);
+        return $this->subject('Code de vérification Restaurant Scan')
+                    ->view('emails.otp')
+                    ->with(['otp' => $this->otp]);
     }
 }

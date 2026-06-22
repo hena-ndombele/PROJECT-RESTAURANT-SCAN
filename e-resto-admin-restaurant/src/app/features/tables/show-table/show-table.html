@@ -1,0 +1,67 @@
+@if (tableDetail; as detail) {
+<button type="button"
+        class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
+        style="width: 35px; height: 35px; border: 2px solid var(--bs-secondary); background-color: transparent;"
+        data-bs-toggle="modal"
+        [attr.data-bs-target]="'#showTableModal' + detail.id">
+    <i class="ti ti-eye fs-4"></i>
+</button>
+
+<div class="modal fade table-qr-modal" id="showTableModal{{detail.id}}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered table-qr-dialog">
+        <div class="modal-content table-qr-content shadow-lg">
+            <div class="modal-header table-qr-header">
+                <h5 class="modal-title">TABLE DETAILS</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body table-qr-body">
+                <div [id]="'printArea' + detail.id" class="qr-print-card scan-order-card">
+                    <div class="scan-brand-badge">
+                        <img [src]="restaurantLogo()" [alt]="restaurantName()">
+                    </div>
+
+                    <h2>SCAN TO ORDER</h2>
+
+                    <div class="scan-frame">
+                        <span class="scan-corner corner-tl"></span>
+                        <span class="scan-corner corner-tr"></span>
+                        <span class="scan-corner corner-bl"></span>
+                        <span class="scan-corner corner-br"></span>
+
+                        <div class="qr-container">
+                            @if (detail.qr_url) {
+                                <img [src]="tableQrUrl(detail)" alt="QR Code" class="main-table-qr">
+                                <div class="qr-center-logo">
+                                    <img [src]="restaurantLogo()" [alt]="restaurantName()">
+                                </div>
+                            } @else {
+                                <div class="qr-empty">QR code indisponible</div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="table-name-preview">{{ detail.name }}</div>
+                </div>
+            </div>
+
+            <div class="modal-footer table-qr-footer">
+                <button type="button"
+                        class="btn qr-print-action"
+                        [disabled]="!detail.qr_url"
+                        (click)="printQRCode()">
+                    <i class="ti ti-printer"></i>
+                    <span>PRINT QR CODE</span>
+                </button>
+                <button type="button"
+                        class="btn qr-download-action"
+                        [disabled]="!detail.qr_url"
+                        (click)="downloadQRCode()">
+                    <i class="ti ti-download"></i>
+                    <span>TELECHARGER PNG</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+}

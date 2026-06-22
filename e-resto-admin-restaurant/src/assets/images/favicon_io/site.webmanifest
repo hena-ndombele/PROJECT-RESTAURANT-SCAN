@@ -1,0 +1,24 @@
+{
+  "name": "Restaurant Scan",
+  "short_name": "Restaurant Scan",
+  "description": "Espace restaurant pour gerer menu QR, commandes, tables et revenus.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#111318",
+  "background_color": "#111318",
+  "icons": [
+    {
+      "src": "/assets/logo/e-resto-logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/logo/e-resto-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

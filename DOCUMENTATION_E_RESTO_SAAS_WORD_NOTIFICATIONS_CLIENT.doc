@@ -1,0 +1,204 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>E-RESTO SaaS - Notifications client avec son</title>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.45; color: #111827; }
+h1 { color: #0f766e; }
+h2 { color: #111827; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
+pre { background: #f3f4f6; padding: 10px; border-radius: 4px; }
+code { background: #f3f4f6; padding: 1px 4px; }
+</style>
+</head>
+<body>
+<h1>E-RESTO SaaS - Notifications client avec son</h1>
+<p>Complement de documentation ajoute parce que le fichier Word principal etait verrouille au moment de la modification.</p>
+
+<h2>Inscription restaurant en wizard</h2>
+<p>L'inscription restaurant est organisee en deux etapes.</p>
+<pre>Etape 1 : informations personnelles
+=> email proprietaire
+=> mot de passe
+=> confirmation du mot de passe
+=> bouton afficher/masquer le mot de passe
+=> indicateur de force du mot de passe avec 4 barres et libelle dynamique
+
+Etape 2 : informations restaurant
+=> nom du restaurant
+=> nom du proprietaire
+=> telephone
+=> ville
+=> devise par defaut</pre>
+<p>La devise reste la devise par defaut du restaurant. Les statistiques et rapports continuent de separer les revenus par devise quand des commandes existent en CDF et USD.</p>
+<h2>Parametres restaurant et personnalisation client</h2>
+<p>Le back-office Angular contient maintenant un menu Parametres. Le restaurant peut modifier son logo, son nom, le proprietaire, le telephone, l'adresse, la ville, la devise, le slogan, les couleurs du menu client, le slug public, le lien Google Maps et la description courte.</p>
+<p>Ces donnees sont sauvegardees dans le profil restaurant Laravel. Le menu public renvoie le branding au client QR, puis l'application client applique automatiquement le logo, le nom, le slogan, la description et les couleurs.</p>
+<p>La page Parametres respecte le design general du dashboard. Elle reste claire par defaut et passe en fond sombre uniquement quand le theme sombre du dashboard est active.</p>
+<p>La personnalisation du menu client est reservee aux plans Pro et Business. Le backend bloque aussi les modifications de logo, couleurs, slogan, description, slug public et lien Google Maps pour les plans non autorises.</p>
+<h2>Demande d'addition cash</h2>
+<p>Si le client a choisi le paiement cash, il peut demander l'addition uniquement apres que le restaurant a marque la commande comme servie. Le backend marque le paiement avec bill_requested, recharge les donnees fraiches du paiement et diffuse l'evenement en Temps réel. Le dashboard commandes joue un son et ouvre automatiquement un modal avec la table, le client, le numero de commande, les plats et le total.</p>
+<h2>Annulation client avec modal automatique</h2>
+<p>Quand une commande est annulee, l'application client joue le son, affiche un toast et ouvre un modal avec la table, la commande, le total, les plats et le motif d'annulation.</p>
+<h2>Modification de commande avec ajout de plats</h2>
+<p>Tant que la commande est en attente et non payee, le client peut modifier la commande, fermer le panier, ajouter d'autres plats depuis le menu, puis enregistrer la modification.</p>
+
+<h2>Flow notification client QR</h2>
+<p>Dans l'application client QR, le suivi de commande notifie le client quand le statut change.</p>
+<p>Le client recoit :</p>
+<ul>
+<li>une notification visuelle dans l'application ;</li>
+<li>une notification navigateur si l'autorisation est accordee ;</li>
+<li>un son court de notification.</li>
+<li>une banniere persistante dans le suivi de commande quand le statut change.</li>
+</ul>
+
+<h2>Preparation des permissions</h2>
+<p>Au premier clic, toucher ou clavier dans l'application, le client QR prepare :</p>
+<pre>permission Notification navigateur
+deverrouillage audio navigateur</pre>
+<p>Dans le suivi de commande, un bouton <code>Activer les alertes</code> permet aussi au client d'autoriser clairement le son.</p>
+<pre>Client appuie sur Activer les alertes
+=> notification navigateur preparee
+=> audio deverrouille
+=> son de test joue
+=> prochains changements de statut avec son</pre>
+<p>Quand le statut change apres une reprise de commande, le client voit une mise a jour visible dans le bloc Suivi de commande, un scroll automatique vers le suivi, un toast en bas de page, le son de notification et la notification navigateur si elle est autorisee.</p>
+
+<h2>Application ouverte ou en arriere-plan</h2>
+<pre>Changement de statut commande
+=> notification visuelle
+=> notification navigateur si autorisee
+=> son de notification si le navigateur l'autorise</pre>
+
+<p>Cela fonctionne quand l'application est ouverte ou quand l'onglet reste ouvert en arriere-plan, selon les limites du navigateur et du telephone.</p>
+
+<h2>Application completement fermee</h2>
+<p>Si l'application est completement fermee, un navigateur ne permet pas de jouer librement un son JavaScript.</p>
+<p>Pour recevoir une notification dans ce cas, il faut ajouter un vrai systeme Web Push/PWA :</p>
+<pre>Service Worker
+Push subscription
+backend qui stocke les subscriptions
+backend qui envoie le push lors du changement de statut
+notification systeme affichee par le telephone</pre>
+<p>Le son dans ce cas depend souvent du systeme d'exploitation et du navigateur, pas directement du code de l'application.</p>
+<h2>Reprise du suivi apres fermeture accidentelle</h2>
+<p>Si le client quitte l'application par erreur puis rescane le QR code avec le meme telephone et le meme navigateur, l'application tente de restaurer automatiquement la commande en cours.</p>
+<p>Le client QR garde le dernier <code>order_id</code> actif, le dernier statut connu et l'association <code>table_id =&gt; order_id</code>.</p>
+<p>Apres creation ou modification de commande, l'URL est enrichie :</p>
+<pre>/?table_id=UUID_TABLE&amp;order_id=UUID_COMMANDE</pre>
+<p>Au prochain chargement, l'application cherche dans cet ordre :</p>
+<pre>1. order_id present dans l'URL
+2. order_id memorise pour cette table
+3. dernier order_id actif global</pre>
+<p>Ensuite elle appelle <code>GET /api/orders/{order_id}</code>. Si la commande existe encore, le suivi se reactive et affiche le statut actuel.</p>
+<p>Limite : si le client change de telephone, change de navigateur ou efface les donnees du navigateur, l'application ne peut pas deviner sa commande. Il faudra ajouter plus tard une recherche par code court, numero de telephone ou lien envoye par SMS/WhatsApp.</p>
+<h2>Reprise par code court, telephone et lien partageable</h2>
+<p>Le backend genere maintenant un code court unique sur chaque commande, par exemple <code>A7K92B</code>.</p>
+<p>Le client QR affiche ce code dans le suivi de commande. Le client peut garder le code, partager le lien via le partage natif du telephone comme WhatsApp, ou revenir plus tard et entrer son code ou son numero de telephone.</p>
+<pre>/?table_id=UUID_TABLE&amp;order_id=UUID_COMMANDE&amp;tracking_code=A7K92B</pre>
+<p>Endpoint public de reprise :</p>
+<pre>GET /api/orders/track?code=A7K92B
+GET /api/orders/track?phone=+243...
+GET /api/orders/track?code=A7K92B&amp;table_id=UUID_TABLE</pre>
+<p>Flow principal recommande et securise :</p>
+<pre>Client ferme l'application
+=> rescane le QR code avec le meme telephone/navigateur
+=> l'application retrouve order_id dans localStorage
+=> elle recharge la commande exacte
+=> suivi Temps réel se reactive
+=> le client voit le statut actuel
+=> les prochains changements declenchent son + toast + banniere de suivi</pre>
+<p>Important : le QR de table seul ne restaure plus une commande existante. Si une autre personne scanne le meme QR avec un autre telephone, elle ne doit pas voir la commande du premier client.</p>
+<p>Le code court et le telephone servent de secours si le client change de telephone, change de navigateur, efface les donnees localStorage, doit retrouver une commande sans contexte fiable ou si plusieurs commandes actives existent sur la meme table.</p>
+<h2>Plusieurs commandes sur la meme table</h2>
+<p>Si plusieurs clients commandent chacun avec son telephone sur la meme table, il peut y avoir plusieurs commandes actives avec le meme <code>table_id</code>.</p>
+<p>Dans ce cas, et meme s'il n'y a qu'une seule commande active, le backend ne restaure plus une commande avec <code>table_id</code> seul.</p>
+<pre>Client scanne le QR de la table avec un autre telephone
+=> l'application affiche le menu
+=> elle affiche aussi Retrouver ma commande
+=> le client doit entrer son code de suivi ou son telephone
+=> sa commande exacte est restauree</pre>
+<pre>Pour proteger les clients, le QR de table seul ne restaure pas une commande existante.
+Entrez le code de suivi ou le numero de telephone.</pre>
+<p>Les commandes annulees ou deja servies ne sont pas restaurees par cet endpoint.</p>
+<p>Correction importante : la reprise automatique par QR seul est desactivee pour eviter d'afficher la commande d'un autre client sur la meme table.</p>
+<h2>Statuts sans retour en arriere</h2>
+<p>Le restaurant ne peut plus faire revenir une commande a un statut precedent.</p>
+<pre>pending
+=> preparing
+=> ready
+=> delivered</pre>
+<p>Exemples bloques :</p>
+<pre>preparing => pending
+ready => preparing
+delivered => ready
+delivered => preparing
+delivered => pending</pre>
+<p>Quand une commande est <code>delivered</code>, elle ne peut plus revenir en arriere.</p>
+<h2>Modal caisse cash</h2>
+<p>Dans le dashboard, le bouton Cash n'encaisse plus directement. Il ouvre un modal caisse professionnel.</p>
+<pre>Restaurant clique Cash
+=> modal caisse s'ouvre
+=> total a payer affiche
+=> caissier entre le montant recu
+=> application calcule la monnaie a rendre
+=> si montant recu &lt; total, confirmation bloquee
+=> caissier confirme
+=> payment_status = paid
+=> payment metadata stocke received_amount et change_amount
+=> recu cash imprimable s'ouvre
+=> statistiques mises a jour</pre>
+<p>Le recu cash contient la table, le numero de commande, les articles, quantites, prix, total, montant recu, monnaie rendue et moyen de paiement cash.</p>
+<h2>Commandes dashboard, rapports PDF et devises</h2>
+<p>La page commandes du dashboard Angular utilise maintenant une disposition en cartes. Quand une nouvelle commande arrive, le dashboard joue un son et affiche un modal Nouvelle commande avec un bouton Voir la commande.</p>
+<p>Chaque carte affiche la table, le total, la devise, le statut commande, le statut paiement et l'heure. Le nom client, le nombre d'articles et la note cuisine ne sont plus affiches dans la card afin de garder la liste lisible. Ils sont visibles dans le modal detail.</p>
+<p>Le numero ou nom de la table est affiche en gras dans chaque card pour etre le premier repere visuel.</p>
+<p>Le bouton oeil est fonce pour etre visible et ouvrir rapidement les informations completes.</p>
+<p>Un bouton avec icone oeil ouvre le detail complet de la commande dans un modal : client, telephone, email, code de suivi, articles, quantites, prix, total, paiement, statut et note.</p>
+<p>Le modal detail garde le meme design professionnel que le reste de la page : en-tete commande/table, badges statut commande et paiement, infos client, articles commandes, note cuisine et total.</p>
+<p>La page permet de filtrer par jour, mois, annee, statut commande et recherche rapide. Le filtre statut est aussi disponible sous forme d'onglets avec compteurs : Toutes, Nouvelles, En preparation, Pretes, Servies et Annulees.</p>
+<p>La liste affiche une pagination en bas des cards des qu'il y a des commandes, avec page courante, nombre total de pages et nombre de commandes filtrees.</p>
+<p>Le mode sombre couvre aussi la page commandes : cards, filtres, onglets, pagination, modals, encaissement cash et detail commande.</p>
+<p>Quand une nouvelle commande arrive, le dashboard joue un son et affiche automatiquement un modal Nouvelle commande avec le client, la table, le nombre d'articles, le total, les plats commandes et un bouton Voir la commande.</p>
+<p>Le select de statut bloque les retours en arriere. Ordre autorise :</p>
+<pre>pending => preparing => ready => delivered</pre>
+<p>Une commande delivered ne peut plus revenir a un statut precedent.</p>
+<h3>Rapports PDF selon le plan</h3>
+<p>La generation de rapport PDF est disponible uniquement pour les plans Pro, Enterprise, ou les plans dont les features contiennent Rapport/Report. Si le plan ne donne pas droit au PDF, le bouton est grise.</p>
+<p>Le rapport contient les commandes filtrees et les revenus payes groupes par devise. La generation utilise l'impression navigateur afin de sauvegarder en PDF.</p>
+<h3>Statistiques par devise</h3>
+<p>Le dashboard ne melange plus les revenus CDF et USD dans un seul montant. Les revenus journaliers, mensuels et annuels sont affiches par devise.</p>
+<h2>Commande a emporter et feedback client</h2>
+<p>Le client qui scanne une table peut choisir le mode de service avant d'envoyer son panier : Sur place ou A emporter.</p>
+<p>Si le client choisit A emporter, la commande reste liee a la table scannee pour le suivi et le restaurant voit le badge A emporter dans la liste des commandes, le modal nouvelle commande, le modal detail et le modal addition. Le telephone du client est demande pour que le restaurant puisse identifier la commande a recuperer.</p>
+<pre>client scanne le QR code
+client ajoute des plats
+client choisit Sur place ou A emporter
+client envoie la commande
+dashboard recoit la commande en Temps réel avec son + modal
+restaurant prepare
+restaurant passe les statuts jusqu'a Servie
+client recoit le suivi et peut donner son avis</pre>
+<p>Pour une commande sur place, apres le statut Servie, l'application client affiche automatiquement un modal de feedback. Pour une commande A emporter, le feedback peut s'afficher des que la commande passe a Prete, car le client vient recuperer sa commande et peut evaluer l'experience de commande/retrait.</p>
+<p>Le feedback est accepte uniquement si la commande est servie, ou si elle est prete avec order_type = takeaway. Une meme commande ne cree pas plusieurs avis : l'avis existant est mis a jour.</p>
+<p>Dans e-resto-Angular, le menu Feedbacks affiche le nombre d'avis, la note moyenne, le taux de recommandation, les filtres, la table, la reference commande, les notes et le commentaire.</p>
+<p>Le module Feedback est reserve aux plans Pro, Business et Enterprise. Si le restaurant est sur Free Demo ou Starter, le backend refuse l'envoi, le dashboard affiche un message d'upgrade et le client ne declenche pas le modal feedback.</p>
+<h2>Réservations professionnelles</h2>
+<p>Le client ouvre le menu QR ou le menu public, remplit nom, telephone, email, nombre de personnes, date, heure et demande speciale. Le backend cree une reservation en statut pending.</p>
+<p>Le restaurant voit la demande dans le dashboard Réservations. Il peut confirmer, annuler, installer le client, terminer la reservation ou marquer no-show.</p>
+<pre>pending : demande recue
+confirmed : reservation acceptee, table bloquee
+seated : client installe, table occupee
+completed : reservation terminee, table disponible
+cancelled : reservation annulee avec motif
+no_show : client non venu</pre>
+<p>Dans e-resto-client, le client voit que sa demande est envoyee au restaurant et qu'elle doit etre confirmee. Une reference courte est affichee apres envoi.</p>
+<p>Dans e-resto-Angular, le restaurant peut filtrer par date/statut, rechercher, voir le detail, ajouter une note interne et changer le statut.</p>
+<p>Un client peut reserver depuis la maison avec le lien public du restaurant : https://votre-domaine-client/?restaurant_slug=slug-du-restaurant. Sans table_id et sans restaurant_slug, l'application ne sait pas a quel restaurant envoyer la reservation, donc le bouton est bloque.</p>
+<h2>Support client SaaS</h2>
+<p>Le support doit etre gere en deux niveaux : support du restaurant vers E-RESTO et support du client final vers le restaurant.</p>
+<p>Le restaurant cree un ticket dans Support pour les sujets techniques, paiements, abonnements, bugs ou configuration. Statuts recommandes : open, in_progress, waiting_customer, resolved, closed.</p>
+<p>Le client final contacte le restaurant via Contact, telephone ou WhatsApp. Si le probleme est technique, le restaurant escalade vers E-RESTO.</p>
+<p>Free/Starter : support email ou communautaire. Pro : support standard avec tickets. Business/Enterprise : support prioritaire, onboarding et SLA.</p>
+</body>
+</html>

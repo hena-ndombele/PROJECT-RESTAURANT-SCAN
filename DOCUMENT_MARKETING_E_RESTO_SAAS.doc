@@ -1,0 +1,368 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>E-RESTO SaaS - Document Marketing</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111318;
+  line-height: 1.55;
+  background: #ffffff;
+}
+.page {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 34px;
+}
+.hero {
+  color: #ffffff;
+  padding: 46px 42px;
+  border-radius: 18px;
+  background: #111318;
+}
+.hero table {
+  width: 100%;
+}
+.logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #ffffff;
+}
+.eyebrow {
+  color: #ff9f1a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 12px 0 12px;
+  font-size: 42px;
+  line-height: 1.05;
+}
+h2 {
+  margin: 36px 0 12px;
+  color: #111318;
+  font-size: 28px;
+  line-height: 1.15;
+}
+h3 {
+  margin: 16px 0 8px;
+  font-size: 18px;
+}
+p {
+  margin: 0 0 12px;
+  color: #4b5563;
+}
+.hero p {
+  color: #e5e7eb;
+  font-size: 16px;
+}
+.cta {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 12px 18px;
+  color: #111318;
+  background: #ff9f1a;
+  border-radius: 8px;
+  font-weight: 900;
+  text-decoration: none;
+}
+.image-wide {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin: 18px 0;
+}
+.image-side {
+  width: 100%;
+  max-height: 230px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.grid {
+  width: 100%;
+  border-spacing: 14px;
+  margin: 8px -14px 0;
+}
+.card {
+  vertical-align: top;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+.card.highlight {
+  border-color: #ff9f1a;
+  background: #fff7ed;
+}
+.card h3 {
+  color: #111318;
+}
+.badge {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 6px;
+  color: #9a3412;
+  background: #fff7ed;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.dark-band {
+  margin-top: 28px;
+  padding: 28px;
+  color: #ffffff;
+  border-radius: 16px;
+  background: #111318;
+}
+.dark-band p {
+  color: #d1d5db;
+}
+.list {
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+.list li {
+  margin: 8px 0;
+  padding-left: 22px;
+  color: #374151;
+}
+.list li:before {
+  content: "✓";
+  margin-left: -22px;
+  margin-right: 8px;
+  color: #ff7a1a;
+  font-weight: 900;
+}
+.plans {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+.plans th,
+.plans td {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+.plans th {
+  color: #111318;
+  background: #fff7ed;
+}
+.price {
+  color: #d71920;
+  font-size: 22px;
+  font-weight: 900;
+}
+.footer {
+  margin-top: 36px;
+  padding: 22px;
+  border-radius: 14px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff7a1a, #d71920);
+}
+.footer p {
+  color: #ffffff;
+}
+.small {
+  color: #6b7280;
+  font-size: 12px;
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <section class="hero">
+    <table>
+      <tr>
+        <td style="width: 92px;"><img class="logo" src="e-resto-Angular/src/assets/logo/e-resto-logo.png" alt="E-RESTO"></td>
+        <td>
+          <div class="eyebrow">Plateforme SaaS restaurant</div>
+          <h1>E-RESTO transforme votre restaurant en service digital moderne</h1>
+          <p>Un menu QR code, des commandes en Temps réel, des paiements Mobile Money, un assistant intelligent et des outils de fidelisation pour faire revenir vos clients.</p>
+          <span class="cta">Démarrer avec Restaurant Scan</span>
+        </td>
+      </tr>
+    </table>
+  </section>
+
+  <img class="image-wide" src="e-resto-Angular/src/assets/landing/pricing-menu-digital-bg.png" alt="Menu digital E-RESTO">
+
+  <h2>Pourquoi les restaurants choisissent E-RESTO</h2>
+  <p>Les clients veulent commander vite, payer simplement et suivre leur commande sans attendre. Les restaurants veulent gagner du temps, reduire les erreurs, mieux organiser le service et augmenter leurs ventes. E-RESTO reunit tout cela dans une seule plateforme professionnelle.</p>
+
+  <table class="grid">
+    <tr>
+      <td class="card">
+        <span class="badge">Menu QR</span>
+        <h3>Un menu digital accessible instantanement</h3>
+        <p>Chaque table possede son QR code. Le client scanne, consulte le menu, choisit ses plats et envoie sa commande sans installer d'application.</p>
+      </td>
+      <td class="card">
+        <span class="badge">Temps réel</span>
+        <h3>Des commandes visibles immediatement</h3>
+        <p>Le restaurant recoit les commandes en Temps réel avec notification sonore, statut cuisine et suivi complet.</p>
+      </td>
+      <td class="card">
+        <span class="badge">Paiement</span>
+        <h3>Cash et Mobile Money</h3>
+        <p>Encaissement cash, M-Pesa, Orange Money et Airtel Money selon le plan choisi. Le dashboard suit les paiements et revenus.</p>
+      </td>
+    </tr>
+  </table>
+
+  <h2>Une experience simple pour le client</h2>
+  <table class="grid">
+    <tr>
+      <td style="width: 42%;"><img class="image-side" src="e-resto-Angular/src/assets/landing/qr-scan-phone.png" alt="Scan QR code"></td>
+      <td class="card">
+        <h3>Le client scanne, commande et suit</h3>
+        <ul class="list">
+          <li>Scan du QR code de table ou ouverture du lien public.</li>
+          <li>Consultation du menu avec photos, prix et categories.</li>
+          <li>Commande sur place ou a emporter.</li>
+          <li>Suivi du statut : recue, en preparation, prete, servie.</li>
+          <li>Recu disponible apres paiement confirme.</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+
+  <h2>Un dashboard professionnel pour le restaurant</h2>
+  <p>Le dashboard E-RESTO donne au restaurant les outils essentiels pour piloter son activite au quotidien.</p>
+  <table class="grid">
+    <tr>
+      <td class="card">
+        <h3>Gestion operationnelle</h3>
+        <p>Plats, categories, tables, commandes, utilisateurs, Réservations et feedbacks sont regroupes dans un espace clair.</p>
+      </td>
+      <td class="card">
+        <h3>Statistiques utiles</h3>
+        <p>Suivi des commandes, revenus par devise, plats les plus commandes, activite du jour et performance globale.</p>
+      </td>
+      <td class="card">
+        <h3>Controle par abonnement</h3>
+        <p>Chaque plan active les bonnes fonctionnalites : Starter, Pro ou Business. Le restaurant sait ce qui est inclus.</p>
+      </td>
+    </tr>
+  </table>
+
+  <div class="dark-band">
+    <h2 style="color:#ffffff; margin-top:0;">Assistant Intelligent et chatbot</h2>
+    <p>Les plans Pro et Business incluent un assistant intelligent pour ameliorer l'experience client. Le client peut demander des recommandations, retrouver une commande, choisir selon son budget ou obtenir une aide rapide.</p>
+    <table class="grid" style="margin-top:12px;">
+      <tr>
+        <td class="card highlight">
+          <h3>Chatbot client</h3>
+          <p>Disponible dans le menu QR pour conseiller les plats, expliquer le menu et guider le client jusqu'a la commande.</p>
+        </td>
+        <td class="card highlight">
+          <h3>Assistant dashboard</h3>
+          <p>Avec Business, le restaurant obtient un copilote pour comprendre ses ventes, son plan, ses QR codes et ses performances.</p>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <h2>Fidelisation client</h2>
+  <p>E-RESTO ne sert pas seulement a recevoir des commandes. La plateforme aide aussi le restaurant a faire revenir ses clients grace a des programmes de fidelite.</p>
+  <table class="grid">
+    <tr>
+      <td class="card">
+        <h3>Points</h3>
+        <p>Le client gagne des points apres chaque commande payee ou servie.</p>
+      </td>
+      <td class="card">
+        <h3>Tampons</h3>
+        <p>Exemple : 10 commandes validees donnent droit a une boisson ou un plat offert.</p>
+      </td>
+      <td class="card">
+        <h3>Coupons</h3>
+        <p>Le restaurant peut creer des offres : anniversaire, happy hour, clients inactifs ou clients fideles.</p>
+      </td>
+    </tr>
+  </table>
+
+  <h2>Plans SaaS proposes</h2>
+  <table class="plans">
+    <tr>
+      <th>Plan</th>
+      <th>Prix</th>
+      <th>Ideal pour</th>
+      <th>Fonctionnalites fortes</th>
+    </tr>
+    <tr>
+      <td><strong>Starter</strong></td>
+      <td><span class="price">15 USD/mois</span></td>
+      <td>Restaurants qui demarrent avec un menu QR simple.</td>
+      <td>Menu digital, commandes, cash, tables QR, support standard.</td>
+    </tr>
+    <tr>
+      <td><strong>Pro</strong></td>
+      <td><span class="price">25 USD/mois</span></td>
+      <td>Restaurants qui veulent automatiser leur service.</td>
+      <td>Mobile Money, Réservations, feedback, statistiques, chatbot client, personnalisation.</td>
+    </tr>
+    <tr>
+      <td><strong>Business</strong></td>
+      <td><span class="price">30 USD/mois</span></td>
+      <td>Restaurants structures, equipes et multi-sites.</td>
+      <td>Tout Pro, assistant dashboard, roles, permissions, Support dedié, multi-restaurants.</td>
+    </tr>
+  </table>
+
+  <h2>Le parcours ideal avec E-RESTO</h2>
+  <table class="grid">
+    <tr>
+      <td class="card">
+        <span class="badge">1</span>
+        <h3>Creation du compte</h3>
+        <p>Le restaurant choisit son plan, cree son compte et active son abonnement.</p>
+      </td>
+      <td class="card">
+        <span class="badge">2</span>
+        <h3>Configuration du menu</h3>
+        <p>Ajout des categories, plats, prix, photos, tables et QR codes.</p>
+      </td>
+      <td class="card">
+        <span class="badge">3</span>
+        <h3>Premier service digital</h3>
+        <p>Les clients commandent depuis leur telephone et le restaurant gere tout depuis le dashboard.</p>
+      </td>
+    </tr>
+  </table>
+
+  <img class="image-wide" src="e-resto-Angular/src/assets/landing/cta-chef-bg.png" alt="Restaurant moderne">
+
+  <h2>Messages commerciaux prets a utiliser</h2>
+  <table class="grid">
+    <tr>
+      <td class="card highlight">
+        <h3>Pour les restaurants</h3>
+        <p>Digitalisez votre service, reduisez les erreurs de commande, gagnez du temps et donnez a vos clients une experience moderne.</p>
+      </td>
+      <td class="card highlight">
+        <h3>Pour les clients</h3>
+        <p>Scannez, choisissez, commandez, payez et suivez votre commande depuis votre telephone.</p>
+      </td>
+    </tr>
+  </table>
+
+  <section class="footer">
+    <h2 style="color:#ffffff; margin-top:0;">E-RESTO, le menu digital qui aide les restaurants a vendre plus</h2>
+    <p>Une seule plateforme pour gerer le menu, les commandes, les paiements, les statistiques, l'assistant intelligent et la fidelite client.</p>
+    <p><strong>Contact :</strong> e.resto2025@gmail.com | WhatsApp : +243 830376004</p>
+  </section>
+
+  <p class="small">Document marketing Word-compatible genere pour E-RESTO SaaS. Les images proviennent des assets du projet.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<div class="feedback-page container-fluid py-4 bg-light min-vh-100">
+  <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div class="d-flex align-items-center">
+      <div class="page-icon me-3"><i class="bi bi-star-fill"></i></div>
+      <div>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
+            <li class="breadcrumb-item">Restaurant Scan</li>
+            <li class="breadcrumb-item active text-primary">FEEDBACK</li>
+          </ol>
+        </nav>
+        <h1 class="h3 mb-0 fw-bold text-dark">Avis clients</h1>
+      </div>
+    </div>
+    <button class="btn btn-outline-secondary" type="button" (click)="loadFeedbacks()">
+      <i class="bi bi-arrow-clockwise me-1"></i> Actualiser
+    </button>
+  </header>
+
+  @if (upgradeRequired()) {
+    <section class="upgrade-card mb-4">
+      <div class="upgrade-icon"><i class="bi bi-lock-fill"></i></div>
+      <div>
+        <h2>Feedback reservé aux plans Pro et Business</h2>
+        <p>Les avis clients font partie des outils de qualité et fidelisation avancés. Passez sur Pro ou Business pour collecter, analyser et suivre les retours clients.</p>
+      </div>
+    </section>
+  } @else {
+    <section class="feedback-summary mb-4">
+      <article>
+        <span>Avis recus</span>
+        <strong>{{ filteredFeedbacks().length }}</strong>
+        <small>Selon les filtres actifs</small>
+      </article>
+      <article>
+        <span>Note moyenne</span>
+        <strong>{{ averageScore() | number:'1.1-1' }}/5</strong>
+        <small>Plats, service et commande</small>
+      </article>
+      <article>
+        <span>Recommandation</span>
+        <strong>{{ recommendRate() }}%</strong>
+        <small>Clients qui recommandent</small>
+      </article>
+    </section>
+  }
+
+  <div class="card border-0 shadow-sm mb-4" *ngIf="!upgradeRequired()">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small fw-bold text-muted text-uppercase">Recommandation</label>
+          <select class="form-select bg-transparent" [ngModel]="recommendationFilter()" (ngModelChange)="recommendationFilter.set($event)">
+            <option value="all">Tous</option>
+            <option value="yes">Recommande</option>
+            <option value="no">Ne recommande pas</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold text-muted text-uppercase">Note minimale</label>
+          <select class="form-select bg-transparent" [ngModel]="minRating()" (ngModelChange)="minRating.set(+$event)">
+            <option [value]="0">Toutes</option>
+            <option [value]="3">3 étoiles et plus</option>
+            <option [value]="4">4 étoiles et plus</option>
+            <option [value]="5">5 étoiles</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold text-muted text-uppercase">Recherche</label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+            <input class="form-control bg-transparent" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Table, client, commentaire...">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-outline-secondary w-100" type="button" (click)="recommendationFilter.set('all'); minRating.set(0); searchTerm.set('')">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-danger border-0 shadow-sm" *ngIf="errorMessage() && !upgradeRequired()">{{ errorMessage() }}</div>
+
+  @if (!upgradeRequired()) {
+    @if (loading()) {
+      <div class="feedback-loading">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted fw-medium">Chargement des avis...</p>
+      </div>
+    } @else {
+      <div class="card border-0 shadow-sm feedback-table-card">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0 feedback-table">
+            <thead>
+              <tr>
+                <th>Table</th>
+                <th>Commande</th>
+                <th>Note moyenne</th>
+                <th>Plats</th>
+                <th>Service</th>
+                <th>Commande QR</th>
+                <th>Recommandation</th>
+                <th>Date</th>
+                <th class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (feedback of filteredFeedbacks(); track feedback.id) {
+                <tr>
+                  <td><strong>{{ tableName(feedback) }}</strong></td>
+                  <td>{{ orderRef(feedback) }}</td>
+                  <td><span class="rating-pill">{{ averageRating(feedback) | number:'1.1-1' }}/5</span></td>
+                  <td>{{ feedback.food_rating }}/5</td>
+                  <td>{{ feedback.service_rating }}/5</td>
+                  <td>{{ feedback.ordering_rating }}/5</td>
+                  <td>
+                    <span class="recommend-badge" [class.no]="feedback.recommended === false">
+                      {{ recommendationLabel(feedback) }}
+                    </span>
+                  </td>
+                  <td>{{ feedback.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="text-end">
+                    <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="selectedFeedback.set(feedback)" title="Voir le detail">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="9" class="text-center py-5">
+                    <i class="bi bi-chat-square-heart empty-icon"></i>
+                    <h5>Aucun avis pour le moment</h5>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+
+  @if (selectedFeedback(); as feedback) {
+    <div class="feedback-modal-backdrop">
+      <div class="feedback-detail-modal">
+        <div class="feedback-modal-hero">
+          <div>
+            <span>{{ orderRef(feedback) }}</span>
+            <h2>{{ tableName(feedback) }}</h2>
+            <p>{{ feedback.created_at | date:'dd MMM yyyy HH:mm' }}</p>
+          </div>
+          <button class="btn btn-light" type="button" (click)="closeModal()"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-grid">
+            <div><span>Note moyenne</span><strong>{{ averageRating(feedback) | number:'1.1-1' }}/5</strong></div>
+            <div><span>Recommandation</span><strong>{{ recommendationLabel(feedback) }}</strong></div>
+            <div><span>Qualité plats</span><strong>{{ feedback.food_rating }}/5</strong></div>
+            <div><span>Rapidité service</span><strong>{{ feedback.service_rating }}/5</strong></div>
+            <div><span>Facilité commande</span><strong>{{ feedback.ordering_rating }}/5</strong></div>
+            <div><span>Total commande</span><strong>{{ feedback.order?.total_amount || 0 }} {{ feedback.order?.currency || '' }}</strong></div>
+          </div>
+
+          <div class="feedback-comment mt-3">
+            <strong>Commentaire client</strong>
+            <p>{{ feedback.comment || 'Aucun commentaire.' }}</p>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 justify-content-end">
+          <button class="btn btn-secondary" type="button" (click)="closeModal()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

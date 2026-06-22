@@ -1,0 +1,302 @@
+﻿@if (!token()) {
+  <main class="auth-page">
+    <section class="auth-visual">
+      <div class="brand large"><img class="brand-logo" src="assets/restaurant-scan.png" alt="Restaurant Scan"><strong>Restaurant Scan</strong></div>
+      <div>
+        <span class="eyebrow">Administration SaaS</span>
+        <h1>Pilotez toute la plateforme depuis un espace unique.</h1>
+        <p>Restaurants, abonnements, paiements, utilisateurs et roles reunis dans une console professionnelle.</p>
+      </div>
+    </section>
+    <section class="auth-panel">
+      <form class="auth-card" (ngSubmit)="loginStep() === 'credentials' ? login() : verifyOtp()">
+        <span class="eyebrow">Acces securise</span>
+        <h2>{{ loginStep() === 'credentials' ? 'Connexion administrateur' : 'Verification OTP' }}</h2>
+        <p>{{ loginStep() === 'credentials' ? 'Utilisez votre compte Restaurant Scan pour continuer.' : 'Entrez le code a 5 chiffres recu par email.' }}</p>
+        @if (loginStep() === 'credentials') {
+          <label>Adresse email<input [(ngModel)]="loginForm.email" name="email" type="email" required autocomplete="email"></label>
+          <label>Mot de passe<input [(ngModel)]="loginForm.password" name="password" type="password" required autocomplete="current-password"></label>
+        } @else {
+          <div class="otp-box">
+            <label>Code de vérification</label>
+            <div class="otp-inputs">
+              <input *ngFor="let digit of otpDigits; let index = index" [value]="digit" (input)="setOtpDigit($event, index)" (keydown)="handleOtpKeydown($event, index)" inputmode="numeric" maxlength="1" required>
+            </div>
+            <small>Nous avons envoyé un code à 5 chiffres à {{ loginForm.email }}.</small>
+          </div>
+          <div class="otp-actions">
+            <button type="button" class="text-btn" (click)="resendAdminOtp()" [disabled]="otpResending()">{{ otpResending() ? 'Renvoi...' : 'Renvoyer le code' }}</button>
+            <button type="button" class="text-btn" (click)="loginStep.set('credentials')">Changer de compte</button>
+          </div>
+        }
+        <div class="notice success" *ngIf="message()">{{ message() }}</div>
+        <div class="notice error" *ngIf="error()">{{ error() }}</div>
+        <button class="btn primary full" [disabled]="authLoading()">
+          {{ authLoading() ? 'Veuillez patienter...' : loginStep() === 'credentials' ? 'Se connecter' : 'Verifier et continuer' }}
+        </button>
+      </form>
+    </section>
+  </main>
+} @else {
+  <main class="admin-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#"><img class="brand-logo" src="assets/restaurant-scan.png" alt="Restaurant Scan"><span><strong>Restaurant Scan</strong><small>Administration</small></span></a>
+      <nav>
+        <button type="button" [class.active]="activeTab() === 'dashboard'" (click)="setTab('dashboard')"><i class="bi bi-grid-1x2-fill"></i><span>Vue générale</span></button>
+        <button type="button" [class.active]="activeTab() === 'restaurants'" (click)="setTab('restaurants')"><i class="bi bi-shop-window"></i><span>Restaurants</span></button>
+        <button type="button" [class.active]="activeTab() === 'payments'" (click)="setTab('payments')"><i class="bi bi-credit-card-fill"></i><span>Paiements</span></button>
+        <span class="nav-label">Administration</span>
+        <button type="button" [class.active]="activeTab() === 'users'" (click)="setTab('users')"><i class="bi bi-people-fill"></i><span>Utilisateurs</span></button>
+        <button type="button" [class.active]="activeTab() === 'roles'" (click)="setTab('roles')"><i class="bi bi-person-badge-fill"></i><span>Roles</span></button>
+        <button type="button" [class.active]="activeTab() === 'contacts'" (click)="setTab('contacts')"><i class="bi bi-envelope-fill"></i><span>Contacts</span></button>
+        <button type="button" [class.active]="activeTab() === 'newsletter'" (click)="setTab('newsletter')"><i class="bi bi-newspaper"></i><span>Newsletter</span></button>
+        <button type="button" [class.active]="activeTab() === 'support'" (click)="setTab('support')"><i class="bi bi-headset"></i><span>Support</span></button>
+        <button type="button" [class.active]="activeTab() === 'audit'" (click)="setTab('audit')"><i class="bi bi-shield-check"></i><span>Audit</span></button>
+      </nav>
+      <button class="logout-side" type="button" (click)="logout()"><i class="bi bi-box-arrow-left"></i><span>Deconnexion</span></button>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div class="page-title">
+          <img class="page-logo" src="assets/restaurant-scan.png" alt="Restaurant Scan">
+          <div>
+            <span class="eyebrow">Restaurant Scan</span>
+            <h1>{{ activeTab() === 'dashboard' ? 'Vue generale' : activeTab() | titlecase }}</h1>
+            <p>Gerez la plateforme, les comptes et les abonnements depuis un seul espace.</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="btn ghost" (click)="refreshCurrentView()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i>Actualiser</button>
+          <div class="user-chip"><span>{{ userInitials() }}</span><div><strong>{{ userName() }}</strong><small>{{ currentUser()?.email }}</small></div></div>
+        </div>
+      </header>
+
+      <div class="notice success" *ngIf="message()"><i class="bi bi-check-circle-fill"></i>{{ message() }}</div>
+      <div class="notice error" *ngIf="error()"><i class="bi bi-exclamation-triangle-fill"></i>{{ error() }}</div>
+
+      @if (activeTab() === 'dashboard') {
+        <section class="metrics">
+          <article><i class="bi bi-shop"></i><span>Total restaurants</span><strong>{{ metrics().total }}</strong><small>Tous les comptes SaaS</small></article>
+          <article><i class="bi bi-box-seam"></i><span>Restaurants Starter</span><strong>{{ metrics().starter }}</strong><small>Plan Starter inscrit</small></article>
+          <article><i class="bi bi-gem"></i><span>Restaurants Pro</span><strong>{{ metrics().pro }}</strong><small>Plan Pro inscrit</small></article>
+          <article><i class="bi bi-buildings"></i><span>Restaurants Business</span><strong>{{ metrics().business }}</strong><small>Plan Business inscrit</small></article>
+        </section>
+        <section class="panel dashboard-stats-panel">
+          <div class="panel-head"><div><span class="eyebrow">Statistiques restaurants</span><h2>Etat global des restaurants</h2></div><button class="text-btn" (click)="setTab('restaurants')">Voir les restaurants</button></div>
+          <div class="restaurant-stat-grid">
+            <article *ngFor="let stat of restaurantStats()" [class]="stat.tone">
+              <div><strong>{{ stat.value }}</strong><span>{{ stat.label }}</span></div>
+              <div class="stat-progress"><span [style.width.%]="stat.percent"></span></div>
+              <small>{{ stat.percent }}% du parc restaurant</small>
+            </article>
+            <article>
+              <div><strong>{{ formatMoney(metrics().revenue, 'USD') }}</strong><span>Revenu abonnement ce mois</span></div>
+              <div class="stat-progress"><span style="width: 100%"></span></div>
+              <small>Paiements d'abonnements confirmes</small>
+            </article>
+          </div>
+        </section>
+        <section class="dashboard-analytics">
+          <div class="panel-head"><div><span class="eyebrow">Graphique</span><h2>Restaurants par plan</h2></div><small>{{ metrics().total }} restaurant(s) inscrit(s)</small></div>
+          <div class="analytics-grid">
+            <article class="panel chart-card revenue-card">
+              <div class="chart-card-head"><div><h3>Plan Breakdown</h3><p>Compare par type d'abonnement</p></div><i class="bi bi-bar-chart-fill"></i></div>
+              <div class="combo-chart">
+                <aside class="chart-summary">
+                  <span>Total</span><strong>{{ metrics().total }}</strong>
+                  <small>Restaurants inscrits</small>
+                </aside>
+                <div class="chart-scale"><span>{{ metrics().total }}</span><span>0</span></div>
+                <div class="chart-plot">
+                  <svg viewBox="0 0 300 130" preserveAspectRatio="none" aria-hidden="true">
+                    <polyline [attr.points]="chartLinePoints()" fill="none" stroke="#d71920" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                  </svg>
+                  <article *ngFor="let item of chartBars()" [class]="item.tone">
+                    <div class="combo-bar"><span [style.height.%]="item.height"></span></div>
+                    <strong>{{ item.value }}</strong>
+                    <small>{{ item.label }}</small>
+                  </article>
+                </div>
+              </div>
+            </article>
+            <article class="panel chart-card segment-card">
+              <div class="chart-card-head"><div><h3>Segments</h3><p>Repartition des plans</p></div><i class="bi bi-pie-chart-fill"></i></div>
+              <div class="segment-chart" [style.background]="segmentGradient()"></div>
+              <div class="segment-legend">
+                <span *ngFor="let item of planDistribution()" [class]="item.tone"><i></i>{{ item.label }} <strong>{{ item.percent }}%</strong></span>
+              </div>
+            </article>
+          </div>
+        </section>
+      }
+
+      @if (activeTab() === 'restaurants') {
+        <section class="panel">
+          <div class="panel-head">
+            <div><span class="eyebrow">Gestion des comptes</span><h2>Restaurants inscrits</h2></div>
+            <div class="filters">
+              <input [ngModel]="search()" (ngModelChange)="search.set($event); restaurantPage.set(1)" placeholder="Rechercher un restaurant...">
+              <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); restaurantPage.set(1)">
+                <option value="all">Tous les statuts</option><option value="trial">Essai</option><option value="active">Actif</option><option value="past_due">En retard</option><option value="suspended">Suspendu</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Restaurant</th><th>Email</th><th>Telephone</th><th>Plan</th><th>Tables</th><th>Commandes</th><th>Statut</th><th>Actions</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let restaurant of paginatedRestaurants()">
+                  <td><strong>{{ restaurant.name }}</strong><span>{{ restaurant.owner_name || 'Responsable N/A' }}</span></td>
+                  <td>{{ restaurant.owner_email }}</td>
+                  <td>{{ restaurant.owner_phone || 'Telephone N/A' }}</td>
+                  <td>{{ restaurant.plan?.name || 'Sans plan' }}</td>
+                  <td>{{ restaurant.tables_count || 0 }}</td>
+                  <td>{{ restaurant.orders_count || 0 }}</td>
+                  <td><em class="status" [class]="restaurant.status">{{ statusLabel(restaurant.status) }}</em></td>
+                  <td class="actions">
+                    <button class="action-btn show" title="Voir" (click)="showRestaurantDetails(restaurant)"><i class="bi bi-eye-fill"></i><span>Voir</span></button>
+                    <button class="switch-btn" [class.on]="restaurant.status !== 'suspended'" (click)="toggleRestaurant(restaurant)" [title]="restaurant.status === 'suspended' ? 'Activer' : 'Desactiver'"><span></span></button>
+                    <button class="action-btn danger" title="Supprimer" (click)="deleteRestaurant(restaurant)"><i class="bi bi-trash3"></i><span>Supprimer</span></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <footer class="pagination">
+            <span>{{ filteredRestaurants().length }} restaurant(s)</span>
+            <div><button (click)="changeRestaurantPage(restaurantPage() - 1)" [disabled]="restaurantPage() === 1">Precedent</button><strong>Page {{ restaurantPage() }} / {{ restaurantPages() }}</strong><button (click)="changeRestaurantPage(restaurantPage() + 1)" [disabled]="restaurantPage() === restaurantPages()">Suivant</button></div>
+          </footer>
+        </section>
+      }
+
+      @if (activeTab() === 'payments') {
+        <section class="panel">
+          <div class="panel-head"><div><span class="eyebrow">Transactions</span><h2>Paiements abonnements</h2></div><select [ngModel]="paymentFilter()" (ngModelChange)="paymentFilter.set($event); loadPayments()"><option value="all">Tous</option><option value="paid">Payes</option><option value="pending">En attente</option><option value="failed">Echoues</option></select></div>
+          <div class="table-wrap"><table><thead><tr><th>Restaurant</th><th>Reference</th><th>Methode</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody><tr *ngFor="let payment of payments()"><td>{{ payment.restaurant?.name || 'Restaurant supprime' }}</td><td>{{ payment.reference || '-' }}</td><td>{{ payment.provider || payment.method || '-' }}</td><td>{{ formatMoney(payment.amount, payment.currency) }}</td><td><em class="status" [class]="payment.status">{{ statusLabel(payment.status) }}</em></td><td>{{ payment.paid_at || payment.created_at | date:'dd/MM/yyyy HH:mm' }}</td></tr></tbody></table></div>
+        </section>
+      }
+
+      @if (activeTab() === 'users') {
+        <section class="panel">
+          <div class="panel-head"><div><span class="eyebrow">Comptes internes</span><h2>Utilisateurs</h2></div><button class="btn primary" (click)="openUserModal()"><i class="bi bi-person-plus"></i>Creer un compte</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Utilisateur</th><th>Email</th><th>Telephone</th><th>Roles</th></tr></thead><tbody><tr *ngFor="let user of users()"><td><strong>{{ user.first_name }} {{ user.last_name }}</strong></td><td>{{ user.email }}</td><td>{{ user.phone_number }}</td><td>{{ user.roles?.length ? user.roles?.[0]?.name : 'Sans role' }}</td></tr></tbody></table></div>
+        </section>
+      }
+
+      @if (activeTab() === 'roles') {
+        <section class="panel">
+          <div class="panel-head"><div><span class="eyebrow">Controle des acces</span><h2>Roles</h2></div><button class="btn primary" (click)="openRoleModal()"><i class="bi bi-plus-lg"></i>Nouveau role</button></div>
+          <div class="role-grid"><article class="role-card" *ngFor="let role of roles()"><div><i class="bi bi-person-badge"></i><h3>{{ role.name }}</h3><p>{{ role.permissions?.length || 0 }} permission(s)</p></div><div><button class="icon-btn" (click)="openRoleModal(role)"><i class="bi bi-pencil-square"></i></button><button class="icon-btn danger" (click)="deleteRole(role)"><i class="bi bi-trash3"></i></button></div></article></div>
+        </section>
+      }
+
+      @if (activeTab() === 'contacts') {
+        <section class="panel">
+          <div class="panel-head"><div><span class="eyebrow">Messages clients</span><h2>Contacts landing page</h2></div><button class="btn ghost" type="button" (click)="loadContacts()"><i class="bi bi-arrow-clockwise"></i>Actualiser</button></div>
+          <div class="filters admin-filters">
+            <input [ngModel]="contactSearch()" (ngModelChange)="contactSearch.set($event)" placeholder="Recherche nom, sujet, message...">
+            <input [ngModel]="contactEmail()" (ngModelChange)="contactEmail.set($event)" placeholder="Filtrer par email">
+            <input type="date" [ngModel]="contactDate()" (ngModelChange)="contactDate.set($event)">
+            <select [ngModel]="contactMonth()" (ngModelChange)="contactMonth.set($event)"><option value="">Mois</option><option *ngFor="let month of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="month">{{ month }}</option></select>
+            <input type="number" min="2020" max="2100" [ngModel]="contactYear()" (ngModelChange)="contactYear.set($event)" placeholder="Annee">
+            <button class="btn primary" type="button" (click)="applyContactFilters()">Filtrer</button>
+            <button class="btn ghost" type="button" (click)="resetContactFilters()">Reset</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Client</th><th>Email</th><th>Telephone</th><th>Sujet</th><th>Message</th><th>Date</th></tr></thead><tbody><tr *ngFor="let item of contacts()"><td><strong>{{ item.name }}</strong></td><td>{{ item.email }}</td><td>{{ item.phone || '-' }}</td><td>{{ item.subject || '-' }}</td><td class="message-cell">{{ item.message }}</td><td>{{ item.created_at | date:'dd/MM/yyyy HH:mm' }}</td></tr></tbody></table></div>
+          <footer class="pagination"><span>{{ contactPagination().total }} message(s)</span><div><button (click)="changeContactPage(contactPage() - 1)" [disabled]="contactPage() === 1">Precedent</button><strong>Page {{ contactPagination().current_page }} / {{ contactPagination().last_page }}</strong><button (click)="changeContactPage(contactPage() + 1)" [disabled]="contactPage() === contactPagination().last_page">Suivant</button></div></footer>
+        </section>
+      }
+
+      @if (activeTab() === 'newsletter') {
+        <section class="panel">
+          <div class="panel-head"><div><span class="eyebrow">Emails enregistres</span><h2>Newsletter</h2></div><button class="btn ghost" type="button" (click)="loadNewsletterSubscribers()"><i class="bi bi-arrow-clockwise"></i>Actualiser</button></div>
+          <div class="filters admin-filters">
+            <input [ngModel]="newsletterSearch()" (ngModelChange)="newsletterSearch.set($event)" placeholder="Recherche email, source, statut...">
+            <input [ngModel]="newsletterEmail()" (ngModelChange)="newsletterEmail.set($event)" placeholder="Filtrer par email">
+            <input type="date" [ngModel]="newsletterDate()" (ngModelChange)="newsletterDate.set($event)">
+            <select [ngModel]="newsletterMonth()" (ngModelChange)="newsletterMonth.set($event)"><option value="">Mois</option><option *ngFor="let month of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="month">{{ month }}</option></select>
+            <input type="number" min="2020" max="2100" [ngModel]="newsletterYear()" (ngModelChange)="newsletterYear.set($event)" placeholder="Annee">
+            <button class="btn primary" type="button" (click)="applyNewsletterFilters()">Filtrer</button>
+            <button class="btn ghost" type="button" (click)="resetNewsletterFilters()">Reset</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Email</th><th>Source</th><th>Statut</th><th>Date inscription</th></tr></thead><tbody><tr *ngFor="let item of newsletterSubscribers()"><td><strong>{{ item.email }}</strong></td><td>{{ item.source || '-' }}</td><td><em class="status" [class]="item.status">{{ item.status || '-' }}</em></td><td>{{ item.subscribed_at || item.created_at | date:'dd/MM/yyyy HH:mm' }}</td></tr></tbody></table></div>
+          <footer class="pagination"><span>{{ newsletterPagination().total }} email(s)</span><div><button (click)="changeNewsletterPage(newsletterPage() - 1)" [disabled]="newsletterPage() === 1">Precedent</button><strong>Page {{ newsletterPagination().current_page }} / {{ newsletterPagination().last_page }}</strong><button (click)="changeNewsletterPage(newsletterPage() + 1)" [disabled]="newsletterPage() === newsletterPagination().last_page">Suivant</button></div></footer>
+        </section>
+      }
+
+      @if (activeTab() === 'support') {
+        <section class="content-grid"><article class="panel" *ngFor="let group of [['Messages', support().contact_messages], ['Feedbacks', support().feedbacks], ['Reservations', support().reservations]]"><div class="panel-head"><h2>{{ group[0] }}</h2></div><div class="support-item" *ngFor="let item of group[1]"><strong>{{ item.name || item.username || item.restaurant?.name || 'Client' }}</strong><span>{{ item.email || item.phone || item.status || '' }}</span><p>{{ item.message || item.comment || 'Aucun message' }}</p></div></article></section>
+      }
+
+      @if (activeTab() === 'audit') {
+        <section class="panel"><div class="panel-head"><div><span class="eyebrow">TraÃ§abilite</span><h2>Activite plateforme</h2></div></div><div class="audit-item" *ngFor="let event of auditEvents()"><div><strong>{{ event.title }}</strong><span>{{ event.subject }}</span></div><em class="status" [class]="event.status">{{ statusLabel(event.status) }}</em><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></section>
+      }
+    </section>
+  </main>
+}
+
+@if (restaurantModalOpen()) {
+  <div class="modal-backdrop" (click)="restaurantModalOpen.set(false)">
+    <section class="modal-card wide" (click)="$event.stopPropagation()">
+      <header><div><span class="eyebrow">{{ restaurantForm.id ? 'Modification' : 'Nouveau compte' }}</span><h2>{{ restaurantForm.id ? 'Modifier le restaurant' : 'Creer un restaurant' }}</h2></div><button class="close-btn" (click)="restaurantModalOpen.set(false)">Ã—</button></header>
+      <form (ngSubmit)="saveRestaurant()">
+        <div class="form-grid"><label>Nom restaurant<input [(ngModel)]="restaurantForm.name" name="restaurant_name" required></label><label>Responsable<input [(ngModel)]="restaurantForm.owner_name" name="owner_name" required></label><label>Email propriétaire<input [(ngModel)]="restaurantForm.owner_email" name="owner_email" type="email" required></label><label>Telephone<input [(ngModel)]="restaurantForm.owner_phone" name="owner_phone"></label><label>Ville<input [(ngModel)]="restaurantForm.city" name="city"></label><label>Devise<select [(ngModel)]="restaurantForm.currency" name="currency"><option value="CDF">CDF</option><option value="USD">USD</option></select></label><label>Statut<select [(ngModel)]="restaurantForm.status" name="status"><option value="trial">Essai</option><option value="active">Actif</option><option value="past_due">En retard</option><option value="suspended">Suspendu</option></select></label><label>Plan<select [(ngModel)]="restaurantForm.saas_plan_id" name="saas_plan_id"><option *ngFor="let plan of plans()" [value]="plan.id">{{ plan.name }}</option></select></label></div>
+        <label *ngIf="!restaurantForm.id">Mot de passe initial<input [(ngModel)]="restaurantForm.owner_password" name="owner_password" placeholder="Eresto@2026 par defaut"></label>
+        <div class="reset-box" *ngIf="restaurantForm.id"><label>Nouveau mot de passe propriétaire<input [(ngModel)]="ownerPassword" name="reset_password" placeholder="Minimum 6 caracteres"></label><button type="button" class="btn ghost" (click)="resetOwnerPassword()">Reinitialiser</button></div>
+        <footer><button type="button" class="btn ghost" (click)="restaurantModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">{{ saving() ? 'Enregistrement...' : 'Enregistrer' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (restaurantDetails()) {
+  <div class="modal-backdrop" (click)="restaurantDetails.set(null)">
+    <section class="modal-card wide details-modal" (click)="$event.stopPropagation()">
+      <header><div><span class="eyebrow">Restaurant</span><h2>{{ restaurantDetails()?.name }}</h2></div><button class="close-btn" (click)="restaurantDetails.set(null)">×</button></header>
+      <div class="details-grid">
+        <article><span>Responsable</span><strong>{{ restaurantDetails()?.owner_name || '-' }}</strong></article>
+        <article><span>Email</span><strong>{{ restaurantDetails()?.owner_email || '-' }}</strong></article>
+        <article><span>Telephone</span><strong>{{ restaurantDetails()?.owner_phone || '-' }}</strong></article>
+        <article><span>Ville</span><strong>{{ restaurantDetails()?.city || '-' }}</strong></article>
+        <article><span>Pays</span><strong>{{ restaurantDetails()?.country || '-' }}</strong></article>
+        <article><span>Devise</span><strong>{{ restaurantDetails()?.currency || '-' }}</strong></article>
+        <article><span>Plan</span><strong>{{ restaurantDetails()?.plan?.name || 'Sans plan' }}</strong></article>
+        <article><span>Statut</span><strong>{{ statusLabel(restaurantDetails()?.status) }}</strong></article>
+        <article><span>Tables</span><strong>{{ restaurantDetails()?.tables_count || 0 }}</strong></article>
+        <article><span>Commandes</span><strong>{{ restaurantDetails()?.orders_count || 0 }}</strong></article>
+      </div>
+      <footer><button type="button" class="btn ghost" (click)="restaurantDetails.set(null)">Fermer</button></footer>
+    </section>
+  </div>
+}
+
+@if (restaurantConfirmation()) {
+  <div class="modal-backdrop" (click)="restaurantConfirmation.set(null)">
+    <section class="modal-card confirm-modal" [class.danger]="restaurantConfirmation()?.tone === 'danger'" [class.warning]="restaurantConfirmation()?.tone === 'warning'" (click)="$event.stopPropagation()">
+      <header>
+        <div class="confirm-icon"><i [class]="restaurantConfirmation()?.tone === 'danger' ? 'bi bi-trash3-fill' : 'bi bi-shield-exclamation'"></i></div>
+        <div><span class="eyebrow">Confirmation</span><h2>{{ restaurantConfirmation()?.title }}</h2></div>
+        <button class="close-btn" (click)="restaurantConfirmation.set(null)">×</button>
+      </header>
+      <p>{{ restaurantConfirmation()?.message }}</p>
+      <footer>
+        <button type="button" class="btn ghost" (click)="restaurantConfirmation.set(null)">Annuler</button>
+        <button type="button" class="btn primary" [class.danger-btn]="restaurantConfirmation()?.tone === 'danger'" (click)="confirmRestaurantAction()">{{ restaurantConfirmation()?.confirmText }}</button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (userModalOpen()) {
+  <div class="modal-backdrop" (click)="userModalOpen.set(false)"><section class="modal-card" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Utilisateur</span><h2>Creer un compte</h2></div><button class="close-btn" (click)="userModalOpen.set(false)">Ã—</button></header><form (ngSubmit)="saveUser()"><label>Prenom<input [(ngModel)]="userForm.first_name" name="first_name" required></label><label>Nom<input [(ngModel)]="userForm.last_name" name="last_name" required></label><label>Email<input [(ngModel)]="userForm.email" name="user_email" type="email" required></label><label>Telephone<input [(ngModel)]="userForm.phone_number" name="phone_number" required></label><label>Mot de passe<input [(ngModel)]="userForm.password" name="user_password" type="password"></label><label>Role<select [(ngModel)]="userForm.role" name="role"><option value="">Sans role</option><option *ngFor="let role of roles()" [value]="role.name">{{ role.name }}</option></select></label><footer><button type="button" class="btn ghost" (click)="userModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Creer le compte</button></footer></form></section></div>
+}
+
+@if (planModalOpen()) {
+  <div class="modal-backdrop" (click)="planModalOpen.set(false)"><section class="modal-card wide" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Plan</span><h2>{{ planForm.id ? 'Modifier le plan' : 'Nouveau plan' }}</h2></div><button class="close-btn" (click)="planModalOpen.set(false)">Ã—</button></header><form (ngSubmit)="savePlan()"><div class="form-grid"><label>Nom<input [(ngModel)]="planForm.name" name="plan_name" required></label><label>Slug<input [(ngModel)]="planForm.slug" name="plan_slug" required></label><label>Prix mensuel<input [(ngModel)]="planForm.monthly_price" name="monthly_price" type="number" min="0"></label><label>Devise<select [(ngModel)]="planForm.currency" name="plan_currency"><option value="USD">USD</option><option value="CDF">CDF</option></select></label><label>Tables maximum<input [(ngModel)]="planForm.max_tables" name="max_tables" type="number" min="1"></label><label>Utilisateurs maximum<input [(ngModel)]="planForm.max_users" name="max_users" type="number" min="1"></label></div><label>Description<textarea [(ngModel)]="planForm.description" name="plan_description"></textarea></label><label>Fonctionnalites<textarea [(ngModel)]="planForm.features" name="features" placeholder="Une fonctionnalite par ligne"></textarea></label><footer><button type="button" class="btn ghost" (click)="planModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Enregistrer</button></footer></form></section></div>
+}
+
+@if (roleModalOpen()) {
+  <div class="modal-backdrop" (click)="roleModalOpen.set(false)"><section class="modal-card" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Role</span><h2>{{ roleForm.id ? 'Modifier le role' : 'Nouveau role' }}</h2></div><button class="close-btn" (click)="roleModalOpen.set(false)">Ã—</button></header><form (ngSubmit)="saveRole()"><label>Nom du role<input [(ngModel)]="roleForm.name" name="role_name" required placeholder="Ex: administrateur"></label><footer><button type="button" class="btn ghost" (click)="roleModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Enregistrer</button></footer></form></section></div>
+}
+

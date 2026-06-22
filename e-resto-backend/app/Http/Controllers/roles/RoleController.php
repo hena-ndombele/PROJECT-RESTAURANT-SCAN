@@ -11,6 +11,13 @@ class RoleController extends Controller
 {
     public function store(Request $request)
     {
+        if ($response = $this->ensureCanManageRoles($request)) {
+            return $response;
+        }
+        if ($response = $this->ensureRoleLimit($request)) {
+            return $response;
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|unique:roles,name',
             'permissions' => 'nullable|array',
@@ -36,14 +43,22 @@ class RoleController extends Controller
 
     public function index(Request $request)
     {
+        if ($response = $this->ensureCanManageRoles($request)) {
+            return $response;
+        }
+
         $perPage = $request->input('per_page', 10);
         $roles = Role::with('permissions')->paginate($perPage);
 
         return response()->json($roles);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        if ($response = $this->ensureCanManageRoles($request)) {
+            return $response;
+        }
+
         $role = Role::with('permissions')->findOrFail($id);
 
         return response()->json($role);
@@ -51,6 +66,10 @@ class RoleController extends Controller
 
     public function update(Request $request, $id)
     {
+        if ($response = $this->ensureCanManageRoles($request)) {
+            return $response;
+        }
+
         $role = Role::findOrFail($id);
 
         $validated = $request->validate([
@@ -75,8 +94,12 @@ class RoleController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($response = $this->ensureCanManageRoles($request)) {
+            return $response;
+        }
+
         $role = Role::findOrFail($id);
         $role->delete();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -88,6 +111,10 @@ class RoleController extends Controller
 
     public function search(Request $request)
     {
+        if ($response = $this->ensureCanManageRoles($request)) {
+            return $response;
+        }
+
         $query = $request->input('query');
         $perPage = $request->input('per_page', 10);
 
@@ -107,6 +134,10 @@ class RoleController extends Controller
 
     public function syncPermissions(Request $request, $id)
     {
+        if ($response = $this->ensureCanManageRoles($request)) {
+            return $response;
+        }
+
         $validated = $request->validate([
             'permissions' => 'required|array',
             'permissions.*' => 'string|exists:permissions,name',
@@ -120,5 +151,42 @@ class RoleController extends Controller
             'message' => 'Permissions du role mises a jour avec succes',
             'data' => $role->load('permissions'),
         ]);
+    }
+
+    private function ensureCanManageRoles(Request $request)
+    {
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+        if (!$restaurant) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private function ensureRoleLimit(Request $request)
+    {
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+        if (!$restaurant) {
+            return null;
+        }
+
+        $limit = $this->roleLimitForPlan($restaurant->plan?->tier() ?? 'starter');
+        if ($limit !== null && Role::count() >= $limit) {
+            return response()->json([
+                'message' => "Votre plan limite la creation a {$limit} roles. Passez a un plan superieur pour en ajouter plus.",
+                'requires_upgrade' => true,
+            ], 403);
+        }
+
+        return null;
+    }
+
+    private function roleLimitForPlan(string $tier): ?int
+    {
+        return match ($tier) {
+            'starter' => 3,
+            'pro' => 8,
+            default => null,
+        };
     }
 }

@@ -8,7 +8,31 @@ class Order extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['table_id', 'total_amount', 'currency', 'status', 'note'];
+    protected $fillable = [
+        'restaurant_id',
+        'tracking_code',
+        'table_id',
+        'order_type',
+        'total_amount',
+        'currency',
+        'payment_method',
+        'payment_provider',
+        'payment_status',
+        'status',
+        'note',
+        'customer_name',
+        'customer_phone',
+        'customer_email',
+        'pickup_name',
+        'pickup_phone',
+        'cancellation_reason',
+        'cancelled_by',
+        'cancelled_at',
+    ];
+
+    protected $casts = [
+        'cancelled_at' => 'datetime',
+    ];
 
     /**
      * AJOUTE CETTE FONCTION ICI 👇
@@ -25,5 +49,20 @@ class Order extends Model
     public function table()
     {
         return $this->belongsTo(Table::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function latestPayment()
+    {
+        return $this->hasOne(Payment::class)->latestOfMany();
     }
 }

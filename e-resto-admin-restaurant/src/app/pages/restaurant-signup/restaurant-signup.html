@@ -1,0 +1,150 @@
+<main class="signup-page">
+  <aside class="signup-visual">
+    <a class="visual-brand" routerLink="/">
+      <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+      <span>Restaurant Scan</span>
+    </a>
+    <div class="visual-copy">
+      <span>Lancez votre menu digital</span>
+      <h2>Prêt pour le prochain service.</h2>
+      <p>Menu QR, commandes en temps réel et suivi dans un espace professionnel.</p>
+      <div class="visual-points">
+        <span><i class="bi bi-check-circle-fill"></i> 14 jours d'essai</span>
+        <span><i class="bi bi-check-circle-fill"></i> Installation accompagnée</span>
+      </div>
+    </div>
+  </aside>
+
+  <section class="signup-panel">
+    <div class="signup-card">
+      <div class="signup-head">
+        <a class="form-logo" routerLink="/" aria-label="Retour a l'accueil">
+          <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+        </a>
+        <h1>Créer votre espace</h1>
+        <p>{{ accountCreated ? 'Votre restaurant est pret.' : 'Quelques informations suffisent Pour démarrer.' }}</p>
+        <span class="selected-plan" *ngIf="selectedPlan.name">Plan choisi : <strong>{{ selectedPlan.name }}</strong></span>
+
+        <div class="stepper" aria-label="Progression inscription" *ngIf="!accountCreated">
+          <button type="button" [class.active]="currentStep === 1" [class.done]="currentStep > 1" (click)="goBack()">1</button>
+          <span></span>
+          <button type="button" [class.active]="currentStep === 2" [disabled]="currentStep === 1">2</button>
+        </div>
+      </div>
+
+      <ng-container *ngIf="!accountCreated">
+        <form (ngSubmit)="currentStep === 1 ? goNext() : createAccount()">
+          @if (currentStep === 1) {
+            <div class="form-section">
+              <label>
+                <span>Adresse email *</span>
+                <input [(ngModel)]="account.owner_email" name="owner_email" type="email" placeholder="nom@email.com" autocomplete="email" required>
+              </label>
+
+              <label>
+                <span>Mot de passe *</span>
+                <div class="password-field">
+                  <input [(ngModel)]="account.password" name="password" [type]="showPassword ? 'text' : 'password'" placeholder="Minimum 6 caracteres" autocomplete="new-password">
+                  <button type="button" (click)="showPassword = !showPassword" [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                    <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'"></i>
+                  </button>
+                </div>
+                <div class="password-strength" [ngClass]="passwordStrengthClass()">
+                  @for (bar of [1, 2, 3, 4]; track bar) {
+                    <span [class.active]="passwordStrengthScore() >= bar"></span>
+                  }
+                </div>
+                <small class="strength-label" [ngClass]="passwordStrengthClass()">{{ passwordStrengthLabel() }}</small>
+              </label>
+
+              <label>
+                <span>Confirmer le mot de passe *</span>
+                <div class="password-field">
+                  <input [(ngModel)]="account.password_confirmation" name="password_confirmation" [type]="showPasswordConfirmation ? 'text' : 'password'" placeholder="Repetez votre mot de passe" autocomplete="new-password">
+                  <button type="button" (click)="showPasswordConfirmation = !showPasswordConfirmation" [attr.aria-label]="showPasswordConfirmation ? 'Masquer la confirmation' : 'Afficher la confirmation'">
+                    <i class="bi" [ngClass]="showPasswordConfirmation ? 'bi-eye-slash-fill' : 'bi-eye-fill'"></i>
+                  </button>
+                </div>
+              </label>
+
+              <button class="primary-action" type="submit">Continuer <i class="bi bi-arrow-right"></i></button>
+            </div>
+          } @else {
+            <div class="form-section">
+              <div class="section-title">
+                <strong>Informations restaurant</strong>
+                <small>Ces informations personnalisent votre espace.</small>
+              </div>
+
+              <label>
+                <span>Nom du restaurant *</span>
+                <input [(ngModel)]="account.restaurant_name" name="restaurant_name" placeholder="Ex: Nom Restaurant" required>
+              </label>
+
+              <label>
+                <span>Nom du propriétaire *</span>
+                <input [(ngModel)]="account.owner_name" name="owner_name" placeholder="Nom Propriétaire" autocomplete="name" required>
+              </label>
+
+              <div class="grid-2">
+                <label>
+                  <span>Telephone *</span>
+                  <input [(ngModel)]="account.owner_phone" name="owner_phone" placeholder="+243830000000" autocomplete="tel" required>
+                </label>
+                <label>
+                  <span>Ville</span>
+                  <input [(ngModel)]="account.city" name="city" placeholder="Kinshasa">
+                </label>
+              </div>
+
+              <label>
+                <span>Devise par defaut</span>
+                <select [(ngModel)]="account.currency" name="currency">
+                  <option value="CDF">CDF - Franc congolais</option>
+                  <option value="USD">USD - Dollar americain</option>
+                </select>
+              </label>
+
+              <div class="actions-row">
+                <button class="secondary-action" type="button" (click)="goBack()" [disabled]="creating"><i class="bi bi-arrow-left"></i> Retour</button>
+                <button class="primary-action" type="submit" [disabled]="creating || planLoading">
+                  {{ creating ? 'Création...' : planLoading ? 'Chargement du plan...' : 'Créer mon compte' }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <p class="message" role="alert" *ngIf="message"><i class="bi bi-exclamation-triangle-fill"></i>{{ message }}</p>
+        </form>
+
+        <div class="signin-link">Déjà un compte ? <a routerLink="/restaurant/login">Se connecter</a></div>
+      </ng-container>
+    </div>
+  </section>
+
+  <div class="success-modal-backdrop" *ngIf="accountCreated">
+    <section class="success-modal" role="dialog" aria-modal="true" aria-labelledby="signupSuccessTitle">
+      <a class="modal-logo" routerLink="/">
+        <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+      </a>
+      <span class="modal-subtitle">Restaurant Scan - Menu digital QR code</span>
+      <div class="modal-icon"><i class="bi bi-stars"></i></div>
+      <h2 id="signupSuccessTitle">Compte cree !</h2>
+      <p>Ton restaurant est prêt. Ouverture automatique du dashboard...</p>
+      <div class="menu-url modal-menu-url">
+        <span>{{ publicMenuUrl }}</span>
+        <button type="button" (click)="copyMenuUrl()" aria-label="Copier l'URL du menu"><i class="bi bi-copy"></i></button>
+      </div>
+      <div class="success-actions">
+        <a class="secondary-action" [href]="publicMenuUrl" target="_blank" rel="noopener">
+          Ouvrir le menu <i class="bi bi-arrow-up-right"></i>
+        </a>
+        <button class="primary-action" type="button" (click)="goToDashboard()">
+          Accéder a mon dashboard <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+      <button class="checkout-link" type="button" (click)="goToCheckout()">Configurer le paiement Mobile Money</button>
+      <p class="message success-message" *ngIf="message">{{ message }}</p>
+    </section>
+  </div>
+</main>

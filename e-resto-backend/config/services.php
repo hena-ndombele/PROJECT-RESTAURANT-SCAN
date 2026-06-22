@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    'maishapay' => [
+        'base_url' => env('MAISHAPAY_BASE_URL', 'https://marchand.maishapay.online'),
+        'public_key' => env('MAISHAPAY_PUBLIC_KEY'),
+        'secret_key' => env('MAISHAPAY_SECRET_KEY'),
+        'gateway_mode' => env('MAISHAPAY_GATEWAY_MODE', '1'),
+        'callback_url' => env('MAISHAPAY_CALLBACK_URL'),
+        'mock' => env('MAISHAPAY_MOCK', false),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
 ];

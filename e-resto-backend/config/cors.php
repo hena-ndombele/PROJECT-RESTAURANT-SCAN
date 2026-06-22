@@ -6,7 +6,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:4200,http://127.0.0.1:4200,http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.69:4200,http://192.168.1.69:5173,https://restaurascan.com,https://www.restaurascan.com,https://admin.restaurascan.com'
+    )))),
 
     'allowed_origins_patterns' => [],
 

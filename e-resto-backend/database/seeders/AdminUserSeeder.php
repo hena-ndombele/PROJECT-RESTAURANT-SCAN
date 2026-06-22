@@ -2,36 +2,36 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Créer le rôle admin s’il n’existe pas
-        $role = Role::firstOrCreate(
-            ['name' => 'admin', 'guard_name' => 'web']
-        );
+        $role = Role::firstOrCreate([
+            'name' => 'admin',
+            'guard_name' => 'web',
+        ]);
 
-        // 2. Créer l’utilisateur admin
+        // Keep the platform administrator separate from every restaurant account.
         $admin = User::firstOrCreate(
-            ['email' => 'henandombele8@gmail.com'], // ton email par défaut
+            ['email' => env('ADMIN_EMAIL', 'henandombele8@gmail.com')],
             [
-                'first_name'   => 'Hena',
-                'last_name'    => 'Ndombele',
+                'first_name' => 'Hena',
+                'last_name' => 'Ndombele',
                 'phone_number' => '0000000000',
-                'address'      => 'Kinshasa',
-                'password'     => bcrypt('12345678'),
+                'address' => 'Kinshasa',
+                'password' => bcrypt(env('ADMIN_PASSWORD', 'admin1234*')),
             ]
         );
 
-        // 3. Lui donner le rôle admin
-        if (! $admin->hasRole('admin')) {
+        if (!$admin->restaurant_id && !$admin->hasRole('admin')) {
             $admin->assignRole($role);
         }
 
-        $role->syncPermissions(\Spatie\Permission\Models\Permission::pluck('name')->toArray());
+        $role->syncPermissions(Permission::pluck('name')->all());
     }
 }

@@ -10,7 +10,7 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'image'];
+    protected $fillable = ['restaurant_id', 'name', 'description', 'image'];
 
     // 2. Indique à Eloquent que l'ID n'est pas un entier auto-incrémenté
     public $incrementing = false;
@@ -36,5 +36,10 @@ class Category extends Model
     public function plats()
     {
         return $this->hasMany(Plat::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
     }
 }

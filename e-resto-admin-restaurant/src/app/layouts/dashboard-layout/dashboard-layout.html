@@ -1,0 +1,569 @@
+﻿<div id="overlay" class="overlay" [class.show]="isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>
+
+<nav id="topbar" class="navbar bg-white border-bottom fixed-top topbar px-3" [class.full]="isSidebarCollapsed">
+    <div class="d-flex align-items-center gap-3">
+        <button id="toggleBtn"
+                class="d-none d-lg-inline-flex btn btn-sidebar-toggle shadow-sm"
+                (click)="toggleSidebar()"
+                [title]="isSidebarCollapsed ? 'Developper' : 'Reduire'">
+            <i class="ti fs-5"
+               [ngClass]="isSidebarCollapsed ? 'ti-layout-sidebar-right-expand' : 'ti-layout-sidebar-left-collapse'"></i>
+        </button>
+
+        <button id="mobileBtn" class="btn btn-sidebar-toggle d-lg-none shadow-sm" (click)="openMobileSidebar()">
+            <i class="ti ti-menu-2 fs-5"></i>
+        </button>
+
+        <div class="d-none d-sm-flex flex-column border-start ps-3 ms-1 branding-wrapper">
+            <h6 class="m
+            b-0 logo-title">{{ restaurantData.name }}<span class="text-primary">.</span>
+            </h6>
+            <div class="d-flex align-items-center gap-1">
+                <span class="badge-admin">{{ restaurantData.city || 'RESTAURANT' }}</span>
+                <span class="subscription-pill" [ngClass]="subscriptionInfo.tone">
+                    <i class="ti ti-calendar-stats"></i>
+                    {{ subscriptionInfo.shortLabel }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="ms-auto">
+        <ul class="list-unstyled d-flex align-items-center mb-0 gap-2 gap-md-3">
+
+            <li class="nav-item d-none d-lg-flex">
+                <div class="language-toggle" [class.active-fr]="currentLang === 'fr'" (click)="switchLanguage()">
+                    <div class="toggle-track">
+                        <span class="lang-text en">EN</span>
+                        <div class="flag-handle shadow-sm">
+                            <img [src]="currentLang === 'fr' ? 'assets/flags/fr.png' : 'assets/flags/en.png'"
+                                 alt="flag">
+                        </div>
+                        <span class="lang-text fr">FR</span>
+                    </div>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <button class="btn btn-icon btn-sm rounded-circle shadow-sm theme-toggle-btn"
+                        type="button"
+                        (click)="toggleTheme()"
+                        [title]="theme.mode() === 'dark' ? 'Mode clair' : 'Mode sombre'">
+                    <i class="ti fs-5" [ngClass]="theme.mode() === 'dark' ? 'ti-sun' : 'ti-moon'"></i>
+                </button>
+            </li>
+
+            <li class="dropdown">
+                <a class="position-relative btn btn-icon btn-sm rounded-circle shadow-sm notification-button" data-bs-toggle="dropdown"
+                   href="#" role="button" (click)="openNotifications()">
+                    <i class="ti ti-bell fs-5"></i>
+                    @if (orderRealtime.notifications().length > 0) {
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
+                              style="font-size: 0.65rem;">
+                            {{ orderRealtime.notifications().length }}
+                        </span>
+                    }
+                </a>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-0 mt-3 notification-menu" style="width: 330px;">
+                    <div class="p-3 border-bottom bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold small text-uppercase">{{ 'topbar.notifications' | translate }}</h6>
+                            <span class="badge rounded-pill"
+                                  [ngClass]="orderRealtime.connectionState() === 'connected' ? 'bg-success' : 'bg-secondary'">
+                                {{ orderRealtime.connectionState() === 'connected' ? 'Live' : 'Offline' }}
+                            </span>
+                        </div>
+                    </div>
+                    @if (orderRealtime.notifications().length === 0) {
+                        <div class="p-4 text-center text-muted small">{{ 'topbar.noAlerts' | translate }}</div>
+                    } @else {
+                        <div class="notification-list">
+                            @for (notification of orderRealtime.notifications(); track notification.id) {
+                                <a [routerLink]="notification.route || '/orders/list'" class="notification-item dropdown-item">
+                                    <div class="notification-icon"><i class="ti ti-bell-ringing"></i></div>
+                                    <div>
+                                        <strong>{{ notification.title }}</strong>
+                                        <span>{{ notification.message }}</span>
+                                        <small>{{ notification.createdAt | date:'HH:mm:ss' }}</small>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </li>
+
+            <li class="d-none d-md-block">
+                <button class="btn-logout-custom" data-bs-toggle="modal"
+                        data-bs-target="#logoutModal">
+                    <i class="ti ti-logout"></i>
+                    <span>{{ 'topbar.logout' | translate }}</span>
+                </button>
+            </li>
+
+            <li class="ms-1 dropdown">
+
+                <a href="javascript:void(0)" role="button" id="profileIcon" data-bs-toggle="dropdown"
+                   class="d-flex align-items-center gap-2 text-decoration-none p-1 rounded-pill hover-bg-light">
+                    <div class="avatar-container position-relative">
+                        <img [src]="restaurantData.logo" alt="Profile"
+                             class="avatar avatar-sm rounded-circle border border-2 border-dark bg-white">
+                        <span class="status-indicator bg-success position-absolute bottom-0 end-0 border border-2 border-white rounded-circle"></span>
+                    </div>
+                    <div class="d-none d-md-block me-1 text-start">
+                        <h6 class="mb-0 fw-bold small"
+                            style="line-height: 1.2;">{{ userData.firstName }} {{ userData.lastName }}</h6>
+                        <small class="text-muted" style="font-size: 10px;">{{userData.fonction}}</small>
+                    </div>
+                </a>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0 overflow-hidden mt-3"
+                     style="min-width: 230px;">
+                    <div class="p-3 text-white" style="background: #1a1a1a">
+                        <div class="d-flex gap-3 align-items-center">
+                            <img [src]="restaurantData.logo" alt=""
+                                 class="avatar avatar-md rounded-circle border border-2 border-white-50 bg-white">
+                            <div class="overflow-hidden">
+                                <h6 class="mb-0 text-truncate text-white">{{ userData.firstName }} {{ userData.lastName }}</h6>
+                                <p class="mb-0 small text-white-50 text-truncate">{{ restaurantData.name }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-2 pt-2">
+                        <div class="session-summary">
+                            <div>
+                                <span>Abonnement</span>
+                                <strong>{{ subscriptionInfo.label }}</strong>
+                                <small>{{ subscriptionInfo.detail }}</small>
+                            </div>
+                            <i class="ti ti-clock-dollar"></i>
+                        </div>
+                        @if (subscriptionInfo.expiresAt) {
+                            <div class="session-meta">
+                                <i class="ti ti-calendar-due"></i>
+                                Fin prevue le {{ subscriptionInfo.expiresAt | date:'dd/MM/yyyy HH:mm' }}
+                            </div>
+                        }
+                        <div class="session-meta">
+                            <i class="ti ti-login-2"></i>
+                            Connecte le {{ loginInfo.connectedAt | date:'dd/MM/yyyy HH:mm' }}
+                        </div>
+                    </div>
+                    <div class="p-2 d-flex flex-column gap-1">
+                        <a class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2"
+                           routerLink="/auth/profile">
+                            <i class="ti ti-user-circle fs-5 text-primary"></i> {{ 'topbar.profile' | translate }}
+                        </a>
+
+
+                        <button class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2 text-black "
+                                data-bs-toggle="modal"
+                                data-bs-target="#changePasswordModal" id="userDropdown">
+                            <i class="ti ti-password fs-5 text-primary"></i> {{ 'topbar.changePassword' | translate }}
+                        </button>
+
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2 text-danger fw-semibold"
+                                data-bs-toggle="modal"
+                                data-bs-target="#logoutModal">
+                            <i class="ti ti-logout fs-5"></i> {{ 'topbar.logout' | translate }}
+                        </button>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+
+<aside id="sidebar" class="sidebar shadow-lg" [class.collapsed]="isSidebarCollapsed"
+       [class.mobile-show]="isMobileSidebarOpen">
+    <div class="logo-area d-flex align-items-center py-3 px-3">
+        <a routerLink="/" class="d-flex align-items-center text-decoration-none" (click)="closeMobileSidebar()">
+            <div class="mb-3">
+                <img [src]="restaurantData.logo" alt="Logo"
+                     style="height: 42px;width: 64px;margin-top: 15px; object-fit: contain; border-radius: 0; border:2px solid white">
+
+
+            </div>
+            <span class="logo-text ms-2">Restaurant Scan</span>
+        </a>
+    </div>
+
+    <div class="sidebar-scroll">
+        <ul class="nav flex-column ps-2 pe-2 gap-1">
+            <li class="nav-label mt-2">{{ 'sidebar.mainMenu' | translate }}</li>
+
+            @if (canAccess('dashboard.view')) {
+            <li>
+                <a routerLink="/dashboard" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active"
+                   class="nav-link" (click)="closeMobileSidebar()">
+                    <i class="ti ti-smart-home"></i><span class="nav-text">{{ 'sidebar.dashboard' | translate }}</span>
+                </a>
+            </li>
+            }
+
+            @if (canAccess('agents.list')) {
+            <li>
+                <a routerLink="/agents/list-agent" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-users"></i><span class="nav-text">{{ 'sidebar.employee' | translate }}</span>
+                </a>
+            </li>
+            }
+
+            @if (canAccess('categories.list')) {
+            <li>
+                <a routerLink="/category/list-category" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-category"></i><span class="nav-text">{{ 'sidebar.category' | translate }}</span>
+                </a>
+            </li>
+            }
+            @if (canAccess('plats.list')) {
+            <li>
+                <a routerLink="/dish/list-dish" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-tools-kitchen-2"></i><span class="nav-text">{{ 'sidebar.dishes' | translate }}</span>
+                </a>
+            </li>
+            }
+
+            @if (canAccess('orders.list')) {
+            <li>
+                <a routerLink="/orders/list" routerLinkActive="active"
+                   class="nav-link d-flex align-items-center"
+                   (click)="closeMobileSidebar()">
+
+                    <i class="ti ti-shopping-cart"></i>
+                    <span class="nav-text ms-2">{{ 'sidebar.orders' | translate }}</span>
+
+                    @if (orderRealtime.activeOrdersCount() > 0) {
+                        <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
+                            {{ orderRealtime.activeOrdersCount() }}
+                        </span>
+                    }
+                </a>
+            </li>
+            }
+
+            @if (canAccess('tables.list')) {
+            <li>
+                <a routerLink="/tables/list-table" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-table-alias"></i><span class="nav-text">{{ 'sidebar.tables' | translate }}</span>
+                </a>
+            </li>
+            }
+
+            @if (canUse('reservations') && canAccess('reservations.list')) {
+            <li>
+                <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-calendar-event"></i><span class="nav-text">Reservations</span>
+                    @if (pendingReservationsCount > 0) {
+                        <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
+                            {{ pendingReservationsCount }}
+                        </span>
+                    }
+                </a>
+            </li>
+            }
+
+            @if (canAccess('settings.view')) {
+            <li>
+                <a routerLink="/restaurant/settings" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-settings"></i><span class="nav-text">{{ 'sidebar.settings' | translate }}</span>
+                </a>
+            </li>
+            }
+
+
+            @if (canUse('feedback') && canAccess('feedback.list')) {
+            <li>
+                <a routerLink="/feedback/list" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-message-2-star"></i><span class="nav-text">{{ 'sidebar.feedbacks' | translate }}</span>
+                </a>
+            </li>
+            }
+
+            <li class="nav-label mt-4">{{ 'sidebar.administration' | translate }}</li>
+            @if (canUse('roles')) {
+            @if (canAccess('roles.list')) {
+            <li>
+                <a routerLink="/identity/list-roles" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-shield-lock"></i><span class="nav-text">Roles</span>
+                </a>
+            </li>
+            }
+            }
+
+            @if (canAccess('users.list')) {
+            <li>
+                <a routerLink="/identity/list-users" routerLinkActive="active" class="nav-link" (click)="closeMobileSidebar()">
+                    <i class="ti ti-user-cog"></i><span class="nav-text">{{ 'sidebar.users' | translate }}</span>
+                </a>
+            </li>
+            }
+        </ul>
+    </div>
+</aside>
+
+<main id="content" class="content py-10" [class.full]="isSidebarCollapsed">
+    <router-outlet></router-outlet>
+</main>
+
+@if (canUse('chatbot')) {
+    <section class="dashboard-assistant" [class.open]="assistantOpen">
+        @if (assistantOpen) {
+            <div class="assistant-panel shadow-lg">
+                <div class="assistant-head">
+                    <div>
+                        <span>Assistant intelligent</span>
+                        <strong>Restaurant Scan Copilot</strong>
+                    </div>
+                    <button type="button" (click)="toggleAssistant()" aria-label="Fermer l'assistant">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+
+                <div class="assistant-suggestions">
+                    <button type="button" (click)="askAssistant('Comment mieux gerer mes commandes ?')">Commandes</button>
+                    <button type="button" (click)="askAssistant('Que disent mes statistiques ?')">Stats</button>
+                    <button type="button" (click)="askAssistant('Comment utiliser mes QR codes ?')">QR code</button>
+                </div>
+
+                <div class="assistant-messages">
+                    @for (message of assistantMessages; track $index) {
+                        <div class="assistant-message" [class.user]="message.from === 'user'">
+                            {{ message.text }}
+                        </div>
+                    }
+                </div>
+
+                <div class="assistant-form">
+                    <input
+                            type="text"
+                            [(ngModel)]="assistantInput"
+                            (keydown.enter)="askAssistant()"
+                            placeholder="Posez une question sur votre restaurant...">
+                    <button type="button" (click)="askAssistant()" aria-label="Envoyer">
+                        <i class="ti ti-send"></i>
+                    </button>
+                </div>
+            </div>
+        }
+
+        <button class="assistant-toggle" type="button" (click)="toggleAssistant()" [attr.aria-expanded]="assistantOpen">
+            <i class="ti ti-sparkles"></i>
+            <span>Assistant</span>
+        </button>
+    </section>
+}
+
+@if (installPromptOpen) {
+    <div class="install-backdrop">
+        <section class="install-card" role="dialog" aria-modal="true" aria-labelledby="installAppTitle">
+            <button type="button" class="install-close" aria-label="Fermer" (click)="dismissInstallPrompt()">
+                <i class="ti ti-x"></i>
+            </button>
+
+            <div class="install-head">
+                <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+                <div>
+                    <h2 id="installAppTitle">Installer Restaurant Scan</h2>
+                    <p>Ajoutez l'application sur votre appareil pour acceder plus vite a votre dashboard.</p>
+                </div>
+            </div>
+
+            @if (iosInstallHelp && !installAvailable) {
+                <div class="install-ios-help">
+                    <span><i class="ti ti-share-3"></i> Appuyez sur Partager</span>
+                    <span><i class="ti ti-square-plus"></i> Puis choisissez Ajouter a l'ecran d'accueil</span>
+                </div>
+            }
+
+            @if (manualInstallHelp && !iosInstallHelp && !installAvailable) {
+                <div class="install-ios-help">
+                    <span><i class="ti ti-device-desktop-down"></i> Utilisez l'icone d'installation dans la barre d'adresse ou le menu du navigateur.</span>
+                    <span><i class="ti ti-refresh"></i> Apres une desinstallation, rechargez la page si le bouton natif n'apparait pas encore.</span>
+                </div>
+            }
+
+            <button class="install-primary" type="button" (click)="installApp()">
+                <i class="ti ti-download"></i>
+                {{ iosInstallHelp && !installAvailable ? 'Voir comment installer' : "Ajouter a l'ecran d'accueil" }}
+            </button>
+            <button class="install-secondary" type="button" (click)="dismissInstallPrompt()">Plus tard</button>
+        </section>
+    </div>
+}
+
+@if (incomingOrder; as order) {
+    <div class="global-order-backdrop">
+        <section class="global-order-modal" role="dialog" aria-modal="true" aria-labelledby="incomingOrderTitle">
+            <button type="button" class="global-order-close" aria-label="Fermer" (click)="dismissIncomingOrder()">
+                <i class="ti ti-x"></i>
+            </button>
+
+            <div class="global-order-icon">
+                <i class="ti ti-bell-ringing"></i>
+            </div>
+
+            <span class="global-order-eyebrow">Commande recue</span>
+            <h2 id="incomingOrderTitle">Nouvelle commande !</h2>
+
+            <div class="global-order-grid">
+                <div><span>Table</span><strong>{{ order.table?.name || 'Table inconnue' }}</strong></div>
+                <div><span>Client</span><strong>{{ order.customer_name || order.customer_phone || 'Client QR' }}</strong></div>
+                <div><span>Service</span><strong>{{ orderTypeLabel(order) }}</strong></div>
+                <div><span>Articles</span><strong>{{ orderItemsCount(order) }}</strong></div>
+                <div><span>Total</span><strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong></div>
+                <div><span>Suivi</span><strong>{{ order.tracking_code || 'N/A' }}</strong></div>
+            </div>
+
+            <div class="global-order-actions">
+                <button class="btn btn-outline-secondary" type="button" (click)="dismissIncomingOrder()">Ignorer</button>
+                <button class="btn btn-primary" type="button" (click)="openIncomingOrder()">
+                    <i class="ti ti-shopping-cart-check"></i>
+                    Voir la commande
+                </button>
+            </div>
+        </section>
+    </div>
+}
+
+
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+
+            <div class="modal-header border-bottom-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3">
+                    <i class="ti ti-alert-circle text-danger" style="font-size: 4rem;"></i>
+                </div>
+
+                <h4 class="fw-bolder">{{ 'logout.title' | translate }}</h4>
+                <p class="text-muted text-wrap text-break px-2">
+                    {{ 'logout.message' | translate }}
+                </p>
+            </div>
+
+            <div class="modal-footer border-top-0 d-flex justify-content-center gap-3 pb-4">
+                <button type="reset" class="btn btn-light d-flex align-items-center" data-bs-dismiss="modal">
+                    <i class="ti ti-x me-2 fs-4"></i>
+                    {{ 'common.cancel' | translate }}
+                </button>
+
+                <button type="button"
+                        class="btn btn-danger px-4 shadow-sm d-flex align-items-center"
+                        (click)="logout()"
+                        [disabled]="isLoading">
+
+                    @if (isLoading) {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>{{ 'topbar.logout' | translate }}...</span>
+                    } @else {
+                        <i class="ti ti-trash me-2 fs-4"></i>
+                        <span>{{ 'topbar.logout' | translate }}</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="addInventoryModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">{{ 'topbar.changePassword' | translate }}</h5>
+                    <p class="mb-0 text-muted small">{{ 'password.subtitle' | translate }}</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <form [formGroup]="passwordForm" (ngSubmit)="onSubmit()" id="passwordFormElement">
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase">Mot de passe actuel <span
+                                style="color:red">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0"><i class="ti ti-key"></i></span>
+                            <input #oldPwd [type]="oldPwd.type" class="form-control bg-light border-0"
+                                   formControlName="current_password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                            <button class="btn btn-light border-0" type="button"
+                                    (click)="oldPwd.type = oldPwd.type === 'password' ? 'text' : 'password'">
+                                <i [class]="oldPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
+                            </button>
+                        </div>
+                        @if (passwordForm.get('current_password')?.invalid && passwordForm.get('current_password')?.touched) {
+                            <small class="text-danger x-small">Le mot de passe actuel est requis.</small>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase">Nouveau mot de passe <span
+                                style="color:red">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0"><i class="ti ti-lock"></i></span>
+                            <input #newPwd [type]="newPwd.type" class="form-control bg-light border-0"
+                                   formControlName="new_password" placeholder="Min. 6 caractÃ¨res">
+                            <button class="btn btn-light border-0" type="button"
+                                    (click)="newPwd.type = newPwd.type === 'password' ? 'text' : 'password'">
+                                <i [class]="newPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
+                            </button>
+                        </div>
+                        @if (passwordForm.get('new_password')?.invalid && passwordForm.get('new_password')?.touched) {
+                            <small class="text-danger x-small">Requis (min. 6 caractÃ¨res).</small>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase">Confirmer le mot de passe <span
+                                style="color:red">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0"><i class="ti ti-circle-check"></i></span>
+                            <input #confirmPwd [type]="confirmPwd.type" class="form-control bg-light border-0"
+                                   formControlName="new_password_confirmation" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                            <button class="btn btn-light border-0" type="button"
+                                    (click)="confirmPwd.type = confirmPwd.type === 'password' ? 'text' : 'password'">
+                                <i [class]="confirmPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
+                            </button>
+                        </div>
+                        @if (passwordForm.hasError('mismatch') && passwordForm.get('new_password_confirmation')?.touched) {
+                            <small class="text-danger x-small">Les mots de passe ne correspondent pas.</small>
+                        }
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer d-flex gap-2">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ 'common.cancel' | translate }}</button>
+                <button type="submit"
+                        form="passwordFormElement"
+                        class="btn btn-primary text-black px-4 shadow-sm"
+                        [disabled]="passwordForm.invalid || isLoading">
+                    @if (isLoading) {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    {{ 'topbar.changePassword' | translate }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+

@@ -1,0 +1,443 @@
+<div class="orders-page container-fluid py-4 bg-light min-vh-100">
+    <header class="row align-items-center mb-4">
+        <div class="col-lg-7">
+            <div class="d-flex align-items-center">
+                <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
+                    <i class="bi bi-receipt-cutoff text-primary fs-4"></i>
+                </div>
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
+                            <li class="breadcrumb-item">Restaurant Scan</li>
+                            <li class="breadcrumb-item active text-primary">COMMANDES</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0 fw-bold text-dark">Gestion des commandes ({{ filteredOrders().length }})</h1>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5 text-lg-end mt-3 mt-lg-0">
+            <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                <button class="btn btn-outline-primary shadow-sm" type="button" (click)="exportPdfReport()" [disabled]="!canGeneratePdf()">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Rapport PDF
+                </button>
+                <button class="btn btn-outline-secondary shadow-sm" (click)="resetFilters()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Reinitialiser
+                </button>
+            </div>
+            @if (!canGeneratePdf()) {
+                <small class="text-muted d-block mt-2">{{ reportLimitMessage() }}</small>
+            }
+        </div>
+    </header>
+
+    <section class="orders-summary mb-4">
+        <article>
+            <span>Commandes activéés</span>
+            <strong>{{ activeCount() }}</strong>
+            <small>Non servies / non annulées</small>
+        </article>
+        <article>
+            <span>Commandes filtrées</span>
+            <strong>{{ filteredOrders().length }}</strong>
+            <small>Selon recherche et statut</small>
+        </article>
+        @for (total of revenueByCurrency(); track total.currency) {
+            <article>
+                <span>Revenu {{ total.currency }}</span>
+                <strong>{{ total.amount | number:'1.0-2' }} {{ total.currency }}</strong>
+                <small>{{ total.count }} paiements confirmés</small>
+            </article>
+        }
+    </section>
+
+    <div class="card border-0 mb-4 shadow-sm">
+        <div class="card-body p-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Par Jour</label>
+                    <input type="date" class="form-control bg-transparent" [(ngModel)]="filters.day" (change)="loadOrders()">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Par Mois</label>
+                    <select class="form-select bg-transparent" [(ngModel)]="filters.month" (change)="loadOrders()">
+                        <option value="">Tous</option>
+                        <option value="01">Janvier</option>
+                        <option value="02">Fevrier</option>
+                        <option value="03">Mars</option>
+                        <option value="04">Avril</option>
+                        <option value="05">Mai</option>
+                        <option value="06">Juin</option>
+                        <option value="07">Juillet</option>
+                        <option value="08">Aout</option>
+                        <option value="09">Septembre</option>
+                        <option value="10">Octobre</option>
+                        <option value="11">Novembre</option>
+                        <option value="12">Decembre</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Année</label>
+                    <input type="number" class="form-control bg-transparent" [(ngModel)]="filters.year" (change)="loadOrders()" placeholder="2026">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Statut</label>
+                    <select class="form-select bg-transparent" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); currentPage.set(1)">
+                        <option value="all">Tous</option>
+                        <option value="online">En ligne</option>
+                        @for (status of statusOptions; track status.value) {
+                            <option [value]="status.value">{{ status.label }}</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Table</label>
+                    <select class="form-select bg-transparent" [ngModel]="tableFilter()" (ngModelChange)="tableFilter.set($event); currentPage.set(1)">
+                        <option value="all">Toutes</option>
+                        @for (table of tables(); track table.id) {
+                            <option [value]="table.id">{{ table.name }}</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-1">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Recherche rapide</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text"
+                               class="form-control border-start-0 ps-0 bg-transparent"
+                               placeholder="Client, table, statut, paiement..."
+                               [ngModel]="searchTerm()"
+                               (ngModelChange)="searchTerm.set($event); currentPage.set(1)">
+                    </div>
+                </div>
+            </div>
+            <div class="status-tabs mt-4">
+                @for (tab of statusTabs(); track tab.value) {
+                    <button type="button"
+                            class="status-tab"
+                            [class.active]="statusFilter() === tab.value"
+                            (click)="statusFilter.set(tab.value); currentPage.set(1)">
+                        <i class="bi" [ngClass]="tab.icon"></i>
+                        <span>{{ tab.label }}</span>
+                        <strong>{{ tab.count }}</strong>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-danger border-0 shadow-sm" *ngIf="errorMessage()">{{ errorMessage() }}</div>
+    <div class="alert alert-success border-0 shadow-sm" *ngIf="successMessage()">
+        <i class="bi bi-broadcast me-2"></i>{{ successMessage() }}
+    </div>
+
+    @if (loading()) {
+        <div class="orders-loading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted fw-medium">Récupération des commandes...</p>
+        </div>
+    } @else {
+        <section class="orders-grid">
+            @for (order of paginatedOrders(); track order.id) {
+                <article class="order-card status-{{ order.status }}">
+                    <div class="order-card-head">
+                        <div>
+                            <strong class="order-table-name">{{ order.table?.name || 'Table inconnue' }}</strong>
+                            <span class="order-reference">#{{ order.id.slice(0, 8).toUpperCase() }}</span>
+                            <span class="order-tracking-code">Code: {{ order.tracking_code || 'N/A' }}</span>
+                        </div>
+                        <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="viewOrder(order)" title="Voir les details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+
+                    <div class="order-badges">
+                        <span class="badge rounded-pill" [ngClass]="statusBadgeClass(order.status)">{{ statusLabel(order.status) }}</span>
+                        <span class="badge rounded-pill bg-dark">{{ orderTypeLabel(order) }}</span>
+                        <span class="badge rounded-pill" [ngClass]="paymentBadgeClass(order.payment_status)">{{ paymentLabel(order) }}</span>
+                        @if (billRequested(order)) {
+                            <span class="badge rounded-pill bg-dark"><i class="bi bi-receipt me-1"></i>Addition demandee</span>
+                        }
+                    </div>
+
+                    <div class="order-card-body">
+                        <div>
+                            <small>Total</small>
+                            <strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong>
+                        </div>
+                        <div>
+                            <small>Heure</small>
+                            <strong>{{ order.created_at | date:'HH:mm' }}</strong>
+                        </div>
+                        <div>
+                            <small>Code suivi</small>
+                            <strong>{{ order.tracking_code || 'N/A' }}</strong>
+                        </div>
+                    </div>
+
+                    @if (canAccess('orders.update-status')) {
+                    <div class="order-actions">
+                        <select class="form-select form-select-sm"
+                                [ngModel]="order.status"
+                                [disabled]="updatingOrderId() === order.id"
+                                (ngModelChange)="updateOrderStatus(order, $event)">
+                            @for (status of statusOptions; track status.value) {
+                                <option [value]="status.value" [disabled]="isStatusDisabled(order, status.value)">{{ status.label }}</option>
+                            }
+                        </select>
+
+                        @if (order.payment_method === 'cash' && order.payment_status !== 'paid' && order.status !== 'cancelled') {
+                            <button class="btn btn-sm btn-success"
+                                    type="button"
+                                    [disabled]="updatingPaymentId() === order.id"
+                                    (click)="openCashModal(order)">
+                                @if (updatingPaymentId() === order.id) {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                } @else {
+                                    <i class="bi bi-cash-coin me-1"></i>
+                                }
+                                Cash
+                            </button>
+                        }
+                    </div>
+                    }
+                </article>
+            } @empty {
+                <div class="empty-orders">
+                    <i class="bi bi-receipt"></i>
+                    <h5>Aucune commande trouvée</h5>
+                </div>
+            }
+        </section>
+
+        @if (filteredOrders().length > 0) {
+            <nav class="orders-pagination mt-4" aria-label="Page navigation">
+                <div class="text-muted small">
+                    Page <strong>{{ currentPage() }}</strong> sur <strong>{{ totalPages() }}</strong>
+                    · {{ filteredOrders().length }} commandes
+                </div>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item" [class.disabled]="currentPage() === 1">
+                        <a class="page-link" role="button" (click)="goToPage(currentPage() - 1)">Previous</a>
+                    </li>
+                    @for (page of pagesArray(); track page) {
+                        <li class="page-item" [class.active]="page === currentPage()">
+                            <a class="page-link" role="button" (click)="goToPage(page)">{{ page }}</a>
+                        </li>
+                    }
+                    <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+                        <a class="page-link" role="button" (click)="goToPage(currentPage() + 1)">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+
+    @if (newOrderModal(); as order) {
+        <div class="order-modal-backdrop">
+            <div class="new-order-modal">
+                <div class="modal-bell"><i class="bi bi-bell-fill"></i></div>
+                <h2>Nouvelle commande !</h2>
+                <div class="new-order-summary">
+                    <div><span>Client</span><strong>{{ order.customer_name || order.customer_phone || 'Client QR' }}</strong></div>
+                    <div><span>Table</span><strong>{{ order.table?.name || 'Table inconnue' }}</strong></div>
+                    <div><span>Code suivi</span><strong>{{ order.tracking_code || 'N/A' }}</strong></div>
+                    <div><span>Service</span><strong>{{ orderTypeLabel(order) }}</strong></div>
+                    <div><span>Articles</span><strong>{{ orderItemsCount(order) }}</strong></div>
+                    <div><span>Total</span><strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong></div>
+                </div>
+                <div class="new-order-items">
+                    @for (item of order.items || []; track item.id) {
+                        <div>
+                            <span>x{{ item.quantity }} {{ item.plat.name || 'Plat' }}</span>
+                            <strong>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</strong>
+                        </div>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary flex-fill" type="button" (click)="newOrderModal.set(null)">Ignorer</button>
+                    <button class="btn btn-primary flex-fill" type="button" (click)="openNewOrder(order)">Voir la commande</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (selectedOrder(); as order) {
+        <div class="order-modal-backdrop">
+            <div class="order-detail-modal">
+                <div class="order-modal-hero">
+                    <div>
+                        <span>Commande #{{ order.id.slice(0, 8).toUpperCase() }}</span>
+                        <h2>{{ order.table?.name || 'Table inconnue' }}</h2>
+                        <p>{{ order.created_at | date:'dd MMM yyyy HH:mm' }}</p>
+                    </div>
+                    <button class="btn btn-light icon-btn" type="button" (click)="closeOrderModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-status-row mb-3">
+                        <span class="badge rounded-pill" [ngClass]="statusBadgeClass(order.status)">{{ statusLabel(order.status) }}</span>
+                        <span class="badge rounded-pill" [ngClass]="paymentBadgeClass(order.payment_status)">{{ paymentLabel(order) }}</span>
+                    </div>
+
+                    <div class="detail-grid mb-3">
+                        <div><span>Client</span><strong>{{ order.customer_name || 'Non renseigne' }}</strong></div>
+                        <div><span>Téléphone</span><strong>{{ order.customer_phone || 'Non renseigne' }}</strong></div>
+                        <div><span>Email</span><strong>{{ order.customer_email || 'Non renseigne' }}</strong></div>
+                        <div><span>Code suivi</span><strong>{{ order.tracking_code || 'N/A' }}</strong></div>
+                        <div><span>Commande</span><strong>{{ statusLabel(order.status) }}</strong></div>
+                        <div><span>Service</span><strong>{{ orderTypeLabel(order) }}</strong></div>
+                        @if (order.order_type === 'takeaway') {
+                            <div><span>Contact emporter</span><strong>{{ order.pickup_phone || order.customer_phone || 'Non renseigne' }}</strong></div>
+                        }
+                        <div><span>Paiement</span><strong>{{ paymentLabel(order) }}</strong></div>
+                    </div>
+
+                    <h3 class="h6 fw-bold">Articles</h3>
+                    <div class="detail-items">
+                        @for (item of order.items || []; track item.id) {
+                            <div class="detail-item">
+                                <div>
+                                    <strong>{{ item.plat.name || 'Plat' }}</strong>
+                                    <small>{{ item.quantity }} x {{ item.price_at_order | number:'1.0-2' }} {{ order.currency }}</small>
+                                </div>
+                                <span>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</span>
+                            </div>
+                        }
+                    </div>
+
+                    @if (order.note) {
+                        <div class="order-note mt-3">{{ order.note }}</div>
+                    }
+
+                    @if (order.cancellation_reason) {
+                        <div class="order-note cancellation-note mt-3">
+                            <strong>Motif d'annulation</strong>
+                            <p class="mb-0">{{ order.cancellation_reason }}</p>
+                        </div>
+                    }
+
+                    @if (billRequested(order)) {
+                        <div class="order-note bill-note mt-3">
+                            <strong>Addition demandée</strong>
+                            <p class="mb-0">Le client souhaite payer en cash. {{ billRequestedAt(order) ? ('Demande envoyée le ' + (billRequestedAt(order) | date:'dd/MM/yyyy HH:mm')) : '' }}</p>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer border-0 justify-content-between">
+                    <strong>Total : {{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong>
+                    <button class="btn btn-secondary" type="button" (click)="closeOrderModal()">Fermer</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (billRequestModal(); as order) {
+        <div class="order-modal-backdrop">
+            <div class="new-order-modal bill-request-modal">
+                <div class="modal-bell bill-bell"><i class="bi bi-receipt-cutoff"></i></div>
+                <h2>Addition demandée</h2>
+                <p class="text-muted text-center mb-3">Une table souhaite recevoir l'addition cash.</p>
+                <div class="new-order-summary">
+                    <div><span>Table</span><strong>{{ order.table?.name || 'Table inconnue' }}</strong></div>
+                    <div><span>Service</span><strong>{{ orderTypeLabel(order) }}</strong></div>
+                    <div><span>Client</span><strong>{{ order.customer_name || order.customer_phone || 'Client QR' }}</strong></div>
+                    <div><span>Commande</span><strong>#{{ order.id.slice(0, 8).toUpperCase() }}</strong></div>
+                    <div><span>Total</span><strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong></div>
+                </div>
+                <div class="new-order-items">
+                    @for (item of order.items || []; track item.id) {
+                        <div>
+                            <span>x{{ item.quantity }} {{ item.plat.name || 'Plat' }}</span>
+                            <strong>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</strong>
+                        </div>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary flex-fill" type="button" (click)="billRequestModal.set(null)">Fermer</button>
+                    @if (canAccess('orders.update-status')) {
+                    <button class="btn btn-success flex-fill" type="button" (click)="billRequestModal.set(null); openCashModal(order)">
+                        Encaisser cash
+                    </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (cashOrder(); as order) {
+        <div class="order-modal-backdrop">
+            <div class="cash-modal">
+                <div class="order-modal-hero cash-hero">
+                    <div>
+                        <span>Encaissement cash</span>
+                        <h2>{{ order.table?.name || 'Table inconnue' }}</h2>
+                        <p>Commande #{{ order.id.slice(0, 8).toUpperCase() }}</p>
+                    </div>
+                    <button class="btn btn-light icon-btn" type="button" (click)="closeCashModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="cash-total-box">
+                        <span>Total a payer</span>
+                        <strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong>
+                    </div>
+
+                    <label class="form-label small fw-bold text-muted text-uppercase mt-3">Montant recu</label>
+                    <div class="input-group input-group-lg">
+                        <input type="number"
+                               class="form-control"
+                               min="0"
+                               [ngModel]="cashReceivedAmount()"
+                               (ngModelChange)="cashReceivedAmount.set(+$event)"
+                               placeholder="Montant donne par le client">
+                        <span class="input-group-text">{{ order.currency }}</span>
+                    </div>
+
+                    <div class="cash-change-box" [class.insufficient]="!cashAmountIsEnough()">
+                        <span>{{ cashAmountIsEnough() ? 'Monnaie a rendre' : 'Montant restant' }}</span>
+                        <strong>
+                            @if (cashAmountIsEnough()) {
+                                {{ cashChangeAmount() | number:'1.0-2' }} {{ order.currency }}
+                            } @else {
+                                {{ (orderTotal(order) - (cashReceivedAmount() || 0)) | number:'1.0-2' }} {{ order.currency }}
+                            }
+                        </strong>
+                    </div>
+
+                    <div class="detail-items mt-3">
+                        @for (item of order.items || []; track item.id) {
+                            <div class="detail-item">
+                                <div>
+                                    <strong>{{ item.plat.name || 'Plat' }}</strong>
+                                    <small>{{ item.quantity }} x {{ item.price_at_order | number:'1.0-2' }} {{ order.currency }}</small>
+                                </div>
+                                <span>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 cash-footer">
+                    <button class="btn btn-outline-secondary" type="button" (click)="closeCashModal()">Annuler</button>
+                    <button class="btn btn-success"
+                            type="button"
+                            [disabled]="!cashAmountIsEnough() || updatingPaymentId() === order.id"
+                            (click)="confirmCashPayment()">
+                        @if (updatingPaymentId() === order.id) {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        } @else {
+                            <i class="bi bi-printer me-1"></i>
+                        }
+                        Confirmer & imprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>

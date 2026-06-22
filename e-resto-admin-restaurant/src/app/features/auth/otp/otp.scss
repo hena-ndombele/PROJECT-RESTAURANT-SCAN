@@ -1,0 +1,169 @@
+.auth-wrapper {
+  background-color: #f8f9fa; /* Fond léger pour faire ressortir la carte */
+  padding: 15px;
+}
+
+/* Style de la partie Image */
+.otp-image-side {
+  background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)),
+  url('/assets/images/image7.jpg') no-repeat center center;
+  background-size: cover;
+  min-height: 500px;
+}
+
+/* Style du logo */
+.logo-style {
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  border: 2px solid white;
+}
+
+/* Style des inputs OTP */
+.otp-input {
+  height: 55px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border: 2px solid #eee;
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.otp-input:focus {
+  border-color: #F9A11B;
+  box-shadow: 0 0 0 0.25rem rgba(249, 161, 27, 0.15);
+  outline: none;
+}
+
+/* Bouton principal */
+.submit-btn {
+  background-color: #F9A11B;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  transition: transform 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: #e89516;
+  transform: translateY(-2px);
+}
+
+.submit-btn:disabled {
+  background-color: #fccb84;
+}
+
+.otp-submit-btn {
+  border: 0;
+  color: #111827;
+  background: linear-gradient(135deg, #ffd34d, #F9A11B);
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(249, 161, 27, 0.25);
+}
+
+.otp-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ffe071, #f28c0b);
+  transform: translateY(-1px);
+}
+
+.otp-submit-btn:disabled {
+  opacity: .72;
+}
+
+.otp-link-btn {
+  color: #F9A11B;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.otp-link-btn:hover:not(:disabled) {
+  color: #d97706;
+  text-decoration: underline;
+}
+
+.otp-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1100;
+  width: min(380px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  padding: 16px 42px 16px 16px;
+  border: 1px solid rgba(17, 24, 39, .08);
+  border-radius: 10px;
+  color: #111827;
+  background: #fff;
+  box-shadow: 0 22px 48px rgba(17, 24, 39, .18);
+  animation: otpToastIn .34s ease-out;
+}
+
+.otp-toast.success {
+  border-left: 5px solid #F9A11B;
+}
+
+.otp-toast.error {
+  border-left: 5px solid #d71920;
+}
+
+.otp-toast > i {
+  margin-top: 2px;
+  color: #F9A11B;
+  font-size: 1.25rem;
+}
+
+.otp-toast.error > i {
+  color: #d71920;
+}
+
+.otp-toast strong,
+.otp-toast span {
+  display: block;
+}
+
+.otp-toast strong {
+  margin-bottom: 4px;
+  font-weight: 900;
+}
+
+.otp-toast span {
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.toast-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  color: #6b7280;
+  background: transparent;
+}
+
+.toast-close:hover {
+  color: #111827;
+  background: #f3f4f6;
+}
+
+@keyframes otpToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(42px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .otp-toast {
+    top: 14px;
+    right: 16px;
+  }
+}

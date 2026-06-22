@@ -1,0 +1,127 @@
+<main class="checkout-page">
+  <section class="checkout-shell">
+    <div class="checkout-intro">
+      <a class="brand" routerLink="/">
+        <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+        <span>Restaurant Scan</span>
+      </a>
+      <span class="eyebrow">Etape 2 sur 2</span>
+      <h2>Derniere verification avant activation</h2>
+      <p>Controlez votre plan, entrez le numero wallet au format +243, puis confirmez le paiement sur votre telephone.</p>
+      @if (subscriptionExpired) {
+        <p class="message error" role="alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          Votre abonnement a expire. Payez votre abonnement pour reactiver l'acces a votre espace restaurant.
+        </p>
+      }
+      <a class="change-plan" routerLink="/pricing">Changer de plan</a>
+    </div>
+
+    <div class="checkout-grid">
+      <aside class="summary-panel">
+        <div class="restaurant-card">
+          <span>Restaurant</span>
+          <strong>{{ restaurant.name || 'Votre restaurant' }}</strong>
+          <small>{{ restaurant.city || restaurant.address || 'Espace SaaS Restaurant Scan' }}</small>
+        </div>
+
+        <div class="plan-summary">
+          <div class="plan-head">
+            <div>
+              <span>Plan selectionne</span>
+              <h3>{{ planName }}</h3>
+            </div>
+            <i class="bi bi-stars"></i>
+          </div>
+
+          <div class="amount-summary">
+            <div>
+              <span>Cycle</span>
+              <strong>{{ billingCycle === 'yearly' ? 'Annuel' : 'Mensuel' }}</strong>
+            </div>
+            <div>
+              <span>{{ billingCycle === 'yearly' ? 'Equivalent mensuel' : 'Abonnement mensuel' }}</span>
+              <strong>{{ monthlyEquivalent | number:'1.0-2' }} {{ currency }}</strong>
+            </div>
+            <div class="total-row">
+              <span>Montant debite maintenant</span>
+              <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
+            </div>
+          </div>
+
+          <p class="billing-note">
+            {{ billingCycle === 'yearly' ? 'Vous profitez du tarif annuel reduit pour 12 mois d acces.' : 'Le paiement active un mois d acces.' }}
+          </p>
+        </div>
+
+        <div class="trust-list">
+          <div><i class="bi bi-check-circle-fill"></i><span>Session restaurant creee automatiquement</span></div>
+          <div><i class="bi bi-check-circle-fill"></i><span>Plan synchronise avec votre dashboard</span></div>
+          <div><i class="bi bi-check-circle-fill"></i><span>Activation uniquement apres confirmation operateur</span></div>
+        </div>
+      </aside>
+
+      <form class="payment-panel" (ngSubmit)="pay()" novalidate>
+        <div class="payment-head">
+          <span class="eyebrow">Paiement</span>
+          <h2>Mobile Money</h2>
+          <p>Choisissez l'operateur et le numero wallet qui va recevoir la demande de paiement.</p>
+        </div>
+
+        <div class="operator-grid" aria-label="Choisir l'operateur Mobile Money">
+          <label [class.active]="mobile.provider === 'MPESA'">
+            <input type="radio" name="provider" value="MPESA" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
+            <img src="assets/logo/mpse.png" alt="M-Pesa">
+            <span>M-Pesa</span>
+          </label>
+          <label [class.active]="mobile.provider === 'ORANGE'">
+            <input type="radio" name="provider" value="ORANGE" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
+            <img src="assets/logo/orange.jpg" alt="Orange Money">
+            <span>Orange</span>
+          </label>
+          <label [class.active]="mobile.provider === 'AIRTEL'">
+            <input type="radio" name="provider" value="AIRTEL" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
+            <img src="assets/logo/airel money.png" alt="Airtel Money">
+            <span>Airtel</span>
+          </label>
+        </div>
+
+        <label class="wallet-field">
+          <span>Numero wallet</span>
+          <div>
+            <i class="bi bi-phone-fill"></i>
+            <input
+              [ngModel]="mobile.wallet_id"
+              (ngModelChange)="onWalletChange($event)"
+              name="wallet_id"
+              placeholder="+243830376004"
+              autocomplete="tel"
+              inputmode="tel">
+          </div>
+          <small>{{ walletHint }}</small>
+        </label>
+
+        <div class="payment-total">
+          <span>Total abonnement</span>
+          <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
+        </div>
+
+        <button class="pay-button" [disabled]="paying || waitingConfirmation">
+          <span *ngIf="paying || waitingConfirmation" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          <i *ngIf="!paying && !waitingConfirmation" class="bi bi-lock-fill"></i>
+          {{ paying ? 'Envoi au gateway...' : waitingConfirmation ? 'En attente de confirmation...' : 'Payer mon abonnement' }}
+        </button>
+
+        <p class="message" role="alert" *ngIf="message" [ngClass]="messageType">
+          <i class="bi" [ngClass]="messageType === 'success' ? 'bi-check-circle-fill' : messageType === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-hourglass-split'"></i>
+          <span>{{ message }}</span>
+        </p>
+
+        <div class="payment-reference" *ngIf="paymentReference">
+          <span>Reference paiement</span>
+          <strong>{{ paymentReference }}</strong>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
