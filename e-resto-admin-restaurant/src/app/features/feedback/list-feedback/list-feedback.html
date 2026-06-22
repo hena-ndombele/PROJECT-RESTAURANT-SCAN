@@ -21,8 +21,8 @@
     <section class="upgrade-card mb-4">
       <div class="upgrade-icon"><i class="bi bi-lock-fill"></i></div>
       <div>
-        <h2>Feedback reserve aux plans Pro et Business</h2>
-        <p>Les avis clients font partie des outils de qualite et fidelisation avances. Passez sur Pro ou Business pour collecter, analyser et suivre les retours clients.</p>
+        <h2>Feedback reservé aux plans Pro et Business</h2>
+        <p>Les avis clients font partie des outils de qualité et fidelisation avancés. Passez sur Pro ou Business pour collecter, analyser et suivre les retours clients.</p>
       </div>
     </section>
   } @else {
@@ -60,9 +60,9 @@
           <label class="form-label small fw-bold text-muted text-uppercase">Note minimale</label>
           <select class="form-select bg-transparent" [ngModel]="minRating()" (ngModelChange)="minRating.set(+$event)">
             <option [value]="0">Toutes</option>
-            <option [value]="3">3 etoiles et plus</option>
-            <option [value]="4">4 etoiles et plus</option>
-            <option [value]="5">5 etoiles</option>
+            <option [value]="3">3 étoiles et plus</option>
+            <option [value]="4">4 étoiles et plus</option>
+            <option [value]="5">5 étoiles</option>
           </select>
         </div>
         <div class="col-md-4">
@@ -156,9 +156,9 @@
           <div class="detail-grid">
             <div><span>Note moyenne</span><strong>{{ averageRating(feedback) | number:'1.1-1' }}/5</strong></div>
             <div><span>Recommandation</span><strong>{{ recommendationLabel(feedback) }}</strong></div>
-            <div><span>Qualite plats</span><strong>{{ feedback.food_rating }}/5</strong></div>
-            <div><span>Rapidite service</span><strong>{{ feedback.service_rating }}/5</strong></div>
-            <div><span>Facilite commande</span><strong>{{ feedback.ordering_rating }}/5</strong></div>
+            <div><span>Qualité plats</span><strong>{{ feedback.food_rating }}/5</strong></div>
+            <div><span>Rapidité service</span><strong>{{ feedback.service_rating }}/5</strong></div>
+            <div><span>Facilité commande</span><strong>{{ feedback.ordering_rating }}/5</strong></div>
             <div><span>Total commande</span><strong>{{ feedback.order?.total_amount || 0 }} {{ feedback.order?.currency || '' }}</strong></div>
           </div>
 

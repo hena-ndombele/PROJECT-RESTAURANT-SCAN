@@ -2631,3 +2631,355 @@ body {
     height: 62px;
   }
 }
+
+/* Mobile restaurant menu redesign: compact two-column cards like a digital QR menu. */
+@media (max-width: 991px) {
+  #menu {
+    padding: 14px 0 20px;
+  }
+
+  #menu .container {
+    max-width: 520px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .menu-inline-search {
+    margin-bottom: 14px;
+    border-radius: 18px;
+    box-shadow: 0 8px 22px rgba(17, 17, 17, .06);
+  }
+
+  #menu .text-center.mb-4 {
+    margin: 0 -14px 18px !important;
+    padding: 0 14px 6px;
+  }
+
+  .filtbtn {
+    min-height: 38px;
+    padding: 8px 15px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  #mgrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 12px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  #mgrid .mwrap {
+    width: auto;
+    max-width: none;
+    flex: initial;
+    padding: 0;
+  }
+
+  #mgrid .col-12 {
+    grid-column: 1 / -1;
+    padding: 0;
+  }
+
+  .mcard {
+    min-height: 100%;
+    display: flex !important;
+    flex-direction: column;
+    gap: 0;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: none;
+    color: #111;
+  }
+
+  .mcard:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .mimg {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1.12 / 1;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(17, 17, 17, .08);
+  }
+
+  .mimg img {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    object-fit: cover;
+  }
+
+  .mbody {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    padding: 8px 2px 0;
+  }
+
+  .mcat {
+    display: none;
+  }
+
+  .mtit {
+    min-height: 36px;
+    white-space: normal;
+    display: -webkit-box;
+    overflow: hidden;
+    color: #24212a;
+    font-family: "Playfair Display", serif;
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.15;
+    text-overflow: clip;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mdesc {
+    display: none !important;
+  }
+
+  .mfoot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 7px;
+  }
+
+  .mprice {
+    color: var(--primary);
+    font-family: "Poppins", sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  .mtime {
+    display: none;
+  }
+
+  .madd {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 34%, transparent);
+    font-size: 12px;
+  }
+
+  .madd:hover {
+    color: #fff;
+    background: var(--primary);
+  }
+}
+
+@media (max-width: 420px) {
+  #mgrid {
+    gap: 16px 10px;
+  }
+
+  .mcard {
+    min-height: 100%;
+    gap: 0;
+    padding: 0;
+  }
+
+  .mimg {
+    width: 100%;
+    height: auto;
+  }
+
+  .mtit {
+    font-size: 14px;
+  }
+
+  .mprice {
+    font-size: 12px;
+  }
+
+  .madd {
+    width: 27px;
+    height: 27px;
+  }
+}
+
+@media (max-width: 991px) {
+  body,
+  .client-app-shell,
+  .menu-view,
+  #menu {
+    background: #fff;
+  }
+
+  #mgrid {
+    gap: 16px 12px;
+  }
+
+  .mcard {
+    padding: 7px;
+    border: 1px solid rgba(17, 17, 17, .08);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(17, 17, 17, .08);
+  }
+
+  .mcard:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(17, 17, 17, .12);
+  }
+
+  .mimg {
+    box-shadow: none;
+    border: 1px solid rgba(17, 17, 17, .06);
+  }
+
+  .mbody {
+    padding: 8px 2px 1px;
+  }
+}
+
+@media (max-width: 420px) {
+  #mgrid {
+    gap: 14px 10px;
+  }
+
+  .mcard {
+    padding: 6px;
+  }
+}
+
+.mobile-table-pill {
+  display: none;
+}
+
+@media (max-width: 991px) {
+  #nav {
+    border-bottom: 0;
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(17, 17, 17, .06);
+  }
+
+  #nav::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+  }
+
+  #nav .container {
+    min-height: 76px;
+    justify-content: space-between;
+    gap: 12px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  #nav .navbar-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  #nav .brand-logo {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  #nav .brand-logo-img {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary) 10%, #fff);
+  }
+
+  #nav .brand-logo > div {
+    min-width: 0;
+    text-align: left;
+  }
+
+  #nav .bname {
+    max-width: 100%;
+    overflow: hidden;
+    color: #111;
+    font-size: 18px;
+    line-height: 1.08;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #nav .bsub {
+    max-width: 100%;
+    overflow: hidden;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    text-transform: none;
+    white-space: nowrap;
+  }
+
+  .mobile-table-pill {
+    min-width: max-content;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+
+  .mobile-table-pill i {
+    font-size: 11px;
+  }
+
+  #menu .scanned-table-banner {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  #nav .bname {
+    font-size: 16px;
+  }
+
+  #nav .bsub {
+    font-size: 10px;
+  }
+
+  .mobile-table-pill {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+}

@@ -7,56 +7,57 @@
     <i class="ti ti-eye fs-4"></i>
 </button>
 
-<div class="modal fade" id="showTableModal{{detail.id}}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content shadow-lg">
-            <div class="modal-header pb-0">
-                <h5 class="modal-title fw-bold text-dark" style="text-align: center">TABLE DETAILS</h5>
+<div class="modal fade table-qr-modal" id="showTableModal{{detail.id}}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered table-qr-dialog">
+        <div class="modal-content table-qr-content shadow-lg">
+            <div class="modal-header table-qr-header">
+                <h5 class="modal-title">TABLE DETAILS</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="modal-body p-4">
-                <div [id]="'printArea' + detail.id" class="qr-print-card menu-qr-card">
-                    <div class="menu-qr-left">
-                        <div class="qr-container position-relative">
+            <div class="modal-body table-qr-body">
+                <div [id]="'printArea' + detail.id" class="qr-print-card scan-order-card">
+                    <div class="scan-brand-badge">
+                        <img [src]="restaurantLogo()" [alt]="restaurantName()">
+                    </div>
+
+                    <h2>SCAN TO ORDER</h2>
+
+                    <div class="scan-frame">
+                        <span class="scan-corner corner-tl"></span>
+                        <span class="scan-corner corner-tr"></span>
+                        <span class="scan-corner corner-bl"></span>
+                        <span class="scan-corner corner-br"></span>
+
+                        <div class="qr-container">
                             @if (detail.qr_url) {
-                                <img [src]="detail.qr_url"
-                                     alt="QR Code"
-                                     class="main-table-qr">
+                                <img [src]="tableQrUrl(detail)" alt="QR Code" class="main-table-qr">
                                 <div class="qr-center-logo">
-                                    <img [src]="restaurantLogo()" alt="Logo">
+                                    <img [src]="restaurantLogo()" [alt]="restaurantName()">
                                 </div>
                             } @else {
-                                <div class="qr-empty">
-                                    QR code indisponible
-                                </div>
+                                <div class="qr-empty">QR code indisponible</div>
                             }
                         </div>
                     </div>
 
-                    <div class="menu-qr-right">
-                        <img [src]="restaurantLogo()" alt="Logo" class="qr-restaurant-logo">
-                        <span class="scan-eyebrow">SCAN FOR OUR</span>
-                        <strong class="scan-title">MENU</strong>
-                        <p>Scannez le QR code pour commander directement depuis votre table.</p>
-                        <h1 class="table-name-preview">{{ detail.name }}</h1>
-                    </div>
+                    <div class="table-name-preview">{{ detail.name }}</div>
                 </div>
             </div>
 
-            <div class="modal-footer border-0 px-4 pb-3">
+            <div class="modal-footer table-qr-footer">
                 <button type="button"
-                        class="btn btn-success w-100 py-2 d-flex align-items-center justify-content-center"
+                        class="btn qr-print-action"
                         [disabled]="!detail.qr_url"
                         (click)="printQRCode()">
-                    <i class="ti ti-printer me-2 fs-4"></i>
+                    <i class="ti ti-printer"></i>
                     <span>PRINT QR CODE</span>
                 </button>
                 <button type="button"
-                        class="btn btn-danger w-100 py-2 d-flex align-items-center justify-content-center mt-2"
+                        class="btn qr-download-action"
                         [disabled]="!detail.qr_url"
                         (click)="downloadQRCode()">
-                    <i class="ti ti-download me-2 fs-4"></i>
+                    <i class="ti ti-download"></i>
                     <span>TELECHARGER PNG</span>
                 </button>
             </div>

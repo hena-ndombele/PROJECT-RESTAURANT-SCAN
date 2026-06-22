@@ -1,6 +1,6 @@
 import { Component, Input, OnChanges, OnInit, SimpleChanges } from "@angular/core";
 import { TableDto } from "../../../models/table/TableDto";
-import { STORAGE_ROOT } from "../../../services/api-url";
+import { API_ROOT, STORAGE_ROOT } from "../../../services/api-url";
 
 @Component({
     selector: "app-show-table",
@@ -53,6 +53,28 @@ export class ShowTable implements OnInit, OnChanges {
         }
     }
 
+    tableQrUrl(table: TableDto): string | null {
+        if (!table.qr_url) return null;
+
+        const apiBase = API_ROOT.replace(/\/api$/, "");
+        const apiQrUrl = (pathname: string) => {
+            const filename = pathname.split("/").pop();
+            return filename ? `${apiBase}/api/table-qrcodes/${filename}` : null;
+        };
+
+        try {
+            const url = new URL(table.qr_url);
+            if (url.pathname.includes("/storage/qrcodes/")) {
+                return apiQrUrl(url.pathname);
+            }
+        } catch {
+            if (table.qr_url.startsWith("/storage/qrcodes/")) {
+                return apiQrUrl(table.qr_url);
+            }
+        }
+
+        return table.qr_url;
+    }
     primaryColor(): string {
         return getComputedStyle(document.documentElement).getPropertyValue("--dashboard-primary").trim() || "#F9A11B";
     }
@@ -64,7 +86,8 @@ export class ShowTable implements OnInit, OnChanges {
         const primary = this.primaryColor();
         const restaurantName = this.restaurantName();
         const tableName = this.tableDetail.name;
-        const windowPrint = window.open("", "", "left=0,top=0,width=980,height=760");
+        const qrUrl = this.tableQrUrl(this.tableDetail);
+        const windowPrint = window.open("", "", "left=0,top=0,width=760,height=980");
 
         if (!windowPrint) return;
 
@@ -73,7 +96,7 @@ export class ShowTable implements OnInit, OnChanges {
 <head>
   <title>QR Code - ${this.escapeHtml(tableName)}</title>
   <style>
-    @page { size: landscape; margin: 8mm; }
+    @page { size: portrait; margin: 8mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
     body {
       min-height: 100vh;
@@ -83,120 +106,125 @@ export class ShowTable implements OnInit, OnChanges {
       background: #ffffff;
       font-family: Arial, Helvetica, sans-serif;
     }
-    .menu-card {
-      width: 900px;
-      min-height: 540px;
-      display: grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap: 34px;
+    .scan-card {
+      width: 520px;
+      min-height: 740px;
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      padding: 42px;
-      border: 5px solid ${primary};
-      border-radius: 8px;
+      padding: 34px 34px 28px;
       background: #ffffff !important;
       color: #111827 !important;
-      box-shadow: 0 18px 50px rgba(17,24,39,.18);
     }
-    .qr-block {
+    .brand {
+      width: 170px;
+      height: 88px;
       display: grid;
       place-items: center;
-      min-height: 420px;
-      border: 3px solid #111827;
-      background: #ffffff !important;
-      position: relative;
+      margin-bottom: 24px;
+      padding: 12px 16px;
+      border: 2px solid rgba(15, 23, 42, .12);
+      border-radius: 14px;
+      background: ${primary} !important;
     }
-    .main-qr { width: 360px; height: 360px; display: block; }
-    .qr-logo {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 96px;
-      height: 74px;
-      display: grid;
-      place-items: center;
-      padding: 7px;
-      border: 3px solid ${primary};
-      border-radius: 5px;
-      background: #ffffff !important;
-      box-shadow: 0 0 14px rgba(0,0,0,.14);
-    }
-    .qr-logo img,
-    .brand-logo {
+    .brand img,
+    .qr-logo img {
       width: 100%;
       height: 100%;
       object-fit: contain;
     }
-    .content {
-      min-height: 420px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      border-left: 7px solid ${primary};
-      padding-left: 34px;
-    }
-    .brand-logo-wrap {
-      width: 170px;
-      height: 104px;
-      margin-bottom: 20px;
-      background: #ffffff !important;
-    }
-    .eyebrow {
-      font-size: 35px;
+    h1 {
+      margin: 0 0 26px;
+      color: #111827 !important;
+      font-size: 34px;
+      font-weight: 950;
       line-height: 1;
-      font-weight: 950;
-      text-transform: uppercase;
-      color: #111827 !important;
+      text-align: center;
     }
-    .menu {
-      margin: 2px 0 16px;
-      font-size: 84px;
-      line-height: .9;
-      font-weight: 950;
-      text-transform: uppercase;
-      color: ${primary} !important;
+    .scan-frame {
+      position: relative;
+      width: 390px;
+      padding: 25px;
+      margin-bottom: 34px;
     }
-    .restaurant {
-      margin: 0 0 16px;
-      font-size: 22px;
-      font-weight: 900;
-      color: #111827 !important;
-    }
-    .hint {
-      max-width: 310px;
-      margin: 0 0 22px;
-      color: #4b5563 !important;
-      font-size: 17px;
-      line-height: 1.4;
-    }
-    .table-name {
-      width: 300px;
-      min-height: 54px;
+    .qr-box {
+      position: relative;
+      width: 340px;
+      height: 340px;
       display: grid;
       place-items: center;
-      border: 4px solid ${primary};
+      border: 1px solid rgba(15, 23, 42, .28);
       background: #ffffff !important;
-      color: #111827 !important;
-      font-size: 28px;
+    }
+    .qr-box > img {
+      width: 294px;
+      height: 294px;
+      object-fit: contain;
+    }
+    .qr-logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 84px;
+      height: 62px;
+      display: grid;
+      place-items: center;
+      transform: translate(-50%, -50%);
+      padding: 7px;
+      border: 2px solid rgba(15, 23, 42, .14);
+      border-radius: 10px;
+      background: #ffffff !important;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, .16);
+    }
+    .corner {
+      position: absolute;
+      width: 66px;
+      height: 66px;
+      border-color: #ffffff;
+      border-style: solid;
+      filter: drop-shadow(0 2px 2px rgba(15, 23, 42, .2));
+      z-index: 3;
+    }
+    .tl { top: 0; left: 0; border-width: 9px 0 0 9px; border-top-left-radius: 24px; }
+    .tr { top: 0; right: 0; border-width: 9px 9px 0 0; border-top-right-radius: 24px; }
+    .bl { bottom: 0; left: 0; border-width: 0 0 9px 9px; border-bottom-left-radius: 24px; }
+    .br { right: 0; bottom: 0; border-width: 0 9px 9px 0; border-bottom-right-radius: 24px; }
+    .table-name {
+      width: 430px;
+      min-height: 58px;
+      display: grid;
+      place-items: center;
+      padding: 10px 20px;
+      background: #111827 !important;
+      color: #ffffff !important;
+      font-size: 34px;
       font-weight: 950;
+      line-height: 1;
+      text-align: center;
       text-transform: uppercase;
+    }
+    .restaurant {
+      margin: 18px 0 0;
+      color: #6b7280 !important;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div class="menu-card">
-    <div class="qr-block">
-      <img src="${this.tableDetail.qr_url}" class="main-qr" alt="QR Code">
-      <div class="qr-logo"><img src="${logoUrl}" alt="Logo"></div>
+  <div class="scan-card">
+    <div class="brand"><img src="${logoUrl}" alt="${this.escapeHtml(restaurantName)}"></div>
+    <h1>SCAN TO ORDER</h1>
+    <div class="scan-frame">
+      <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+      <div class="qr-box">
+        <img src="${qrUrl}" alt="QR Code">
+        <div class="qr-logo"><img src="${logoUrl}" alt="${this.escapeHtml(restaurantName)}"></div>
+      </div>
     </div>
-    <div class="content">
-      <div class="brand-logo-wrap"><img class="brand-logo" src="${logoUrl}" alt="Logo"></div>
-      <div class="eyebrow">SCAN FOR OUR</div>
-      <div class="menu">MENU</div>
-      <p class="restaurant">${this.escapeHtml(restaurantName)}</p>
-      <p class="hint">Scannez le QR code pour consulter le menu et commander depuis votre table.</p>
-      <div class="table-name">${this.escapeHtml(tableName)}</div>
-    </div>
+    <div class="table-name">${this.escapeHtml(tableName)}</div>
+    <p class="restaurant">${this.escapeHtml(restaurantName)}</p>
   </div>
   <script>
     window.onload = function() {
@@ -212,87 +240,81 @@ export class ShowTable implements OnInit, OnChanges {
         if (!this.tableDetail?.qr_url) return;
 
         const canvas = document.createElement("canvas");
-        canvas.width = 1400;
-        canvas.height = 860;
+        canvas.width = 900;
+        canvas.height = 1200;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
         const primary = this.primaryColor();
         const logo = await this.loadImage(this.restaurantLogo());
-        const qr = await this.loadImage(this.tableDetail.qr_url);
+        const qrUrl = this.tableQrUrl(this.tableDetail);
+        if (!qrUrl) return;
+        const qr = await this.loadImage(qrUrl);
         const restaurantName = this.restaurantName();
         const tableName = this.tableDetail.name;
 
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = "#ffffff";
-        this.roundRect(ctx, 70, 70, 1260, 720, 10);
+        ctx.fillStyle = primary;
+        this.roundRect(ctx, 332, 92, 236, 116, 22);
         ctx.fill();
-        ctx.strokeStyle = primary;
-        ctx.lineWidth = 10;
-        this.roundRect(ctx, 70, 70, 1260, 720, 10);
+        ctx.strokeStyle = "rgba(15, 23, 42, .12)";
+        ctx.lineWidth = 3;
+        this.roundRect(ctx, 332, 92, 236, 116, 22);
         ctx.stroke();
+        if (logo) ctx.drawImage(logo, 362, 118, 176, 64);
 
-        ctx.fillStyle = "#ffffff";
-        this.roundRect(ctx, 130, 150, 560, 560, 0);
-        ctx.fill();
-        ctx.strokeStyle = "#111827";
-        ctx.lineWidth = 5;
-        this.roundRect(ctx, 130, 150, 560, 560, 0);
-        ctx.stroke();
+        ctx.fillStyle = "#111827";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        ctx.font = "900 54px Arial";
+        ctx.fillText("SCAN TO ORDER", 450, 292);
 
-        if (qr) {
-            ctx.drawImage(qr, 170, 190, 480, 480);
-        }
+        const frameX = 210;
+        const frameY = 340;
+        const frameSize = 480;
+        const qrBoxX = frameX + 40;
+        const qrBoxY = frameY + 40;
+        const qrBoxSize = 400;
+
+        ctx.strokeStyle = "rgba(15, 23, 42, .28)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
+        if (qr) ctx.drawImage(qr, qrBoxX + 28, qrBoxY + 28, qrBoxSize - 56, qrBoxSize - 56);
 
         if (logo) {
             ctx.fillStyle = "#ffffff";
-            this.roundRect(ctx, 342, 382, 136, 96, 8);
+            this.roundRect(ctx, 393, 533, 114, 84, 14);
             ctx.fill();
-            ctx.strokeStyle = primary;
-            ctx.lineWidth = 4;
-            this.roundRect(ctx, 342, 382, 136, 96, 8);
+            ctx.strokeStyle = "rgba(15, 23, 42, .14)";
+            ctx.lineWidth = 3;
+            this.roundRect(ctx, 393, 533, 114, 84, 14);
             ctx.stroke();
-            ctx.drawImage(logo, 358, 397, 104, 66);
-            ctx.drawImage(logo, 810, 155, 190, 120);
+            ctx.drawImage(logo, 408, 554, 84, 42);
         }
 
-        ctx.fillStyle = primary;
-        ctx.fillRect(750, 150, 8, 560);
+        this.drawCorner(ctx, frameX, frameY, "tl");
+        this.drawCorner(ctx, frameX + frameSize, frameY, "tr");
+        this.drawCorner(ctx, frameX, frameY + frameSize, "bl");
+        this.drawCorner(ctx, frameX + frameSize, frameY + frameSize, "br");
 
         ctx.fillStyle = "#111827";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "alphabetic";
-        ctx.font = "900 54px Arial";
-        ctx.fillText("SCAN FOR OUR", 810, 355);
-
-        ctx.fillStyle = primary;
-        ctx.font = "900 128px Arial";
-        ctx.fillText("MENU", 810, 465);
-
-        ctx.fillStyle = "#111827";
-        ctx.font = "900 34px Arial";
-        ctx.fillText(this.truncateText(ctx, restaurantName, 430), 810, 525);
-
-        ctx.fillStyle = "#4b5563";
-        ctx.font = "500 24px Arial";
-        this.wrapText(ctx, "Scannez le QR code pour consulter le menu et commander depuis votre table.", 810, 572, 430, 34);
-
-        ctx.strokeStyle = primary;
-        ctx.lineWidth = 5;
-        ctx.strokeRect(810, 660, 360, 62);
-        ctx.fillStyle = "#111827";
+        ctx.fillRect(150, 875, 600, 72);
+        ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        ctx.font = "900 32px Arial";
-        ctx.fillText(this.truncateText(ctx, tableName.toUpperCase(), 320), 990, 702);
+        ctx.font = "900 44px Arial";
+        ctx.fillText(this.truncateText(ctx, tableName.toUpperCase(), 540), 450, 926);
+
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "700 22px Arial";
+        ctx.fillText(this.truncateText(ctx, restaurantName, 620), 450, 1002);
 
         const link = document.createElement("a");
         link.download = `qr-table-${tableName}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
     }
-
     private loadImage(src: string): Promise<HTMLImageElement | null> {
         return new Promise((resolve) => {
             const image = new Image();
@@ -333,6 +355,49 @@ export class ShowTable implements OnInit, OnChanges {
         }
     }
 
+    private drawCorner(ctx: CanvasRenderingContext2D, x: number, y: number, corner: "tl" | "tr" | "bl" | "br"): void {
+        const size = 74;
+        const radius = 22;
+        ctx.save();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 12;
+        ctx.lineCap = "round";
+        ctx.shadowColor = "rgba(15, 23, 42, .22)";
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 2;
+        ctx.beginPath();
+
+        if (corner === "tl") {
+            ctx.moveTo(x, y + size);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.lineTo(x + size, y);
+        }
+
+        if (corner === "tr") {
+            ctx.moveTo(x - size, y);
+            ctx.lineTo(x - radius, y);
+            ctx.quadraticCurveTo(x, y, x, y + radius);
+            ctx.lineTo(x, y + size);
+        }
+
+        if (corner === "bl") {
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x, y - radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.lineTo(x + size, y);
+        }
+
+        if (corner === "br") {
+            ctx.moveTo(x - size, y);
+            ctx.lineTo(x - radius, y);
+            ctx.quadraticCurveTo(x, y, x, y - radius);
+            ctx.lineTo(x, y - size);
+        }
+
+        ctx.stroke();
+        ctx.restore();
+    }
     private truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
         if (ctx.measureText(text).width <= maxWidth) return text;
 

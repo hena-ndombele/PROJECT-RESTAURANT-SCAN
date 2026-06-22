@@ -284,6 +284,7 @@ export function App() {
         cartCount={cart.totals.totalQuantity}
         activeView={activeView}
         activeOrder={activeOrder}
+        scannedTable={scannedTable}
         hasTable={Boolean(tableId)}
         onView={setActiveView}
       />
@@ -466,7 +467,7 @@ function TopBar({ brand }) {
   );
 }
 
-function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, hasTable, onView }) {
+function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, scannedTable, hasTable, onView }) {
   const navItems = [
     ['menu', 'Menu'],
     ['cart', 'Panier'],
@@ -480,6 +481,12 @@ function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, hasTable,
         <button className="navbar-brand clean-btn" type="button" onClick={() => onView('menu')}>
           <BrandLogo brand={brand} />
         </button>
+        {scannedTable ? (
+          <div className="mobile-table-pill">
+            <i className="fas fa-location-dot"></i>
+            <span>{scannedTable.name}</span>
+          </div>
+        ) : null}
         <div className="navbar-collapse desktop-nav" id="navmenu">
           <ul className="navbar-nav mx-auto">
             {navItems.map(([view, label]) => (
@@ -777,7 +784,6 @@ function MenuCard({ plat, index, onDetails }) {
         <div className="mbody">
           <div className="mcat">{plat.category?.name ?? 'Menu'}</div>
           <div className="mtit">{plat.name}</div>
-          <div className="mdesc">{plat.description}</div>
           <div className="mfoot">
             <div>
               <div className="mprice">{formatMoney(plat.price, plat.currency)}</div>

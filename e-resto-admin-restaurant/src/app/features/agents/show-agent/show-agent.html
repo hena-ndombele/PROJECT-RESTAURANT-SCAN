@@ -15,7 +15,7 @@
                         <i class="bi bi-person-badge fs-4 text-primary"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-bold mb-0">Details employe</h5>
+                        <h5 class="modal-title fw-bold mb-0">Details employé</h5>
                         <small class="text-muted">{{ agentDetail.email }}</small>
                     </div>
                 </div>
@@ -43,7 +43,7 @@
                                     Generation...
                                 } @else {
                                     <i class="ti ti-download me-2"></i>
-                                    Telecharger le badge
+                                    Télécharger le badge
                                 }
                             </button>
 
@@ -62,23 +62,23 @@
 
                     <div class="col-lg-8">
                         <div class="row g-3">
-                            <div class="col-md-6"><div class="detail-box"><span>Prenom</span><strong>{{ agentDetail.first_name }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Prénom</span><strong>{{ agentDetail.first_name }}</strong></div></div>
                             <div class="col-md-6"><div class="detail-box"><span>Nom</span><strong>{{ agentDetail.last_name }}</strong></div></div>
                             <div class="col-md-6"><div class="detail-box"><span>Email</span><strong>{{ agentDetail.email }}</strong></div></div>
-                            <div class="col-md-6"><div class="detail-box"><span>Telephone</span><strong>{{ agentDetail.phone_number || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Téléphone</span><strong>{{ agentDetail.phone_number || 'Non renseigne' }}</strong></div></div>
                             <div class="col-md-6"><div class="detail-box"><span>Fonction</span><strong>{{ agentDetail.fonction || 'Non renseignee' }}</strong></div></div>
-                            <div class="col-md-6"><div class="detail-box"><span>Niveau d'etude</span><strong>{{ agentDetail.education_level || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Niveau d'étude</span><strong>{{ agentDetail.education_level || 'Non renseigne' }}</strong></div></div>
                             <div class="col-md-6"><div class="detail-box"><span>Contrat</span><strong>{{ agentDetail.contract_type || 'Non renseigne' }}</strong></div></div>
                             <div class="col-md-6"><div class="detail-box"><span>Horaire</span><strong>{{ agentDetail.shift || 'Non renseigne' }}</strong></div></div>
                             <div class="col-md-6"><div class="detail-box"><span>Date d'embauche</span><strong>{{ agentDetail.hired_at ? (agentDetail.hired_at | date:'dd MMM yyyy') : 'Non renseignee' }}</strong></div></div>
                             <div class="col-md-6"><div class="detail-box"><span>Contact urgence</span><strong>{{ agentDetail.emergency_contact_name || 'Non renseigne' }}</strong></div></div>
-                            <div class="col-md-6"><div class="detail-box"><span>Telephone urgence</span><strong>{{ agentDetail.emergency_contact_phone || 'Non renseigne' }}</strong></div></div>
+                            <div class="col-md-6"><div class="detail-box"><span>Téléphone urgence</span><strong>{{ agentDetail.emergency_contact_phone || 'Non renseigne' }}</strong></div></div>
                             <div class="col-12"><div class="detail-box"><span>Adresse</span><strong>{{ agentDetail.address || 'Non renseignee' }}</strong></div></div>
                         </div>
 
                         <div class="small text-muted mt-4 pt-3 border-top">
-                            Cree le {{ agentDetail.created_at | date:'dd/MM/yyyy HH:mm' }} -
-                            Derniere modification le {{ agentDetail.updated_at | date:'dd/MM/yyyy HH:mm' }}
+                            Crée le {{ agentDetail.created_at | date:'dd/MM/yyyy HH:mm' }} -
+                            Dernière modification le {{ agentDetail.updated_at | date:'dd/MM/yyyy HH:mm' }}
                         </div>
                     </div>
                 </div>

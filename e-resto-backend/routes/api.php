@@ -66,6 +66,7 @@ Route::post('/public/reservations', [ReservationController::class, 'store']);
 Route::post('/public/Réservations', [ReservationController::class, 'store']);
 Route::post('/public/feedbacks', [FeedbackController::class, 'store']);
 Route::get('/public/employees/verify/{id}', [AgentController::class, 'verify']);
+Route::get('/table-qrcodes/{filename}', [TableController::class, 'qrCode'])->where('filename', 'table_[A-Za-z0-9\\-]+\\.svg');
 
 
 Route::middleware('auth:sanctum')->group(function () {

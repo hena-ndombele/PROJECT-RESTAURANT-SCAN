@@ -51,7 +51,7 @@ class TableController extends Controller
         return response()->json([
             'message' => 'Table creee avec succes',
             'table' => $this->tablePayload($table),
-            'qr_url' => asset("storage/{$qrPath}"),
+            'qr_url' => $this->publicStorageUrl($qrPath),
             'menu_url' => $url,
         ], 201);
     }
@@ -73,6 +73,22 @@ class TableController extends Controller
         return response()->json($this->tablePayload($table));
     }
 
+    public function qrCode(string $filename)
+    {
+        if (!preg_match('/^table_[A-Za-z0-9\-]+\.svg$/', $filename)) {
+            abort(404);
+        }
+
+        $path = "qrcodes/{$filename}";
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return response(Storage::disk('public')->get($path), 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'public, max-age=31536000',
+        ]);
+    }
     public function update(Request $request, $id)
     {
         $table = $this->scopedTables($request)->findOrFail($id);
@@ -130,13 +146,17 @@ class TableController extends Controller
                 'Reservee', 'Réservée' => 'blue',
                 default => 'gray',
             },
-            'qr_url' => $table->qr_code ? asset("storage/{$table->qr_code}") : null,
+            'qr_url' => $table->qr_code ? $this->publicStorageUrl($table->qr_code) : null,
             'menu_url' => $this->menuUrl($table),
             'created_at' => $table->created_at?->toIso8601String(),
             'updated_at' => $table->updated_at?->toIso8601String(),
         ];
     }
 
+    private function publicStorageUrl(string $path): string
+    {
+        return rtrim(request()->getSchemeAndHttpHost(), '/') . '/api/table-qrcodes/' . rawurlencode(basename($path));
+    }
     private function menuUrl(Table $table): string
     {
         $query = ['table_id' => $table->id];
