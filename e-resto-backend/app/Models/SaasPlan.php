@@ -64,7 +64,7 @@ class SaasPlan extends Model
 
     public function maxDishes(): ?int
     {
-        return $this->tier() === 'starter' ? 20 : null;
+        return $this->tier() === 'starter' ? 15 : null;
     }
 
     public function maxOrdersPerMonth(): ?int

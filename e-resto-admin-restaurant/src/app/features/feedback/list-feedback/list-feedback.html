@@ -1,7 +1,15 @@
-<div class="feedback-page container-fluid py-4 bg-light min-vh-100">
+<div class="feedback-page container-fluid py-4 bg-light min-vh-100"
+     [style.--feedback-primary]="themePrimary()"
+     [style.--feedback-secondary]="themeSecondary()">
   <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div class="d-flex align-items-center">
-      <div class="page-icon me-3"><i class="bi bi-star-fill"></i></div>
+      <div class="page-icon me-3">
+        @if (logoUrl()) {
+          <img [src]="logoUrl()" alt="Logo restaurant">
+        } @else {
+          <i class="bi bi-star-fill"></i>
+        }
+      </div>
       <div>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
@@ -22,7 +30,7 @@
       <div class="upgrade-icon"><i class="bi bi-lock-fill"></i></div>
       <div>
         <h2>Feedback réservé aux plans Pro et Business</h2>
-        <p>Les avis clients font partie des outils de qualité et fidelisation avancés. Passez sur Pro ou Business pour collecter, analyser et suivre les retours clients.</p>
+        <p>Les avis clients font partie des outils de qualité et fidélisation avancés. Passez sur Pro ou Business pour collecter, analyser et suivre les retours clients.</p>
       </div>
     </section>
   } @else {
@@ -73,7 +81,7 @@
           </div>
         </div>
         <div class="col-md-2">
-          <button class="btn btn-outline-secondary w-100" type="button" (click)="recommendationFilter.set('all'); minRating.set(0); searchTerm.set('')">Reset</button>
+          <button class="btn btn-outline-secondary w-100" type="button" (click)="recommendationFilter.set('all'); minRating.set(0); searchTerm.set('')">Réinitialiser</button>
         </div>
       </div>
     </div>
@@ -120,7 +128,7 @@
                   </td>
                   <td>{{ feedback.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
                   <td class="text-end">
-                    <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="selectedFeedback.set(feedback)" title="Voir le detail">
+                    <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="selectedFeedback.set(feedback)" title="Voir le détail">
                       <i class="bi bi-eye"></i>
                     </button>
                   </td>

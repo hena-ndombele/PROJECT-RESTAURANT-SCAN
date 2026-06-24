@@ -272,6 +272,7 @@ class SaasController extends Controller
 
         $provider = Str::upper($validated['provider']);
         $walletId = $this->normalizeWalletId($validated['wallet_id']);
+        $this->ensureDefaultPlans();
 
         if (!$this->isValidWalletForProvider($walletId, $provider)) {
             return response()->json([
@@ -295,7 +296,7 @@ class SaasController extends Controller
             $billingCycle = $validated['billing_cycle'] ?? 'monthly';
             $amount = $billingCycle === 'yearly'
                 ? $this->annualMonthlyPrice($plan) * 12
-                : (float) $plan->monthly_price;
+                : $this->monthlyPrice($plan);
 
             $payment = Payment::create([
                 'restaurant_id' => $restaurant->id,
@@ -1081,8 +1082,18 @@ class SaasController extends Controller
     {
         return match ($plan->tier()) {
             'starter' => 12.0,
-            'pro' => 20.0,
-            'business' => 25.0,
+            'pro' => 30.0,
+            'business' => 40.0,
+            default => (float) $plan->monthly_price,
+        };
+    }
+
+    private function monthlyPrice(SaasPlan $plan): float
+    {
+        return match ($plan->tier()) {
+            'starter' => 1.0,
+            'pro' => 35.0,
+            'business' => 50.0,
             default => (float) $plan->monthly_price,
         };
     }
@@ -1349,29 +1360,29 @@ class SaasController extends Controller
                 'slug' => 'starter',
                 'description' => 'Pour lancer un service digital simple et professionnel.',
                 'monthly_price' => 15,
-                'max_tables' => 8,
+                'max_tables' => 6,
                 'max_users' => 5,
-                'features' => ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
+                'features' => ['15 plats', '150 commandes/mois', 'Gestion des commandes', 'Templates QR Standard', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Pro',
                 'slug' => 'pro',
                 'description' => 'Pour automatiser le service et piloter un restaurant en croissance.',
-                'monthly_price' => 25,
+                'monthly_price' => 35,
                 'max_tables' => null,
                 'max_users' => null,
                 'is_popular' => true,
-                'features' => ['Commandes illimitees', 'Plats illimites', 'Réservations', 'Feedback client', 'Statistiques detaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
+                'features' => ['Commandes illimitées', 'Plats illimités', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Business',
                 'slug' => 'business',
                 'description' => 'Pour les équipes structurées et les restaurants multi-sites.',
-                'monthly_price' => 30,
+                'monthly_price' => 50,
                 'max_restaurants' => 5,
                 'max_tables' => null,
                 'max_users' => null,
-                'features' => ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dedié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
+                'features' => ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
             ],
         ];
 

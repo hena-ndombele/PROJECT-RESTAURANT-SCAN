@@ -32,7 +32,7 @@ export class RestaurantCheckout implements OnDestroy {
   }
 
   get monthlyPrice(): number {
-    return Number(this.restaurant.plan?.monthly_price ?? this.selectedPlan.monthly_price ?? this.selectedPlan.price ?? 0);
+    return this.canonicalMonthlyPrice();
   }
 
   get currency(): string {
@@ -57,17 +57,23 @@ export class RestaurantCheckout implements OnDestroy {
   }
 
   private get annualMonthlyPrice(): number {
-    if (Number(this.selectedPlan.annual_monthly_price) > 0) {
-      return Number(this.selectedPlan.annual_monthly_price);
-    }
-
     const slug = String(this.restaurant.plan?.slug || this.selectedPlan.slug || this.planName).toLowerCase();
 
     if (slug.includes('starter')) return 12;
-    if (slug.includes('pro')) return 20;
-    if (slug.includes('business')) return 25;
+    if (slug.includes('pro')) return 30;
+    if (slug.includes('business')) return 40;
 
     return this.monthlyPrice;
+  }
+
+  private canonicalMonthlyPrice(): number {
+    const slug = String(this.restaurant.plan?.slug || this.selectedPlan.slug || this.planName).toLowerCase();
+
+    if (slug.includes('starter')) return 15;
+    if (slug.includes('pro')) return 35;
+    if (slug.includes('business')) return 50;
+
+    return Number(this.restaurant.plan?.monthly_price ?? this.selectedPlan.monthly_price ?? this.selectedPlan.price ?? 0);
   }
 
   get walletHint(): string {
