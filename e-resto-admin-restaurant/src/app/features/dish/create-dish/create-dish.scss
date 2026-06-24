@@ -2,6 +2,36 @@
   min-height: 45px;
   cursor: text;
 }
+
+.create-dish-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.back-to-menu-btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0 16px;
+  color: #111827;
+  background: #ffffff;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
+}
+
+.back-to-menu-btn:hover {
+  border-color: var(--dashboard-primary, #ff7a1a);
+  background: rgba(var(--dashboard-primary-rgb, 255, 122, 26), .08);
+}
 .tag-badge {
   background-color: #e9ecef;
   border: 1px solid #dee2e6;
@@ -33,5 +63,12 @@
 
 .form-control:focus, .form-select:focus {
   box-shadow: none;
-  border-color: #F9A11B; // Rappel de votre couleur
+  border-color: #ff7a1a; // Rappel de votre couleur
+}
+
+@media (max-width: 720px) {
+  .create-dish-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

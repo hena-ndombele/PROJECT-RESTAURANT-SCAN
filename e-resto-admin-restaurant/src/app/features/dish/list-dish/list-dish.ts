@@ -9,6 +9,8 @@ import { FormsModule } from "@angular/forms";
 import { CategoryService } from "../../../services/category/category-service";
 import { CategoryDto } from "../../../models/category/CategoryDto";
 import { AppPermissionService } from "../../../services/auth/permission-service";
+import { SaasService } from "../../../services/saas/saas-service";
+import { RestaurantPlanUsage } from "../../../models/saas/saas.models";
 
 @Component({
     selector: "app-list-dish",
@@ -21,16 +23,20 @@ export class ListDish implements OnInit {
     private dishService = inject(DishService);
     private categoryService = inject(CategoryService);
     private permissions = inject(AppPermissionService);
+    private saasService = inject(SaasService);
     readonly storageRoot = STORAGE_ROOT;
 
     // État des données
     allDishes = signal<DishDto[]>([]);
     categories = signal<CategoryDto[]>([]);
+    planUsage = signal<RestaurantPlanUsage | null>(null);
     searchTerm = signal<string>('');
     categoryFilter = signal<string>('all');
     currentPage = signal<number>(1);
     pageSize = 8; // Changez à 4 pour voir la pagination plus vite si vous avez peu de données
     totalCount = computed(() => this.allDishes().length);
+    dishLimitReached = computed(() => this.planUsage()?.permissions?.can_create_dish === false);
+    dishLimitMessage = computed(() => this.planUsage()?.messages?.dishes || "Votre plan ne permet pas de créer plus de plats.");
 
     // Filtrage par recherche
     filteredDishes = computed(() => {
@@ -66,6 +72,7 @@ export class ListDish implements OnInit {
     ngOnInit(): void {
         this.loadCategories();
         this.loadDish();
+        this.loadPlanUsage();
     }
 
     canAccess(permission: string): boolean {
@@ -105,6 +112,13 @@ export class ListDish implements OnInit {
         });
     }
 
+    loadPlanUsage(): void {
+        this.saasService.restaurantUsage().subscribe({
+            next: (usage) => this.planUsage.set(usage),
+            error: () => this.planUsage.set(null),
+        });
+    }
+
     exportExcel(): void {
         const rows = this.filteredDishes();
         const body = rows.map((dish) => `
@@ -139,9 +153,30 @@ export class ListDish implements OnInit {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `plats-e-resto-${new Date().toISOString().slice(0, 10)}.xls`;
+        link.download = this.exportFilename();
         link.click();
         URL.revokeObjectURL(url);
+    }
+
+    private exportFilename(): string {
+        const cachedRestaurant = localStorage.getItem('restaurant_session');
+        let restaurantName = 'restaurant-scan';
+
+        try {
+            restaurantName = cachedRestaurant ? JSON.parse(cachedRestaurant).name || restaurantName : restaurantName;
+        } catch {
+            restaurantName = 'restaurant-scan';
+        }
+
+        const slug = restaurantName
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'restaurant-scan';
+
+        return `menu-${slug}-${new Date().toISOString().slice(0, 10)}.xls`;
     }
 
     private escapeHtml(value: string): string {

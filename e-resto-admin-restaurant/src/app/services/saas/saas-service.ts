@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Restaurant, RestaurantPlanUsage, SaasOverview, SaasPlan } from '../../models/saas/saas.models';
+import { Restaurant, RestaurantPlanUsage, SaasOverview, SaasPlan, SubscriptionPayment } from '../../models/saas/saas.models';
 import { API_ROOT } from '../api-url';
 
 @Injectable({ providedIn: 'root' })
@@ -53,7 +53,7 @@ export class SaasService {
     return this.http.post<any>(`${this.apiUrl}/signup`, payload);
   }
 
-  checkoutMobileMoney(payload: { restaurant_id: string; provider: string; wallet_id: string; billing_cycle: 'monthly' | 'yearly' }): Observable<any> {
+  checkoutMobileMoney(payload: { restaurant_id: string; provider: string; wallet_id: string; billing_cycle: 'monthly' | 'yearly'; saas_plan_id?: string }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/checkout/mobile-money`, payload);
   }
 
@@ -79,6 +79,11 @@ export class SaasService {
 
   restaurantUsage(): Observable<RestaurantPlanUsage> {
     return this.http.get<RestaurantPlanUsage>(`${this.apiUrl}/restaurant/usage`);
+  }
+
+  restaurantPayments(status?: string): Observable<SubscriptionPayment[]> {
+    const suffix = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+    return this.http.get<SubscriptionPayment[]>(`${this.apiUrl}/restaurant/payments${suffix}`);
   }
 
   updateRestaurantProfile(payload: any): Observable<any> {

@@ -53,7 +53,7 @@ export class CreateCategory {
           title: 'Success !',
           text: 'A category has been added.',
           icon: 'success',
-          confirmButtonText: 'Close',
+          confirmButtonText: 'Fermer',
           timerProgressBar: true,
           timer: 3000,
           confirmButtonColor: '#28a745'
@@ -64,12 +64,11 @@ export class CreateCategory {
       error: (err) => {
         this.isLoading = false;
         Swal.fire({
-          title: 'Error',
-          text: err.error?.message || '\n' +
-              '.Error creating categories',
+          title: 'Erreur',
+          text: err.error?.message || "Erreur lors de la création des catégories.",
           icon: 'error',
           confirmButtonColor: '#d33',
-          confirmButtonText: 'Try again'
+          confirmButtonText: 'Réessayer'
         });
 
       }

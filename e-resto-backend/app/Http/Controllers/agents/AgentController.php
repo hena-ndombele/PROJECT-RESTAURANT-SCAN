@@ -34,10 +34,19 @@ class AgentController extends Controller
             'emergency_contact_phone' => 'nullable|string|max:60',
         ]);
 
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+        $restaurantId = $request->user()?->restaurant_id;
+        $teamLimit = $restaurant?->plan?->maxUsers();
+
+        if ($restaurant && $teamLimit !== null && $restaurant->agents()->count() >= $teamLimit) {
+            return response()->json([
+                'message' => "Limite de {$teamLimit} utilisateurs et equipe atteinte pour le plan {$restaurant->plan?->name}.",
+                'requires_upgrade' => true,
+            ], 422);
+        }
+
         try {
-            $result = DB::transaction(function () use ($request, $validated) {
-                $restaurant = $request->user()?->restaurant;
-                $restaurantId = $request->user()?->restaurant_id;
+            $result = DB::transaction(function () use ($request, $validated, $restaurantId) {
                 $photoPath = null;
 
                 if ($request->hasFile('photo')) {

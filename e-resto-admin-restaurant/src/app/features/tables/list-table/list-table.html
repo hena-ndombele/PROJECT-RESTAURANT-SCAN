@@ -30,13 +30,6 @@
                 </a>
 
             </div>
-            @if (planUsage()) {
-                <div class="small text-muted mt-2">
-                    Plan {{ planUsage()?.plan?.name || 'non configure' }} :
-                    {{ planUsage()?.messages?.tables || ((planUsage()?.usage?.tables || 0) + ' / ' + (planUsage()?.limits?.tables || 0) + ' tables') }}
-                </div>
-            }
-
         </div>
     </header>
 
@@ -123,7 +116,7 @@
                             <tr>
                                 <td colspan="7" class="text-center py-7">
 
-                                    <h5 class="text-muted fw-normal">No tables found</h5>
+                                    <h5 class="text-muted fw-normal">Aucune table trouvée</h5>
 
                                 </td>
                             </tr>

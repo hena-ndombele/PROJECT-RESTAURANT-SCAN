@@ -114,7 +114,7 @@
             } @empty {
               <tr>
                 <td colspan="6" class="text-center py-5">
-                  <h5 class="text-muted fw-normal">No user found</h5>
+                  <h5 class="text-muted fw-normal">Aucun utilisateur trouvé</h5>
                 </td>
               </tr>
             }
@@ -158,7 +158,7 @@
             {{ selectedUser() ? 'Modifier User' : 'Ajouter User' }}
           </h5>
           <p class="mb-0 text-muted small">
-            {{ selectedUser() ? 'Modifier le compte et les roles' : 'Selectionner un employe et son role' }}
+            {{ selectedUser() ? 'Modifier le compte et les rôles' : 'Sélectionner un employé et son rôle' }}
           </p>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -169,7 +169,7 @@
               <div class="col-md-6 mb-3">
                 <label class="form-label">User / Employe <span class="text-danger">*</span></label>
                 <select class="form-select" formControlName="agent_id" (change)="onAgentSelected($event)">
-                  <option value="">Selectionner un employe</option>
+                  <option value="">Sélectionner un employé</option>
                   @for (agent of selectedUser() ? agents() : availableAgents(); track agent.id) {
                     <option [value]="agent.id">{{ agent.email }}</option>
                   }
@@ -185,7 +185,7 @@
                   }
                 </select>
                 @if (roles().length === 0) {
-                  <small class="text-danger">Aucun role disponible. Creez d'abord un role dans le menu Role.</small>
+                  <small class="text-danger">Aucun rôle disponible. Créez d'abord un rôle dans le menu Rôle.</small>
                 }
               </div>
             </div>
@@ -201,7 +201,7 @@
           } @else {
             <i class="bi bi-check-circle me-1"></i>
           }
-          {{ selectedUser() ? 'Enregistrer' : 'Ajouter User et envoyer le mail' }}
+          {{ selectedUser() ? 'Enregistrer' : "Ajouter l'utilisateur et envoyer l'e-mail" }}
         </button>
       </div>
     </div>

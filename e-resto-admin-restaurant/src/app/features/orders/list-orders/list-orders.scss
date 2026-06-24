@@ -72,7 +72,7 @@
 
 .status-tab.active {
   border-color: var(--dashboard-primary);
-  background: var(--dashboard-primary);
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
   color: #111827;
 }
 
@@ -498,7 +498,7 @@
 
 :host-context(body.dashboard-dark-theme) .status-tab.active,
 :host-context(body.dashboard-dark-theme) .status-tab.active strong {
-  background: var(--dashboard-primary) !important;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920)) !important;
   border-color: var(--dashboard-primary) !important;
   color: #111827 !important;
 }

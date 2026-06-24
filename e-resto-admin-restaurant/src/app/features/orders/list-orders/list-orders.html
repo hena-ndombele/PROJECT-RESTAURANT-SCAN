@@ -18,16 +18,15 @@
         </div>
         <div class="col-lg-5 text-lg-end mt-3 mt-lg-0">
             <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                @if (canGeneratePdf()) {
                 <button class="btn btn-outline-primary shadow-sm" type="button" (click)="exportPdfReport()" [disabled]="!canGeneratePdf()">
                     <i class="bi bi-file-earmark-pdf me-1"></i> Rapport PDF
                 </button>
+                }
                 <button class="btn btn-outline-secondary shadow-sm" (click)="resetFilters()">
                     <i class="bi bi-arrow-clockwise me-1"></i> Reinitialiser
                 </button>
             </div>
-            @if (!canGeneratePdf()) {
-                <small class="text-muted d-block mt-2">{{ reportLimitMessage() }}</small>
-            }
         </div>
     </header>
 
@@ -388,7 +387,7 @@
                         <strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong>
                     </div>
 
-                    <label class="form-label small fw-bold text-muted text-uppercase mt-3">Montant recu</label>
+                    <label class="form-label small fw-bold text-muted text-uppercase mt-3">Montant reçu</label>
                     <div class="input-group input-group-lg">
                         <input type="number"
                                class="form-control"

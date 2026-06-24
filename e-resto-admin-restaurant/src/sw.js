@@ -1,4 +1,4 @@
-const CACHE_NAME = 'restaurant-scan-admin-v2';
+const CACHE_NAME = 'restaurant-scan-admin-v3';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -26,16 +26,23 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  const url = new URL(request.url);
 
-  if (request.method !== 'GET' || new URL(request.url).pathname.startsWith('/api/')) {
+  if (request.method !== 'GET' || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  if (request.destination === 'script' || request.destination === 'style' || /\.(js|css)$/i.test(url.pathname)) {
     return;
   }
 
   event.respondWith(
     fetch(request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        if (request.mode !== 'navigate') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
         return response;
       })
       .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))

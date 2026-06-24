@@ -100,14 +100,14 @@ export class UpdateAgent implements OnInit {
           text: "Employe mis a jour avec succes.",
           icon: "success",
           confirmButtonText: "Fermer",
-          confirmButtonColor: "#F9A11B",
+          confirmButtonColor: "#ff7a1a",
           timer: 2500,
           timerProgressBar: true,
         }).then(() => window.location.reload());
       },
       error: (err) => {
         this.isLoading = false;
-        Swal.fire("Erreur", err.error?.message || "Impossible de modifier l employe.", "error");
+        Swal.fire("Erreur", err.error?.message || "Impossible de modifier l'employé.", "error");
       }
     });
   }

@@ -44,6 +44,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private deferredInstallPrompt?: BeforeInstallPromptEvent;
     private installDismissedForCurrentView = false;
     private installPromptCheckTimer?: ReturnType<typeof setTimeout>;
+    private readonly installedStorageKey = 'restaurant_scan_pwa_installed';
 
     passwordForm: FormGroup;
 
@@ -90,7 +91,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
             from: 'bot',
-            text: 'Bonjour, je suis votre Assistant Restaurant Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les reservations et votre plan.',
+            text: 'Bonjour, je suis votre Assistant Restaurant Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les réservations et votre plan.',
         },
     ];
 
@@ -272,20 +273,20 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         return {
             reservations: isPro,
             feedback: isPro,
-            analytics: isPro,
+            analytics: true,
             customization: isPro,
             mobile_money: isPro,
-            roles: isBusiness,
+            roles: true,
             multi_restaurant: isBusiness,
-            chatbot: isPro,
+            chatbot: isBusiness,
         };
     }
 
     private applyRestaurantTheme(restaurant: any): void {
         const defaultTheme = {
-            primary: '#F9A11B',
-            secondary: '#111318',
-            surface: '#FFF7ED',
+            primary: '#ff7a1a',
+            secondary: '#d71920',
+            surface: '#fff7ef',
         };
         const planFeatures = this.featuresFromPlan(restaurant?.plan);
         const features = {
@@ -295,18 +296,18 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         const canCustomize = Boolean(features.customization);
         const theme = restaurant?.theme || restaurant?.settings?.theme || restaurant?.settings || {};
         const hasCustomTheme = canCustomize && this.hasCustomizedTheme(theme);
-        const primary = this.normalizeColor(canCustomize ? theme.primary_color || theme.primary || theme.accent : null, defaultTheme.primary);
-        const secondary = this.normalizeColor(canCustomize ? theme.secondary_color || theme.secondary : null, defaultTheme.secondary);
-        const surface = this.normalizeColor(canCustomize ? theme.background_color || theme.background || theme.surface : null, defaultTheme.surface);
+        const primary = this.normalizeColor(hasCustomTheme ? theme.primary_color || theme.primary || theme.accent : null, defaultTheme.primary);
+        const secondary = this.normalizeColor(hasCustomTheme ? theme.secondary_color || theme.secondary : null, defaultTheme.secondary);
+        const surface = this.normalizeColor(hasCustomTheme ? theme.background_color || theme.background || theme.surface : null, defaultTheme.surface);
         const primaryRgb = this.hexToRgb(primary);
         const buttonBackground = hasCustomTheme
             ? primary
-            : 'linear-gradient(135deg, #FFD166, #F9A11B, #D71920)';
+            : 'linear-gradient(135deg, #ff7a1a, #d71920)';
 
         document.body.classList.add('restaurant-theme');
         document.documentElement.style.setProperty('--dashboard-primary', primary);
         document.documentElement.style.setProperty('--dashboard-primary-rgb', primaryRgb);
-        document.documentElement.style.setProperty('--dashboard-button-accent', secondary === defaultTheme.secondary ? '#FFD166' : secondary);
+        document.documentElement.style.setProperty('--dashboard-button-accent', secondary);
         document.documentElement.style.setProperty('--dashboard-button-bg', buttonBackground);
         document.documentElement.style.setProperty('--dashboard-secondary', secondary);
         document.documentElement.style.setProperty('--dashboard-surface', surface);
@@ -323,7 +324,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         }
 
         const primary = this.normalizeColor(theme?.primary_color || theme?.primary || theme?.accent, '');
-        return Boolean(primary && !['#ff7a1a', '#ff9f1a', '#f9a11b'].includes(primary.toLowerCase()));
+        return Boolean(primary && !['#ff7a1a', '#ff9f1a'].includes(primary.toLowerCase()));
     }
 
     private setBrowserThemeColor(color: string): void {
@@ -354,7 +355,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         const value = Number.parseInt(clean, 16);
         if (Number.isNaN(value)) {
-            return '249, 161, 27';
+            return '255, 122, 26';
         }
 
         return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
@@ -374,6 +375,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             const choice = await prompt.userChoice;
 
             if (choice.outcome === 'accepted') {
+                localStorage.setItem(this.installedStorageKey, 'true');
                 this.installPromptOpen = false;
             } else {
                 this.dismissInstallPrompt();
@@ -409,41 +411,39 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private dashboardAssistantReply(question: string): string {
         const normalized = question.toLowerCase();
         const restaurantName = this.restaurantData.name || 'votre restaurant';
-        const planName = this.subscriptionInfo.detail.replace('Paiement confirme - ', '').replace('Essai gratuit - ', '') || 'votre plan';
+        const planName = this.subscriptionInfo.detail.replace('Paiement confirmé - ', '').replace('Essai gratuit - ', '') || 'votre plan';
 
         if (normalized.includes('commande')) {
-            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en temps reel avec son, badge et notification. Pour accelerer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
+            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en temps réel avec son, badge et notification. Pour accélérer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
         }
 
         if (normalized.includes('stat') || normalized.includes('revenu') || normalized.includes('vente')) {
-            return this.canUse('analytics')
-                ? `Votre plan permet les statistiques. Regardez le dashboard pour suivre les revenus par devise, les commandes du jour et les plats les plus commandes.`
-                : `Les statistiques detaillees sont reservees aux plans Pro et Business. Passez sur Pro pour voir les analyses avancees.`;
+            return `Votre plan permet les statistiques. Regardez le dashboard pour suivre les revenus par devise, les commandes du jour et les plats les plus commandés.`;
         }
 
         if (normalized.includes('qr') || normalized.includes('table')) {
-            return `Pour ${restaurantName}, creez vos tables puis imprimez leurs QR codes. Chaque QR ouvre le menu client et rattache la commande a la bonne table.`;
+            return `Pour ${restaurantName}, créez vos tables puis imprimez leurs QR codes. Chaque QR ouvre le menu client et rattache la commande à la bonne table.`;
         }
 
         if (normalized.includes('reservation')) {
             return this.canUse('reservations')
-                ? `Les reservations sont actives sur ${planName}. Vos clients peuvent reserver depuis le menu public et vous confirmez ensuite dans Reservations.`
-                : `Les reservations sont reservees aux plans Pro et Business.`;
+                ? `Les réservations sont actives sur ${planName}. Vos clients peuvent réserver depuis le menu public et vous confirmez ensuite dans Réservations.`
+                : `Les réservations sont réservées aux plans Pro et Business.`;
         }
 
         if (normalized.includes('plan') || normalized.includes('abonnement') || normalized.includes('jour')) {
-            return `${this.subscriptionInfo.label}. ${this.subscriptionInfo.expiresAt ? 'Fin prevue le ' + this.subscriptionInfo.expiresAt.toLocaleString() + '.' : this.subscriptionInfo.detail + '.'}`;
+            return `${this.subscriptionInfo.label}. ${this.subscriptionInfo.expiresAt ? 'Fin prévue le ' + this.subscriptionInfo.expiresAt.toLocaleString() + '.' : this.subscriptionInfo.detail + '.'}`;
         }
 
         if (normalized.includes('plat') || normalized.includes('menu')) {
-            return `Gardez votre menu court, clair et visuel. Mettez les plats populaires en avant, ajoutez des photos nettes et marquez rapidement les plats epuises.`;
+            return `Gardez votre menu court, clair et visuel. Mettez les plats populaires en avant, ajoutez des photos nettes et marquez rapidement les plats épuisés.`;
         }
 
         if (normalized.includes('fidel')) {
-            return `Le module fidelite peut recompenser les clients apres plusieurs commandes : points, tampons ou coupons. C'est ideal pour faire revenir les clients reguliers.`;
+            return `Le module fidélité peut récompenser les clients après plusieurs commandes : points, tampons ou coupons. C'est idéal pour faire revenir les clients réguliers.`;
         }
 
-        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, reservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
+        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, réservations, statistiques, abonnement et idées de fidélisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
     }
 
     private prepareInstallPrompt(): void {
@@ -504,9 +504,8 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             return;
         }
 
-        const canShowFallback = allowManualFallback && this.hasInstallContext();
-        if (this.installAvailable || this.iosInstallHelp || canShowFallback) {
-            this.manualInstallHelp = !this.installAvailable && !this.iosInstallHelp;
+        if (this.installAvailable || this.iosInstallHelp) {
+            this.manualInstallHelp = false;
             this.installPromptOpen = true;
             this.cdref.detectChanges();
         }
@@ -525,7 +524,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     }
 
     private async isAppInstalled(): Promise<boolean> {
-        if (this.isStandaloneApp()) {
+        if (this.isStandaloneApp() || localStorage.getItem(this.installedStorageKey) === 'true') {
             return true;
         }
 
@@ -540,12 +539,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         } catch {
             return false;
         }
-    }
-
-    private hasInstallContext(): boolean {
-        const host = window.location.hostname;
-        const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-        return window.location.protocol === 'https:' || isLocalhost;
     }
 
     private isIosDevice(): boolean {
@@ -621,7 +614,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     ? 'Abonnement actif'
                     : `${daysRemaining} jour${daysRemaining === 1 ? '' : 's'} d'abonnement restant${daysRemaining === 1 ? '' : 's'}`,
                 shortLabel: daysRemaining === null ? 'Actif' : `${daysRemaining}j actif`,
-                detail: `Paiement confirme - ${planName}`,
+                detail: `Paiement confirmé - ${planName}`,
                 tone: 'success',
                 expiresAt,
                 daysRemaining,
@@ -697,7 +690,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     text: errorMessage || 'Error during creation.',
                     icon: 'error',
                     confirmButtonColor: '#d33',
-                    confirmButtonText: 'Try again'
+                    confirmButtonText: 'Réessayer'
                 });
             }
         });
@@ -718,7 +711,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     text: err.error?.message || 'Error during disconnection.',
                     icon: 'error',
                     confirmButtonColor: '#d33',
-                    confirmButtonText: 'Try again'
+                    confirmButtonText: 'Réessayer'
                 });
                 localStorage.clear();
                 this.cleanupBlockingOverlays();

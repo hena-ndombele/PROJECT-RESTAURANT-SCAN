@@ -1,0 +1,57 @@
+.dish-detail-page {
+  color: #111827;
+}
+
+.dish-back-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #111827;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #111827;
+  background: #ffffff;
+}
+
+:host-context(body.dashboard-dark-theme) .dish-detail-page {
+  color: #f9fafb;
+}
+
+:host-context(body.dashboard-dark-theme) .dish-back-btn {
+  border-color: #f59e0b;
+  color: #111827;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+}
+
+:host-context(body.dashboard-dark-theme) .card,
+:host-context(body.dashboard-dark-theme) .card-header,
+:host-context(body.dashboard-dark-theme) .card-footer {
+  border-color: #334155 !important;
+  background: #111827 !important;
+  color: #f9fafb !important;
+}
+
+:host-context(body.dashboard-dark-theme) .bg-white,
+:host-context(body.dashboard-dark-theme) .bg-light {
+  background: #111827 !important;
+  color: #f9fafb !important;
+}
+
+:host-context(body.dashboard-dark-theme) .text-muted {
+  color: #cbd5e1 !important;
+}
+
+:host-context(body.dashboard-dark-theme) .lead,
+:host-context(body.dashboard-dark-theme) p,
+:host-context(body.dashboard-dark-theme) h1,
+:host-context(body.dashboard-dark-theme) h2,
+:host-context(body.dashboard-dark-theme) h5,
+:host-context(body.dashboard-dark-theme) h6 {
+  color: #f9fafb !important;
+}
+
+:host-context(body.dashboard-dark-theme) hr {
+  border-color: #475569;
+  opacity: 1;
+}

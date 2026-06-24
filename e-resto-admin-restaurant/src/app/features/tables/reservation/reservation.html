@@ -31,7 +31,7 @@
       <small>Total charge</small>
     </article>
     <article>
-      <span>A confirmer</span>
+      <span>À confirmer</span>
       <strong>{{ statusTabs()[1].count }}</strong>
       <small>Action restaurant requise</small>
     </article>
@@ -62,7 +62,7 @@
           <label class="form-label small fw-bold text-muted text-uppercase">Recherche</label>
           <div class="input-group">
             <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
-            <input class="form-control bg-transparent" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Nom, telephone, email, table...">
+            <input class="form-control bg-transparent" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Nom, téléphone, email, table...">
           </div>
         </div>
         <div class="col-md-2">
@@ -98,7 +98,7 @@
               <strong class="reservation-client-name">{{ reservation.name }}</strong>
               <span class="reservation-reference">#{{ reservation.id.slice(0, 8).toUpperCase() }} · {{ reservation.phone }}</span>
             </div>
-            <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="openReservation(reservation)" title="Voir les details">
+            <button class="btn btn-dark btn-sm icon-btn" type="button" (click)="openReservation(reservation)" title="Voir les détails">
               <i class="bi bi-eye"></i>
             </button>
           </div>
@@ -106,7 +106,7 @@
           <div class="reservation-badges">
             <span class="badge rounded-pill" [ngClass]="statusClass(reservation.status)">{{ statusLabel(reservation.status) }}</span>
             <span class="badge rounded-pill bg-dark">{{ reservation.guests }} pers.</span>
-            <span class="badge rounded-pill bg-secondary">{{ reservation.table?.name || 'A assigner' }}</span>
+            <span class="badge rounded-pill bg-secondary">{{ reservation.table?.name || 'À assigner' }}</span>
           </div>
 
           <div class="reservation-meta">
@@ -135,7 +135,7 @@
       } @empty {
         <div class="empty-Reservations">
           <i class="bi bi-calendar-x"></i>
-          <h5>Aucune reservation trouvee</h5>
+          <h5>Aucune réservation trouvée</h5>
         </div>
       }
     </section>
@@ -146,9 +146,9 @@
       <div class="reservation-modal">
         <div class="reservation-modal-hero">
           <div>
-            <span>Reservation #{{ reservation.id.slice(0, 8).toUpperCase() }}</span>
+            <span>Réservation #{{ reservation.id.slice(0, 8).toUpperCase() }}</span>
             <h2>{{ reservation.name }}</h2>
-            <p>{{ reservation.reservation_date | date:'dd MMM yyyy' }} a {{ reservation.reservation_time }}</p>
+            <p>{{ reservation.reservation_date | date:'dd MMM yyyy' }} à {{ reservation.reservation_time }}</p>
           </div>
           <button class="btn btn-light" type="button" (click)="closeReservation()"><i class="bi bi-x-lg"></i></button>
         </div>
@@ -156,9 +156,9 @@
         <div class="modal-body">
           <div class="detail-grid">
             <div><span>Statut</span><strong>{{ statusLabel(reservation.status) }}</strong></div>
-            <div><span>Table</span><strong>{{ reservation.table?.name || 'A assigner' }}</strong></div>
+            <div><span>Table</span><strong>{{ reservation.table?.name || 'À assigner' }}</strong></div>
             <div><span>Personnes</span><strong>{{ reservation.guests }}</strong></div>
-            <div><span>Telephone</span><strong>{{ reservation.phone }}</strong></div>
+            <div><span>Téléphone</span><strong>{{ reservation.phone }}</strong></div>
             <div><span>Email</span><strong>{{ reservation.email }}</strong></div>
             <div><span>Source</span><strong>{{ reservation.source || 'qr_client' }}</strong></div>
           </div>

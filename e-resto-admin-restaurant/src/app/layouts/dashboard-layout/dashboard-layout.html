@@ -278,6 +278,13 @@
             </li>
             }
 
+            <li>
+                <a routerLink="/restaurant/subscription" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-credit-card"></i><span class="nav-text">Abonnement</span>
+                </a>
+            </li>
+
 
             @if (canUse('feedback') && canAccess('feedback.list')) {
             <li>
@@ -330,7 +337,7 @@
                 </div>
 
                 <div class="assistant-suggestions">
-                    <button type="button" (click)="askAssistant('Comment mieux gerer mes commandes ?')">Commandes</button>
+                    <button type="button" (click)="askAssistant('Comment mieux gérer mes commandes ?')">Commandes</button>
                     <button type="button" (click)="askAssistant('Que disent mes statistiques ?')">Stats</button>
                     <button type="button" (click)="askAssistant('Comment utiliser mes QR codes ?')">QR code</button>
                 </div>
@@ -374,27 +381,20 @@
                 <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
                 <div>
                     <h2 id="installAppTitle">Installer Restaurant Scan</h2>
-                    <p>Ajoutez l'application sur votre appareil pour acceder plus vite a votre dashboard.</p>
+                    <p>Ajoutez l'application sur votre appareil pour accéder plus vite à votre dashboard.</p>
                 </div>
             </div>
 
             @if (iosInstallHelp && !installAvailable) {
                 <div class="install-ios-help">
                     <span><i class="ti ti-share-3"></i> Appuyez sur Partager</span>
-                    <span><i class="ti ti-square-plus"></i> Puis choisissez Ajouter a l'ecran d'accueil</span>
-                </div>
-            }
-
-            @if (manualInstallHelp && !iosInstallHelp && !installAvailable) {
-                <div class="install-ios-help">
-                    <span><i class="ti ti-device-desktop-down"></i> Utilisez l'icone d'installation dans la barre d'adresse ou le menu du navigateur.</span>
-                    <span><i class="ti ti-refresh"></i> Apres une desinstallation, rechargez la page si le bouton natif n'apparait pas encore.</span>
+                    <span><i class="ti ti-square-plus"></i> Puis choisissez Ajouter à l'écran d'accueil</span>
                 </div>
             }
 
             <button class="install-primary" type="button" (click)="installApp()">
                 <i class="ti ti-download"></i>
-                {{ iosInstallHelp && !installAvailable ? 'Voir comment installer' : "Ajouter a l'ecran d'accueil" }}
+                {{ iosInstallHelp && !installAvailable ? 'Voir comment installer' : "Ajouter à l'écran d'accueil" }}
             </button>
             <button class="install-secondary" type="button" (click)="dismissInstallPrompt()">Plus tard</button>
         </section>
@@ -412,7 +412,7 @@
                 <i class="ti ti-bell-ringing"></i>
             </div>
 
-            <span class="global-order-eyebrow">Commande recue</span>
+            <span class="global-order-eyebrow">Commande reçue</span>
             <h2 id="incomingOrderTitle">Nouvelle commande !</h2>
 
             <div class="global-order-grid">
@@ -503,7 +503,7 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0"><i class="ti ti-key"></i></span>
                             <input #oldPwd [type]="oldPwd.type" class="form-control bg-light border-0"
-                                   formControlName="current_password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                                   formControlName="current_password" placeholder="••••••••">
                             <button class="btn btn-light border-0" type="button"
                                     (click)="oldPwd.type = oldPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="oldPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
@@ -520,14 +520,14 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0"><i class="ti ti-lock"></i></span>
                             <input #newPwd [type]="newPwd.type" class="form-control bg-light border-0"
-                                   formControlName="new_password" placeholder="Min. 6 caractÃ¨res">
+                                   formControlName="new_password" placeholder="Min. 6 caractères">
                             <button class="btn btn-light border-0" type="button"
                                     (click)="newPwd.type = newPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="newPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
                             </button>
                         </div>
                         @if (passwordForm.get('new_password')?.invalid && passwordForm.get('new_password')?.touched) {
-                            <small class="text-danger x-small">Requis (min. 6 caractÃ¨res).</small>
+                            <small class="text-danger x-small">Requis (min. 6 caractères).</small>
                         }
                     </div>
 
@@ -537,7 +537,7 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0"><i class="ti ti-circle-check"></i></span>
                             <input #confirmPwd [type]="confirmPwd.type" class="form-control bg-light border-0"
-                                   formControlName="new_password_confirmation" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                                   formControlName="new_password_confirmation" placeholder="••••••••">
                             <button class="btn btn-light border-0" type="button"
                                     (click)="confirmPwd.type = confirmPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="confirmPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>

@@ -443,7 +443,15 @@ class OrderController extends Controller
                     ]);
                 }
 
-                $metadata = $payment->metadata ?? [];
+                $metadata = is_array($payment->metadata) ? $payment->metadata : [];
+
+                if (!empty($metadata['bill_requested'])) {
+                    return response()->json([
+                        'message' => 'Addition deja demandee.',
+                        'order' => $order->fresh(['table', 'items.plat', 'latestPayment']),
+                    ]);
+                }
+
                 $metadata['bill_requested'] = true;
                 $metadata['bill_requested_at'] = now()->toIso8601String();
 

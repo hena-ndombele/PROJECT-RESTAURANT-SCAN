@@ -45,9 +45,7 @@ export class Otp implements OnInit {
       || localStorage.getItem("restaurant_owner_email")
       || "";
     const devOtp = localStorage.getItem("dev_otp");
-    if (devOtp) {
-      this.showToast(`Code OTP local: ${devOtp}`, "success");
-    }
+    this.showOtpSentToast(devOtp);
 
     this.authService.currentEmail.subscribe((email) => {
       this.email = email || this.email;
@@ -107,9 +105,9 @@ export class Otp implements OnInit {
           text: err.error?.message || "OTP incorrect.",
           icon: "error",
           confirmButtonColor: "#d33",
-          confirmButtonText: "Reessayer",
+          confirmButtonText: "Réessayer",
         });
-        this.error = err.error?.message || "Code invalide ou expire.";
+        this.error = err.error?.message || "Code invalide ou expiré.";
       },
     });
   }
@@ -129,7 +127,7 @@ export class Otp implements OnInit {
           this.showToast(`Code OTP local: ${(response as any).dev_otp}`, "success");
           return;
         }
-        this.showToast(response.message || "Un nouveau code OTP a ete envoye a votre adresse email.", "success");
+        this.showToast(response.message || "Un nouveau code OTP a été envoyé à votre adresse e-mail.", "success");
       },
       error: (err) => {
         this.isResending = false;
@@ -159,16 +157,16 @@ export class Otp implements OnInit {
     }
 
     Swal.fire({
-      title: "Compte verifie !",
+      title: "Compte vérifié !",
       html: `
-        <p>Votre espace restaurant est pret.</p>
+        <p>Votre espace restaurant est prêt.</p>
         <p style="word-break: break-all; font-weight: 600;">${publicMenuUrl}</p>
       `,
       icon: "success",
       showCancelButton: true,
-      confirmButtonText: "Acceder au dashboard",
+      confirmButtonText: "Accéder au dashboard",
       cancelButtonText: "Ouvrir le menu",
-      confirmButtonColor: "#F9A11B",
+      confirmButtonColor: "#ff7a1a",
     }).then((result) => {
       if (result.dismiss === Swal.DismissReason.cancel) {
         window.open(publicMenuUrl, "_blank", "noopener");
@@ -194,10 +192,16 @@ export class Otp implements OnInit {
       .replace(/^-+|-+$/g, "");
   }
 
+  private showOtpSentToast(devOtp: string | null): void {
+    const emailInfo = this.email ? ` à ${this.email}` : " par e-mail";
+    const devInfo = devOtp ? ` Code local: ${devOtp}` : "";
+    this.showToast(`Nous avons envoyé le code OTP${emailInfo}.${devInfo}`, "success");
+  }
+
   private showToast(message: string, type: "success" | "error"): void {
     this.hideToast();
     this.toastMessage = message;
     this.toastType = type;
-    this.toastTimer = setTimeout(() => this.hideToast(), 5200);
+    this.toastTimer = setTimeout(() => this.hideToast(), 5000);
   }
 }

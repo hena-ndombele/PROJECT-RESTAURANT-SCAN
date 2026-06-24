@@ -33,7 +33,7 @@ export class Reservation implements OnInit, OnDestroy {
 
   readonly statusOptions: { value: ReservationStatus; label: string; icon: string }[] = [
     { value: "pending", label: "En attente", icon: "bi-hourglass" },
-    { value: "confirmed", label: "Confirmee", icon: "bi-calendar-check" },
+    { value: "confirmed", label: "Confirmée", icon: "bi-calendar-check" },
     { value: "seated", label: "Installee", icon: "bi-person-check" },
     { value: "completed", label: "Terminee", icon: "bi-check2-circle" },
     { value: "cancelled", label: "Annulee", icon: "bi-x-circle" },
@@ -77,7 +77,7 @@ export class Reservation implements OnInit, OnDestroy {
     this.loadReservations();
     this.realtimeSubscription = this.realtime.reservationCreated$.subscribe((reservation) => {
       this.Reservations.update((list) => list.some((item) => item.id === reservation.id) ? list : [reservation, ...list]);
-      this.successMessage.set("Nouvelle reservation recue.");
+      this.successMessage.set("Nouvelle réservation reçue.");
     });
   }
 
@@ -112,9 +112,9 @@ export class Reservation implements OnInit, OnDestroy {
       error: (error) => {
         if (error?.status === 403 || error?.error?.requires_upgrade) {
           this.upgradeRequired.set(true);
-          this.errorMessage.set(error?.error?.message || "Les reservations sont reservees aux plans Pro et Business.");
+          this.errorMessage.set(error?.error?.message || "Les réservations sont réservées aux plans Pro et Business.");
         } else {
-          this.errorMessage.set("Impossible de charger les reservations.");
+          this.errorMessage.set("Impossible de charger les réservations.");
         }
         this.Reservations.set([]);
         this.loading.set(false);
@@ -136,7 +136,7 @@ export class Reservation implements OnInit, OnDestroy {
 
   updateStatus(reservation: ReservationDto, status: ReservationStatus): void {
     if (!this.canAccess("reservations.update")) {
-      this.errorMessage.set("Vous n'avez pas la permission de modifier le statut des reservations.");
+      this.errorMessage.set("Vous n'avez pas la permission de modifier le statut des réservations.");
       return;
     }
     if (!reservation.id || this.updatingId() === reservation.id) return;
@@ -166,7 +166,7 @@ export class Reservation implements OnInit, OnDestroy {
         this.updatingId.set(null);
       },
       error: (err) => {
-        this.errorMessage.set(err?.error?.message || "Impossible de modifier la reservation.");
+        this.errorMessage.set(err?.error?.message || "Impossible de modifier la réservation.");
         this.updatingId.set(null);
       }
     });
@@ -174,17 +174,17 @@ export class Reservation implements OnInit, OnDestroy {
 
   deleteReservation(reservation: ReservationDto): void {
     if (!this.canAccess("reservations.delete")) {
-      this.errorMessage.set("Vous n'avez pas la permission de supprimer les reservations.");
+      this.errorMessage.set("Vous n'avez pas la permission de supprimer les réservations.");
       return;
     }
-    if (!window.confirm("Supprimer cette reservation ?")) return;
+    if (!window.confirm("Supprimer cette réservation ?")) return;
     this.reservationService.delete(reservation.id).subscribe({
       next: () => {
         this.Reservations.update((list) => list.filter((item) => item.id !== reservation.id));
         this.closeReservation();
         this.successMessage.set("Reservation supprimee.");
       },
-      error: () => this.errorMessage.set("Impossible de supprimer la reservation.")
+      error: () => this.errorMessage.set("Impossible de supprimer la réservation.")
     });
   }
 

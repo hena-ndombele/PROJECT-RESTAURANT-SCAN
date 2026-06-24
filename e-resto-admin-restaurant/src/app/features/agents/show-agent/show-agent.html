@@ -28,7 +28,7 @@
                         <div class="border rounded-3 p-4 text-center h-100">
                             <div class="agent-photo mx-auto mb-3">
                                 @if (agentDetail.photo_url) {
-                                    <img [src]="agentDetail.photo_url" alt="Photo employe">
+                                    <img [src]="agentDetail.photo_url" alt="Photo employé">
                                 } @else {
                                     <span>{{ initials() }}</span>
                                 }
@@ -40,7 +40,7 @@
                             <button type="button" class="btn badge-reprint-btn w-100 mt-4" [disabled]="isBadgeGenerating" (click)="downloadBadge()">
                                 @if (isBadgeGenerating) {
                                     <span class="spinner-border spinner-border-sm me-2"></span>
-                                    Generation...
+                                    Génération...
                                 } @else {
                                     <i class="ti ti-download me-2"></i>
                                     Télécharger le badge

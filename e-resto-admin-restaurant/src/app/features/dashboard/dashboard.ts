@@ -178,65 +178,41 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     });
 
     readonly recentOrders = computed(() => this.todayOrders().slice(0, 6));
-    readonly canViewAnalytics = computed(() => this.planUsage()?.permissions?.can_view_analytics !== false);
+    readonly canViewAnalytics = computed(() => true);
 
     readonly onboardingSteps: OnboardingStep[] = [
         {
             eyebrow: "14 jours d'essai gratuit - plan complet",
             title: "Bienvenue sur Restaurant Scan",
-            description: "Votre restaurant entre dans l'ère digitale. En quelques minutes, vos clients pourront consulter votre menu et commander dépuis leur téléphone.",
+            description: "Votre restaurant entre dans l'ère digitale. En quelques minutes, vos clients pourront consulter votre menu et commander depuis leur téléphone.",
             icon: "ti ti-hand-wave",
             tone: "orange",
-            bullets: ["Tableau de bord en Temps réel", "Menu QR accessible sans application", "Commandes centralisees dans votre espace"]
+            bullets: ["Tableau de bord en temps réel", "Menu QR accessible sans application", "Commandes centralisées dans votre espace"]
         },
         {
-            eyebrow: "Etape 1 - gerer les plats",
-            title: "Creez votre menu",
-            description: "Ajoutez vos categories, vos plats, vos prix et vos photos pour construire un menu clair et pret a partager.",
+            eyebrow: "Étape 1 - gérer les plats",
+            title: "Créez votre menu",
+            description: "Ajoutez vos catégories, vos plats, vos prix et vos photos pour construire un menu clair et prêt à partager.",
             icon: "ti ti-tools-kitchen-2",
             tone: "indigo",
-            bullets: ["Categories: entrees, plats, boissons", "Photos, descriptions et prix", "Plat disponible ou epuise en un clic"]
+            bullets: ["Catégories : entrées, plats, boissons", "Photos, descriptions et prix", "Plat disponible ou épuisé en un clic"]
         },
         {
-            eyebrow: "Etape 2 - installer le QR code",
+            eyebrow: "Étape 2 - installer le QR code",
             title: "Votre QR code unique",
-            description: "Creez vos tables, imprimez les QR codes et placez-les pour que les clients ouvrent le menu instantanement.",
+            description: "Créez vos tables, imprimez les QR codes et placez-les pour que les clients ouvrent le menu instantanément.",
             icon: "ti ti-qrcode",
             tone: "violet",
-            bullets: ["Generation de QR code par table", "Impression depuis la fiche table", "Lien menu client partageable"]
+            bullets: ["Génération de QR code par table", "Impression depuis la fiche table", "Lien menu client partageable"]
         },
         {
-            eyebrow: "Etape 3 - gerer les commandes",
+            eyebrow: "Étape 3 - gérer les commandes",
             title: "Recevez des commandes",
-            description: "Les commandes arrivent directement depuis le menu client avec statut, table, total et details des plats.",
+            description: "Les commandes arrivent directement depuis le menu client avec statut, table, total et détails des plats.",
             icon: "ti ti-shopping-cart",
             tone: "orange",
-            bullets: ["Notification a chaque nouvelle commande", "Sur place, a emporter ou livraison", "Validation et suivi du statut"]
+            bullets: ["Notification à chaque nouvelle commande", "Sur place, à emporter ou livraison", "Validation et suivi du statut"]
         },
-        {
-            eyebrow: "Etape 4 - statistiques",
-            title: "Analysez vos performances",
-            description: "Suivez les plats les plus commandes, les revenus par periode et l'activite du service.",
-            icon: "ti ti-chart-bar",
-            tone: "emerald",
-            bullets: ["Commandes et revenus du jour", "Top plats du mois", "Graphiques sur les 7 derniers jours"]
-        },
-        {
-            eyebrow: "Etape 5 - parametres",
-            title: "Personnalisez votre menu",
-            description: "Adaptez les informations visibles par vos clients: logo, couleurs, telephone, adresse et slug public.",
-            icon: "ti ti-settings",
-            tone: "pink",
-            bullets: ["Logo et couleurs du menu client", "Adresse et telephone cliquables", "URL publique personnalisee selon le plan"]
-        },
-        {
-            eyebrow: "C'est parti",
-            title: "Vous etes pret",
-            description: "Commencez par creer vos categories et vos plats, puis ajoutez vos tables pour imprimer les QR codes.",
-            icon: "ti ti-rocket",
-            tone: "orange",
-            bullets: ["Notre equipe peut vous accompagner", "Vous pouvez rouvrir le guide depuis ce navigateur", "Votre dashboard est pret pour le service"]
-        }
     ];
 
     readonly currentOnboardingStep = computed(() => this.onboardingSteps[this.onboardingStepIndex()]);
@@ -275,7 +251,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     revenuePeriodLabel(period: string): string {
         if (period === "today") return "Aujourd'hui";
         if (period === "month") return "Ce mois";
-        return "Cette annee";
+        return "Cette année";
     }
 
     ngOnInit(): void {

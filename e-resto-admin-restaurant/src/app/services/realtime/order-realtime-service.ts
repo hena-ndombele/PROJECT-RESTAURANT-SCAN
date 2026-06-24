@@ -211,7 +211,7 @@ export class OrderRealtimeService {
         this.notifications.update((items) => [
             {
                 id: `${reservation.id}-${Date.now()}`,
-                title: "Nouvelle reservation",
+                title: "Nouvelle réservation",
                 message: `${reservation.name} - ${reservation.guests} pers. le ${reservation.reservation_date}`,
                 createdAt: new Date(),
                 route: "/table/reservation-table"

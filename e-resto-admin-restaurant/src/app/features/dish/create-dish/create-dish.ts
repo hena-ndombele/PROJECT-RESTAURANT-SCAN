@@ -1,7 +1,7 @@
 import { CommonModule } from "@angular/common";
 import { Component, OnInit, inject, signal } from "@angular/core";
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
-import { Router } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 import { CategoryDto } from "../../../models/category/CategoryDto";
 import { CategoryService } from "../../../services/category/category-service";
 import { DishService } from "../../../services/dish/dish-service";
@@ -9,7 +9,7 @@ import { DishService } from "../../../services/dish/dish-service";
 @Component({
     selector: "app-create-dish",
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule],
+    imports: [CommonModule, ReactiveFormsModule, RouterLink],
     templateUrl: "./create-dish.html",
     styleUrl: "./create-dish.scss",
 })
@@ -54,11 +54,11 @@ export class CreateDish implements OnInit {
             next: (data) => {
                 this.categories.set(data);
                 if (!data.length) {
-                    this.formError.set("Creez d'abord une categorie avant d'ajouter un plat.");
+                    this.formError.set("Créez d'abord une catégorie avant d'ajouter un plat.");
                 }
             },
             error: (err) => {
-                this.formError.set("Impossible de charger les categories de ce restaurant. Reconnectez-vous puis reessayez.");
+                this.formError.set("Impossible de charger les catégories de ce restaurant. Reconnectez-vous puis réessayez.");
             },
         });
     }

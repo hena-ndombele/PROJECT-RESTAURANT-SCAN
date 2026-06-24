@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, ElementRef, ViewChild, inject } from "@angular/core";
+import { Component, ElementRef, Input, ViewChild, inject } from "@angular/core";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import Swal from "sweetalert2";
 import { AgentService } from "../../../services/agents/agent-service";
@@ -16,6 +16,8 @@ import { STORAGE_ROOT } from "../../../services/api-url";
   standalone: true
 })
 export class CreateAgent {
+  @Input() disabled = false;
+  @Input() limitMessage = "";
   @ViewChild("badgePreview") badgePreview?: ElementRef<HTMLElement>;
 
   isLoading = false;
@@ -93,6 +95,11 @@ export class CreateAgent {
   }
 
   onSubmit(): void {
+    if (this.disabled) {
+      Swal.fire("Plan limité", this.limitMessage || "Votre plan ne permet pas de créer plus d'employés.", "warning");
+      return;
+    }
+
     if (!this.agentForm.valid) {
       this.agentForm.markAllAsTouched();
       return;
@@ -111,13 +118,13 @@ export class CreateAgent {
         this.badgeQrCode = response?.qr_code || this.badgeQrCode;
 
         const result = await Swal.fire({
-          title: "Employe cree",
-          text: "Le compte employe et son badge professionnel sont prets.",
+          title: "Employé créé",
+          text: "Le compte employé et son badge professionnel sont prêts.",
           icon: "success",
-          confirmButtonText: "Telecharger le badge",
+          confirmButtonText: "Télécharger le badge",
           showCancelButton: true,
           cancelButtonText: "Fermer",
-          confirmButtonColor: "#F9A11B"
+          confirmButtonColor: "#ff7a1a"
         });
 
         if (result.isConfirmed && this.createdAgent) {
@@ -132,16 +139,16 @@ export class CreateAgent {
         const emailError = err.error?.errors?.email?.[0];
         const matriculeError = err.error?.errors?.matricule?.[0];
         const message = emailError
-          ? "Ce compte existe deja avec cette adresse email."
+          ? "Ce compte existe déjà avec cette adresse e-mail."
           : matriculeError
-            ? "Ce matricule existe deja. Saisissez un matricule unique."
-            : err.error?.message || "Erreur lors de la creation de l employe.";
+            ? "Ce matricule existe déjà. Saisissez un matricule unique."
+            : err.error?.message || "Erreur lors de la création de l'employé.";
         Swal.fire({
-          title: "Creation impossible",
+          title: "Création impossible",
           text: message,
           icon: "error",
           confirmButtonColor: "#d33",
-          confirmButtonText: "Reessayer"
+          confirmButtonText: "Réessayer"
         });
       }
     });
@@ -181,7 +188,7 @@ export class CreateAgent {
     ctx.fillText(this.restaurantData.name, 128, 48);
     ctx.font = "500 18px Arial";
     ctx.fillStyle = "#697386";
-    ctx.fillText("Badge professionnel employe", 128, 78);
+    ctx.fillText("Badge professionnel employé", 128, 78);
 
     await this.drawImageSafe(ctx, this.restaurantData.logo, 36, 24, 72, 72, 16);
     await this.drawImageSafe(ctx, this.badgePhoto, 42, 150, 170, 190, 22, true);
@@ -251,8 +258,8 @@ export class CreateAgent {
     const fallback = {
       name: "Restaurant Scan",
       logo: "assets/logo/e-resto-logo.png",
-      primaryColor: "#F9A11B",
-      accentColor: "#FFD166",
+      primaryColor: "#ff7a1a",
+      accentColor: "#ff7a1a",
     };
 
     try {

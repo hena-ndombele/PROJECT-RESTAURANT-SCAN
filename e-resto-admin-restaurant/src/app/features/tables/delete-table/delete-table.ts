@@ -29,12 +29,11 @@ export class DeleteTable {
             error: (err) => {
                 this.isLoading = false;
                 Swal.fire({
-                    title: 'Error',
-                    text: err.error?.message || '\n' +
-                        'Error during deletion.',
+                    title: 'Erreur',
+                    text: err.error?.message || 'Erreur lors de la suppression.',
                     icon: 'error',
                     confirmButtonColor: '#d33',
-                    confirmButtonText: 'Try again'
+                    confirmButtonText: 'Réessayer'
                 });
 
             }

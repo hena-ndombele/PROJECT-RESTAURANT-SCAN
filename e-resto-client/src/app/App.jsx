@@ -32,6 +32,7 @@ const ACTIVE_ORDER_STATUS_STORAGE_KEY = 'e-resto-active-order-status';
 const ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY = 'e-resto-active-order-tracking-code';
 const ACTIVE_ORDER_BY_TABLE_PREFIX = 'e-resto-active-order-table-';
 const FEEDBACK_STORAGE_PREFIX = 'e-resto-feedback-';
+const BILL_REQUEST_STORAGE_PREFIX = 'e-resto-bill-requested-';
 let notificationAudioContext;
 let notificationAudioUnlocked = false;
 
@@ -1381,6 +1382,7 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
   const [connectionState, setConnectionState] = useState(order ? 'Connexion au suivi...' : '');
   const [cancelling, setCancelling] = useState(false);
   const [requestingBill, setRequestingBill] = useState(false);
+  const [billRequestedLocally, setBillRequestedLocally] = useState(false);
   const [alertsEnabled, setAlertsEnabled] = useState(() => notificationAudioUnlocked || getNotificationPermission() === 'granted');
   const [statusBanner, setStatusBanner] = useState(null);
   const lastStatusRef = useRef(null);
@@ -1474,6 +1476,22 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
     }
   }, [order?.id, order?.status, order?.payment_status, tableId, onStatusNotification]);
 
+  useEffect(() => {
+    if (!order?.id) {
+      setBillRequestedLocally(false);
+      return;
+    }
+
+    const key = `${BILL_REQUEST_STORAGE_PREFIX}${order.id}`;
+    const serverRequested = Boolean(order.latest_payment?.metadata?.bill_requested);
+
+    if (serverRequested) {
+      localStorage.setItem(key, 'true');
+    }
+
+    setBillRequestedLocally(serverRequested || localStorage.getItem(key) === 'true');
+  }, [order?.id, order?.latest_payment?.metadata?.bill_requested]);
+
   if (!order) return null;
 
   const currentIndex = orderSteps.findIndex((step) => step.key === order.status);
@@ -1481,7 +1499,7 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
   const activeStep = orderSteps[Math.max(currentIndex, 0)];
   const canClientCancel = order.status === 'pending' && order.payment_status !== 'paid';
   const canClientEdit = order.status === 'pending' && order.payment_status !== 'paid';
-  const billAlreadyRequested = Boolean(order.latest_payment?.metadata?.bill_requested);
+  const billAlreadyRequested = Boolean(order.latest_payment?.metadata?.bill_requested) || billRequestedLocally;
   const canRequestBill = order.payment_method === 'cash'
     && order.payment_status !== 'paid'
     && order.status === 'delivered';
@@ -1515,8 +1533,11 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
   };
 
   const handleRequestBill = async () => {
-    if (!canRequestBill || requestingBill) return;
+    if (!canRequestBill || requestingBill || billAlreadyRequested) return;
+    const key = `${BILL_REQUEST_STORAGE_PREFIX}${order.id}`;
     setRequestingBill(true);
+    setBillRequestedLocally(true);
+    localStorage.setItem(key, 'true');
     try {
       const response = await requestBill(order.id);
       onOrderUpdate(response.order);
@@ -1527,6 +1548,8 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
       });
       playOrderNotificationSound('success');
     } catch (error) {
+      setBillRequestedLocally(false);
+      localStorage.removeItem(key);
       onStatusNotification({
         type: 'error',
         title: 'Demande impossible',
@@ -2052,7 +2075,7 @@ function buildClientBrand(restaurant) {
     address: restaurant.address || '',
     city: restaurant.city || '',
     can_feedback: Boolean(restaurant.can_feedback),
-    can_Réservations: Boolean(restaurant.can_Réservations),
+    can_Réservations: Boolean(restaurant.can_reservations ?? restaurant.can_Réservations),
     can_mobile_money: false,
     can_chatbot: false,
     payment_methods: ['cash'],

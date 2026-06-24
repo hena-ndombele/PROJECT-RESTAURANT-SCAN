@@ -18,10 +18,10 @@
     }
   </header>
 
-  <div class="settings-live-status">
+  <!-- <div class="settings-live-status">
     <i class="bi bi-broadcast-pin"></i>
     <span>Synchronisation interface active</span>
-  </div>
+  </div> -->
 
   @if (message()) {
     <div class="alert alert-success">{{ message() }}</div>
@@ -63,7 +63,6 @@
         <article>
           <span>Tables</span>
           <strong>{{ planUsage()?.usage?.tables || 0 }}</strong>
-          <small>{{ planUsage()?.messages?.tables || 'Tables configurees' }}</small>
         </article>
         <article>
           <span>Utilisateurs</span>
@@ -90,7 +89,7 @@
           <input [(ngModel)]="restaurant.owner_name" name="owner_name" [disabled]="!canUpdateSettings()">
         </label>
         <label>
-          <span>Telephone</span>
+          <span>Téléphone</span>
           <input [(ngModel)]="restaurant.owner_phone" name="owner_phone" [disabled]="!canUpdateSettings()">
         </label>
         <label>
@@ -106,7 +105,7 @@
           <input [(ngModel)]="restaurant.address" name="address" [disabled]="!canUpdateSettings()" placeholder="Ex: Bandalungwa, Kinshasa">
         </label>
         <label>
-          <span>Devise par defaut</span>
+          <span>Devise par défaut</span>
           <select [(ngModel)]="restaurant.currency" name="currency" [disabled]="!canUpdateSettings()">
             <option value="CDF">CDF</option>
             <option value="USD">USD</option>
@@ -164,6 +163,47 @@
           }
           <input type="color" [(ngModel)]="restaurant.settings.theme.background" name="background_color" [disabled]="!canCustomize()" (change)="onColorInput()" (input)="onColorInput()">
         </div>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <h2><i class="bi bi-qr-code"></i> Template QR table</h2>
+      <p class="section-help">Choisissez le design qui sera imprime ou telecharge pour etre depose sur les tables.</p>
+
+      @if (!canCustomize()) {
+        <div class="template-upgrade-note">
+          <i class="bi bi-lock-fill"></i>
+          <span>Les templates QR premium sont disponibles avec les plans Pro et Business.</span>
+        </div>
+      }
+
+      <div class="qr-template-grid">
+        <button type="button"
+                class="qr-template-card"
+                [class.active]="restaurant.settings.qr_template === 'poster'"
+                [disabled]="!canCustomize()"
+                (click)="restaurant.settings.qr_template = 'poster'">
+          <span class="template-preview poster-preview">
+            <span class="template-logo"></span>
+            <strong>Digital Menu<br>System</strong>
+            <span class="template-qr"></span>
+            <em>{{ restaurant.name || 'Restaurant' }}</em>
+          </span>
+          <span>Affiche elegante</span>
+        </button>
+
+        <button type="button"
+                class="qr-template-card"
+                [class.active]="restaurant.settings.qr_template === 'table_tent'"
+                [disabled]="!canCustomize()"
+                (click)="restaurant.settings.qr_template = 'table_tent'">
+          <span class="template-preview tent-preview">
+            <strong>MENU</strong>
+            <span class="template-qr"></span>
+            <em>Scan the Code</em>
+          </span>
+          <span>Table tent promo</span>
+        </button>
       </div>
     </section>
 

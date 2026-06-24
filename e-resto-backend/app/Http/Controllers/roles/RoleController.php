@@ -184,7 +184,7 @@ class RoleController extends Controller
     private function roleLimitForPlan(string $tier): ?int
     {
         return match ($tier) {
-            'starter' => 3,
+            'starter' => 5,
             'pro' => 8,
             default => null,
         };

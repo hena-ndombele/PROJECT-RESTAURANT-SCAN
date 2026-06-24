@@ -1,12 +1,11 @@
 <div class="container-fluid p-0 overflow-hidden">
     <div class="row min-vh-100 g-0">
 
-        <div class="col-lg-7 d-none d-lg-flex flex-column align-items-center justify-content-center bg-light p-5 position-relative"
-             style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('assets/images/image9.jpg') center/cover;">
+        <div class="col-lg-7 d-none d-lg-flex flex-column align-items-center justify-content-center p-5 position-relative otp-hero-side">
+            <img class="otp-hero-image" src="assets/images/image9.jpg" alt="Restaurant Scan OTP">
 
             <div class="text-center text-white p-4" style="z-index: 2;">
-                <img src="assets/logo/e-resto-logo.png" alt="Logo" width="150" height="96"
-                     class="mb-4" style="border-radius: 0; border: 3px solid white; object-fit: contain;">
+                <img src="assets/logo/e-resto-logo.png" alt="Logo" class="otp-hero-logo mb-4">
 
                 <h1 class="display-4 fw-bold mb-3">CODE OTP</h1>
                 <p class="fs-5 opacity-75">
@@ -22,14 +21,11 @@
                     <div class="card-body p-5">
 
                         <div class="text-center mb-3">
-                            <a routerLink="/" class="mb-4 d-inline-block">
-                    <span class="ms-2">
-                        <img src="assets/logo/e-resto-logo.png" alt="Logo" width="96" height="60"
-                             style="border-radius: 0; object-fit: contain; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border:1px solid black">
-                    </span>
+                            <a routerLink="/" class="otp-form-logo mb-4 d-inline-block">
+                                <img src="assets/logo/e-resto-logo.png" alt="Logo">
                             </a>
                             <h1 class="card-title h4" style="font-weight: bolder">Vérification du compte</h1>
-                            <p class="text-muted small mt-3">Nous avons envoyé un code à 5 chiffres a {{ email }}.</p>
+                            <p class="text-muted small mt-3">Nous avons envoyé un code à 5 chiffres à {{ email }}.</p>
                         </div>
 
                         <form class="needs-validation mt-4" (ngSubmit)="verifyOtp()" novalidate>
@@ -50,13 +46,13 @@
                                 </div>
                             </div>
 
-                            <button class="btn otp-submit-btn w-100 py-2 d-flex align-items-center justify-content-center"
+                            <button class="btn otp-submit-btn w-100 d-flex align-items-center justify-content-center"
                                     type="submit"
                                     [disabled]="isLoading">
 
                                 <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
 
-                                <span>{{ isLoading ? 'Verification...' : 'Vérifier le code' }}</span>
+                                <span>{{ isLoading ? 'Vérification...' : 'Vérifier le code' }}</span>
 
                                 <i *ngIf="!isLoading" class="bi bi-shield-check ms-2"></i>
                             </button>
@@ -89,7 +85,7 @@
     </button>
     <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
     <div>
-        <strong>{{ toastType === 'success' ? 'Code renvoye' : 'Erreur' }}</strong>
+        <strong>{{ toastType === 'success' ? 'Code renvoyé' : 'Erreur' }}</strong>
         <span>{{ toastMessage }}</span>
     </div>
 </div>

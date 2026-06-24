@@ -39,7 +39,7 @@ class ReservationController extends Controller
                 ], 422);
             }
 
-            if (!$restaurant->plan?->allows('Réservations')) {
+            if (!$restaurant->plan?->allows('reservations')) {
                 return response()->json([
                     'message' => 'Les Réservations sont reservees aux plans Pro et Business.',
                     'requires_upgrade' => true,
@@ -74,7 +74,7 @@ class ReservationController extends Controller
         $restaurantId = $request->user()?->restaurant_id;
         $restaurant = $restaurantId ? Restaurant::with('plan')->find($restaurantId) : null;
 
-        if ($restaurant && !$restaurant->plan?->allows('Réservations')) {
+        if ($restaurant && !$restaurant->plan?->allows('reservations')) {
             return response()->json([
                 'message' => 'Les Réservations sont reservees aux plans Pro et Business.',
                 'requires_upgrade' => true,

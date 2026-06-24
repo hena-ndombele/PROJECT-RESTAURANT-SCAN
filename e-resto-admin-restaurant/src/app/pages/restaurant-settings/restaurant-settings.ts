@@ -61,8 +61,9 @@ export class RestaurantSettings implements OnInit {
         whatsapp_order_phone: '',
         opening_time: '08:00',
         closing_time: '22:00',
+        qr_template: 'poster',
         theme: {
-        primary: '#ff9f1a',
+        primary: '#ff7a1a',
         secondary: '#d71920',
         background: '#fff7ef',
       },
@@ -203,8 +204,9 @@ export class RestaurantSettings implements OnInit {
         whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '',
         opening_time: settings.opening_time || '08:00',
         closing_time: settings.closing_time || '22:00',
+        qr_template: ['poster', 'table_tent'].includes(settings.qr_template) ? settings.qr_template : 'poster',
         theme: {
-          primary: theme.primary || '#ff9f1a',
+          primary: theme.primary || '#ff7a1a',
           secondary: theme.secondary || '#d71920',
           background: theme.background || '#fff7ef',
           customized: theme.customized === true || theme.is_customized === true,
@@ -232,6 +234,7 @@ export class RestaurantSettings implements OnInit {
       whatsapp_order_phone: this.restaurant.settings.whatsapp_order_phone,
       opening_time: this.restaurant.settings.opening_time,
       closing_time: this.restaurant.settings.closing_time,
+      qr_template: this.restaurant.settings.qr_template,
       theme: {
         primary: this.restaurant.settings.theme.primary,
         secondary: this.restaurant.settings.theme.secondary,
@@ -262,13 +265,14 @@ export class RestaurantSettings implements OnInit {
 
   private applyRestaurantTheme(restaurant: any): void {
     const theme = restaurant?.settings?.theme || restaurant?.theme || {};
-    const primary = this.normalizeColor(theme.primary_color || theme.primary || theme.accent, '#F9A11B');
-    const secondary = this.normalizeColor(theme.secondary_color || theme.secondary, '#111318');
-    const surface = this.normalizeColor(theme.background_color || theme.background || theme.surface, '#FFF7ED');
+    const canUseCustomTheme = this.canCustomize() && (theme.customized === true || theme.is_customized === true);
+    const primary = this.normalizeColor(canUseCustomTheme ? theme.primary_color || theme.primary || theme.accent : null, '#ff7a1a');
+    const secondary = this.normalizeColor(canUseCustomTheme ? theme.secondary_color || theme.secondary : null, '#d71920');
+    const surface = this.normalizeColor(canUseCustomTheme ? theme.background_color || theme.background || theme.surface : null, '#fff7ef');
     const primaryRgb = this.hexToRgb(primary);
-    const buttonBackground = theme.customized === true || theme.is_customized === true
+    const buttonBackground = canUseCustomTheme
       ? primary
-      : 'linear-gradient(135deg, #FFD166, #F9A11B, #D71920)';
+      : 'linear-gradient(135deg, #ff7a1a, #d71920)';
 
     document.body.classList.add('restaurant-theme');
     document.documentElement.style.setProperty('--dashboard-primary', primary);
@@ -296,7 +300,7 @@ export class RestaurantSettings implements OnInit {
 
     const value = Number.parseInt(clean, 16);
     if (Number.isNaN(value)) {
-      return '249, 161, 27';
+      return '255, 122, 26';
     }
 
     return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;

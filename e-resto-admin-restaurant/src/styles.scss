@@ -1,12 +1,12 @@
 @import "./assets/scss/style.scss";
 
 :root {
-  --dashboard-primary: #F9A11B;
-  --dashboard-primary-rgb: 249, 161, 27;
-  --dashboard-button-accent: #FFD166;
-  --dashboard-button-bg: linear-gradient(135deg, #FFD166, #F9A11B, #D71920);
-  --dashboard-secondary: #111318;
-  --dashboard-surface: #FFF7ED;
+  --dashboard-primary: #ff7a1a;
+  --dashboard-primary-rgb: 255, 122, 26;
+  --dashboard-button-accent: #d71920;
+  --dashboard-button-bg: linear-gradient(135deg, #ff7a1a, #d71920);
+  --dashboard-secondary: #d71920;
+  --dashboard-surface: #fff7ef;
 }
 
 body.restaurant-theme {
@@ -41,6 +41,24 @@ body.restaurant-theme .dynamic-primary {
   box-shadow: 0 10px 22px rgba(var(--dashboard-primary-rgb), .24);
 }
 
+body.restaurant-theme .btn-primary i,
+body.restaurant-theme .btn-primary svg,
+body.restaurant-theme button.btn-primary i,
+body.restaurant-theme button.btn-primary svg,
+body.restaurant-theme .modal-footer .btn-primary i,
+body.restaurant-theme .modal-footer .btn-primary svg,
+body.restaurant-theme .save-main i,
+body.restaurant-theme .save-main svg,
+body.restaurant-theme .brand-action i,
+body.restaurant-theme .brand-action svg,
+body.restaurant-theme .dynamic-primary i,
+body.restaurant-theme .dynamic-primary svg,
+body.restaurant-theme .bg-primary i,
+body.restaurant-theme .bg-primary svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
+}
+
 body.restaurant-theme .btn-primary:hover,
 body.restaurant-theme .btn-primary:focus {
   filter: brightness(.96);
@@ -55,6 +73,14 @@ body.restaurant-theme .btn-outline-primary:hover,
 body.restaurant-theme .btn-outline-primary:focus {
   background: var(--dashboard-button-bg) !important;
   color: #111318 !important;
+}
+
+body.restaurant-theme .btn-outline-primary:hover i,
+body.restaurant-theme .btn-outline-primary:focus i,
+body.restaurant-theme .btn-outline-primary:hover svg,
+body.restaurant-theme .btn-outline-primary:focus svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
 }
 
 body.restaurant-theme .btn-outline-primary {
@@ -72,7 +98,7 @@ body.restaurant-theme .spinner-border.text-primary {
 }
 
 body.restaurant-theme .bg-primary {
-  background-color: var(--dashboard-primary) !important;
+  background: var(--dashboard-button-bg) !important;
 }
 
 body.restaurant-theme .border-primary,
@@ -93,9 +119,15 @@ body.restaurant-theme .border-primary {
 }
 
 body.restaurant-theme .page-item.active .page-link {
-  background-color: var(--dashboard-primary) !important;
-  border-color: var(--dashboard-primary) !important;
+  background: var(--dashboard-button-bg) !important;
+  border-color: transparent !important;
   color: #111318 !important;
+}
+
+body.restaurant-theme .page-item.active .page-link i,
+body.restaurant-theme .page-item.active .page-link svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
 }
 
 button,
@@ -120,8 +152,22 @@ body.restaurant-theme .btn-outline-primary {
 
 body.restaurant-theme .modal .btn-outline-primary:hover,
 body.restaurant-theme .btn-outline-primary:hover {
-  background: var(--dashboard-primary) !important;
+  background: var(--dashboard-button-bg) !important;
   color: #111318 !important;
+}
+
+body.restaurant-theme .modal .btn-outline-primary:hover i,
+body.restaurant-theme .modal .btn-outline-primary:hover svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
+}
+
+body.restaurant-theme [style*="--dashboard-button-bg"] i,
+body.restaurant-theme [style*="--dashboard-button-bg"] svg,
+body.restaurant-theme [style*="var(--dashboard-button-bg"] i,
+body.restaurant-theme [style*="var(--dashboard-button-bg"] svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
 }
 
 img[src*="assets/logo/e-resto-logo"],
@@ -304,7 +350,7 @@ body.dashboard-dark-theme .pagination .page-link {
 }
 
 body.dashboard-dark-theme .pagination .page-item.active .page-link {
-  background-color: var(--dashboard-primary) !important;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920)) !important;
   border-color: var(--dashboard-primary) !important;
   color: #111827 !important;
 }

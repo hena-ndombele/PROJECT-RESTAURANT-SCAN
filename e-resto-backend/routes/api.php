@@ -55,6 +55,7 @@ Route::prefix('saas')->group(function () {
     Route::middleware(['auth:sanctum', 'restaurant.only'])->group(function () {
         Route::get('/me', [SaasController::class, 'me']);
         Route::get('/restaurant/usage', [SaasController::class, 'usage']);
+        Route::get('/restaurant/payments', [SaasController::class, 'restaurantPayments']);
         Route::put('/restaurant/profile', [SaasController::class, 'updateProfile']);
     });
 });

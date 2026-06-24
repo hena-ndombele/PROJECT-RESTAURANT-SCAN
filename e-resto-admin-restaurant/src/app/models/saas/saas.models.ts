@@ -60,12 +60,14 @@ export interface RestaurantPlanUsage {
   limits: {
     tables: number | null;
     users: number | null;
+    roles?: number | null;
     dishes?: number | null;
     orders_month?: number | null;
   };
   usage: {
     tables: number;
     users: number;
+    roles?: number;
     dishes?: number;
     orders_month?: number;
   };
@@ -73,6 +75,7 @@ export interface RestaurantPlanUsage {
     can_create_table: boolean;
     can_create_user: boolean;
     can_create_dish?: boolean;
+    can_create_role?: boolean;
     can_accept_order?: boolean;
     can_use_mobile_money?: boolean;
     can_view_analytics?: boolean;
@@ -80,6 +83,7 @@ export interface RestaurantPlanUsage {
     can_customize_menu?: boolean;
     can_use_feedback?: boolean;
     can_use_reservations?: boolean;
+    can_use_chatbot?: boolean;
     can_manage_roles?: boolean;
     can_use_multi_restaurant?: boolean;
   };
@@ -88,8 +92,28 @@ export interface RestaurantPlanUsage {
   messages: {
     tables: string;
     users: string;
+    roles?: string;
     dishes?: string;
     orders_month?: string;
+  };
+}
+
+export interface SubscriptionPayment {
+  id: string;
+  reference?: string;
+  status: 'pending' | 'paid' | 'failed' | 'refunded' | string;
+  amount: number | string;
+  currency: string;
+  provider?: string;
+  method?: string;
+  paid_at?: string;
+  created_at?: string;
+  metadata?: {
+    plan_id?: string;
+    plan_slug?: string;
+    plan_name?: string;
+    billing_cycle?: 'monthly' | 'yearly' | string;
+    wallet_id?: string;
   };
 }
 

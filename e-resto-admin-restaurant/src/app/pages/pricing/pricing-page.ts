@@ -29,9 +29,9 @@ export class PricingPage implements OnInit {
       max_restaurants: 1,
       max_tables: 8,
       max_users: 5,
-      features: ['20 plats', '150 commandes/mois', 'Gestion des commandes', 'Cash uniquement', 'Sur place / Emporter', 'Support standard','Rôles limités'],
+      features: ['20 plats', '5 employés', '150 commandes/mois', 'Dashboard et statistiques', 'Gestion des commandes', 'Cash uniquement', 'Sur place / Emporter', 'Support standard','Rôles limités'],
       installation_fee: 10,
-      limitations: [ 'Pas de statistiques détaillées', 'Pas de réservations', 'Pas de feedback client', 'Pas de personnalisation'],
+      limitations: [ 'Pas de réservations', 'Pas de feedback client', 'Pas de personnalisation'],
       is_popular: false,
     },
     {
@@ -44,7 +44,7 @@ export class PricingPage implements OnInit {
       max_restaurants: 1,
       max_tables: null,
       max_users: null,
-      features: ['Tables illimitées', 'Commandes illimitées', 'Plats illimités', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire'],
+      features: ['Commandes illimitées', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Templates QR premium', 'Support prioritaire'],
       installation_fee: 10,
       limitations: ['Pas de multi-restaurant', 'Assistant de tableau de bord avancé réservé à l’offre Business.'],
       is_popular: true,
@@ -60,7 +60,7 @@ export class PricingPage implements OnInit {
       max_tables: null,
       max_users: null,
       max_dishes: null,
-      features: ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dedié', 'Onboarding personnalisé', 'Multi-restaurants'],
+      features: ['Tout le plan Pro', 'Templates QR premium', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Multi-restaurants'],
       installation_fee: 15,
       limitations: [],
       is_popular: false,
@@ -84,7 +84,7 @@ export class PricingPage implements OnInit {
         }
       },
       error: () => {
-        this.errorMessage = 'Plans locaux affiches. Demarrez Laravel sur le port 8000 pour synchroniser les tarifs.';
+        this.errorMessage = 'Plans locaux affichés. Démarrez Laravel sur le port 8000 pour synchroniser les tarifs.';
       },
     });
   }
@@ -139,6 +139,7 @@ export class PricingPage implements OnInit {
 
       return !normalized.includes('tables illimitées')
         && !normalized.includes('utilisateurs illimitées')
+        && !normalized.includes('5 employes')
         && !normalized.includes('plats illimités')
         && !normalized.includes('20 plats');
     });
@@ -147,7 +148,7 @@ export class PricingPage implements OnInit {
   planDetails(plan: SaasPlan): string[] {
     return [
       this.limitLabel(plan.max_tables, 'tables QR', 'Tables QR illimitées'),
-      this.limitLabel(plan.max_users, 'utilisateurs et équipe', 'Utilisateurs illimités'),
+      this.limitLabel(plan.max_users, 'employés', 'Employés illimités'),
       this.dishLimitLabel(plan),
       ...this.visibleFeatures(plan),
     ];
@@ -155,10 +156,17 @@ export class PricingPage implements OnInit {
 
   private decoratePlan(plan: SaasPlan): PricingPlan {
     const slug = String(plan.slug || plan.name).toLowerCase();
+    const features = [...(plan.features || [])];
+    if (slug.includes('starter') && !features.some((feature) => this.normalizeLabel(feature).includes('dashboard'))) {
+      features.splice(2, 0, 'Dashboard et statistiques');
+    }
+    if ((slug.includes('pro') || slug.includes('business')) && !features.some((feature) => this.normalizeLabel(feature).includes('templates qr premium'))) {
+      features.splice(slug.includes('business') ? 1 : Math.max(features.length - 1, 0), 0, 'Templates QR premium');
+    }
 
     return {
       ...plan,
-      features: plan.features || [],
+      features,
       installation_fee: slug.includes('business') ? 15 : 10,
       limitations: this.limitationsForPlan(slug),
     };
@@ -166,11 +174,11 @@ export class PricingPage implements OnInit {
 
   private limitationsForPlan(slug: string): string[] {
     if (slug.includes('starter')) {
-      return ['Pas de statistiques detaillees', 'Pas de reservations', 'Pas de feedback client', 'Pas de personnalisation'];
+      return ['Pas de réservations', 'Pas de feedback client', 'Pas de personnalisation'];
     }
 
     if (slug.includes('pro')) {
-      return ['Pas de multi-restaurant', 'Assistant de tableau de bord avance reserve a l offre Business.'];
+      return ['Pas de multi-restaurant', 'Assistant de tableau de bord avancé réservé à l’offre Business.'];
     }
 
     return [];

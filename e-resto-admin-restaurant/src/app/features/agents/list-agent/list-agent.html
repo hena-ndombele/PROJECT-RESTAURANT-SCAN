@@ -12,14 +12,17 @@
                             <li class="breadcrumb-item active text-primary">EMPLOYEE</li>
                         </ol>
                     </nav>
-                    <h1 class="h3 mb-0 fw-bold text-dark">Management your employee ({{totalEmployeeCount()}})</h1>
+                    <h1 class="h3 mb-0 fw-bold text-dark">Gestion des employés ({{totalEmployeeCount()}})</h1>
                 </div>
             </div>
         </div>
         <div class="col-md-5 text-md-end mt-3 mt-md-0">
             <div class="d-flex gap-2 justify-content-md-end">
                 @if (canAccess('agents.create')) {
-                <app-create-agent></app-create-agent>
+                <app-create-agent
+                    [disabled]="employeeLimitReached()"
+                    [limitMessage]="employeeLimitMessage()">
+                </app-create-agent>
                 }
                 <button class="btn border d-inline-flex align-items-center px-3" style="background: green;color:white" (click)="exportToExcel()">
                     <i class="bi bi-file-excel me-2" style="color:white"></i> Export File
@@ -107,7 +110,7 @@
                             <tr>
                                 <td colspan="7" class="text-center py-7">
 
-                                    <h5 class="text-muted fw-normal">No employee found</h5>
+                                    <h5 class="text-muted fw-normal">Aucun employé trouvé</h5>
 
                                 </td>
                             </tr>

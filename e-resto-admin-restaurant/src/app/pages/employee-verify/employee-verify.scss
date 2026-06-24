@@ -5,7 +5,7 @@
   padding: 24px;
   color: #111827;
   background:
-    radial-gradient(circle at top left, rgba(249, 161, 27, .16), transparent 34%),
+    radial-gradient(circle at top left, rgba(255, 122, 26, .16), transparent 34%),
     linear-gradient(135deg, #fff7ed, #ffffff 42%, #f8fafc);
 }
 
@@ -111,7 +111,7 @@
 
 .status-banner.inactive {
   border-color: rgba(217, 119, 6, .25);
-  background: rgba(249, 161, 27, .12);
+  background: rgba(255, 122, 26, .12);
 }
 
 .status-icon {
@@ -215,7 +215,7 @@
   padding: 0 18px;
   border-radius: 10px;
   color: #111827;
-  background: linear-gradient(135deg, #FFD166, #F9A11B);
+  background: linear-gradient(135deg, #ff7a1a, #d71920);
   font-weight: 950;
   text-decoration: none;
 }

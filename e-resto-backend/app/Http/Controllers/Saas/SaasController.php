@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class SaasController extends Controller
 {
@@ -263,6 +264,7 @@ class SaasController extends Controller
     {
         $validated = $request->validate([
             'restaurant_id' => 'required|uuid|exists:restaurants,id',
+            'saas_plan_id' => 'sometimes|nullable|string|max:80',
             'provider' => 'required|string|in:MPESA,AIRTEL,ORANGE,MTN,mpesa,airtel,orange,mtn',
             'wallet_id' => 'required|string|min:10|max:30',
             'billing_cycle' => 'sometimes|string|in:monthly,yearly',
@@ -284,7 +286,12 @@ class SaasController extends Controller
             $this->refreshBillingStatus($restaurant);
             $restaurant->refresh();
 
-            $plan = $restaurant->plan ?: SaasPlan::where('slug', 'starter')->firstOrFail();
+            $plan = !empty($validated['saas_plan_id'])
+                ? $this->resolveSignupPlan($validated['saas_plan_id'])
+                : ($restaurant->plan ?: SaasPlan::where('slug', 'starter')->firstOrFail());
+            if (!$plan) {
+                return response()->json(['message' => 'Le plan selectionne est invalide.'], 422);
+            }
             $billingCycle = $validated['billing_cycle'] ?? 'monthly';
             $amount = $billingCycle === 'yearly'
                 ? $this->annualMonthlyPrice($plan) * 12
@@ -301,6 +308,8 @@ class SaasController extends Controller
                 'reference' => 'SUB-' . Str::upper(Str::random(10)),
                 'metadata' => [
                     'plan_id' => $plan->id,
+                    'plan_slug' => $plan->slug,
+                    'plan_name' => $plan->name,
                     'wallet_id' => $walletId,
                     'wallet_id_original' => $validated['wallet_id'],
                     'billing_cycle' => $billingCycle,
@@ -525,6 +534,7 @@ class SaasController extends Controller
         $limits = [
             'tables' => $restaurant->plan?->maxTables(),
             'users' => $restaurant->plan?->maxUsers(),
+            'roles' => $this->roleLimitForPlan($restaurant->plan?->tier() ?? 'starter'),
             'dishes' => $restaurant->plan?->maxDishes(),
             'orders_month' => $restaurant->plan?->maxOrdersPerMonth(),
         ];
@@ -534,12 +544,14 @@ class SaasController extends Controller
         $usage = [
             'tables' => $restaurant->tables()->count(),
             'users' => $restaurant->users()->count(),
+            'roles' => Role::count(),
             'dishes' => $restaurant->plats()->count(),
             'orders_month' => $restaurant->orders()->whereBetween('created_at', [$monthStart, $monthEnd])->count(),
         ];
 
         $canCreateTable = $limits['tables'] === null || ($limits['tables'] > 0 && $usage['tables'] < $limits['tables']);
         $canCreateUser = $limits['users'] === null || ($limits['users'] > 0 && $usage['users'] < $limits['users']);
+        $canCreateRole = $limits['roles'] === null || ($limits['roles'] > 0 && $usage['roles'] < $limits['roles']);
         $canCreateDish = $limits['dishes'] === null || $usage['dishes'] < $limits['dishes'];
         $canAcceptOrder = $limits['orders_month'] === null || $usage['orders_month'] < $limits['orders_month'];
         $features = $restaurant->plan?->featurePermissions() ?? [];
@@ -559,9 +571,10 @@ class SaasController extends Controller
                 'can_view_advanced_analytics' => (bool) ($features['advanced_analytics'] ?? false),
                 'can_customize_menu' => (bool) ($features['customization'] ?? false),
                 'can_use_feedback' => (bool) ($features['feedback'] ?? false),
-                'can_use_Réservations' => (bool) ($features['Réservations'] ?? false),
+                'can_use_reservations' => (bool) ($features['reservations'] ?? false),
                 'can_use_chatbot' => (bool) ($features['chatbot'] ?? false),
                 'can_manage_roles' => (bool) ($features['roles'] ?? false),
+                'can_create_role' => $canCreateRole,
                 'can_use_multi_restaurant' => (bool) ($features['multi_restaurant'] ?? false),
             ],
             'features' => $features,
@@ -573,6 +586,9 @@ class SaasController extends Controller
                 'users' => $limits['users'] === null
                     ? 'Utilisateurs illimites'
                     : ($canCreateUser ? "{$usage['users']} / {$limits['users']} utilisateurs utilises" : "Limite de {$limits['users']} utilisateurs atteinte pour le plan {$restaurant->plan?->name}."),
+                'roles' => $limits['roles'] === null
+                    ? 'Roles illimites'
+                    : ($canCreateRole ? "{$usage['roles']} / {$limits['roles']} roles utilises" : "Limite de {$limits['roles']} roles atteinte pour le plan {$restaurant->plan?->name}."),
                 'dishes' => $limits['dishes'] === null
                     ? 'Plats illimites'
                     : ($canCreateDish ? "{$usage['dishes']} / {$limits['dishes']} plats utilises" : "Limite de {$limits['dishes']} plats atteinte pour le plan {$restaurant->plan?->name}."),
@@ -581,6 +597,25 @@ class SaasController extends Controller
                     : ($canAcceptOrder ? "{$usage['orders_month']} / {$limits['orders_month']} commandes ce mois" : "Limite de {$limits['orders_month']} commandes mensuelles atteinte pour le plan {$restaurant->plan?->name}."),
             ],
         ]);
+    }
+
+    public function restaurantPayments(Request $request)
+    {
+        $restaurant = $request->user()->restaurant;
+        if (!$restaurant) {
+            return response()->json([]);
+        }
+
+        $query = Payment::query()
+            ->where('restaurant_id', $restaurant->id)
+            ->where('type', 'subscription')
+            ->latest();
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        return response()->json($query->limit(100)->get());
     }
 
     public function updateProfile(Request $request)
@@ -599,7 +634,7 @@ class SaasController extends Controller
             'settings' => 'sometimes|array',
         ]);
 
-        $protectedSettingKeys = ['app_name', 'slogan', 'description', 'google_maps_url', 'theme'];
+        $protectedSettingKeys = ['app_name', 'slogan', 'description', 'google_maps_url', 'theme', 'qr_template'];
         $settingsPayload = $request->input('settings', []);
         $hasProtectedSettings = is_array($settingsPayload)
             && count(array_intersect(array_keys($settingsPayload), $protectedSettingKeys)) > 0;
@@ -626,6 +661,15 @@ class SaasController extends Controller
         }
 
         return response()->json($this->restaurantPayload($restaurant->fresh(['plan', 'subscription'])));
+    }
+
+    private function roleLimitForPlan(string $tier): ?int
+    {
+        return match ($tier) {
+            'starter' => 5,
+            'pro' => 8,
+            default => null,
+        };
     }
 
     public function restaurants(Request $request)
@@ -997,14 +1041,25 @@ class SaasController extends Controller
 
     private function activateRestaurant(Restaurant $restaurant, Payment $payment): void
     {
-        $plan = $restaurant->plan;
         $paymentMetadata = $payment->metadata ?? [];
+        $plan = !empty($paymentMetadata['plan_id'])
+            ? SaasPlan::find($paymentMetadata['plan_id'])
+            : $restaurant->plan;
         $billingCycle = $paymentMetadata['billing_cycle'] ?? 'monthly';
-        $subscriptionEnd = $billingCycle === 'yearly' ? now()->addYear() : now()->addMonth();
-        $billingDate = $billingCycle === 'yearly' ? Carbon::today()->addYear() : Carbon::today()->addMonth();
+        $currentEnd = collect([
+            $restaurant->subscription_ends_at,
+            $restaurant->subscription?->ends_at,
+            $restaurant->trial_ends_at,
+        ])->filter()->map(fn ($value) => Carbon::parse($value))->filter(fn (Carbon $date) => $date->isFuture())->max();
+        $periodStart = $currentEnd instanceof Carbon ? $currentEnd->copy() : now();
+        $subscriptionEnd = $billingCycle === 'yearly'
+            ? $periodStart->copy()->addYear()
+            : $periodStart->copy()->addMonth();
+        $billingDate = $subscriptionEnd->copy()->startOfDay();
 
         $restaurant->update([
             'status' => 'active',
+            'saas_plan_id' => $plan?->id ?? $restaurant->saas_plan_id,
             'subscription_ends_at' => $subscriptionEnd,
         ]);
 
@@ -1123,10 +1178,27 @@ class SaasController extends Controller
 
     private function gatewayFailureMessage(array $response): string
     {
-        return $response['message']
-            ?? $response['error']
-            ?? $response['errors'][0]
-            ?? 'Le paiement Mobile Money a ete refuse ou non confirme par le gateway.';
+        $candidates = [
+            $response['message'] ?? null,
+            $response['error'] ?? null,
+            $response['errorMessage'] ?? null,
+            $response['description'] ?? null,
+            $response['reason'] ?? null,
+            $response['data']['message'] ?? null,
+            $response['data']['error'] ?? null,
+            $response['data']['description'] ?? null,
+            $response['data']['reason'] ?? null,
+            $response['errors'][0] ?? null,
+            $response['errors']['message'][0] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return 'Le paiement Mobile Money a ete refuse ou non confirme par le gateway.';
     }
 
     private function validatePlan(Request $request, ?SaasPlan $plan = null): array

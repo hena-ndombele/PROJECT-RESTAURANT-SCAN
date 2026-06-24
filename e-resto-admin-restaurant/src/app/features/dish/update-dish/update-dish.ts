@@ -49,7 +49,7 @@ export class UpdateDish implements OnInit {
         this.loadCategories();
 
         if (!this.dishId) {
-            this.errorMessage = "Aucun plat selectionne.";
+            this.errorMessage = "Aucun plat sélectionné.";
             this.isLoadingDish.set(false);
             return;
         }
@@ -153,8 +153,8 @@ export class UpdateDish implements OnInit {
             next: () => {
                 this.isLoading.set(false);
                 Swal.fire({
-                    title: "Updated!",
-                    text: "Dish updated successfully",
+                    title: "Mis à jour !",
+                    text: "Plat mis à jour avec succès",
                     icon: "success",
                     timer: 2000,
                     confirmButtonColor: "#28a745",
@@ -163,8 +163,8 @@ export class UpdateDish implements OnInit {
             error: (err) => {
                 this.isLoading.set(false);
                 Swal.fire({
-                    title: "Error",
-                    text: err.error?.message || "Error while updating dish",
+                    title: "Erreur",
+                    text: err.error?.message || "Erreur lors de la mise à jour du plat",
                     icon: "error",
                     confirmButtonColor: "#d33",
                 });

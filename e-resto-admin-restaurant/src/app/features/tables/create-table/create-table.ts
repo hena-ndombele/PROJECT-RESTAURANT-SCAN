@@ -31,7 +31,7 @@ export class CreateTable {
         if (this.disabled) {
             Swal.fire({
                 title: "Forfait atteint",
-                text: this.limitMessage || "Votre forfait ne permet pas de creer plus de tables.",
+                text: this.limitMessage || "Votre forfait ne permet pas de créer plus de tables.",
                 icon: "warning",
                 confirmButtonColor: "#d33",
                 confirmButtonText: "Compris"
@@ -64,7 +64,7 @@ export class CreateTable {
                 this.isLoading = false;
                 Swal.fire({
                     title: "Succes",
-                    text: "La table a ete creee avec succes.",
+                    text: "La table a été créée avec succès.",
                     icon: "success",
                     confirmButtonText: "Fermer",
                     timer: 2000,

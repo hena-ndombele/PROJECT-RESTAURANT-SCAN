@@ -121,18 +121,18 @@ export class RestaurantCheckout implements OnDestroy {
     this.mobile.wallet_id = walletId;
 
     if (!walletId || walletId === '+243') {
-      this.showMessage('Entrez le numero Mobile Money qui va payer l abonnement.', 'error');
+      this.showMessage("Entrez le numéro Mobile Money qui va payer l'abonnement.", 'error');
       return;
     }
 
     if (!this.isValidWalletForProvider(walletId)) {
-      this.showMessage(this.walletHint + '. Verifiez le numero avant de continuer.', 'error');
+      this.showMessage(this.walletHint + '. Vérifiez le numéro avant de continuer.', 'error');
       return;
     }
 
     this.paying = true;
     this.stopPaymentStatusPolling();
-    this.showMessage('Envoi de la demande de paiement vers votre telephone...', 'info');
+    this.showMessage('Envoi de la demande de paiement vers votre téléphone...', 'info');
     this.saas.checkoutMobileMoney({
       restaurant_id: this.restaurant.id,
       provider: this.mobile.provider,
@@ -202,19 +202,19 @@ export class RestaurantCheckout implements OnDestroy {
 
     if (status === 'paid' && response.session?.token) {
       this.completePaidSession(response);
-      this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
+      this.showMessage(response.message || 'Paiement confirmé. Ouverture de votre espace restaurant...', 'success');
       setTimeout(() => this.router.navigate(['/dashboard']), 700);
       return;
     }
 
     if (status === 'pending') {
       this.waitingConfirmation = true;
-      this.showMessage(response.message || 'Confirmez le paiement sur votre telephone. Nous attendons le retour operateur.', 'info');
+      this.showMessage(response.message || 'Confirmez le paiement sur votre téléphone. Nous attendons le retour opérateur.', 'info');
       this.startPaymentStatusPolling(response.payment?.id);
       return;
     }
 
-    this.showMessage(response.message || 'Le paiement n a pas ete confirme. Verifiez le numero et reessayez.', 'error');
+    this.showMessage(response.message || "Le paiement n'a pas été confirmé. Vérifiez le numéro et réessayez.", 'error');
   }
 
   private startPaymentStatusPolling(paymentId?: string): void {
@@ -230,7 +230,7 @@ export class RestaurantCheckout implements OnDestroy {
       if (this.paymentStatusAttempts > 60) {
         this.stopPaymentStatusPolling();
         this.waitingConfirmation = false;
-        this.showMessage('La confirmation operateur prend trop de temps. Si vous avez valide sur le telephone, contactez le support avec la reference paiement.', 'error');
+        this.showMessage('La confirmation opérateur prend trop de temps. Si vous avez validé sur le téléphone, contactez le support avec la référence paiement.', 'error');
         return;
       }
 
@@ -240,7 +240,7 @@ export class RestaurantCheckout implements OnDestroy {
             this.stopPaymentStatusPolling();
             this.waitingConfirmation = false;
             this.completePaidSession(response);
-            this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
+            this.showMessage(response.message || 'Paiement confirmé. Ouverture de votre espace restaurant...', 'success');
             setTimeout(() => this.router.navigate(['/dashboard']), 700);
             return;
           }
@@ -248,11 +248,11 @@ export class RestaurantCheckout implements OnDestroy {
           if (response.payment?.status === 'failed') {
             this.stopPaymentStatusPolling();
             this.waitingConfirmation = false;
-            this.showMessage(response.message || 'Paiement refuse ou expire. Verifiez le numero puis reessayez.', 'error');
+            this.showMessage(response.message || 'Paiement refusé ou expiré. Vérifiez le numéro puis réessayez.', 'error');
           }
         },
         error: () => {
-          this.showMessage('Paiement envoye. La confirmation operateur prend du temps, nous continuons a verifier.', 'info');
+          this.showMessage('Paiement envoyé. La confirmation opérateur prend du temps, nous continuons à vérifier.', 'info');
         },
       });
     }, 5000);
@@ -288,11 +288,11 @@ export class RestaurantCheckout implements OnDestroy {
 
   private errorMessage(error: any): string {
     if (error?.status === 0) {
-      return "Impossible de joindre le backend de paiement. Verifiez que Laravel est demarre sur le port 8000.";
+      return "Impossible de joindre le backend de paiement. Vérifiez que Laravel est démarré sur le port 8000.";
     }
 
     if (error?.name === 'TimeoutError') {
-      return 'Le gateway met trop de temps a repondre. Verifiez votre telephone avant de reessayer.';
+      return 'La passerelle met trop de temps à répondre. Vérifiez votre téléphone avant de réessayer.';
     }
 
     const errors = error?.error?.errors;
@@ -303,6 +303,6 @@ export class RestaurantCheckout implements OnDestroy {
       }
     }
 
-    return error?.error?.message || 'Paiement echoue. Verifiez le numero et reessayez.';
+    return error?.error?.message || 'Paiement échoué. Vérifiez le numéro et réessayez.';
   }
 }

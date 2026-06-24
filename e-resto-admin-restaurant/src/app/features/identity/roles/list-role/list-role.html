@@ -18,7 +18,12 @@
     </div>
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
       @if (canAccess('roles.create')) {
-      <button class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#roleModal" (click)="openCreate()">
+      <button class="btn btn-primary text-black"
+              [disabled]="roleLimitReached()"
+              [title]="roleLimitReached() ? roleLimitMessage() : 'Create Role'"
+              [attr.data-bs-toggle]="roleLimitReached() ? null : 'modal'"
+              [attr.data-bs-target]="roleLimitReached() ? null : '#roleModal'"
+              (click)="openCreate()">
         <i class="ti ti-plus me-1"></i> Create Role
       </button>
       }
@@ -95,7 +100,7 @@
             } @empty {
               <tr>
                 <td colspan="4" class="text-center py-5">
-                  <h5 class="text-muted fw-normal">No role found</h5>
+                  <h5 class="text-muted fw-normal">Aucun rôle trouvé</h5>
                 </td>
               </tr>
             }

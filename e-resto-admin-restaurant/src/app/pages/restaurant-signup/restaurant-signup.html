@@ -18,11 +18,11 @@
   <section class="signup-panel">
     <div class="signup-card">
       <div class="signup-head">
-        <a class="form-logo" routerLink="/" aria-label="Retour a l'accueil">
+        <a class="form-logo" routerLink="/" aria-label="Retour à l'accueil">
           <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
         </a>
         <h1>Créer votre espace</h1>
-        <p>{{ accountCreated ? 'Votre restaurant est pret.' : 'Quelques informations suffisent Pour démarrer.' }}</p>
+        <p>{{ accountCreated ? 'Votre restaurant est prêt.' : 'Quelques informations suffisent pour démarrer.' }}</p>
         <span class="selected-plan" *ngIf="selectedPlan.name">Plan choisi : <strong>{{ selectedPlan.name }}</strong></span>
 
         <div class="stepper" aria-label="Progression inscription" *ngIf="!accountCreated">
@@ -44,7 +44,7 @@
               <label>
                 <span>Mot de passe *</span>
                 <div class="password-field">
-                  <input [(ngModel)]="account.password" name="password" [type]="showPassword ? 'text' : 'password'" placeholder="Minimum 6 caracteres" autocomplete="new-password">
+                  <input [(ngModel)]="account.password" name="password" [type]="showPassword ? 'text' : 'password'" placeholder="Minimum 6 caractères" autocomplete="new-password">
                   <button type="button" (click)="showPassword = !showPassword" [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
                     <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'"></i>
                   </button>
@@ -60,7 +60,7 @@
               <label>
                 <span>Confirmer le mot de passe *</span>
                 <div class="password-field">
-                  <input [(ngModel)]="account.password_confirmation" name="password_confirmation" [type]="showPasswordConfirmation ? 'text' : 'password'" placeholder="Repetez votre mot de passe" autocomplete="new-password">
+                  <input [(ngModel)]="account.password_confirmation" name="password_confirmation" [type]="showPasswordConfirmation ? 'text' : 'password'" placeholder="Répétez votre mot de passe" autocomplete="new-password">
                   <button type="button" (click)="showPasswordConfirmation = !showPasswordConfirmation" [attr.aria-label]="showPasswordConfirmation ? 'Masquer la confirmation' : 'Afficher la confirmation'">
                     <i class="bi" [ngClass]="showPasswordConfirmation ? 'bi-eye-slash-fill' : 'bi-eye-fill'"></i>
                   </button>
@@ -88,7 +88,7 @@
 
               <div class="grid-2">
                 <label>
-                  <span>Telephone *</span>
+                  <span>Téléphone *</span>
                   <input [(ngModel)]="account.owner_phone" name="owner_phone" placeholder="+243830000000" autocomplete="tel" required>
                 </label>
                 <label>
@@ -98,10 +98,10 @@
               </div>
 
               <label>
-                <span>Devise par defaut</span>
+                <span>Devise par défaut</span>
                 <select [(ngModel)]="account.currency" name="currency">
                   <option value="CDF">CDF - Franc congolais</option>
-                  <option value="USD">USD - Dollar americain</option>
+                  <option value="USD">USD - Dollar américain</option>
                 </select>
               </label>
 
@@ -129,7 +129,7 @@
       </a>
       <span class="modal-subtitle">Restaurant Scan - Menu digital QR code</span>
       <div class="modal-icon"><i class="bi bi-stars"></i></div>
-      <h2 id="signupSuccessTitle">Compte cree !</h2>
+      <h2 id="signupSuccessTitle">Compte créé !</h2>
       <p>Ton restaurant est prêt. Ouverture automatique du dashboard...</p>
       <div class="menu-url modal-menu-url">
         <span>{{ publicMenuUrl }}</span>
@@ -140,7 +140,7 @@
           Ouvrir le menu <i class="bi bi-arrow-up-right"></i>
         </a>
         <button class="primary-action" type="button" (click)="goToDashboard()">
-          Accéder a mon dashboard <i class="bi bi-arrow-right"></i>
+          Accéder à mon dashboard <i class="bi bi-arrow-right"></i>
         </button>
       </div>
       <button class="checkout-link" type="button" (click)="goToCheckout()">Configurer le paiement Mobile Money</button>

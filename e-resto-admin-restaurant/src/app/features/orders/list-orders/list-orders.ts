@@ -134,11 +134,11 @@ export class ListOrders implements OnInit, OnDestroy {
         const plan = this.planUsage()?.plan;
         const slug = String(plan?.slug || "").toLowerCase();
         const features = (plan?.features || []).join(" ").toLowerCase();
-        return ["pro", "enterprise"].includes(slug) || features.includes("rapport") || features.includes("report");
+        return ["pro", "business"].includes(slug) || features.includes("rapport") || features.includes("report");
     });
     reportLimitMessage = computed(() => {
         const planName = this.planUsage()?.plan?.name || "votre plan";
-        return `La generation PDF est reservee aux plans Pro et Enterprise. Plan actuel : ${planName}.`;
+        return `La génération PDF est réservée aux plans Pro et Business. Plan actuel : ${planName}.`;
     });
 
     constructor(
@@ -210,7 +210,7 @@ export class ListOrders implements OnInit, OnDestroy {
                 this.newOrderModal.set(order);
             } else if (!this.billRequested(previous!) && this.billRequested(order)) {
                 this.billRequestModal.set(order);
-                this.successMessage.set(`Addition demandee par ${order.table?.name || "une table"}.`);
+                this.successMessage.set(`Addition demandée par ${order.table?.name || "une table"}.`);
                 this.playBillRequestSound();
             }
             return exists
@@ -241,14 +241,14 @@ export class ListOrders implements OnInit, OnDestroy {
         }
         if (!order.id || order.status === status || this.updatingOrderId() === order.id) return;
         if (this.isStatusDisabled(order, status)) {
-            this.errorMessage.set("Impossible de revenir en arriere dans le statut de la commande.");
+            this.errorMessage.set("Impossible de revenir en arrière dans le statut de la commande.");
             return;
         }
 
         let cancellationReason: string | undefined;
         if (status === "cancelled") {
             if (order.status === "delivered") {
-                this.errorMessage.set("Une commande deja servie ne peut plus etre annulee. Utilisez un remboursement.");
+                this.errorMessage.set("Une commande déjà servie ne peut plus être annulée. Utilisez un remboursement.");
                 return;
             }
 
@@ -275,15 +275,15 @@ export class ListOrders implements OnInit, OnDestroy {
                     orders.map((item) => item.id === order.id ? { ...item, ...updatedOrder } : item)
                 );
                 this.successMessage.set(status === "cancelled"
-                    ? "Commande annulee, table liberee et paiement ajuste."
-                    : "Statut de la commande mis a jour et envoye au client.");
+                    ? "Commande annulée, table libérée et paiement ajusté."
+                    : "Statut de la commande mis à jour et envoyé au client.");
                 this.updatingOrderId.set(null);
             },
             error: (err) => {
                 this.orders.update((orders) =>
                     orders.map((item) => item.id === order.id ? { ...item, status: previousStatus } : item)
                 );
-                this.errorMessage.set(err?.error?.message || "Impossible de mettre a jour le statut de la commande.");
+                this.errorMessage.set(err?.error?.message || "Impossible de mettre à jour le statut de la commande.");
                 this.updatingOrderId.set(null);
             }
         });
@@ -338,7 +338,7 @@ export class ListOrders implements OnInit, OnDestroy {
                 this.orders.update((orders) =>
                     orders.map((item) => item.id === order.id ? { ...item, ...updatedOrder } : item)
                 );
-                this.successMessage.set("Paiement cash confirme et comptabilise.");
+                this.successMessage.set("Paiement cash confirmé et comptabilisé.");
                 this.updatingPaymentId.set(null);
                 this.cashOrder.set(updatedOrder);
                 setTimeout(() => this.printCashReceipt(updatedOrder), 100);
@@ -366,7 +366,7 @@ export class ListOrders implements OnInit, OnDestroy {
 
         const receipt = window.open("", "_blank", "noopener,noreferrer,width=420,height=720");
         if (!receipt) {
-            this.errorMessage.set("Impossible d'ouvrir le recu. Autorisez les popups du navigateur.");
+            this.errorMessage.set("Impossible d'ouvrir le reçu. Autorisez les popups du navigateur.");
             return;
         }
 
@@ -445,11 +445,11 @@ export class ListOrders implements OnInit, OnDestroy {
             ? (order.payment_provider || "Mobile Money")
             : "Cash";
         const status = {
-            unpaid: "non paye",
+            unpaid: "non payé",
             pending: "en attente",
-            paid: "paye",
-            failed: "echoue",
-            refunded: "rembourse"
+            paid: "payé",
+            failed: "échoué",
+            refunded: "remboursé"
         }[order.payment_status] || order.payment_status;
 
         return `${method} - ${status}`;
@@ -457,7 +457,7 @@ export class ListOrders implements OnInit, OnDestroy {
 
     orderTypeLabel(order: Order): string {
         if (order.order_type === "remote") return "En ligne";
-        return order.order_type === "takeaway" ? "A emporter" : "Sur place";
+        return order.order_type === "takeaway" ? "À emporter" : "Sur place";
     }
 
     billRequested(order: Order): boolean {

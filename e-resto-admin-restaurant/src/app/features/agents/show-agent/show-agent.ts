@@ -93,7 +93,7 @@ export class ShowAgent implements OnInit{
       ctx.font = "800 30px Arial";
       this.fitText(ctx, this.restaurantData.name, 132, 66, 410);
       ctx.font = "600 16px Arial";
-      ctx.fillText("Badge professionnel employe", 132, 96);
+      ctx.fillText("Badge professionnel employé", 132, 96);
 
       ctx.fillStyle = "#ffffff";
       this.roundRect(ctx, 42, 166, 146, 174, 24);
@@ -148,7 +148,7 @@ export class ShowAgent implements OnInit{
 
       await this.saveCanvas(canvas, `badge-${String(matricule).replace(/\s+/g, "-")}.png`);
     } catch {
-      window.alert("Impossible de reimprimer le badge. Verifiez que le backend Laravel est demarre puis reessayez.");
+      window.alert("Impossible de réimprimer le badge. Vérifiez que le backend Laravel est démarré puis réessayez.");
     } finally {
       this.isBadgeGenerating = false;
     }
@@ -205,8 +205,8 @@ export class ShowAgent implements OnInit{
     const fallback = {
       name: "Restaurant Scan",
       logo: "assets/logo/e-resto-logo.png",
-      primaryColor: "#F9A11B",
-      accentColor: "#FFD166",
+      primaryColor: "#ff7a1a",
+      accentColor: "#ff7a1a",
     };
 
     try {

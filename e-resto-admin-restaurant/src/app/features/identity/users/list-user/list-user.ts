@@ -124,7 +124,7 @@ export class ListUser implements OnInit {
 
   openCreate(): void {
     if (this.userLimitReached()) {
-      Swal.fire("Plan limite", this.userLimitMessage() || "Votre plan ne permet pas de creer plus d'utilisateurs.", "warning");
+      Swal.fire("Plan limité", this.userLimitMessage() || "Votre plan ne permet pas de créer plus d'utilisateurs.", "warning");
       return;
     }
 
@@ -242,19 +242,19 @@ export class ListUser implements OnInit {
       },
       error: (err) => {
         this.isSaving.set(false);
-        Swal.fire("Error", err.error?.message || "Unable to save user.", "error");
+        Swal.fire("Erreur", err.error?.message || "Impossible d'enregistrer l'utilisateur.", "error");
       },
     });
   }
 
   confirmDelete(user: UserDto): void {
     Swal.fire({
-      title: "Delete the user?",
-      text: "This action is irreversible.",
+      title: "Supprimer l'utilisateur ?",
+      text: "Cette action est irréversible.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Delete",
-      cancelButtonText: "Cancel",
+      confirmButtonText: "Supprimer",
+      cancelButtonText: "Annuler",
       confirmButtonColor: "#dc3545",
     }).then((result) => {
       if (!result.isConfirmed) {
@@ -264,9 +264,9 @@ export class ListUser implements OnInit {
         next: () => {
           this.users.update((users) => users.filter((item) => item.id !== user.id));
           this.loadUsage();
-          Swal.fire("Deleted", "User deleted successfully.", "success");
+          Swal.fire("Supprimé", "Utilisateur supprimé avec succès.", "success");
         },
-        error: (err) => Swal.fire("Error", err.error?.message || "Unable to delete user.", "error"),
+        error: (err) => Swal.fire("Erreur", err.error?.message || "Impossible de supprimer l'utilisateur.", "error"),
       });
     });
   }

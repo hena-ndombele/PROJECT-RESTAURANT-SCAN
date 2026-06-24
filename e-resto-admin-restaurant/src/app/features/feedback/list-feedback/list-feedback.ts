@@ -95,7 +95,7 @@ export class ListFeedback implements OnInit {
       error: (error) => {
         if (error?.status === 403 || error?.error?.requires_upgrade) {
           this.upgradeRequired.set(true);
-          this.errorMessage.set(error?.error?.message || "Les avis clients sont reserves aux plans Pro et Business.");
+          this.errorMessage.set(error?.error?.message || "Les avis clients sont réservés aux plans Pro et Business.");
         } else {
           this.errorMessage.set("Impossible de charger les feedbacks clients.");
         }

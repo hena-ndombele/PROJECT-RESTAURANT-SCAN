@@ -26,7 +26,7 @@
     }
     @if (!canViewAnalytics()) {
         <div class="alert alert-warning border-0 shadow-sm">
-            Les Statistiques detaillées sont reservees aux plans Pro et Business. Le plan Starter garde le suivi operationnel du jour.
+            Les statistiques détaillées sont réservées aux plans Pro et Business. Le plan Starter garde le suivi opérationnel du jour.
         </div>
     } -->
 
@@ -54,6 +54,7 @@
             }
         </div>
 
+        @if (canViewAnalytics()) {
         <div class="wallet-section mb-4">
             <div class="wallet-section-head">
                 <span class="eyebrow">Wallet restaurant</span>
@@ -102,7 +103,7 @@
                 <div class="panel-card h-100">
                     <div class="panel-header">
                         <div>
-                            <h2>Etat du service</h2>
+                            <h2>État du service</h2>
                             <p>Répartition des commandes du jour.</p>
                         </div>
                     </div>
@@ -118,6 +119,7 @@
                 </div>
             </div>
         </div>
+        }
 
     @if (onboardingOpen()) {
         <div class="onboarding-backdrop">

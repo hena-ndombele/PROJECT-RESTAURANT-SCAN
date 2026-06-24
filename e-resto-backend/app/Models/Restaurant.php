@@ -50,6 +50,11 @@ class Restaurant extends Model
         return $this->hasMany(User::class);
     }
 
+    public function agents()
+    {
+        return $this->hasMany(Agent::class);
+    }
+
     public function tables()
     {
         return $this->hasMany(Table::class);

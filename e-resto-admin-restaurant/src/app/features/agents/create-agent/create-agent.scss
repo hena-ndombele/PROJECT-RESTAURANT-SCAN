@@ -1,6 +1,6 @@
 .create-employee-btn,
 .modal-footer .btn-primary {
-  background: var(--dashboard-button-bg, linear-gradient(135deg, #FFD166, #F9A11B, #D71920));
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
   border: 0;
   font-weight: 700;
 }
@@ -41,13 +41,13 @@
 }
 
 .wizard-step.active {
-  border-color: var(--dashboard-primary, #F9A11B);
-  box-shadow: 0 0 0 3px rgba(var(--dashboard-primary-rgb, 249, 161, 27), 0.15);
+  border-color: var(--dashboard-primary, #ff7a1a);
+  box-shadow: 0 0 0 3px rgba(var(--dashboard-primary-rgb, 255, 122, 26), 0.15);
 }
 
 .wizard-step.active span,
 .wizard-step.done span {
-  background: var(--dashboard-button-bg, linear-gradient(135deg, #FFD166, #F9A11B, #D71920));
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
 }
 
 .photo-picker {
@@ -84,7 +84,7 @@
 
 .photo-placeholder i {
   font-size: 34px;
-  color: var(--dashboard-primary, #F9A11B);
+  color: var(--dashboard-primary, #ff7a1a);
 }
 
 .badge-stage {
@@ -114,7 +114,7 @@
   gap: 18px;
   color: #111318;
   background: #f8fafc;
-  border-bottom: 6px solid var(--dashboard-primary, #F9A11B);
+  border-bottom: 6px solid var(--dashboard-primary, #ff7a1a);
 }
 
 .badge-top img {
@@ -176,7 +176,7 @@
 }
 
 .badge-info p {
-  color: var(--dashboard-primary, #F9A11B);
+  color: var(--dashboard-primary, #ff7a1a);
   font-size: 21px;
   margin: 0 0 4px;
   font-weight: 800;
@@ -199,7 +199,7 @@
 }
 
 .matricule-box strong {
-  color: var(--dashboard-primary, #F9A11B);
+  color: var(--dashboard-primary, #ff7a1a);
   font-size: 24px;
 }
 
@@ -244,7 +244,7 @@
 }
 
 .badge-note i {
-  color: var(--dashboard-primary, #F9A11B);
+  color: var(--dashboard-primary, #ff7a1a);
   font-size: 22px;
 }
 

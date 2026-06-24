@@ -74,11 +74,11 @@ export class Login {
                 error: (err) => {
                     const message = this.loginErrorMessage(err);
                     Swal.fire({
-                        title: 'Error',
+                        title: 'Erreur',
                         text: message,
                         icon: 'error',
                         confirmButtonColor: '#d33',
-                        confirmButtonText: 'Try again'
+                        confirmButtonText: 'Réessayer'
                     });
                     this.error = message;
                 }
@@ -87,18 +87,18 @@ export class Login {
 
     private loginErrorMessage(err: any): string {
         if (err?.name === 'TimeoutError') {
-            return 'La connexion prend trop de temps. Verifiez que le backend est demarre puis reessayez.';
+            return 'La connexion prend trop de temps. Vérifiez que le backend est démarré puis réessayez.';
         }
 
         if (err?.status === 0) {
-            return "Impossible de joindre le serveur. Verifiez que l'API Laravel est demarree.";
+            return "Impossible de joindre le serveur. Vérifiez que l'API Laravel est démarrée.";
         }
 
         if (err?.status === 401 || err?.status === 404) {
-            return 'Identifiants incorrects. Verifiez votre email et votre mot de passe.';
+            return 'Identifiants incorrects. Vérifiez votre e-mail et votre mot de passe.';
         }
 
-        return err?.error?.message || 'Identifiants incorrects. Verifiez votre email et votre mot de passe.';
+        return err?.error?.message || 'Identifiants incorrects. Vérifiez votre e-mail et votre mot de passe.';
     }
 
 }
