@@ -45,6 +45,12 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Restaurant::class);
     }
+    public function favoriteRestaurants()
+    {
+        return $this->belongsToMany(Restaurant::class, 'user_restaurant_favorites')
+            ->withTimestamps();
+    }
+
     protected $hidden = [
         'password',
         'remember_token',
@@ -60,3 +66,5 @@ class User extends Authenticatable
         'is_first_login' => 'boolean',
     ];
 }
+
+

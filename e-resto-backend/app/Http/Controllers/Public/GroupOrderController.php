@@ -1,0 +1,533 @@
+<?php
+
+namespace App\Http\Controllers\Public;
+
+use App\Events\OrderPlaced;
+use App\Http\Controllers\Controller;
+use App\Models\GroupOrder;
+use App\Models\GroupOrderItem;
+use App\Models\GroupOrderParticipant;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\Plat;
+use App\Models\Restaurant;
+use App\Models\Table;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class GroupOrderController extends Controller
+{
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'restaurant_id' => 'nullable|uuid|exists:restaurants,id',
+            'restaurant_slug' => 'nullable|string|exists:restaurants,slug',
+            'table_id' => 'nullable|uuid|exists:tables,id',
+            'creator_name' => 'required|string|max:120',
+            'creator_phone' => 'nullable|string|max:30',
+            'creator_email' => 'nullable|email|max:160',
+            'note' => 'nullable|string|max:1000',
+            'expires_in_minutes' => 'nullable|integer|min:10|max:1440',
+        ]);
+
+        if (empty($validated['restaurant_id']) && empty($validated['restaurant_slug']) && empty($validated['table_id'])) {
+            return response()->json([
+                'message' => 'Choisissez un restaurant ou scannez une table pour creer une commande groupee.',
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($validated) {
+            [$restaurant, $table] = $this->resolveRestaurantAndTable($validated);
+
+            if (!$this->restaurantAcceptsOrders($restaurant)) {
+                return response()->json([
+                    'message' => "Ce restaurant n'accepte pas de commandes pour le moment.",
+                ], 422);
+            }
+
+            $groupOrder = GroupOrder::create([
+                'restaurant_id' => $restaurant->id,
+                'table_id' => $table?->id,
+                'code' => $this->generateCode(),
+                'status' => 'open',
+                'creator_name' => $validated['creator_name'],
+                'creator_phone' => $validated['creator_phone'] ?? null,
+                'creator_email' => $validated['creator_email'] ?? null,
+                'note' => $validated['note'] ?? null,
+                'expires_at' => now()->addMinutes($validated['expires_in_minutes'] ?? 180),
+            ]);
+
+            $participant = $groupOrder->participants()->create([
+                'name' => $validated['creator_name'],
+                'phone' => $validated['creator_phone'] ?? null,
+                'email' => $validated['creator_email'] ?? null,
+                'is_creator' => true,
+            ]);
+
+            return response()->json([
+                'message' => 'Commande groupee creee.',
+                'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
+                'creator_participant' => $participant,
+            ], 201);
+        });
+    }
+
+    public function show(string $code)
+    {
+        $groupOrder = $this->findByCode($code);
+
+        return response()->json($this->groupOrderPayload($groupOrder));
+    }
+
+    public function join(Request $request, string $code)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:120',
+            'phone' => 'nullable|string|max:30',
+            'email' => 'nullable|email|max:160',
+        ]);
+
+        $groupOrder = $this->findByCode($code);
+        $blocked = $this->blockedResponse($groupOrder);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        $participant = $groupOrder->participants()->create([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'] ?? null,
+            'email' => $validated['email'] ?? null,
+            'is_creator' => false,
+        ]);
+
+        return response()->json([
+            'message' => 'Participant ajoute.',
+            'participant' => $participant,
+            'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
+        ], 201);
+    }
+
+    public function upsertItem(Request $request, string $code)
+    {
+        $validated = $request->validate([
+            'participant_id' => 'required|uuid|exists:group_order_participants,id',
+            'plat_id' => 'required|uuid|exists:plats,id',
+            'quantity' => 'required|integer|min:1|max:99',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $groupOrder = $this->findByCode($code);
+        $blocked = $this->blockedResponse($groupOrder);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        $participant = $groupOrder->participants()->findOrFail($validated['participant_id']);
+        $plat = Plat::query()
+            ->where('restaurant_id', $groupOrder->restaurant_id)
+            ->where('is_available', true)
+            ->findOrFail($validated['plat_id']);
+
+        $item = GroupOrderItem::updateOrCreate(
+            [
+                'group_order_id' => $groupOrder->id,
+                'group_order_participant_id' => $participant->id,
+                'plat_id' => $plat->id,
+            ],
+            [
+                'quantity' => $validated['quantity'],
+                'price_at_add' => $plat->price,
+                'note' => $validated['note'] ?? null,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Plat ajoute a la commande groupee.',
+            'item' => $item->load('plat', 'participant'),
+            'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
+        ]);
+    }
+
+    public function destroyItem(string $code, GroupOrderItem $item)
+    {
+        $groupOrder = $this->findByCode($code);
+        $blocked = $this->blockedResponse($groupOrder);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        if ($item->group_order_id !== $groupOrder->id) {
+            return response()->json(['message' => 'Plat introuvable dans cette commande groupee.'], 404);
+        }
+
+        $item->delete();
+
+        return response()->json([
+            'message' => 'Plat retire de la commande groupee.',
+            'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
+        ]);
+    }
+
+    public function whatsapp(string $code)
+    {
+        $groupOrder = $this->findByCode($code);
+
+        return response()->json([
+            'whatsapp_order_url' => $this->whatsappOrderUrl($groupOrder),
+            'message_preview' => $this->whatsappMessage($groupOrder),
+        ]);
+    }
+
+    public function checkout(Request $request, string $code)
+    {
+        $validated = $request->validate([
+            'customer_name' => 'nullable|string|max:120',
+            'customer_phone' => 'nullable|string|max:30',
+            'customer_email' => 'nullable|email|max:160',
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        $groupOrder = $this->findByCode($code);
+        $blocked = $this->blockedResponse($groupOrder);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        if ($groupOrder->items()->count() === 0) {
+            return response()->json([
+                'message' => 'Ajoutez au moins un plat avant de valider la commande groupee.',
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($groupOrder, $validated) {
+            $lockedGroupOrder = GroupOrder::with($this->relations())
+                ->whereKey($groupOrder->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $blocked = $this->blockedResponse($lockedGroupOrder);
+            if ($blocked) {
+                return $blocked;
+            }
+
+            $table = $lockedGroupOrder->table ?: $this->remoteTable($lockedGroupOrder->restaurant);
+            $monthlyLimit = $lockedGroupOrder->restaurant->plan?->maxOrdersPerMonth();
+            if ($monthlyLimit !== null) {
+                $ordersThisMonth = $lockedGroupOrder->restaurant->orders()
+                    ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+                    ->count();
+                if ($ordersThisMonth >= $monthlyLimit) {
+                    return response()->json([
+                        'message' => "Limite de {$monthlyLimit} commandes mensuelles atteinte pour le plan {$lockedGroupOrder->restaurant->plan?->name}.",
+                        'requires_upgrade' => true,
+                    ], 403);
+                }
+            }
+
+            $total = 0;
+            $currency = $lockedGroupOrder->restaurant->currency ?? 'CDF';
+            $itemsByPlat = $lockedGroupOrder->items
+                ->groupBy('plat_id')
+                ->map(fn ($items) => [
+                    'plat' => $items->first()->plat,
+                    'quantity' => $items->sum('quantity'),
+                ]);
+
+            $order = Order::create([
+                'tracking_code' => $this->generateTrackingCode(),
+                'table_id' => $table->id,
+                'restaurant_id' => $lockedGroupOrder->restaurant_id,
+                'order_type' => $lockedGroupOrder->table_id ? 'dine_in' : 'remote',
+                'note' => trim(($validated['note'] ?? '') . "\n\n" . $this->groupOrderNote($lockedGroupOrder)),
+                'customer_name' => $validated['customer_name'] ?? $lockedGroupOrder->creator_name,
+                'customer_phone' => $validated['customer_phone'] ?? $lockedGroupOrder->creator_phone,
+                'customer_email' => $validated['customer_email'] ?? $lockedGroupOrder->creator_email,
+                'pickup_name' => $validated['customer_name'] ?? $lockedGroupOrder->creator_name,
+                'pickup_phone' => $validated['customer_phone'] ?? $lockedGroupOrder->creator_phone,
+                'status' => 'pending',
+                'payment_method' => 'cash',
+                'payment_provider' => null,
+                'payment_status' => 'unpaid',
+            ]);
+
+            foreach ($itemsByPlat as $row) {
+                $plat = $row['plat'];
+                if (!$plat || !$plat->is_available) {
+                    throw new \RuntimeException("Un plat de cette commande n'est plus disponible.");
+                }
+
+                $order->items()->create([
+                    'plat_id' => $plat->id,
+                    'quantity' => $row['quantity'],
+                    'price_at_order' => $plat->price,
+                ]);
+
+                $total += (float) $plat->price * (int) $row['quantity'];
+                $currency = $plat->currency;
+            }
+
+            $order->update([
+                'total_amount' => $total,
+                'currency' => $currency,
+            ]);
+
+            $payment = Payment::create([
+                'restaurant_id' => $lockedGroupOrder->restaurant_id,
+                'order_id' => $order->id,
+                'type' => 'order',
+                'method' => 'cash',
+                'status' => 'unpaid',
+                'amount' => $total,
+                'currency' => $currency,
+                'reference' => 'ORD-' . Str::upper(substr($order->id, 0, 8)),
+                'metadata' => [
+                    'group_order_id' => $lockedGroupOrder->id,
+                    'group_order_code' => $lockedGroupOrder->code,
+                    'message' => 'Paiement cash a confirmer par le restaurant.',
+                ],
+            ]);
+
+            if ($lockedGroupOrder->table_id) {
+                $table->update(['status' => Table::STATUS_OCCUPIED]);
+            }
+
+            $lockedGroupOrder->update([
+                'order_id' => $order->id,
+                'status' => 'checked_out',
+                'checked_out_at' => now(),
+            ]);
+
+            $freshOrder = $order->load(['table', 'items.plat', 'latestPayment']);
+            $this->broadcastSafely(new OrderPlaced($freshOrder));
+
+            return response()->json([
+                'message' => 'Commande groupee validee.',
+                'order' => $freshOrder,
+                'payment' => $payment->fresh(),
+                'group_order' => $this->groupOrderPayload($lockedGroupOrder->fresh($this->relations())),
+                'whatsapp_order_url' => $this->whatsappOrderUrl($lockedGroupOrder->fresh($this->relations())),
+            ], 201);
+        });
+    }
+
+    private function resolveRestaurantAndTable(array $validated): array
+    {
+        $table = null;
+        if (!empty($validated['table_id'])) {
+            $table = Table::with('restaurant')->findOrFail($validated['table_id']);
+            return [$table->restaurant, $table];
+        }
+
+        $restaurant = !empty($validated['restaurant_id'])
+            ? Restaurant::findOrFail($validated['restaurant_id'])
+            : Restaurant::where('slug', $validated['restaurant_slug'])->firstOrFail();
+
+        return [$restaurant, null];
+    }
+
+    private function restaurantAcceptsOrders(Restaurant $restaurant): bool
+    {
+        return in_array($restaurant->status, ['active', 'trial'], true);
+    }
+
+    private function findByCode(string $code): GroupOrder
+    {
+        return GroupOrder::with($this->relations())
+            ->where('code', Str::upper($code))
+            ->firstOrFail();
+    }
+
+    private function blockedResponse(GroupOrder $groupOrder)
+    {
+        if ($groupOrder->status !== 'open') {
+            return response()->json([
+                'message' => 'Cette commande groupee est deja cloturee.',
+            ], 422);
+        }
+
+        if ($groupOrder->expires_at && $groupOrder->expires_at->isPast()) {
+            $groupOrder->update(['status' => 'expired']);
+
+            return response()->json([
+                'message' => 'Cette commande groupee a expire.',
+            ], 422);
+        }
+
+        return null;
+    }
+
+    private function relations(): array
+    {
+        return [
+            'restaurant.plan',
+            'table',
+            'participants.items.plat.category',
+            'items.plat.category',
+            'items.participant',
+            'order.items.plat',
+        ];
+    }
+
+    private function groupOrderPayload(GroupOrder $groupOrder): array
+    {
+        $total = $groupOrder->items->sum(fn ($item) => (float) $item->price_at_add * (int) $item->quantity);
+        $currency = $groupOrder->items->first()?->plat?->currency ?? $groupOrder->restaurant?->currency ?? 'CDF';
+
+        return [
+            'id' => $groupOrder->id,
+            'code' => $groupOrder->code,
+            'status' => $groupOrder->status,
+            'restaurant' => $groupOrder->restaurant ? [
+                'id' => $groupOrder->restaurant->id,
+                'name' => $groupOrder->restaurant->name,
+                'slug' => $groupOrder->restaurant->slug,
+                'currency' => $groupOrder->restaurant->currency,
+                'logo_url' => $groupOrder->restaurant->logo ? asset("storage/{$groupOrder->restaurant->logo}") : null,
+            ] : null,
+            'table' => $groupOrder->table ? [
+                'id' => $groupOrder->table->id,
+                'name' => $groupOrder->table->name,
+                'status' => $groupOrder->table->status,
+            ] : null,
+            'creator_name' => $groupOrder->creator_name,
+            'creator_phone' => $groupOrder->creator_phone,
+            'note' => $groupOrder->note,
+            'expires_at' => $groupOrder->expires_at?->toIso8601String(),
+            'checked_out_at' => $groupOrder->checked_out_at?->toIso8601String(),
+            'order_id' => $groupOrder->order_id,
+            'total_amount' => $total,
+            'currency' => $currency,
+            'participants' => $groupOrder->participants->map(fn ($participant) => [
+                'id' => $participant->id,
+                'name' => $participant->name,
+                'phone' => $participant->phone,
+                'email' => $participant->email,
+                'is_creator' => $participant->is_creator,
+                'items' => $participant->items->map(fn ($item) => $this->itemPayload($item))->values(),
+            ])->values(),
+            'items' => $groupOrder->items->map(fn ($item) => $this->itemPayload($item))->values(),
+        ];
+    }
+
+    private function itemPayload(GroupOrderItem $item): array
+    {
+        return [
+            'id' => $item->id,
+            'participant_id' => $item->group_order_participant_id,
+            'participant_name' => $item->participant?->name,
+            'plat_id' => $item->plat_id,
+            'name' => $item->plat?->name,
+            'quantity' => $item->quantity,
+            'price' => (float) $item->price_at_add,
+            'subtotal' => (float) $item->price_at_add * (int) $item->quantity,
+            'note' => $item->note,
+            'category' => $item->plat?->category ? [
+                'id' => $item->plat->category->id,
+                'name' => $item->plat->category->name,
+            ] : null,
+            'image_url' => $item->plat?->image ? asset("storage/{$item->plat->image}") : null,
+        ];
+    }
+
+    private function groupOrderNote(GroupOrder $groupOrder): string
+    {
+        $lines = ["Commande groupee #{$groupOrder->code}"];
+
+        if ($groupOrder->note) {
+            $lines[] = "Note groupe: {$groupOrder->note}";
+        }
+
+        foreach ($groupOrder->participants as $participant) {
+            $lines[] = '';
+            $lines[] = "{$participant->name}:";
+            foreach ($participant->items as $item) {
+                $line = "- {$item->quantity} x " . ($item->plat?->name ?? 'Plat');
+                if ($item->note) {
+                    $line .= " ({$item->note})";
+                }
+                $lines[] = $line;
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function whatsappOrderUrl(GroupOrder $groupOrder): ?string
+    {
+        $phone = ($groupOrder->restaurant?->settings ?? [])['whatsapp_order_phone']
+            ?? $groupOrder->restaurant?->owner_phone;
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+
+        if (!$digits) {
+            return null;
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '243' . substr($digits, 1);
+        }
+
+        return 'https://wa.me/' . $digits . '?text=' . rawurlencode($this->whatsappMessage($groupOrder));
+    }
+
+    private function whatsappMessage(GroupOrder $groupOrder): string
+    {
+        $groupOrder->loadMissing($this->relations());
+        $total = $groupOrder->items->sum(fn ($item) => (float) $item->price_at_add * (int) $item->quantity);
+        $currency = $groupOrder->items->first()?->plat?->currency ?? $groupOrder->restaurant?->currency ?? 'CDF';
+
+        return "Bonjour, nouvelle commande groupee Restaurant Scan.\n"
+            . "Restaurant: " . ($groupOrder->restaurant?->name ?? '-') . "\n"
+            . "Groupe: #{$groupOrder->code}\n"
+            . "Client principal: {$groupOrder->creator_name}\n"
+            . "Telephone: " . ($groupOrder->creator_phone ?: '-') . "\n"
+            . "Table/QR: " . ($groupOrder->table?->name ?: '-') . "\n\n"
+            . $this->groupOrderNote($groupOrder) . "\n\n"
+            . "Total: {$total} {$currency}";
+    }
+
+    private function remoteTable(Restaurant $restaurant): Table
+    {
+        return Table::firstOrCreate(
+            [
+                'restaurant_id' => $restaurant->id,
+                'name' => 'Commandes hors restaurant',
+            ],
+            [
+                'capacity' => 1,
+                'status' => Table::STATUS_FREE,
+            ]
+        );
+    }
+
+    private function generateCode(): string
+    {
+        do {
+            $code = Str::upper(Str::random(8));
+        } while (GroupOrder::where('code', $code)->exists());
+
+        return $code;
+    }
+
+    private function generateTrackingCode(): string
+    {
+        do {
+            $code = Str::upper(Str::random(6));
+        } while (Order::where('tracking_code', $code)->exists());
+
+        return $code;
+    }
+
+    private function broadcastSafely(object $event): void
+    {
+        try {
+            broadcast($event)->toOthers();
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+}
+
+
+

@@ -11,6 +11,8 @@ use App\Http\Controllers\Public\ContactController;
 use App\Http\Controllers\Public\MenuController;
 use App\Http\Controllers\Public\ReservationController;
 use App\Http\Controllers\Public\FeedbackController;
+use App\Http\Controllers\Public\RestaurantController as PublicRestaurantController;
+use App\Http\Controllers\Public\GroupOrderController;
 use App\Http\Controllers\Saas\SaasController;
 
 //*****************************************ADMIN****************************************************************
@@ -62,12 +64,31 @@ Route::prefix('saas')->group(function () {
 
 //*****************************************CLIENT PUBLIC***************************************************************
 Route::get('/public/menu', [MenuController::class, 'index']);
+Route::get('/public/restaurants', [PublicRestaurantController::class, 'index']);
+Route::get('/public/restaurants/search', [PublicRestaurantController::class, 'search']);
+Route::get('/public/restaurants/{restaurant}', [PublicRestaurantController::class, 'show']);
 Route::post('/public/contact', [ContactController::class, 'store']);
 Route::post('/public/reservations', [ReservationController::class, 'store']);
 Route::post('/public/Réservations', [ReservationController::class, 'store']);
 Route::post('/public/feedbacks', [FeedbackController::class, 'store']);
 Route::get('/public/employees/verify/{id}', [AgentController::class, 'verify']);
 Route::get('/table-qrcodes/{filename}', [TableController::class, 'qrCode'])->where('filename', 'table_[A-Za-z0-9\\-]+\\.svg');
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/public/favorites/restaurants', [PublicRestaurantController::class, 'favorites']);
+    Route::post('/public/restaurants/{restaurant}/favorite', [PublicRestaurantController::class, 'favorite']);
+    Route::delete('/public/restaurants/{restaurant}/favorite', [PublicRestaurantController::class, 'unfavorite']);
+});
+
+Route::prefix('group-orders')->group(function () {
+    Route::post('/', [GroupOrderController::class, 'store']);
+    Route::get('/{code}', [GroupOrderController::class, 'show']);
+    Route::post('/{code}/participants', [GroupOrderController::class, 'join']);
+    Route::post('/{code}/items', [GroupOrderController::class, 'upsertItem']);
+    Route::delete('/{code}/items/{item}', [GroupOrderController::class, 'destroyItem']);
+    Route::get('/{code}/whatsapp', [GroupOrderController::class, 'whatsapp']);
+    Route::post('/{code}/checkout', [GroupOrderController::class, 'checkout']);
+});
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -169,3 +190,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/Réservations/{id}/status', [ReservationController::class, 'updateStatus']);
     Route::delete('/Réservations/{id}', [ReservationController::class, 'destroy']);
 });
+
+
+
+

@@ -74,4 +74,11 @@ class Restaurant extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function favoritedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'user_restaurant_favorites')
+            ->withTimestamps();
+    }
 }
+
