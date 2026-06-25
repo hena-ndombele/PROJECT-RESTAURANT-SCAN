@@ -33,6 +33,7 @@ type Feedback = {
 export class ListFeedback implements OnInit {
   private readonly http = inject(HttpClient);
 
+  restaurant: any = JSON.parse(localStorage.getItem("restaurant_session") || "null");
   feedbacks = signal<Feedback[]>([]);
   selectedFeedback = signal<Feedback | null>(null);
   loading = signal(false);
@@ -78,7 +79,20 @@ export class ListFeedback implements OnInit {
   });
 
   ngOnInit(): void {
+    this.refreshRestaurantTheme();
     this.loadFeedbacks();
+  }
+
+  themePrimary(): string {
+    return this.normalizeColor(this.restaurant?.settings?.theme?.primary, "#ff7a1a");
+  }
+
+  themeSecondary(): string {
+    return this.normalizeColor(this.restaurant?.settings?.theme?.secondary, "#d71920");
+  }
+
+  logoUrl(): string {
+    return this.restaurant?.logo_url || "";
   }
 
   loadFeedbacks(): void {
@@ -124,10 +138,23 @@ export class ListFeedback implements OnInit {
   recommendationLabel(feedback: Feedback): string {
     if (feedback.recommended === true) return "Recommande";
     if (feedback.recommended === false) return "Ne recommande pas";
-    return "Non renseigne";
+    return "Non renseigné";
   }
 
   closeModal(): void {
     this.selectedFeedback.set(null);
+  }
+
+  private refreshRestaurantTheme(): void {
+    try {
+      this.restaurant = JSON.parse(localStorage.getItem("restaurant_session") || "null");
+    } catch {
+      this.restaurant = null;
+    }
+  }
+
+  private normalizeColor(value: any, fallback: string): string {
+    const color = String(value || "").trim();
+    return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color) ? color : fallback;
   }
 }

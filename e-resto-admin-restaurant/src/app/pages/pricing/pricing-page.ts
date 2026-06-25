@@ -27,9 +27,9 @@ export class PricingPage implements OnInit {
       monthly_price: 15,
       currency: 'USD',
       max_restaurants: 1,
-      max_tables: 8,
+      max_tables: 6,
       max_users: 5,
-      features: ['20 plats', '5 employés', '150 commandes/mois', 'Dashboard et statistiques', 'Gestion des commandes', 'Cash uniquement', 'Sur place / Emporter', 'Support standard','Rôles limités'],
+      features: ['15 plats', '5 employés', '150 commandes/mois', 'Dashboard et statistiques', 'Gestion des commandes', 'Templates QR Standard', 'Cash uniquement', 'Sur place / Emporter', 'Support standard','Rôles limités'],
       installation_fee: 10,
       limitations: [ 'Pas de réservations', 'Pas de feedback client', 'Pas de personnalisation'],
       is_popular: false,
@@ -39,7 +39,7 @@ export class PricingPage implements OnInit {
       name: 'Pro',
       slug: 'pro',
       description: 'Pour automatiser le service et piloter un restaurant en croissance.',
-      monthly_price: 25,
+      monthly_price: 35,
       currency: 'USD',
       max_restaurants: 1,
       max_tables: null,
@@ -54,7 +54,7 @@ export class PricingPage implements OnInit {
       name: 'Business',
       slug: 'business',
       description: 'Pour les équipes structurées et les restaurants multi-sites.',
-      monthly_price: 30,
+      monthly_price: 50,
       currency: 'USD',
       max_restaurants: 5,
       max_tables: null,
@@ -73,6 +73,7 @@ export class PricingPage implements OnInit {
   constructor(private router: Router, private saas: SaasService) {}
 
   ngOnInit(): void {
+    localStorage.removeItem('selected_plan');
     this.saas.plans().subscribe({
       next: (plans) => {
         if (plans.length) {
@@ -98,7 +99,7 @@ export class PricingPage implements OnInit {
       name: plan.name,
       slug: plan.slug,
       price: this.paymentAmount(plan),
-      monthly_price: Number(plan.monthly_price),
+      monthly_price: this.monthlyPriceForPlan(plan),
       annual_monthly_price: this.annualMonthlyPrice(plan),
       currency: plan.currency,
       installation_fee: plan.installation_fee,
@@ -111,12 +112,12 @@ export class PricingPage implements OnInit {
   }
 
   displayPrice(plan: SaasPlan): number {
-    const monthlyPrice = Number(plan.monthly_price ?? 0);
+    const monthlyPrice = this.monthlyPriceForPlan(plan);
     return this.billingCycle === 'yearly' ? this.annualMonthlyPrice(plan) : monthlyPrice;
   }
 
   paymentAmount(plan: SaasPlan): number {
-    const monthlyPrice = Number(plan.monthly_price ?? 0);
+    const monthlyPrice = this.monthlyPriceForPlan(plan);
     return this.billingCycle === 'yearly' ? this.annualMonthlyPrice(plan) * 12 : monthlyPrice;
   }
 
@@ -129,7 +130,7 @@ export class PricingPage implements OnInit {
   }
 
   dishLimitLabel(plan: SaasPlan): string {
-    const value = plan.max_dishes ?? (plan.slug === 'starter' ? 20 : null);
+    const value = plan.max_dishes ?? (plan.slug === 'starter' ? 15 : null);
     return this.limitLabel(value, 'plats', 'Plats illimités');
   }
 
@@ -137,11 +138,15 @@ export class PricingPage implements OnInit {
     return (plan.features || []).filter((feature) => {
       const normalized = this.normalizeLabel(feature);
 
-      return !normalized.includes('tables illimitées')
-        && !normalized.includes('utilisateurs illimitées')
+      return !normalized.includes('tables illimitees')
+        && !normalized.includes('utilisateurs illimites')
+        && !normalized.includes('utilisateurs illimitees')
+        && !normalized.includes('employes illimites')
+        && !normalized.includes('employes illimitees')
         && !normalized.includes('5 employes')
-        && !normalized.includes('plats illimités')
-        && !normalized.includes('20 plats');
+        && !normalized.includes('plats illimites')
+        && !normalized.includes('installation')
+        && !/^\s*\d+\s+plats\s*$/i.test(normalized);
     });
   }
 
@@ -156,7 +161,16 @@ export class PricingPage implements OnInit {
 
   private decoratePlan(plan: SaasPlan): PricingPlan {
     const slug = String(plan.slug || plan.name).toLowerCase();
-    const features = [...(plan.features || [])];
+    const features = this.cleanFeatureList(plan.features || []);
+
+    if (slug.includes('starter')) {
+      const withoutOldDishLimit = features.filter((feature) => !/^\s*\d+\s+plats\s*$/i.test(this.normalizeLabel(feature)));
+      features.splice(0, features.length, '15 plats', ...withoutOldDishLimit);
+      if (!features.some((feature) => this.normalizeLabel(feature).includes('templates qr standard'))) {
+        features.splice(5, 0, 'Templates QR Standard');
+      }
+    }
+
     if (slug.includes('starter') && !features.some((feature) => this.normalizeLabel(feature).includes('dashboard'))) {
       features.splice(2, 0, 'Dashboard et statistiques');
     }
@@ -166,6 +180,9 @@ export class PricingPage implements OnInit {
 
     return {
       ...plan,
+      monthly_price: this.monthlyPriceForPlan(plan),
+      max_tables: slug.includes('starter') ? 6 : plan.max_tables,
+      max_dishes: slug.includes('starter') ? 15 : plan.max_dishes,
       features,
       installation_fee: slug.includes('business') ? 15 : 10,
       limitations: this.limitationsForPlan(slug),
@@ -200,9 +217,32 @@ export class PricingPage implements OnInit {
     const slug = String(plan.slug || plan.name).toLowerCase();
 
     if (slug.includes('starter')) return 12;
-    if (slug.includes('pro')) return 20;
-    if (slug.includes('business')) return 25;
+    if (slug.includes('pro')) return 30;
+    if (slug.includes('business')) return 40;
 
     return Number(plan.monthly_price ?? 0);
+  }
+
+  private monthlyPriceForPlan(plan: SaasPlan): number {
+    const slug = String(plan.slug || plan.name).toLowerCase();
+
+    if (slug.includes('starter')) return 15;
+    if (slug.includes('pro')) return 35;
+    if (slug.includes('business')) return 50;
+
+    return Number(plan.monthly_price ?? 0);
+  }
+
+  private cleanFeatureList(features: string[]): string[] {
+    const seen = new Set<string>();
+
+    return features.filter((feature) => {
+      const normalized = this.normalizeLabel(feature);
+      if (!normalized || normalized.includes('installation')) return false;
+      if (/^\s*\d+\s+plats\s*$/i.test(normalized)) return false;
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
   }
 }

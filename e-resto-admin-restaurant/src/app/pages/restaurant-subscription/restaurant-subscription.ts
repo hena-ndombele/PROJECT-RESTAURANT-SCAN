@@ -232,7 +232,7 @@ export class RestaurantSubscription implements OnInit, OnDestroy {
         const filtered = plans
           .filter((plan) => ['starter', 'pro', 'business'].includes(String(plan.slug).toLowerCase()))
           .sort((left, right) => this.planOrder(left) - this.planOrder(right));
-        if (filtered.length) this.plans = filtered;
+        if (filtered.length) this.plans = filtered.map((plan) => this.enforcePlanPricing(plan));
       },
       error: () => {},
     });
@@ -326,8 +326,8 @@ export class RestaurantSubscription implements OnInit, OnDestroy {
   private annualMonthlyPrice(plan: SaasPlan): number {
     const slug = String(plan.slug || plan.name).toLowerCase();
     if (slug.includes('starter')) return 12;
-    if (slug.includes('pro')) return 20;
-    if (slug.includes('business')) return 25;
+    if (slug.includes('pro')) return 30;
+    if (slug.includes('business')) return 40;
     return Number(plan.monthly_price ?? 0);
   }
 
@@ -376,9 +376,17 @@ export class RestaurantSubscription implements OnInit, OnDestroy {
 
   private localPlans(): SaasPlan[] {
     return [
-      { id: 'starter', name: 'Starter', slug: 'starter', description: 'Pour démarrer simplement.', monthly_price: 15, currency: 'USD', max_restaurants: 1, max_tables: 8, max_users: 5, features: [], is_popular: false },
-      { id: 'pro', name: 'Pro', slug: 'pro', description: 'Pour automatiser le service.', monthly_price: 25, currency: 'USD', max_restaurants: 1, max_tables: null, max_users: null, features: [], is_popular: true },
-      { id: 'business', name: 'Business', slug: 'business', description: 'Pour les restaurants multi-sites.', monthly_price: 30, currency: 'USD', max_restaurants: 5, max_tables: null, max_users: null, features: [], is_popular: false },
+      { id: 'starter', name: 'Starter', slug: 'starter', description: 'Pour démarrer simplement.', monthly_price: 15, currency: 'USD', max_restaurants: 1, max_tables: 6, max_users: 5, max_dishes: 15, features: [], is_popular: false },
+      { id: 'pro', name: 'Pro', slug: 'pro', description: 'Pour automatiser le service.', monthly_price: 35, currency: 'USD', max_restaurants: 1, max_tables: null, max_users: null, features: [], is_popular: true },
+      { id: 'business', name: 'Business', slug: 'business', description: 'Pour les restaurants multi-sites.', monthly_price: 50, currency: 'USD', max_restaurants: 5, max_tables: null, max_users: null, features: [], is_popular: false },
     ];
+  }
+
+  private enforcePlanPricing(plan: SaasPlan): SaasPlan {
+    const slug = String(plan.slug || plan.name).toLowerCase();
+    if (slug.includes('pro')) return { ...plan, monthly_price: 35 };
+    if (slug.includes('business')) return { ...plan, monthly_price: 50 };
+    if (slug.includes('starter')) return { ...plan, monthly_price: 15, max_tables: 6, max_dishes: 15 };
+    return plan;
   }
 }

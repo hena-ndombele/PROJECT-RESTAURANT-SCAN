@@ -15,7 +15,9 @@ export class SaasService {
   }
 
   plans(): Observable<SaasPlan[]> {
-    return this.http.get<SaasPlan[]>(`${this.apiUrl}/plans`);
+    return this.http.get<SaasPlan[]>(`${this.apiUrl}/plans`, {
+      params: { _ts: Date.now().toString() },
+    });
   }
 
   subscribeNewsletter(email: string): Observable<{ message: string; already_exists?: boolean }> {

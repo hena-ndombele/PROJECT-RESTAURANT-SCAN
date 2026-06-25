@@ -258,8 +258,8 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
 
     const slug = String(plan.slug || plan.name).toLowerCase();
     if (slug.includes('starter')) return 12;
-    if (slug.includes('pro')) return 20;
-    if (slug.includes('business')) return 25;
+    if (slug.includes('pro')) return 30;
+    if (slug.includes('business')) return 40;
 
     return price;
   }
