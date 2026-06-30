@@ -25,8 +25,12 @@ export class AuthGuard implements CanActivate {
       return false;
     }
 
-    const requiredPermission = route.data?.['permission'] as string | undefined;
-    if (!requiredPermission || this.permissions.has(requiredPermission)) {
+    const requiredPermission = route.data?.['permission'] as string | string[] | undefined;
+    const hasRequiredPermission = Array.isArray(requiredPermission)
+      ? this.permissions.hasAny(requiredPermission)
+      : !requiredPermission || this.permissions.has(requiredPermission);
+
+    if (hasRequiredPermission) {
       return true;
     }
 

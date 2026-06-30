@@ -3,10 +3,10 @@
         [class.btn-primary]="!disabled"
         [class.btn-secondary]="disabled"
         [disabled]="disabled"
-        [title]="disabled ? limitMessage : 'Create Table'"
+        [title]="disabled ? limitMessage : 'Créer une table'"
         [attr.data-bs-toggle]="disabled ? null : 'modal'"
         [attr.data-bs-target]="disabled ? null : '#createTableModal'">
-    <i class="ti ti-plus me-1"></i> Create Table
+    <i class="ti ti-plus me-1"></i> Créer une table
 </button>
 
 <div class="modal fade" id="createTableModal" tabindex="-1" aria-labelledby="createTableModalLabel" aria-hidden="true">
@@ -15,8 +15,8 @@
 
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" id="createTableModalLabel" style="font-weight: bolder">Create New Table</h5>
-                    <p class="mb-0 text-muted small">Configure a new table for your restaurant</p>
+                    <h5 class="modal-title fs-3 mb-1" id="createTableModalLabel" style="font-weight: bolder">Créer une nouvelle table</h5>
+                    <p class="mb-0 text-muted small">Configurez une nouvelle table pour votre restaurant</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -31,18 +31,18 @@
                 <form [formGroup]="tableForm" (ngSubmit)="onSubmit()" id="createTableForm">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="tableName" class="form-label">Table Name <span style="color:red">*</span></label>
-                            <input type="text" class="form-control" id="tableName" formControlName="name" placeholder="Ex. TABLE 1 or VIP 2">
+                            <label for="tableName" class="form-label">Nom de la table <span style="color:red">*</span></label>
+                            <input type="text" class="form-control" id="tableName" formControlName="name" placeholder="Ex. TABLE 1 ou VIP 2">
                             @if (tableForm.get('name')?.invalid && tableForm.get('name')?.touched) {
-                                <small class="text-danger">Name is required.</small>
+                                <small class="text-danger">Le nom est obligatoire.</small>
                             }
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="capacity" class="form-label">Capacity (Persons) <span style="color:red">*</span></label>
+                            <label for="capacity" class="form-label">Capacité <span style="color:red">*</span></label>
                             <input type="number" class="form-control" id="capacity" formControlName="capacity" placeholder="Ex. 4">
                             @if (tableForm.get('capacity')?.invalid && tableForm.get('capacity')?.touched) {
-                                <small class="text-danger">Capacity is required (min. 1).</small>
+                                <small class="text-danger">La capacité est obligatoire (min. 1).</small>
                             }
                         </div>
 
@@ -53,7 +53,7 @@
 
             <div class="modal-footer d-flex gap-2">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle me-1"></i> Cancel
+                    <i class="bi bi-x-circle me-1"></i> Annuler
                 </button>
 
                 <button type="submit"
@@ -65,7 +65,7 @@
                     } @else {
                         <i class="bi bi-plus-circle me-1"></i>
                     }
-                    Confirm & Generate QR
+                    Confirmer et générer le QR code
                 </button>
             </div>
         </div>

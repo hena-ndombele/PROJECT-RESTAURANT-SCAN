@@ -61,7 +61,7 @@ class RestaurantController extends Controller
         $request->user()->favoriteRestaurants()->syncWithoutDetaching([$restaurant->id]);
 
         return response()->json([
-            'message' => 'Restaurant ajoute aux favoris.',
+            'message' => 'Restaurant ajouté aux favoris.',
             'restaurant' => $this->restaurantPayload($restaurant->loadMissing($this->publicRelations()), $request),
         ], 201);
     }

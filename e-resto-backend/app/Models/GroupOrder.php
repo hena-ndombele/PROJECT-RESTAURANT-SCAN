@@ -19,6 +19,7 @@ class GroupOrder extends Model
         'creator_name',
         'creator_phone',
         'creator_email',
+        'creator_code_hash',
         'note',
         'expires_at',
         'checked_out_at',

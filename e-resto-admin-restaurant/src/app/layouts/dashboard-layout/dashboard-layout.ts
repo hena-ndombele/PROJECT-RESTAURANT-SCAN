@@ -12,11 +12,18 @@ import { Subscription } from "rxjs";
 import { AppPermissionService } from "../../services/auth/permission-service";
 import { STORAGE_ROOT } from "../../services/api-url";
 import { Order } from "../../models/orders/OrderDto";
+import { SaasService } from "../../services/saas/saas-service";
+import { CONGO_PROVINCES } from "../../shared/congo-provinces";
 
 interface BeforeInstallPromptEvent extends Event {
     readonly platforms: string[];
     readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
     prompt(): Promise<void>;
+}
+
+interface IncomingOrderAlert {
+    order: Order;
+    receivedAt: Date;
 }
 
 @Component({
@@ -38,15 +45,19 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private translate = inject(TranslateService);
     private reservationService = inject(ReservationService);
     private permissions = inject(AppPermissionService);
+    private saasService = inject(SaasService);
     private reservationBadgeTimer?: ReturnType<typeof setInterval>;
+    private businessRestaurantTimer?: ReturnType<typeof setInterval>;
     private reservationCreatedSubscription?: Subscription;
     private orderChangedSubscription?: Subscription;
+    private businessRestaurantsChangedSubscription?: Subscription;
     private deferredInstallPrompt?: BeforeInstallPromptEvent;
     private installDismissedForCurrentView = false;
     private installPromptCheckTimer?: ReturnType<typeof setTimeout>;
     private readonly installedStorageKey = 'restaurant_scan_pwa_installed';
 
     passwordForm: FormGroup;
+    businessRestaurantForm: FormGroup;
 
     constructor() {
         this.passwordForm = this.fb.group({
@@ -54,6 +65,14 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             new_password: ['', [Validators.required, Validators.minLength(6)]],
             new_password_confirmation: ['', [Validators.required]]
         }, { validator: this.passwordMatchValidator });
+
+        this.businessRestaurantForm = this.fb.group({
+            name: ['', [Validators.required, Validators.maxLength(255)]],
+            city: ['', [Validators.maxLength(120)]],
+            address: ['', [Validators.maxLength(255)]],
+            owner_phone: ['', [Validators.maxLength(30)]],
+            currency: ['CDF', [Validators.required]],
+        });
     }
 
     userData: any = {
@@ -65,6 +84,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         name: 'Restaurant Scan',
         logo: 'assets/logo/e-resto-logo.png',
         city: '',
+        owner_email: '',
         owner_phone: '',
         features: {},
         theme: {},
@@ -87,7 +107,15 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected installAvailable = false;
     protected iosInstallHelp = false;
     protected manualInstallHelp = false;
-    protected incomingOrder: Order | null = null;
+    protected incomingOrders: IncomingOrderAlert[] = [];
+    protected readonly maxIncomingOrders = 8;
+    protected businessRestaurants: any[] = [];
+    protected businessRestaurantLimit: number | null = null;
+    protected businessRestaurantPanelOpen = false;
+    protected businessRestaurantFormOpen = false;
+    protected businessRestaurantLoading = false;
+    protected businessRestaurantSaving = false;
+    protected provinces = CONGO_PROVINCES;
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
             from: 'bot',
@@ -115,8 +143,11 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                 return;
             }
 
-            this.incomingOrder = order;
+            this.addIncomingOrder(order);
             this.cdref.detectChanges();
+        });
+        this.businessRestaurantsChangedSubscription = this.orderRealtime.businessRestaurantsChanged$.subscribe((payload) => {
+            this.handleBusinessRestaurantsRealtime(payload);
         });
         const userData = this.authService.getUserData();
         const restaurantSession = localStorage.getItem('restaurant_session');
@@ -133,6 +164,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         this.subscriptionInfo = this.buildSubscriptionInfo(restaurant);
         this.applyRestaurantTheme(restaurant);
+        if (this.canManageBusinessRestaurants()) {
+            this.loadBusinessRestaurants();
+            this.businessRestaurantTimer = setInterval(() => this.loadBusinessRestaurants(), 10000);
+        }
         this.loginInfo = {
             connectedAt: this.resolveLoginDate(),
         };
@@ -172,8 +207,12 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         if (this.reservationBadgeTimer) {
             clearInterval(this.reservationBadgeTimer);
         }
+        if (this.businessRestaurantTimer) {
+            clearInterval(this.businessRestaurantTimer);
+        }
         this.reservationCreatedSubscription?.unsubscribe();
         this.orderChangedSubscription?.unsubscribe();
+        this.businessRestaurantsChangedSubscription?.unsubscribe();
     }
 
     currentLang = localStorage.getItem('app_lang') || 'fr';
@@ -210,13 +249,270 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         setTimeout(() => this.orderRealtime.markNotificationsRead(), 1200);
     }
 
-    protected dismissIncomingOrder(): void {
-        this.incomingOrder = null;
+    protected dismissIncomingOrder(orderId?: string): void {
+        if (!orderId) {
+            this.incomingOrders = [];
+            return;
+        }
+
+        this.incomingOrders = this.incomingOrders.filter((item) => item.order.id !== orderId);
     }
 
-    protected openIncomingOrder(): void {
-        this.incomingOrder = null;
+    protected openIncomingOrder(orderId?: string): void {
+        this.dismissIncomingOrder(orderId);
         this.router.navigate(['/orders/list']);
+    }
+
+    protected incomingOrderIndex(index: number): number {
+        return this.incomingOrders.length - index;
+    }
+
+    private addIncomingOrder(order: Order): void {
+        if (!order?.id) return;
+
+        const withoutSameOrder = this.incomingOrders.filter((item) => item.order.id !== order.id);
+        this.incomingOrders = [
+            { order, receivedAt: new Date() },
+            ...withoutSameOrder,
+        ].slice(0, this.maxIncomingOrders);
+    }
+
+    protected toggleBusinessRestaurantPanel(): void {
+        this.businessRestaurantPanelOpen = !this.businessRestaurantPanelOpen;
+        if (this.businessRestaurantPanelOpen && this.canManageBusinessRestaurants()) {
+            this.loadBusinessRestaurants();
+        }
+    }
+
+    protected closeBusinessRestaurantPanel(): void {
+        this.businessRestaurantPanelOpen = false;
+        this.businessRestaurantFormOpen = false;
+    }
+
+    protected openBusinessRestaurantForm(): void {
+        this.businessRestaurantFormOpen = true;
+        this.businessRestaurantForm.reset({
+            name: '',
+            city: '',
+            address: '',
+            owner_phone: this.restaurantData.owner_phone || '',
+            currency: 'CDF',
+        });
+    }
+
+    protected createBusinessRestaurant(): void {
+        if (this.businessRestaurantForm.invalid || this.businessRestaurantSaving) {
+            this.businessRestaurantForm.markAllAsTouched();
+            return;
+        }
+
+        this.businessRestaurantSaving = true;
+        this.saasService.createBusinessRestaurant(this.businessRestaurantForm.value).subscribe({
+            next: (response) => {
+                this.businessRestaurantSaving = false;
+                this.businessRestaurantFormOpen = false;
+                this.businessRestaurants = [...this.businessRestaurants, response.restaurant].filter(Boolean);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Restaurant ajouté',
+                    text: 'Vous pouvez maintenant basculer vers ce restaurant.',
+                    timer: 1800,
+                    showConfirmButton: false,
+                });
+                this.cdref.detectChanges();
+            },
+            error: (error) => {
+                this.businessRestaurantSaving = false;
+                Swal.fire('Impossible', error?.error?.message || 'Le restaurant n\'a pas pu etre ajouté.', 'error');
+                this.cdref.detectChanges();
+            },
+        });
+    }
+
+    protected switchBusinessRestaurant(restaurant: any): void {
+        if (!restaurant?.id || restaurant.id === this.currentRestaurantId()) {
+            this.closeBusinessRestaurantPanel();
+            return;
+        }
+
+        this.businessRestaurantLoading = true;
+        this.saasService.switchBusinessRestaurant(restaurant.id).subscribe({
+            next: (response) => {
+                if (response.user) {
+                    localStorage.setItem('user_data', JSON.stringify(response.user));
+                }
+                if (response.restaurant) {
+                    localStorage.setItem('restaurant_session', JSON.stringify(response.restaurant));
+                    this.syncRestaurantData(response.restaurant);
+                    this.subscriptionInfo = this.buildSubscriptionInfo(response.restaurant);
+                    this.applyRestaurantTheme(response.restaurant);
+                    window.dispatchEvent(new CustomEvent('restaurant-settings-updated', { detail: response.restaurant }));
+                }
+                this.businessRestaurantLoading = false;
+                this.closeBusinessRestaurantPanel();
+                this.router.navigate(['/dashboard']).then(() => window.location.reload());
+            },
+            error: (error) => {
+                this.businessRestaurantLoading = false;
+                Swal.fire('Impossible', error?.error?.message || 'Impossible de changer de restaurant.', 'error');
+                this.cdref.detectChanges();
+            },
+        });
+    }
+
+    protected canDeleteBusinessRestaurant(restaurant: any): boolean {
+        if (!restaurant?.id || this.businessRestaurants.length <= 1) return false;
+        const user = this.authService.getUserData();
+        return Boolean(
+            (user?.id && this.restaurantData.business_owner_user_id === user.id) ||
+            (user?.email && this.restaurantData.owner_email && String(this.restaurantData.owner_email).toLowerCase() === String(user.email).toLowerCase())
+        );
+    }
+
+    protected deleteBusinessRestaurant(restaurant: any, event: MouseEvent): void {
+        event.stopPropagation();
+        if (!this.canDeleteBusinessRestaurant(restaurant) || this.businessRestaurantLoading) return;
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Supprimer ce restaurant ?',
+            text: `Le restaurant "${restaurant.name}" sera retiré de votre espace Business.`,
+            showCancelButton: true,
+            confirmButtonText: 'Oui, supprimer',
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: '#dc2626',
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            this.businessRestaurantLoading = true;
+            const deletedCurrentRestaurant = restaurant.id === this.currentRestaurantId();
+            this.saasService.deleteBusinessRestaurant(restaurant.id).subscribe({
+                next: (response) => {
+                    this.businessRestaurantLoading = false;
+                    this.businessRestaurants = response?.restaurants || this.businessRestaurants.filter((item) => item.id !== restaurant.id);
+
+                    if (response?.user) {
+                        localStorage.setItem('user_data', JSON.stringify(response.user));
+                    }
+                    if (response?.restaurant) {
+                        localStorage.setItem('restaurant_session', JSON.stringify(response.restaurant));
+                        this.syncRestaurantData(response.restaurant);
+                        this.subscriptionInfo = this.buildSubscriptionInfo(response.restaurant);
+                        this.applyRestaurantTheme(response.restaurant);
+                        window.dispatchEvent(new CustomEvent('restaurant-settings-updated', { detail: response.restaurant }));
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Restaurant supprimé',
+                        text: deletedCurrentRestaurant ? 'Vous avez été basculé vers un autre restaurant du groupe.' : 'Le restaurant a été retiré du groupe Business.',
+                        timer: 1800,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        if (deletedCurrentRestaurant) {
+                            this.closeBusinessRestaurantPanel();
+                            this.router.navigate(['/dashboard']).then(() => window.location.reload());
+                        }
+                    });
+                    this.cdref.detectChanges();
+                },
+                error: (error) => {
+                    this.businessRestaurantLoading = false;
+                    Swal.fire('Impossible', error?.error?.message || 'Ce restaurant n\'a pas pu etre supprime.', 'error');
+                    this.cdref.detectChanges();
+                },
+            });
+        });
+    }
+
+    private handleBusinessRestaurantsRealtime(payload: any): void {
+        if (!this.canManageBusinessRestaurants()) return;
+
+        const deletedRestaurantId = payload?.restaurantId || payload?.restaurant_id;
+        const fallbackRestaurant = payload?.payload?.fallback_restaurant || payload?.fallback_restaurant;
+
+        if (payload?.action === 'deleted' && deletedRestaurantId && deletedRestaurantId === this.currentRestaurantId()) {
+            if (fallbackRestaurant) {
+                const user = this.authService.getUserData() || {};
+                const nextUser = {
+                    ...user,
+                    restaurant_id: fallbackRestaurant.id,
+                    restaurant: fallbackRestaurant,
+                };
+                localStorage.setItem('user_data', JSON.stringify(nextUser));
+                localStorage.setItem('restaurant_session', JSON.stringify(fallbackRestaurant));
+                this.syncRestaurantData(fallbackRestaurant);
+                this.subscriptionInfo = this.buildSubscriptionInfo(fallbackRestaurant);
+                this.applyRestaurantTheme(fallbackRestaurant);
+                window.dispatchEvent(new CustomEvent('restaurant-settings-updated', { detail: fallbackRestaurant }));
+            }
+
+            this.loadBusinessRestaurants(true);
+            this.closeBusinessRestaurantPanel();
+            this.router.navigate(['/dashboard']).then(() => window.location.reload());
+            return;
+        }
+
+        this.loadBusinessRestaurants(true);
+    }
+
+    protected currentRestaurantId(): string {
+        const session = localStorage.getItem('restaurant_session');
+        if (session) {
+            try {
+                return JSON.parse(session)?.id || '';
+            } catch {
+                return '';
+            }
+        }
+
+        return this.authService.getUserData()?.restaurant?.id || '';
+    }
+
+    protected canAddBusinessRestaurant(): boolean {
+        return this.businessRestaurantLimit === null || this.businessRestaurants.length < this.businessRestaurantLimit;
+    }
+
+    protected restaurantLogo(restaurant: any): string {
+        return restaurant?.logo_url || (restaurant?.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : 'assets/logo/e-resto-logo.png');
+    }
+
+    private loadBusinessRestaurants(force = false): void {
+        if (this.businessRestaurantLoading && !force) return;
+
+        this.businessRestaurantLoading = true;
+        this.saasService.businessRestaurants().subscribe({
+            next: (response) => {
+                this.businessRestaurants = response?.restaurants || [];
+                this.businessRestaurantLimit = response?.limit ?? null;
+                if (response?.current_restaurant_id && response.current_restaurant_id !== this.currentRestaurantId()) {
+                    const activeRestaurant = this.businessRestaurants.find((restaurant) => restaurant.id === response.current_restaurant_id);
+                    if (activeRestaurant) {
+                        const user = this.authService.getUserData() || {};
+                        localStorage.setItem('user_data', JSON.stringify({
+                            ...user,
+                            restaurant_id: activeRestaurant.id,
+                            restaurant: activeRestaurant,
+                        }));
+                        localStorage.setItem('restaurant_session', JSON.stringify(activeRestaurant));
+                        this.syncRestaurantData(activeRestaurant);
+                        this.subscriptionInfo = this.buildSubscriptionInfo(activeRestaurant);
+                        this.applyRestaurantTheme(activeRestaurant);
+                        this.businessRestaurantLoading = false;
+                        this.closeBusinessRestaurantPanel();
+                        this.router.navigate(['/dashboard']).then(() => window.location.reload());
+                        return;
+                    }
+                }
+                this.businessRestaurantLoading = false;
+                this.cdref.detectChanges();
+            },
+            error: () => {
+                this.businessRestaurantLoading = false;
+                this.businessRestaurants = [];
+                this.cdref.detectChanges();
+            },
+        });
     }
 
     protected orderItemsCount(order: Order): number {
@@ -236,20 +532,45 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         return this.permissions.has(permission);
     }
 
+    protected canAccessAny(permissions: string[]): boolean {
+        return this.permissions.hasAny(permissions);
+    }
+
     private syncRestaurantData(restaurant: any): void {
         if (!restaurant) return;
 
         this.restaurantData = {
+            id: restaurant.id || '',
             name: restaurant.name || 'Restaurant Scan',
             logo: restaurant.logo_url || (restaurant.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
             city: restaurant.city || '',
+            owner_email: restaurant.owner_email || '',
             owner_phone: restaurant.owner_phone || '',
+            business_owner_user_id: restaurant.business_owner_user_id || '',
+            can_manage_business_restaurants: Boolean(restaurant.can_manage_business_restaurants),
             features: {
                 ...this.featuresFromPlan(restaurant.plan),
                 ...(restaurant.features || {}),
             },
             theme: restaurant.theme || restaurant.settings?.theme || restaurant.settings || {},
         };
+    }
+
+    protected canManageBusinessRestaurants(): boolean {
+        const user = this.authService.getUserData();
+        const isBusinessOwner = Boolean(
+            (user?.id && this.restaurantData.business_owner_user_id === user.id) ||
+            (user?.email && this.restaurantData.owner_email && String(this.restaurantData.owner_email).toLowerCase() === String(user.email).toLowerCase())
+        );
+
+        return Boolean(
+            this.restaurantData.features?.multi_restaurant &&
+            (
+                this.restaurantData.can_manage_business_restaurants ||
+                this.permissions.hasAnyRole(['multi-tenant', 'multi-restaurant', 'multi-restaurants']) ||
+                isBusinessOwner
+            )
+        );
     }
 
     private loadReservationBadge(): void {

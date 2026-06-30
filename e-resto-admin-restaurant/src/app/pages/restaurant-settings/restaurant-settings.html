@@ -1,9 +1,9 @@
 <main class="settings-page" [class.settings-dark]="theme.mode() === 'dark'">
   <header class="settings-header">
     <div>
-      <span>Parametres</span>
-      <h1><i class="bi bi-gear-fill"></i> Parametres du restaurant</h1>
-      <p>Ces informations personnalisent le menu que le client voit apres scan du QR code.</p>
+      <span>Paramètres</span>
+      <h1><i class="bi bi-gear-fill"></i> Paramètres</h1>
+      <p>Ces informations personnalisent le menu que le client voit après scan du QR code.</p>
     </div>
     @if (canUpdateSettings()) {
     <button class="save-main" type="button" [disabled]="saving()" (click)="save()">
@@ -39,16 +39,15 @@
       <h2><i class="bi bi-shop-window"></i> Logo du restaurant</h2>
       <div class="logo-row">
         <div class="logo-picker">
-          @if (logoPreview()) {
-            <img [src]="logoPreview()!" alt="Logo restaurant">
-          } @else {
-            <i class="bi bi-image"></i>
-          }
+          <img [src]="displayLogoUrl()" alt="Logo restaurant">
         </div>
         <div>
           <strong>Logo du menu client</strong>
-          <p>Affiche en haut de l'application client. Format recommande : carre, minimum 200x200px.</p>
-          <label class="logo-change-btn brand-action">
+          <p>Affiche en haut de l'application client. Format recommandé : carré, minimum 200x200px.</p>
+          <label class="logo-change-btn brand-action"
+                 [class.is-disabled]="!canCustomize()"
+                 [attr.aria-disabled]="!canCustomize()"
+                 [attr.title]="!canCustomize() ? 'La personnalisation du logo est disponible avec les plans Pro et Business.' : null">
             <i class="bi bi-upload me-1"></i>
             Changer le logo
             <input type="file" accept="image/png,image/jpeg,image/webp" [disabled]="!canCustomize()" (change)="onLogoSelected($event)">
@@ -58,7 +57,7 @@
     </section>
 
     <section class="settings-card">
-      <h2><i class="bi bi-bar-chart-fill"></i> Capacite du restaurant</h2>
+      <h2><i class="bi bi-bar-chart-fill"></i> Capacité du restaurant</h2>
       <div class="settings-stats">
         <article>
           <span>Tables</span>
@@ -93,7 +92,7 @@
           <input [(ngModel)]="restaurant.owner_phone" name="owner_phone" [disabled]="!canUpdateSettings()">
         </label>
         <label>
-          <span>WhatsApp commandes hors restaurant</span>
+          <span>WhatsApp commandes</span>
           <input [(ngModel)]="restaurant.settings.whatsapp_order_phone" name="whatsapp_order_phone" [disabled]="!canUpdateSettings()" placeholder="+243...">
         </label>
         <label>
@@ -124,12 +123,12 @@
 
     <section class="settings-card">
       <h2><i class="bi bi-palette-fill"></i> Couleurs du menu</h2>
-      <p class="section-help">Personnalisez les couleurs du menu digital pour qu'il reflete l'identite du restaurant.</p>
+      <p class="section-help">Personnalisez les couleurs du menu digital pour qu'il reflète l'identité du restaurant.</p>
 
       <div class="color-preview" [style.background]="restaurant.settings.theme.background">
         <span [style.background]="restaurant.settings.theme.primary"></span>
         <div>
-          <strong [style.color]="restaurant.settings.theme.primary">Apercu de vos couleurs</strong>
+          <strong [style.color]="restaurant.settings.theme.primary">Aperçu de vos couleurs</strong>
           <small>{{ restaurant.settings.theme.primary }} - {{ restaurant.settings.theme.background }}</small>
         </div>
         <i class="bi bi-cup-hot"></i>
@@ -168,7 +167,7 @@
 
     <section class="settings-card">
       <h2><i class="bi bi-qr-code"></i> Template QR table</h2>
-      <p class="section-help">Choisissez le design qui sera imprime ou telecharge pour etre depose sur les tables.</p>
+      <p class="section-help">Choisissez le design qui sera imprimé ou téléchargé pour être déposé sur les tables.</p>
 
       @if (!canCustomize()) {
         <div class="template-upgrade-note">
@@ -180,16 +179,24 @@
       <div class="qr-template-grid">
         <button type="button"
                 class="qr-template-card"
+                [class.active]="!restaurant.settings.qr_template"
+                [disabled]="!canUpdateSettings()"
+                (click)="restaurant.settings.qr_template = ''">
+          <span class="template-preview default-preview">
+            <img src="assets/images/defaut.PNG" alt="Design QR par défaut">
+          </span>
+          <span>Design par défaut</span>
+        </button>
+
+        <button type="button"
+                class="qr-template-card"
                 [class.active]="restaurant.settings.qr_template === 'poster'"
                 [disabled]="!canCustomize()"
                 (click)="restaurant.settings.qr_template = 'poster'">
           <span class="template-preview poster-preview">
-            <span class="template-logo"></span>
-            <strong>Digital Menu<br>System</strong>
-            <span class="template-qr"></span>
-            <em>{{ restaurant.name || 'Restaurant' }}</em>
+            <img src="assets/images/premuim1.PNG" alt="Apercu affiche elegante">
           </span>
-          <span>Affiche elegante</span>
+          <span>Design élégante</span>
         </button>
 
         <button type="button"
@@ -198,11 +205,9 @@
                 [disabled]="!canCustomize()"
                 (click)="restaurant.settings.qr_template = 'table_tent'">
           <span class="template-preview tent-preview">
-            <strong>MENU</strong>
-            <span class="template-qr"></span>
-            <em>Scan the Code</em>
+            <img src="assets/images/premuim2.PNG" alt="Apercu table tent promo">
           </span>
-          <span>Table tent promo</span>
+          <span>Design Premium</span>
         </button>
       </div>
     </section>

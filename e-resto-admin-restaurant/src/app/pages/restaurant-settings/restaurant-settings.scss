@@ -115,6 +115,17 @@
   cursor: pointer;
 }
 
+.logo-change-btn.is-disabled {
+  cursor: not-allowed;
+  opacity: .48;
+  filter: grayscale(1);
+  box-shadow: none;
+}
+
+.logo-change-btn.is-disabled input {
+  pointer-events: none;
+}
+
 .logo-change-btn input {
   display: none;
 }
@@ -270,7 +281,7 @@ button:disabled {
 
 .qr-template-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-top: 18px;
 }
@@ -302,12 +313,43 @@ button:disabled {
 }
 
 .poster-preview {
+  min-height: 140px;
+  padding: 8px;
   background: linear-gradient(135deg, #f8fafc, #ffffff);
 }
 
+.poster-preview img {
+  width: 100%;
+  height: 124px;
+  object-fit: contain;
+  display: block;
+}
+
+.default-preview {
+  min-height: 140px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.default-preview img {
+  width: 100%;
+  height: 124px;
+  object-fit: contain;
+  display: block;
+}
+
 .tent-preview {
+  min-height: 140px;
+  padding: 8px;
   color: #ffffff;
   background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+}
+
+.tent-preview img {
+  width: 100%;
+  height: 124px;
+  object-fit: contain;
+  display: block;
 }
 
 .template-logo {
@@ -424,8 +466,19 @@ button:disabled {
   color: #f8fafc;
 }
 
-.settings-page.settings-dark .poster-preview {
+.settings-page.settings-dark .poster-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.poster-preview {
   background: linear-gradient(135deg, #111827, #0f172a);
+}
+
+.settings-page.settings-dark .default-preview {
+  background: #ffffff;
+  color: #111827;
 }
 
 .settings-page.settings-dark .template-upgrade-note {

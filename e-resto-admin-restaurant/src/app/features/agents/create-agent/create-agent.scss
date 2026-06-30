@@ -50,6 +50,11 @@
   background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
 }
 
+.required-star {
+  color: #dc2626;
+  font-weight: 900;
+}
+
 .photo-picker {
   border: 1px dashed #cfd6df;
   border-radius: 16px;

@@ -13,7 +13,7 @@
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title fs-3 mb-1" id="createAgentModalLabel">Nouvel employé</h5>
-                    <p class="mb-0 text-muted small">Création du compte, informations RH et badge professionnel.</p>
+                    <p class="mb-0 text-muted small">Création du compte, informations et badge professionnel.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -54,7 +54,7 @@
                             <div class="col-lg-8">
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label">Prénom <span class="text-danger">*</span></label>
+                                        <label class="form-label">Prénom <span class="required-star">*</span></label>
                                         <input type="text" class="form-control" formControlName="first_name" placeholder="Prenom">
                                         @if (agentForm.get('first_name')?.invalid && agentForm.get('first_name')?.touched) {
                                             <small class="text-danger">Le prénom est obligatoire.</small>
@@ -62,7 +62,7 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Nom <span class="text-danger">*</span></label>
+                                        <label class="form-label">Nom <span class="required-star">*</span></label>
                                         <input type="text" class="form-control" formControlName="last_name" placeholder="Nom">
                                         @if (agentForm.get('last_name')?.invalid && agentForm.get('last_name')?.touched) {
                                             <small class="text-danger">Le nom est obligatoire.</small>
@@ -70,7 +70,7 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Email de connexion <span class="text-danger">*</span></label>
+                                        <label class="form-label">Email de connexion <span class="required-star">*</span></label>
                                         <input type="email" class="form-control" formControlName="email" placeholder="email@restaurant.com">
                                         @if (agentForm.get('email')?.invalid && agentForm.get('email')?.touched) {
                                             <small class="text-danger">Entrez une adresse email valide.</small>
@@ -78,7 +78,7 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Téléphone <span class="text-danger">*</span></label>
+                                        <label class="form-label">Téléphone <span class="required-star">*</span></label>
                                         <input type="text" class="form-control" formControlName="phone_number" placeholder="+243...">
                                         @if (agentForm.get('phone_number')?.invalid && agentForm.get('phone_number')?.touched) {
                                             <small class="text-danger">Le téléphone est obligatoire.</small>
@@ -86,8 +86,8 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label">Adresse <span class="text-danger">*</span></label>
-                                        <textarea class="form-control" formControlName="address" rows="3" placeholder="Adresse complete"></textarea>
+                                        <label class="form-label">Adresse <span class="required-star">*</span></label>
+                                        <textarea class="form-control" formControlName="address" rows="3" placeholder="Adresse complète"></textarea>
                                         @if (agentForm.get('address')?.invalid && agentForm.get('address')?.touched) {
                                             <small class="text-danger">L'adresse est obligatoire.</small>
                                         }
@@ -100,7 +100,7 @@
                     @if (currentStep === 2) {
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Fonction <span class="text-danger">*</span></label>
+                                <label class="form-label">Fonction <span class="required-star">*</span></label>
                                 <input type="text" class="form-control" formControlName="fonction" placeholder="Manager, serveur, cuisinier...">
                                 @if (agentForm.get('fonction')?.invalid && agentForm.get('fonction')?.touched) {
                                     <small class="text-danger">La fonction est obligatoire.</small>
@@ -108,7 +108,7 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Matricule <span class="text-danger">*</span></label>
+                                <label class="form-label">Matricule <span class="required-star">*</span></label>
                                 <input type="text" class="form-control" formControlName="matricule" placeholder="EMP-001">
                                 @if (agentForm.get('matricule')?.invalid && agentForm.get('matricule')?.touched) {
                                     <small class="text-danger">Le matricule est obligatoire.</small>

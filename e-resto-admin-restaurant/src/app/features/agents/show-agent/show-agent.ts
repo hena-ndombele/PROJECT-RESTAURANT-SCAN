@@ -1,4 +1,4 @@
-import {Component, Input, OnInit, inject} from "@angular/core";
+import {Component, Input, OnInit, inject, signal} from "@angular/core";
 import {AgentDto} from "../../../models/agents/AgentDto";
 import {DatePipe} from "@angular/common";
 import {AgentService} from "../../../services/agents/agent-service";
@@ -26,7 +26,7 @@ export class ShowAgent implements OnInit{
   @Input() agentId:string | null = null;
   agentDetail!: AgentDto;
   restaurantData: BadgeRestaurantData = this.resolveRestaurantData();
-  isBadgeGenerating = false;
+  isBadgeGenerating = signal(false);
 
   ngOnInit() {
     if(this.agent) {
@@ -39,8 +39,8 @@ export class ShowAgent implements OnInit{
   }
 
   async downloadBadge(): Promise<void> {
-    if (!this.agentDetail || this.isBadgeGenerating) return;
-    this.isBadgeGenerating = true;
+    if (!this.agentDetail || this.isBadgeGenerating()) return;
+    this.isBadgeGenerating.set(true);
 
     try {
       const badgeData = await this.resolveBadgeData();
@@ -150,7 +150,7 @@ export class ShowAgent implements OnInit{
     } catch {
       window.alert("Impossible de réimprimer le badge. Vérifiez que le backend Laravel est démarré puis réessayez.");
     } finally {
-      this.isBadgeGenerating = false;
+      this.isBadgeGenerating.set(false);
     }
   }
 

@@ -166,7 +166,13 @@ export class Otp implements OnInit {
       showCancelButton: true,
       confirmButtonText: "Accéder au dashboard",
       cancelButtonText: "Ouvrir le menu",
-      confirmButtonColor: "#ff7a1a",
+      buttonsStyling: false,
+      customClass: {
+        popup: "otp-success-popup",
+        confirmButton: "otp-dashboard-confirm",
+        cancelButton: "otp-menu-cancel",
+        actions: "otp-success-actions",
+      },
     }).then((result) => {
       if (result.dismiss === Swal.DismissReason.cancel) {
         window.open(publicMenuUrl, "_blank", "noopener");

@@ -235,7 +235,7 @@ export class ListUser implements OnInit {
     request.subscribe({
       next: () => {
         this.isSaving.set(false);
-        Swal.fire("Success", selected ? "User updated successfully." : "User created successfully.", "success");
+        Swal.fire("Succèss", selected ? "Utilisateur mis à jour avec succès." : "Utilisateur créé avec succès.", "success");
         this.loadUsers();
         this.loadAgents();
         this.loadUsage();

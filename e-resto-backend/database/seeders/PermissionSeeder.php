@@ -60,6 +60,7 @@ class PermissionSeeder extends Seeder
             'feedback.view',
             'settings.view',
             'settings.update',
+            'business-restaurants.manage',
             'account-requests.list',
             'account-requests.delete',
             'profile.view',

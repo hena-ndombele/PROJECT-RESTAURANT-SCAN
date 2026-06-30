@@ -301,7 +301,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (error?.name === 'TimeoutError') {
-      return 'Le serveur met trop de temps a repondre. Reessayez dans un instant.';
+      return 'Le serveur met trop de temps a repondre. Réessayez dans un instant.';
     }
 
     const errors = error?.error?.errors;

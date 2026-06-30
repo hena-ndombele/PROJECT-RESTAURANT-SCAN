@@ -16,10 +16,14 @@ class GroupOrderParticipant extends Model
         'phone',
         'email',
         'is_creator',
+        'is_ready',
+        'last_seen_at',
     ];
 
     protected $casts = [
         'is_creator' => 'boolean',
+        'is_ready' => 'boolean',
+        'last_seen_at' => 'datetime',
     ];
 
     public function groupOrder()

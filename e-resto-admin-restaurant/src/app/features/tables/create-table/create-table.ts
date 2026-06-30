@@ -63,7 +63,7 @@ export class CreateTable {
             next: () => {
                 this.isLoading = false;
                 Swal.fire({
-                    title: "Succes",
+                    title: "Succès",
                     text: "La table a été créée avec succès.",
                     icon: "success",
                     confirmButtonText: "Fermer",
@@ -76,10 +76,10 @@ export class CreateTable {
                 const duplicateName = err.error?.errors?.name?.[0];
                 Swal.fire({
                     title: "Erreur",
-                    text: duplicateName || err.error?.message || "Erreur lors de la creation.",
+                    text: duplicateName || err.error?.message || "Erreur lors de la création.",
                     icon: "error",
                     confirmButtonColor: "#d33",
-                    confirmButtonText: "Reessayer"
+                    confirmButtonText: "Réessayer"
                 });
             }
         });

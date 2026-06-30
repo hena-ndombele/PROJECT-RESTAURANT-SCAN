@@ -4,6 +4,14 @@
   slug: string;
   description: string;
   monthly_price: string | number;
+  yearly_price?: string | number | null;
+  promo_label?: string | null;
+  promo_percent?: string | number | null;
+  promo_starts_at?: string | null;
+  promo_ends_at?: string | null;
+  has_active_promo?: boolean;
+  promo_monthly_price?: string | number | null;
+  promo_yearly_price?: string | number | null;
   currency: string;
   max_restaurants: number;
   max_tables: number | null;
@@ -12,6 +20,7 @@
   max_orders_per_month?: number | null;
   features: string[];
   is_popular: boolean;
+  is_active?: boolean;
 }
 
 export interface Restaurant {
@@ -86,6 +95,7 @@ export interface RestaurantPlanUsage {
     can_use_chatbot?: boolean;
     can_manage_roles?: boolean;
     can_use_multi_restaurant?: boolean;
+    can_use_dish_promotions?: boolean;
   };
   features?: Record<string, boolean>;
   payment_methods?: string[];

@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Saas;
 
+use App\Events\BusinessRestaurantsUpdated;
+use App\Events\MenuUpdated;
 use App\Http\Controllers\Controller;
-use App\Mail\RestaurantAccountCreatedMail;
 use App\Mail\SendOtpMail;
 use App\Models\ContactMessage;
 use App\Models\Feedback;
 use App\Models\NewsletterSubscriber;
 use App\Models\Otp;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Restaurant;
@@ -19,16 +21,20 @@ use App\Models\User;
 use App\Services\MaishaPayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 class SaasController extends Controller
 {
+    private const ACTIVE_PLANS_CACHE_KEY = 'saas:plans:active';
+
     public function __construct(private MaishaPayService $maishaPay)
     {
     }
@@ -53,7 +59,7 @@ class SaasController extends Controller
                     ->whereMonth('paid_at', now()->month)
                     ->sum('amount'),
             ],
-            'plans' => SaasPlan::where('is_active', true)->orderBy('monthly_price')->get(),
+            'plans' => $this->cachedActivePlans(),
             'recent_restaurants' => Restaurant::with('plan')->latest()->take(6)->get(),
             'payment_methods' => $this->paymentMethods(),
         ]);
@@ -61,9 +67,14 @@ class SaasController extends Controller
 
     public function plans()
     {
+        return response()->json($this->cachedActivePlans());
+    }
+
+    public function adminPlans()
+    {
         $this->ensureDefaultPlans();
 
-        return response()->json(SaasPlan::where('is_active', true)->orderBy('monthly_price')->get());
+        return response()->json(SaasPlan::orderBy('monthly_price')->get());
     }
 
     public function newsletterSubscribe(Request $request)
@@ -106,7 +117,10 @@ class SaasController extends Controller
         $validated['slug'] = Str::slug($validated['slug'] ?? $validated['name']);
         $validated['features'] = $this->normalizeFeatures($validated['features'] ?? []);
 
-        return response()->json(SaasPlan::create($validated), 201);
+        $plan = SaasPlan::create($validated);
+        $this->forgetPlansCache();
+
+        return response()->json($plan, 201);
     }
 
     public function updatePlan(Request $request, SaasPlan $plan)
@@ -120,6 +134,7 @@ class SaasController extends Controller
         }
 
         $plan->update($validated);
+        $this->forgetPlansCache();
 
         return response()->json($plan->fresh());
     }
@@ -133,6 +148,7 @@ class SaasController extends Controller
         }
 
         $plan->delete();
+        $this->forgetPlansCache();
 
         return response()->json(['message' => 'Plan supprime avec succes.']);
     }
@@ -203,7 +219,10 @@ class SaasController extends Controller
                 'status' => ((float) $plan->monthly_price) <= 0 ? 'active' : 'trial',
                 'saas_plan_id' => $plan->id,
                 'trial_ends_at' => ((float) $plan->monthly_price) <= 0 ? null : now()->addDays(14),
-                'settings' => $this->defaultRestaurantSettings(),
+                'settings' => [
+                    ...$this->defaultRestaurantSettings(),
+                    'account_created_mail_sent' => false,
+                ],
             ]);
 
             $user = User::create([
@@ -217,6 +236,8 @@ class SaasController extends Controller
                 'is_first_login' => false,
             ]);
 
+            $restaurant->update(['business_owner_user_id' => $user->id]);
+
             RestaurantSubscription::create([
                 'restaurant_id' => $restaurant->id,
                 'saas_plan_id' => $plan->id,
@@ -227,16 +248,6 @@ class SaasController extends Controller
                 'amount' => $plan->monthly_price,
                 'currency' => $plan->currency,
             ]);
-
-            app()->terminating(function () use ($user, $restaurant) {
-                try {
-                    Mail::to($user->email)->send(new RestaurantAccountCreatedMail(
-                        $user,
-                        $restaurant->fresh(['plan', 'subscription'])
-                    ));
-                } catch (\Throwable) {
-                }
-            });
 
             $otpCode = rand(10000, 99999);
             Otp::where('user_id', $user->id)->delete();
@@ -252,7 +263,7 @@ class SaasController extends Controller
             }
 
             return response()->json([
-                'message' => 'Compte cree. Un code OTP a ete envoye a votre adresse email.',
+                'message' => 'Compte crée. Un code OTP a été envoyé à votre adresse e-mail.',
                 'restaurant' => $restaurant->load(['plan', 'subscription']),
                 'owner' => $user,
                 'requires_otp' => true,
@@ -294,8 +305,9 @@ class SaasController extends Controller
                 return response()->json(['message' => 'Le plan selectionne est invalide.'], 422);
             }
             $billingCycle = $validated['billing_cycle'] ?? 'monthly';
-            $amount = $billingCycle === 'yearly'
-                ? $this->annualMonthlyPrice($plan) * 12
+            $amount = $this->planPriceForCycle($plan, $billingCycle);
+            $baseAmount = $billingCycle === 'yearly'
+                ? $this->yearlyPrice($plan)
                 : $this->monthlyPrice($plan);
 
             $payment = Payment::create([
@@ -314,6 +326,10 @@ class SaasController extends Controller
                     'wallet_id' => $walletId,
                     'wallet_id_original' => $validated['wallet_id'],
                     'billing_cycle' => $billingCycle,
+                    'base_amount' => $baseAmount,
+                    'discount_amount' => max(0, $baseAmount - $amount),
+                    'promo_label' => $plan->hasActivePromo() ? $plan->promo_label : null,
+                    'promo_percent' => $plan->hasActivePromo() ? $plan->promo_percent : null,
                 ],
             ]);
 
@@ -384,7 +400,7 @@ class SaasController extends Controller
             'message' => match ($payment->status) {
                 'paid' => 'Paiement confirme. Votre abonnement est actif.',
                 'pending' => 'Paiement encore en attente de confirmation operateur.',
-                default => 'Paiement non confirme. Verifiez le numero puis reessayez.',
+                default => 'Paiement non confirme. Verifiez le numero puis réessayez.',
             },
             'payment' => $payment,
             'restaurant' => $payment->restaurant ? $this->restaurantPayload($payment->restaurant) : null,
@@ -498,6 +514,230 @@ class SaasController extends Controller
         return response()->json($this->restaurantPayload($request->user()->restaurant));
     }
 
+    public function businessRestaurants(Request $request)
+    {
+        $restaurant = $request->user()->restaurant()->with('plan')->firstOrFail();
+        $this->ensureBusinessOwner($request->user(), $restaurant);
+
+        if (!$restaurant->plan?->allows('multi_restaurant')) {
+            return response()->json([
+                'message' => 'Le multi-restaurant est reserve au plan Business.',
+            ], 403);
+        }
+
+        if (!$this->canManageBusinessRestaurants($request->user(), $restaurant)) {
+            return response()->json([
+                'message' => 'Seul le proprietaire du compte Business peut gerer plusieurs restaurants.',
+            ], 403);
+        }
+
+        $restaurants = $this->businessRestaurantQuery($request->user())
+            ->with(['plan', 'subscription'])
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (Restaurant $restaurant) => $this->restaurantPayload($restaurant));
+
+        return response()->json([
+            'restaurants' => $restaurants,
+            'current_restaurant_id' => $request->user()->restaurant_id,
+            'limit' => $restaurant->plan?->max_restaurants ?? null,
+        ]);
+    }
+
+    public function storeBusinessRestaurant(Request $request)
+    {
+        $currentRestaurant = $request->user()->restaurant()->with(['plan', 'subscription'])->firstOrFail();
+        $this->ensureBusinessOwner($request->user(), $currentRestaurant);
+
+        if (!$currentRestaurant->plan?->allows('multi_restaurant')) {
+            return response()->json([
+                'message' => 'Le multi-restaurant est reserve au plan Business.',
+            ], 403);
+        }
+
+        if (!$this->canManageBusinessRestaurants($request->user(), $currentRestaurant)) {
+            return response()->json([
+                'message' => 'Seul le proprietaire du compte Business peut ajouter un restaurant.',
+            ], 403);
+        }
+
+        $limit = $currentRestaurant->plan?->max_restaurants;
+        $currentCount = $this->businessRestaurantQuery($request->user())->count();
+        if ($limit !== null && $currentCount >= (int) $limit) {
+            return response()->json([
+                'message' => "Limite de {$limit} restaurants atteinte pour votre plan Business.",
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'legal_name' => 'nullable|string|max:255',
+            'owner_phone' => 'nullable|string|max:30',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:120',
+            'country' => 'nullable|string|max:2',
+            'currency' => 'nullable|string|in:USD,CDF',
+        ]);
+
+        $businessOwnerId = $this->businessOwnerId($request->user());
+        $restaurant = Restaurant::create([
+            'name' => $validated['name'],
+            'slug' => $this->uniqueRestaurantSlug($validated['name']),
+            'legal_name' => $validated['legal_name'] ?? null,
+            'owner_name' => $currentRestaurant->owner_name ?: trim($request->user()->first_name . ' ' . $request->user()->last_name),
+            'owner_email' => $currentRestaurant->owner_email ?: $request->user()->email,
+            'owner_phone' => $validated['owner_phone'] ?? $currentRestaurant->owner_phone,
+            'address' => $validated['address'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'country' => $validated['country'] ?? $currentRestaurant->country ?? 'CD',
+            'currency' => $validated['currency'] ?? $currentRestaurant->currency ?? 'CDF',
+            'status' => $currentRestaurant->status,
+            'saas_plan_id' => $currentRestaurant->saas_plan_id,
+            'business_owner_user_id' => $businessOwnerId,
+            'trial_ends_at' => $currentRestaurant->trial_ends_at,
+            'subscription_ends_at' => $currentRestaurant->subscription_ends_at,
+            'settings' => $this->defaultRestaurantSettings(),
+        ]);
+
+        if ($currentRestaurant->plan) {
+            RestaurantSubscription::create([
+                'restaurant_id' => $restaurant->id,
+                'saas_plan_id' => $currentRestaurant->plan->id,
+                'status' => $currentRestaurant->subscription?->status ?? ($restaurant->status === 'active' ? 'active' : 'trialing'),
+                'starts_at' => Carbon::today(),
+                'ends_at' => $currentRestaurant->subscription?->ends_at,
+                'next_billing_at' => $currentRestaurant->subscription?->next_billing_at,
+                'amount' => $currentRestaurant->subscription?->amount ?? $currentRestaurant->plan->monthly_price,
+                'currency' => $currentRestaurant->subscription?->currency ?? $currentRestaurant->plan->currency,
+            ]);
+        }
+
+        $restaurantPayload = $this->restaurantPayload($restaurant->fresh(['plan', 'subscription']));
+        $this->broadcastBusinessRestaurantsUpdated($businessOwnerId, 'created', $restaurant->id, [
+            'restaurant' => $restaurantPayload,
+        ]);
+
+        return response()->json([
+            'message' => 'Restaurant ajouté avec succès.',
+            'restaurant' => $restaurantPayload,
+        ], 201);
+    }
+
+    public function switchBusinessRestaurant(Request $request, Restaurant $restaurant)
+    {
+        $currentRestaurant = $request->user()->restaurant()->with('plan')->firstOrFail();
+        $this->ensureBusinessOwner($request->user(), $currentRestaurant);
+
+        if (!$currentRestaurant->plan?->allows('multi_restaurant')) {
+            return response()->json([
+                'message' => 'Le multi-restaurant est reserve au plan Business.',
+            ], 403);
+        }
+
+        if (!$this->canManageBusinessRestaurants($request->user(), $currentRestaurant)) {
+            return response()->json([
+                'message' => 'Seul le proprietaire du compte Business peut changer de restaurant.',
+            ], 403);
+        }
+
+        $businessOwnerId = $this->businessOwnerId($request->user());
+        $restaurantOwnerId = $restaurant->business_owner_user_id ?: ($restaurant->id === $currentRestaurant->id ? $businessOwnerId : null);
+
+        if ($restaurantOwnerId !== $businessOwnerId) {
+            return response()->json([
+                'message' => 'Ce restaurant ne fait pas partie de votre espace Business.',
+            ], 403);
+        }
+
+        if (!$restaurant->business_owner_user_id) {
+            $restaurant->update(['business_owner_user_id' => $businessOwnerId]);
+        }
+
+        $request->user()->update(['restaurant_id' => $restaurant->id]);
+        $user = $request->user()->fresh(['roles.permissions', 'agent', 'restaurant.plan', 'restaurant.subscription']);
+
+        return response()->json([
+            'message' => 'Restaurant actif change avec succes.',
+            'user' => $user,
+            'restaurant' => $this->restaurantPayload($user->restaurant),
+        ]);
+    }
+
+    public function destroyBusinessRestaurant(Request $request, Restaurant $restaurant)
+    {
+        $currentRestaurant = $request->user()->restaurant()->with('plan')->firstOrFail();
+        $this->ensureBusinessOwner($request->user(), $currentRestaurant);
+
+        if (!$currentRestaurant->plan?->allows('multi_restaurant')) {
+            return response()->json([
+                'message' => 'Le multi-restaurant est reserve au plan Business.',
+            ], 403);
+        }
+
+        $businessOwnerId = $this->businessOwnerId($request->user());
+        $isOwner = $currentRestaurant->business_owner_user_id === $request->user()->id
+            || strcasecmp((string) $currentRestaurant->owner_email, (string) $request->user()->email) === 0;
+
+        if (!$isOwner) {
+            return response()->json([
+                'message' => 'Seul le proprietaire du compte Business peut supprimer un restaurant.',
+            ], 403);
+        }
+
+        $restaurantOwnerId = $restaurant->business_owner_user_id ?: ($restaurant->id === $currentRestaurant->id ? $businessOwnerId : null);
+        if ($restaurantOwnerId !== $businessOwnerId) {
+            return response()->json([
+                'message' => 'Ce restaurant ne fait pas partie de votre espace Business.',
+            ], 403);
+        }
+
+        $restaurants = $this->businessRestaurantQuery($request->user())
+            ->orderBy('created_at')
+            ->get();
+
+        if ($restaurants->count() <= 1) {
+            return response()->json([
+                'message' => 'Impossible de supprimer le dernier restaurant du compte Business.',
+            ], 422);
+        }
+
+        $fallbackRestaurant = $restaurants
+            ->first(fn (Restaurant $item) => $item->id !== $restaurant->id);
+
+        if (!$fallbackRestaurant) {
+            return response()->json([
+                'message' => 'Aucun autre restaurant disponible pour continuer votre session.',
+            ], 422);
+        }
+
+        if ($request->user()->restaurant_id === $restaurant->id) {
+            $request->user()->update(['restaurant_id' => $fallbackRestaurant->id]);
+        }
+
+        $deletedRestaurantId = $restaurant->id;
+        $restaurant->delete();
+
+        $user = $request->user()->fresh(['roles.permissions', 'agent', 'restaurant.plan', 'restaurant.subscription']);
+        $remainingRestaurants = $this->businessRestaurantQuery($user)
+            ->with(['plan', 'subscription'])
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (Restaurant $item) => $this->restaurantPayload($item));
+
+        $fallbackPayload = $this->restaurantPayload($user->restaurant);
+        $this->broadcastBusinessRestaurantsUpdated($businessOwnerId, 'deleted', $deletedRestaurantId, [
+            'fallback_restaurant' => $fallbackPayload,
+        ]);
+
+        return response()->json([
+            'message' => 'Restaurant Business supprime avec succes.',
+            'user' => $user,
+            'restaurant' => $fallbackPayload,
+            'restaurants' => $remainingRestaurants,
+            'current_restaurant_id' => $user->restaurant_id,
+        ]);
+    }
+
     public function dashboard(Request $request)
     {
         $restaurant = $request->user()->restaurant()->with(['plan', 'subscription'])->firstOrFail();
@@ -525,6 +765,95 @@ class SaasController extends Controller
         ]);
     }
 
+    public function businessAnalytics(Request $request)
+    {
+        $restaurant = $request->user()->restaurant()->with('plan')->firstOrFail();
+        $this->ensureBusinessOwner($request->user(), $restaurant);
+
+        if (!$this->canManageBusinessRestaurants($request->user(), $restaurant)) {
+            return response()->json([
+                'message' => 'La vue globale Business est reservee au proprietaire ou aux roles autorises.',
+            ], 403);
+        }
+
+        $month = (int) $request->query('month', Carbon::now()->month);
+        $year = (int) $request->query('year', Carbon::now()->year);
+        $month = min(12, max(1, $month));
+        $year = min(Carbon::now()->year + 1, max(2020, $year));
+
+        $restaurants = $this->businessRestaurantQuery($request->user())
+            ->withCount(['tables', 'users'])
+            ->orderBy('created_at')
+            ->get();
+        $restaurantIds = $restaurants->pluck('id');
+        $today = Carbon::today();
+        $selectedPeriod = Carbon::create($year, $month, 1);
+        $monthStart = $selectedPeriod->copy()->startOfMonth();
+        $monthEnd = $selectedPeriod->copy()->endOfMonth();
+        $yearStart = Carbon::create($year, 1, 1)->startOfYear();
+        $yearEnd = Carbon::create($year, 12, 31)->endOfYear();
+
+        $monthOrders = Order::query()
+            ->whereIn('restaurant_id', $restaurantIds)
+            ->whereBetween('created_at', [$monthStart, $monthEnd]);
+
+        $restaurantRows = $restaurants->map(function (Restaurant $restaurant) use ($monthStart, $monthEnd) {
+            $orders = $restaurant->orders()->whereBetween('created_at', [$monthStart, $monthEnd]);
+            $paidOrders = (clone $orders)->where('payment_status', 'paid')->get(['currency', 'total_amount']);
+            $revenue = $this->ordersRevenueByCurrency($paidOrders);
+            $ordersCount = (clone $orders)->count();
+
+            return [
+                'id' => $restaurant->id,
+                'name' => $restaurant->name,
+                'city' => $restaurant->city,
+                'logo_url' => $restaurant->logo ? asset("storage/{$restaurant->logo}") : null,
+                'orders_count' => $ordersCount,
+                'paid_orders_count' => $paidOrders->count(),
+                'revenue_by_currency' => $revenue,
+                'tables_count' => $restaurant->tables_count,
+                'users_count' => $restaurant->users_count,
+                'score' => $paidOrders->sum(fn ($order) => (float) $order->total_amount),
+            ];
+        })->sortByDesc('score')->values();
+
+        $topRestaurant = $restaurantRows->first();
+        $weakestRestaurant = $restaurantRows->sortBy('score')->first();
+
+        return response()->json([
+            'period' => [
+                'label' => $selectedPeriod->locale('fr')->isoFormat('MMMM YYYY'),
+                'from' => $monthStart->toDateString(),
+                'to' => $monthEnd->toDateString(),
+                'month' => $month,
+                'year' => $year,
+            ],
+            'summary' => [
+                'restaurants_count' => $restaurants->count(),
+                'orders_today' => Order::whereIn('restaurant_id', $restaurantIds)->whereDate('created_at', $today)->count(),
+                'orders_month' => (clone $monthOrders)->count(),
+                'orders_year' => Order::whereIn('restaurant_id', $restaurantIds)->whereBetween('created_at', [$yearStart, $yearEnd])->count(),
+                'revenue_month_by_currency' => $this->ordersRevenueByCurrency(
+                    Order::whereIn('restaurant_id', $restaurantIds)
+                        ->whereBetween('created_at', [$monthStart, $monthEnd])
+                        ->where('payment_status', 'paid')
+                        ->get(['currency', 'total_amount'])
+                ),
+                'revenue_year_by_currency' => $this->ordersRevenueByCurrency(
+                    Order::whereIn('restaurant_id', $restaurantIds)
+                        ->whereBetween('created_at', [$yearStart, $yearEnd])
+                        ->where('payment_status', 'paid')
+                        ->get(['currency', 'total_amount'])
+                ),
+                'best_restaurant' => $topRestaurant,
+                'weakest_restaurant' => $weakestRestaurant,
+            ],
+            'restaurants' => $restaurantRows,
+            'monthly_evolution' => $this->businessMonthlyEvolution($restaurantIds),
+            'top_dishes' => $this->businessTopDishes($restaurantIds, $monthStart, $monthEnd),
+        ]);
+    }
+
     public function usage(Request $request)
     {
         $restaurant = $request->user()->restaurant()->with(['plan', 'subscription'])->firstOrFail();
@@ -545,7 +874,9 @@ class SaasController extends Controller
         $usage = [
             'tables' => $restaurant->tables()->count(),
             'users' => $restaurant->users()->count(),
-            'roles' => Role::count(),
+            'roles' => Schema::hasColumn('roles', 'restaurant_id')
+                ? Role::where('restaurant_id', $restaurant->id)->count()
+                : 0,
             'dishes' => $restaurant->plats()->count(),
             'orders_month' => $restaurant->orders()->whereBetween('created_at', [$monthStart, $monthEnd])->count(),
         ];
@@ -577,22 +908,23 @@ class SaasController extends Controller
                 'can_manage_roles' => (bool) ($features['roles'] ?? false),
                 'can_create_role' => $canCreateRole,
                 'can_use_multi_restaurant' => (bool) ($features['multi_restaurant'] ?? false),
+                'can_use_dish_promotions' => (bool) ($features['dish_promotions'] ?? false),
             ],
             'features' => $features,
             'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
             'messages' => [
                 'tables' => $limits['tables'] === null
                     ? 'Tables illimitees'
-                    : ($canCreateTable ? "{$usage['tables']} / {$limits['tables']} tables utilisees" : "Limite de {$limits['tables']} tables atteinte pour le plan {$restaurant->plan?->name}."),
+                    : ($canCreateTable ? "{$usage['tables']} / {$limits['tables']} tables utilisées" : "Limite de {$limits['tables']} tables atteinte pour le plan {$restaurant->plan?->name}."),
                 'users' => $limits['users'] === null
                     ? 'Utilisateurs illimites'
-                    : ($canCreateUser ? "{$usage['users']} / {$limits['users']} utilisateurs utilises" : "Limite de {$limits['users']} utilisateurs atteinte pour le plan {$restaurant->plan?->name}."),
+                    : ($canCreateUser ? "{$usage['users']} / {$limits['users']} utilisateurs utilisés" : "Limite de {$limits['users']} utilisateurs atteinte pour le plan {$restaurant->plan?->name}."),
                 'roles' => $limits['roles'] === null
                     ? 'Roles illimites'
-                    : ($canCreateRole ? "{$usage['roles']} / {$limits['roles']} roles utilises" : "Limite de {$limits['roles']} roles atteinte pour le plan {$restaurant->plan?->name}."),
+                    : ($canCreateRole ? "{$usage['roles']} / {$limits['roles']} roles utilisés" : "Limite de {$limits['roles']} roles atteinte pour le plan {$restaurant->plan?->name}."),
                 'dishes' => $limits['dishes'] === null
                     ? 'Plats illimites'
-                    : ($canCreateDish ? "{$usage['dishes']} / {$limits['dishes']} plats utilises" : "Limite de {$limits['dishes']} plats atteinte pour le plan {$restaurant->plan?->name}."),
+                    : ($canCreateDish ? "{$usage['dishes']} / {$limits['dishes']} plats utilisés" : "Limite de {$limits['dishes']} plats atteinte pour le plan {$restaurant->plan?->name}."),
                 'orders_month' => $limits['orders_month'] === null
                     ? 'Commandes illimitees'
                     : ($canAcceptOrder ? "{$usage['orders_month']} / {$limits['orders_month']} commandes ce mois" : "Limite de {$limits['orders_month']} commandes mensuelles atteinte pour le plan {$restaurant->plan?->name}."),
@@ -660,6 +992,7 @@ class SaasController extends Controller
         if ($logoChanged) {
             $this->regenerateTableQrCodes($restaurant->fresh());
         }
+        $this->broadcastMenuUpdated($restaurant->id, 'restaurant_settings_updated');
 
         return response()->json($this->restaurantPayload($restaurant->fresh(['plan', 'subscription'])));
     }
@@ -671,6 +1004,32 @@ class SaasController extends Controller
             'pro' => 8,
             default => null,
         };
+    }
+
+    private function broadcastMenuUpdated(?string $restaurantId, string $reason): void
+    {
+        if (!$restaurantId) {
+            return;
+        }
+
+        try {
+            broadcast(new MenuUpdated($restaurantId, $reason))->toOthers();
+        } catch (\Throwable) {
+            // Keep the saved change even when the realtime server is unavailable.
+        }
+    }
+
+    private function broadcastBusinessRestaurantsUpdated(?string $businessOwnerId, string $action, ?string $restaurantId = null, array $payload = []): void
+    {
+        if (!$businessOwnerId) {
+            return;
+        }
+
+        try {
+            broadcast(new BusinessRestaurantsUpdated($businessOwnerId, $action, $restaurantId, $payload))->toOthers();
+        } catch (\Throwable) {
+            // Keep the saved change even when the realtime server is unavailable.
+        }
     }
 
     public function restaurants(Request $request)
@@ -724,10 +1083,13 @@ class SaasController extends Controller
 
     public function supportCenter()
     {
+        $reservations = Reservation::with(['restaurant', 'table'])->latest()->take(50)->get();
+
         return response()->json([
             'contact_messages' => ContactMessage::latest()->take(50)->get(),
             'feedbacks' => Feedback::with(['restaurant', 'order.table'])->latest()->take(50)->get(),
-            'Réservations' => Reservation::with(['restaurant', 'table'])->latest()->take(50)->get(),
+            'reservations' => $reservations,
+            'Réservations' => $reservations,
         ]);
     }
 
@@ -979,6 +1341,26 @@ class SaasController extends Controller
         return min(max((int) $request->query('per_page', 10), 5), 50);
     }
 
+    private function cachedActivePlans()
+    {
+        return Cache::remember(
+            self::ACTIVE_PLANS_CACHE_KEY,
+            now()->addSeconds((int) env('SAAS_PLANS_CACHE_SECONDS', 300)),
+            function () {
+                $this->ensureDefaultPlans();
+
+                return SaasPlan::where('is_active', true)
+                    ->orderBy('monthly_price')
+                    ->get();
+            }
+        );
+    }
+
+    private function forgetPlansCache(): void
+    {
+        Cache::forget(self::ACTIVE_PLANS_CACHE_KEY);
+    }
+
     private function countRestaurantsForPlan(string $planSlug): int
     {
         $needle = strtolower($planSlug);
@@ -1078,24 +1460,24 @@ class SaasController extends Controller
         );
     }
 
+    private function yearlyPrice(SaasPlan $plan): float
+    {
+        return (float) ($plan->yearly_price ?: ((float) $plan->monthly_price * 12));
+    }
+
+    private function planPriceForCycle(SaasPlan $plan, string $billingCycle): float
+    {
+        return $plan->priceForCycle($billingCycle);
+    }
+
     private function annualMonthlyPrice(SaasPlan $plan): float
     {
-        return match ($plan->tier()) {
-            'starter' => 12.0,
-            'pro' => 30.0,
-            'business' => 40.0,
-            default => (float) $plan->monthly_price,
-        };
+        return $this->yearlyPrice($plan) / 12;
     }
 
     private function monthlyPrice(SaasPlan $plan): float
     {
-        return match ($plan->tier()) {
-            'starter' => 1.0,
-            'pro' => 35.0,
-            'business' => 50.0,
-            default => (float) $plan->monthly_price,
-        };
+        return (float) $plan->monthly_price;
     }
 
     private function refreshBillingStatus(Restaurant $restaurant): void
@@ -1219,10 +1601,17 @@ class SaasController extends Controller
             'slug' => 'nullable|string|max:120|alpha_dash|unique:saas_plans,slug,' . ($plan?->id ?? 'NULL') . ',id',
             'description' => 'nullable|string|max:500',
             'monthly_price' => 'sometimes|numeric|min:0',
+            'yearly_price' => 'sometimes|nullable|numeric|min:0',
+            'promo_label' => 'sometimes|nullable|string|max:80',
+            'promo_percent' => 'sometimes|nullable|integer|min:1|max:95',
+            'promo_starts_at' => 'sometimes|nullable|date',
+            'promo_ends_at' => 'sometimes|nullable|date|after_or_equal:promo_starts_at',
             'currency' => 'sometimes|string|in:USD,CDF',
             'max_restaurants' => 'sometimes|integer|min:1',
             'max_tables' => 'sometimes|nullable|integer|min:1',
             'max_users' => 'sometimes|nullable|integer|min:1',
+            'max_dishes' => 'sometimes|nullable|integer|min:1',
+            'max_orders_per_month' => 'sometimes|nullable|integer|min:1',
             'features' => 'nullable',
             'is_popular' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
@@ -1294,6 +1683,139 @@ class SaasController extends Controller
         ];
     }
 
+    private function businessOwnerId(User $user): string
+    {
+        $restaurant = $user->restaurant;
+        if ($restaurant?->business_owner_user_id) {
+            return $restaurant->business_owner_user_id;
+        }
+
+        $owner = $restaurant?->owner_email
+            ? User::where('email', $restaurant->owner_email)->first()
+            : null;
+
+        return $owner?->id ?: $user->id;
+    }
+
+    private function ensureBusinessOwner(User $user, Restaurant $restaurant): void
+    {
+        if (!$restaurant->business_owner_user_id && strcasecmp((string) $restaurant->owner_email, (string) $user->email) === 0) {
+            $restaurant->update(['business_owner_user_id' => $user->id]);
+            $restaurant->refresh();
+        }
+    }
+
+    private function canManageBusinessRestaurants(?User $user, Restaurant $restaurant): bool
+    {
+        if (!$user || !$restaurant->plan?->allows('multi_restaurant')) {
+            return false;
+        }
+
+        if ($restaurant->business_owner_user_id) {
+            return $restaurant->business_owner_user_id === $user->id
+                || $this->userHasMultiTenantRole($user);
+        }
+
+        return strcasecmp((string) $restaurant->owner_email, (string) $user->email) === 0
+            || $this->userHasMultiTenantRole($user);
+    }
+
+    private function userHasMultiTenantRole(User $user): bool
+    {
+        $user->loadMissing('roles');
+        $businessOwnerId = $this->businessOwnerId($user);
+        $restaurantIds = Restaurant::query()
+            ->where('business_owner_user_id', $businessOwnerId)
+            ->orWhere('id', $user->restaurant_id)
+            ->pluck('id');
+
+        $multiTenantRoles = ['multi-tenant', 'multi-restaurant', 'multi-restaurants'];
+
+        return $user->roles
+            ->filter(fn ($role) => !$role->restaurant_id || $restaurantIds->contains($role->restaurant_id))
+            ->contains(function ($role) use ($multiTenantRoles) {
+                $roleName = Str::of((string) $role->name)
+                    ->lower()
+                    ->replace(['_', ' '], '-')
+                    ->toString();
+
+                return in_array($roleName, $multiTenantRoles, true);
+            });
+    }
+
+    private function businessRestaurantQuery(User $user)
+    {
+        $businessOwnerId = $this->businessOwnerId($user);
+        $currentRestaurantId = $user->restaurant_id;
+
+        return Restaurant::query()
+            ->where('business_owner_user_id', $businessOwnerId)
+            ->orWhere(function ($query) use ($currentRestaurantId) {
+                $query->where('id', $currentRestaurantId)
+                    ->whereNull('business_owner_user_id');
+            });
+    }
+
+    private function ordersRevenueByCurrency($orders): array
+    {
+        $totals = collect($orders)
+            ->groupBy(fn ($order) => $order->currency ?: 'USD')
+            ->map(fn ($items, $currency) => [
+                'currency' => $currency,
+                'amount' => round((float) $items->sum(fn ($order) => (float) $order->total_amount), 2),
+                'count' => $items->count(),
+            ])
+            ->values();
+
+        foreach (['CDF', 'USD'] as $currency) {
+            if (!$totals->contains('currency', $currency)) {
+                $totals->push(['currency' => $currency, 'amount' => 0, 'count' => 0]);
+            }
+        }
+
+        return $totals->sortBy('currency')->values()->all();
+    }
+
+    private function businessMonthlyEvolution($restaurantIds): array
+    {
+        return collect(range(5, 0))->map(function (int $offset) use ($restaurantIds) {
+            $date = Carbon::now()->subMonths($offset);
+            $start = $date->copy()->startOfMonth();
+            $end = $date->copy()->endOfMonth();
+            $orders = Order::whereIn('restaurant_id', $restaurantIds)
+                ->whereBetween('created_at', [$start, $end]);
+            $paidOrders = (clone $orders)->where('payment_status', 'paid')->get(['currency', 'total_amount']);
+
+            return [
+                'label' => $date->locale('fr')->isoFormat('MMM YYYY'),
+                'orders_count' => (clone $orders)->count(),
+                'revenue_by_currency' => $this->ordersRevenueByCurrency($paidOrders),
+            ];
+        })->values()->all();
+    }
+
+    private function businessTopDishes($restaurantIds, Carbon $start, Carbon $end): array
+    {
+        return DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('plats', 'plats.id', '=', 'order_items.plat_id')
+            ->whereIn('orders.restaurant_id', $restaurantIds)
+            ->whereBetween('orders.created_at', [$start, $end])
+            ->selectRaw('COALESCE(plats.name, ?) as name', ['Plat inconnu'])
+            ->selectRaw('SUM(order_items.quantity) as quantity')
+            ->selectRaw('SUM(order_items.quantity * order_items.price_at_order) as revenue')
+            ->groupBy('name')
+            ->orderByDesc('quantity')
+            ->limit(8)
+            ->get()
+            ->map(fn ($item) => [
+                'name' => $item->name,
+                'quantity' => (int) $item->quantity,
+                'revenue' => round((float) $item->revenue, 2),
+            ])
+            ->all();
+    }
+
     private function restaurantPayload(?Restaurant $restaurant): ?array
     {
         if (!$restaurant) {
@@ -1305,6 +1827,7 @@ class SaasController extends Controller
         return [
             ...$restaurant->toArray(),
             'logo_url' => $restaurant->logo ? asset("storage/{$restaurant->logo}") : null,
+            'logo_data_url' => $this->publicDiskDataUrl($restaurant->logo),
             'limits' => [
                 'tables' => $restaurant->plan?->maxTables(),
                 'users' => $restaurant->plan?->maxUsers(),
@@ -1313,8 +1836,21 @@ class SaasController extends Controller
                 'restaurants' => $restaurant->plan?->max_restaurants ?? 1,
             ],
             'features' => $restaurant->plan?->featurePermissions() ?? [],
+            'can_manage_business_restaurants' => $this->canManageBusinessRestaurants(auth()->user(), $restaurant),
             'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],
         ];
+    }
+
+    private function publicDiskDataUrl(?string $path): ?string
+    {
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        $contents = Storage::disk('public')->get($path);
+        $mimeType = Storage::disk('public')->mimeType($path) ?: 'image/png';
+
+        return 'data:' . $mimeType . ';base64,' . base64_encode($contents);
     }
 
     private function regenerateTableQrCodes(Restaurant $restaurant): void
@@ -1360,45 +1896,67 @@ class SaasController extends Controller
                 'slug' => 'starter',
                 'description' => 'Pour lancer un service digital simple et professionnel.',
                 'monthly_price' => 15,
+                'yearly_price' => 144,
                 'max_tables' => 6,
                 'max_users' => 5,
-                'features' => ['15 plats', '150 commandes/mois', 'Gestion des commandes', 'Templates QR Standard', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
+                'max_dishes' => 15,
+                'max_orders_per_month' => 150,
+                'features' => ['15 plats', '150 commandes/mois', 'Gestion des commandes', 'Templates QR Standard', 'Promotions des plats', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Pro',
                 'slug' => 'pro',
                 'description' => 'Pour automatiser le service et piloter un restaurant en croissance.',
                 'monthly_price' => 35,
+                'yearly_price' => 360,
                 'max_tables' => null,
                 'max_users' => null,
+                'max_dishes' => null,
+                'max_orders_per_month' => null,
                 'is_popular' => true,
-                'features' => ['Commandes illimitées', 'Plats illimités', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
+                'features' => ['Commandes illimitées', 'Plats illimités', 'Promotions des plats', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
             ],
             [
                 'name' => 'Business',
                 'slug' => 'business',
                 'description' => 'Pour les équipes structurées et les restaurants multi-sites.',
                 'monthly_price' => 50,
+                'yearly_price' => 480,
                 'max_restaurants' => 5,
                 'max_tables' => null,
                 'max_users' => null,
-                'features' => ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
+                'max_dishes' => null,
+                'max_orders_per_month' => null,
+                'features' => ['Tout le plan Pro', 'Promotions des plats', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
             ],
         ];
 
         SaasPlan::whereIn('slug', ['free', 'enterprise'])->update(['is_active' => false]);
 
         foreach ($plans as $plan) {
-            SaasPlan::updateOrCreate(
-                ['slug' => $plan['slug']],
-                [
-                    'currency' => 'USD',
-                    'is_active' => true,
-                    'is_popular' => $plan['is_popular'] ?? false,
-                    'max_restaurants' => $plan['max_restaurants'] ?? 1,
-                    ...$plan,
-                ]
-            );
+            $existing = SaasPlan::where('slug', $plan['slug'])->first();
+
+            if ($existing) {
+                $defaults = [];
+                foreach (['yearly_price', 'max_dishes', 'max_orders_per_month'] as $field) {
+                    if (blank($existing->getRawOriginal($field)) && array_key_exists($field, $plan)) {
+                        $defaults[$field] = $plan[$field];
+                    }
+                }
+
+                if ($defaults) {
+                    $existing->update($defaults);
+                }
+                continue;
+            }
+
+            SaasPlan::create([
+                'currency' => 'USD',
+                'is_active' => true,
+                'is_popular' => $plan['is_popular'] ?? false,
+                'max_restaurants' => $plan['max_restaurants'] ?? 1,
+                ...$plan,
+            ]);
         }
     }
 

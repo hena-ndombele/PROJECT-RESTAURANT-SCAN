@@ -6,6 +6,7 @@ import { SaasService } from '../../services/saas/saas-service';
 
 type PricingPlan = SaasPlan & {
   installation_fee: number;
+  installation_fee_label: string;
   limitations: string[];
 };
 
@@ -18,76 +19,44 @@ type PricingPlan = SaasPlan & {
 
 })
 export class PricingPage implements OnInit {
-  plans: PricingPlan[] = [
-    {
-      id: 'starter',
-      name: 'Starter',
-      slug: 'starter',
-      description: 'Pour lancer un service digital simple, rapide et professionnel.',
-      monthly_price: 15,
-      currency: 'USD',
-      max_restaurants: 1,
-      max_tables: 6,
-      max_users: 5,
-      features: ['15 plats', '5 employés', '150 commandes/mois', 'Dashboard et statistiques', 'Gestion des commandes', 'Templates QR Standard', 'Cash uniquement', 'Sur place / Emporter', 'Support standard','Rôles limités'],
-      installation_fee: 10,
-      limitations: [ 'Pas de réservations', 'Pas de feedback client', 'Pas de personnalisation'],
-      is_popular: false,
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      slug: 'pro',
-      description: 'Pour automatiser le service et piloter un restaurant en croissance.',
-      monthly_price: 35,
-      currency: 'USD',
-      max_restaurants: 1,
-      max_tables: null,
-      max_users: null,
-      features: ['Commandes illimitées', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Templates QR premium', 'Support prioritaire'],
-      installation_fee: 10,
-      limitations: ['Pas de multi-restaurant', 'Assistant de tableau de bord avancé réservé à l’offre Business.'],
-      is_popular: true,
-    },
-    {
-      id: 'business',
-      name: 'Business',
-      slug: 'business',
-      description: 'Pour les équipes structurées et les restaurants multi-sites.',
-      monthly_price: 50,
-      currency: 'USD',
-      max_restaurants: 5,
-      max_tables: null,
-      max_users: null,
-      max_dishes: null,
-      features: ['Tout le plan Pro', 'Templates QR premium', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Multi-restaurants'],
-      installation_fee: 15,
-      limitations: [],
-      is_popular: false,
-    },
-  ];
+  plans: PricingPlan[] = this.defaultPlans().map((plan) => this.decoratePlan(plan));
   errorMessage = '';
   selectingPlanSlug = '';
   billingCycle: 'monthly' | 'yearly' = 'monthly';
+  loadingPlans = false;
 
   constructor(private router: Router, private saas: SaasService) {}
 
   ngOnInit(): void {
     localStorage.removeItem('selected_plan');
+    this.setBillingCycle('monthly');
+    this.loadingPlans = true;
     this.saas.plans().subscribe({
       next: (plans) => {
-        if (plans.length) {
-          this.plans = plans
-            .filter((plan) => ['starter', 'pro', 'business'].includes(String(plan.slug).toLowerCase()))
-            .sort((left, right) => this.planOrder(left) - this.planOrder(right))
-            .map((plan) => this.decoratePlan(plan));
-          this.errorMessage = '';
+        const syncedPlans = plans
+          .filter((plan) => plan.is_active !== false)
+          .sort((left, right) => this.planOrder(left) - this.planOrder(right))
+          .map((plan) => this.decoratePlan(plan));
+
+        if (syncedPlans.length) {
+          this.plans = syncedPlans;
         }
+        this.errorMessage = '';
+        this.loadingPlans = false;
       },
       error: () => {
-        this.errorMessage = 'Plans locaux affichés. Démarrez Laravel sur le port 8000 pour synchroniser les tarifs.';
+        this.loadingPlans = false;
+        this.errorMessage = '';
       },
     });
+  }
+
+  setBillingCycle(cycle: 'monthly' | 'yearly'): void {
+    this.billingCycle = cycle;
+  }
+
+  trackPlan(_: number, plan: PricingPlan): string {
+    return plan.id || plan.slug;
   }
 
   choosePlan(plan: PricingPlan): void {
@@ -100,9 +69,11 @@ export class PricingPage implements OnInit {
       slug: plan.slug,
       price: this.paymentAmount(plan),
       monthly_price: this.monthlyPriceForPlan(plan),
+      yearly_price: this.yearlyPrice(plan),
       annual_monthly_price: this.annualMonthlyPrice(plan),
       currency: plan.currency,
       installation_fee: plan.installation_fee,
+      installation_fee_label: plan.installation_fee_label,
       cycle: this.billingCycle,
     }));
 
@@ -112,17 +83,27 @@ export class PricingPage implements OnInit {
   }
 
   displayPrice(plan: SaasPlan): number {
-    const monthlyPrice = this.monthlyPriceForPlan(plan);
-    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice(plan) : monthlyPrice;
+    return this.billingCycle === 'yearly' ? this.effectiveAmount(plan, 'yearly') / 12 : this.effectiveAmount(plan, 'monthly');
   }
 
   paymentAmount(plan: SaasPlan): number {
-    const monthlyPrice = this.monthlyPriceForPlan(plan);
-    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice(plan) * 12 : monthlyPrice;
+    return this.effectiveAmount(plan, this.billingCycle);
+  }
+
+  originalPaymentAmount(plan: SaasPlan): number {
+    return this.billingCycle === 'yearly' ? this.yearlyPrice(plan) : this.monthlyPriceForPlan(plan);
+  }
+
+  hasActivePromo(plan: SaasPlan): boolean {
+    return !!plan.has_active_promo && Number(plan.promo_percent || 0) > 0;
   }
 
   displayCurrency(plan: SaasPlan): string {
     return plan.currency === 'CDF' ? 'CDF' : plan.currency === 'USD' ? '$' : plan.currency || 'CDF';
+  }
+
+  installationFeeDisplay(plan: PricingPlan): string {
+    return plan.installation_fee_label || `${plan.installation_fee.toLocaleString('fr-FR')} ${this.displayCurrency(plan)}`;
   }
 
   limitLabel(value: number | null, singular: string, unlimited: string): string {
@@ -130,8 +111,12 @@ export class PricingPage implements OnInit {
   }
 
   dishLimitLabel(plan: SaasPlan): string {
-    const value = plan.max_dishes ?? (plan.slug === 'starter' ? 15 : null);
+    const value = plan.max_dishes ?? null;
     return this.limitLabel(value, 'plats', 'Plats illimités');
+  }
+
+  orderLimitLabel(plan: SaasPlan): string {
+    return this.limitLabel(plan.max_orders_per_month ?? null, 'commandes/mois', 'Commandes illimitées');
   }
 
   visibleFeatures(plan: SaasPlan): string[] {
@@ -145,8 +130,10 @@ export class PricingPage implements OnInit {
         && !normalized.includes('employes illimitees')
         && !normalized.includes('5 employes')
         && !normalized.includes('plats illimites')
+        && !normalized.includes('commandes illimitees')
         && !normalized.includes('installation')
-        && !/^\s*\d+\s+plats\s*$/i.test(normalized);
+        && !/^\s*\d+\s+plats\s*$/i.test(normalized)
+        && !/^\s*\d+\s+commandes/i.test(normalized);
     });
   }
 
@@ -155,13 +142,15 @@ export class PricingPage implements OnInit {
       this.limitLabel(plan.max_tables, 'tables QR', 'Tables QR illimitées'),
       this.limitLabel(plan.max_users, 'employés', 'Employés illimités'),
       this.dishLimitLabel(plan),
+      this.orderLimitLabel(plan),
       ...this.visibleFeatures(plan),
     ];
   }
 
   private decoratePlan(plan: SaasPlan): PricingPlan {
     const slug = String(plan.slug || plan.name).toLowerCase();
-    const features = this.cleanFeatureList(plan.features || []);
+    const rawFeatures = plan.features || [];
+    const features = this.cleanFeatureList(rawFeatures);
 
     if (slug.includes('starter')) {
       const withoutOldDishLimit = features.filter((feature) => !/^\s*\d+\s+plats\s*$/i.test(this.normalizeLabel(feature)));
@@ -181,12 +170,25 @@ export class PricingPage implements OnInit {
     return {
       ...plan,
       monthly_price: this.monthlyPriceForPlan(plan),
-      max_tables: slug.includes('starter') ? 6 : plan.max_tables,
-      max_dishes: slug.includes('starter') ? 15 : plan.max_dishes,
       features,
-      installation_fee: slug.includes('business') ? 15 : 10,
+      installation_fee: this.installationFeeFromFeatures(rawFeatures),
+      installation_fee_label: this.installationFeeLabelFromFeatures(rawFeatures),
       limitations: this.limitationsForPlan(slug),
     };
+  }
+
+  private installationFeeFromFeatures(features: string[]): number {
+    const installation = features.find((feature) => this.normalizeLabel(feature).includes('installation'));
+    const amount = installation?.match(/\d[\d\s.]*/)?.[0]?.replace(/\s/g, '');
+
+    return amount ? Number(amount) : 0;
+  }
+
+  private installationFeeLabelFromFeatures(features: string[]): string {
+    const installation = features.find((feature) => this.normalizeLabel(feature).includes('installation'));
+    const label = installation?.split(':').slice(1).join(':').trim();
+
+    return label || '';
   }
 
   private limitationsForPlan(slug: string): string[] {
@@ -214,23 +216,31 @@ export class PricingPage implements OnInit {
   }
 
   private annualMonthlyPrice(plan: SaasPlan): number {
-    const slug = String(plan.slug || plan.name).toLowerCase();
+    return this.yearlyPrice(plan) / 12;
+  }
 
-    if (slug.includes('starter')) return 12;
-    if (slug.includes('pro')) return 30;
-    if (slug.includes('business')) return 40;
-
-    return Number(plan.monthly_price ?? 0);
+  private yearlyPrice(plan: SaasPlan): number {
+    const yearly = Number(plan.yearly_price ?? 0);
+    return yearly > 0 ? yearly : this.monthlyPriceForPlan(plan) * 12;
   }
 
   private monthlyPriceForPlan(plan: SaasPlan): number {
-    const slug = String(plan.slug || plan.name).toLowerCase();
-
-    if (slug.includes('starter')) return 15;
-    if (slug.includes('pro')) return 35;
-    if (slug.includes('business')) return 50;
-
     return Number(plan.monthly_price ?? 0);
+  }
+
+  private effectiveAmount(plan: SaasPlan, cycle: 'monthly' | 'yearly'): number {
+    if (!this.hasActivePromo(plan)) {
+      return cycle === 'yearly' ? this.yearlyPrice(plan) : this.monthlyPriceForPlan(plan);
+    }
+
+    const promoPrice = cycle === 'yearly' ? plan.promo_yearly_price : plan.promo_monthly_price;
+    return promoPrice !== null && promoPrice !== undefined
+      ? Number(promoPrice)
+      : this.discountedAmount(cycle === 'yearly' ? this.yearlyPrice(plan) : this.monthlyPriceForPlan(plan), plan);
+  }
+
+  private discountedAmount(amount: number, plan: SaasPlan): number {
+    return Math.round(amount * (1 - Number(plan.promo_percent || 0) / 100) * 100) / 100;
   }
 
   private cleanFeatureList(features: string[]): string[] {
@@ -244,5 +254,61 @@ export class PricingPage implements OnInit {
       seen.add(normalized);
       return true;
     });
+  }
+
+  private defaultPlans(): SaasPlan[] {
+    return [
+      {
+        id: 'starter',
+        name: 'Starter',
+        slug: 'starter',
+        description: 'Pour lancer un service digital simple, rapide et professionnel.',
+        monthly_price: 15,
+        yearly_price: 144,
+        currency: 'USD',
+        max_restaurants: 1,
+        max_tables: 6,
+        max_users: 5,
+        max_dishes: 15,
+        max_orders_per_month: 150,
+        features: ['Gestion des commandes', 'Templates QR Standard', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
+        is_popular: false,
+        is_active: true,
+      },
+      {
+        id: 'pro',
+        name: 'Pro',
+        slug: 'pro',
+        description: 'Pour automatiser le service et piloter un restaurant en croissance.',
+        monthly_price: 35,
+        yearly_price: 360,
+        currency: 'USD',
+        max_restaurants: 1,
+        max_tables: null,
+        max_users: null,
+        max_dishes: null,
+        max_orders_per_month: null,
+        features: ['Commandes illimitées', 'Plats illimités', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
+        is_popular: true,
+        is_active: true,
+      },
+      {
+        id: 'business',
+        name: 'Business',
+        slug: 'business',
+        description: 'Pour les équipes structurées et les restaurants multi-sites.',
+        monthly_price: 50,
+        yearly_price: 480,
+        currency: 'USD',
+        max_restaurants: 5,
+        max_tables: null,
+        max_users: null,
+        max_dishes: null,
+        max_orders_per_month: null,
+        features: ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
+        is_popular: false,
+        is_active: true,
+      },
+    ];
   }
 }

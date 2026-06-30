@@ -5,13 +5,13 @@
             <a routerLink="/tables/list-table" class="btn btn-outline-primary rounded-pill fw-bold">
                 <i class="bi bi-arrow-left me-1"></i> Retour
             </a>
-            <h3 class="fw-bold text-dark mb-0">Room plan</h3>
+            <h3 class="fw-bold text-dark mb-0">Plan du restaurant</h3>
         </div>
         <button (click)="loadTables()"
                 [disabled]="isLoading()"
                 class="btn btn-white shadow-sm border rounded-pill px-4 d-inline-flex align-items-center fw-bold transition-all">
             <i class="bi bi-arrow-clockwise me-2 dynamic-icon" [class.spinner-border-sm]="isLoading()"></i>
-            {{ isLoading() ? 'Update...' : 'Update plan' }}
+            {{ isLoading() ? 'Mise à jour...' : 'Mise à jour du plan' }}
         </button>
     </div>
 
@@ -29,8 +29,8 @@
                     </div>
                 </div>
 
-                <h5 class="fw-bold text-muted animate-pulse mb-1">Loading the seating plan...</h5>
-                <p class="small text-muted">Please wait while the data is being retrieved.</p>
+                <h5 class="fw-bold text-muted animate-pulse mb-1">Chargement du plan de salle...</h5>
+                <p class="small text-muted">Veuillez patienter pendant le chargement des données.</p>
             </div>
         } @else {
 
@@ -88,7 +88,7 @@
                     <div class="mb-3">
                         <i class="bi bi-inbox text-muted display-1"></i>
                     </div>
-                    <h5 class="text-muted fw-normal">No tables are configured in the system.</h5>
+                    <h5 class="text-muted fw-normal">Aucune table n'est configurée dans le système.</h5>
                 </div>
             }
         }

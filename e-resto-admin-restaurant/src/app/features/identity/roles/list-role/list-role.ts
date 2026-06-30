@@ -55,6 +55,7 @@ export class ListRole implements OnInit {
     orders: { label: "Commandes", description: "Suivi et traitement des commandes." },
     feedback: { label: "Avis clients", description: "Consultation des retours clients." },
     settings: { label: "Paramètres", description: "Configuration du restaurant." },
+    "business-restaurants": { label: "Multi-restaurant", description: "Accès aux restaurants du groupe Business." },
     profile: { label: "Profil", description: "Profil personnel et mot de passe." },
   };
 
@@ -262,8 +263,8 @@ export class ListRole implements OnInit {
     request.subscribe({
       next: () => {
         this.isSaving.set(false);
-        Swal.fire("Success", selected ? "Role updated successfully." : "Role created successfully.", "success");
-        this.loadRoles();
+        Swal.fire("Succès", selected ? "Rôle mis à jour avec succès." : "Rôle créé avec succès.", "success")
+          .then(() => window.location.reload());
       },
       error: (err) => {
         this.isSaving.set(false);
@@ -288,7 +289,8 @@ export class ListRole implements OnInit {
       this.roleService.delete(role.id).subscribe({
         next: () => {
           this.roles.update((roles) => roles.filter((item) => item.id !== role.id));
-          Swal.fire("Supprimé", "Rôle supprimé avec succès.", "success");
+          Swal.fire("Supprimé", "Rôle supprimé avec succès.", "success")
+            .then(() => window.location.reload());
         },
         error: (err) => Swal.fire("Erreur", err.error?.message || "Impossible de supprimer le rôle.", "error"),
       });
@@ -325,6 +327,10 @@ export class ListRole implements OnInit {
 
     if (moduleKey === "roles") {
       return permissions?.can_manage_roles !== false;
+    }
+
+    if (moduleKey === "business-restaurants") {
+      return permissions?.can_use_multi_restaurant === true || features["multi_restaurant"] === true;
     }
 
     return true;

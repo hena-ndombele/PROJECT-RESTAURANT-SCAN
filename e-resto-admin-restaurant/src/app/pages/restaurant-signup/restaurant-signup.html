@@ -92,8 +92,13 @@
                   <input [(ngModel)]="account.owner_phone" name="owner_phone" placeholder="+243830000000" autocomplete="tel" required>
                 </label>
                 <label>
-                  <span>Ville</span>
-                  <input [(ngModel)]="account.city" name="city" placeholder="Kinshasa">
+                  <span>Province</span>
+                  <select [(ngModel)]="account.city" name="city">
+                    <option value="">Choisir une province</option>
+                    @for (province of provinces; track province.province) {
+                      <option [value]="province.province">{{ province.province }} - {{ province.capital }}</option>
+                    }
+                  </select>
                 </label>
               </div>
 

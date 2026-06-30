@@ -25,6 +25,11 @@ export class RestaurantSettings implements OnInit {
   logoPreview = signal<string | null>(null);
   planUsage = signal<RestaurantPlanUsage | null>(null);
   logoData: string | null = null;
+  readonly defaultRestaurantLogo = 'assets/logo/e-resto-logo.png';
+
+  displayLogoUrl(): string {
+    return this.logoPreview() || this.defaultRestaurantLogo;
+  }
 
   canCustomize(): boolean {
     if (!this.canUpdateSettings()) {
@@ -61,7 +66,7 @@ export class RestaurantSettings implements OnInit {
         whatsapp_order_phone: '',
         opening_time: '08:00',
         closing_time: '22:00',
-        qr_template: 'poster',
+        qr_template: '',
         theme: {
         primary: '#ff7a1a',
         secondary: '#d71920',
@@ -92,7 +97,7 @@ export class RestaurantSettings implements OnInit {
           this.restaurant = this.normalizeRestaurant(JSON.parse(cached));
           this.logoPreview.set(this.restaurant.logo_url || null);
         } else {
-          this.error.set('Impossible de charger les parametres du restaurant.');
+          this.error.set('Impossible de charger les paramètres du restaurant.');
         }
         this.loading.set(false);
       },
@@ -170,11 +175,11 @@ export class RestaurantSettings implements OnInit {
         localStorage.setItem('restaurant_session', JSON.stringify(this.restaurant));
         this.applyRestaurantTheme(this.restaurant);
         this.broadcastRestaurantSettings(this.restaurant);
-        this.message.set('Parametres sauvegardes. Les changements sont appliques dans votre espace.');
+        this.message.set('Paramètres sauvegardés. Les changements sont appliqués dans votre espace.');
         this.saving.set(false);
       },
       error: (error) => {
-        this.error.set(error?.error?.message || 'Impossible de sauvegarder les parametres.');
+        this.error.set(error?.error?.message || 'Impossible de sauvegarder les paramètres.');
         this.saving.set(false);
       },
     });
@@ -204,7 +209,7 @@ export class RestaurantSettings implements OnInit {
         whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '',
         opening_time: settings.opening_time || '08:00',
         closing_time: settings.closing_time || '22:00',
-        qr_template: ['poster', 'table_tent'].includes(settings.qr_template) ? settings.qr_template : 'poster',
+        qr_template: ['poster', 'table_tent'].includes(settings.qr_template) ? settings.qr_template : '',
         theme: {
           primary: theme.primary || '#ff7a1a',
           secondary: theme.secondary || '#d71920',

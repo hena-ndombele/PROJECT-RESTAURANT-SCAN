@@ -24,6 +24,7 @@ class Restaurant extends Model
         'logo',
         'status',
         'saas_plan_id',
+        'business_owner_user_id',
         'trial_ends_at',
         'subscription_ends_at',
         'settings',
@@ -43,6 +44,11 @@ class Restaurant extends Model
     public function subscription()
     {
         return $this->hasOne(RestaurantSubscription::class)->latestOfMany();
+    }
+
+    public function businessOwner()
+    {
+        return $this->belongsTo(User::class, 'business_owner_user_id');
     }
 
     public function users()
@@ -81,4 +87,3 @@ class Restaurant extends Model
             ->withTimestamps();
     }
 }
-

@@ -3,15 +3,15 @@
     <section class="auth-visual">
       <div class="brand large"><img class="brand-logo" src="assets/restaurant-scan.png" alt="Restaurant Scan"><strong>Restaurant Scan</strong></div>
       <div>
-        <span class="eyebrow">Administration SaaS</span>
-        <h1>Pilotez toute la plateforme depuis un espace unique.</h1>
-        <p>Restaurants, abonnements, paiements, utilisateurs et roles reunis dans une console professionnelle.</p>
-      </div>
+  <span class="eyebrow">Administration SaaS</span>
+  <h1>Pilotez toute la plateforme depuis un espace unique.</h1>
+  <p>Restaurants, abonnements, paiements, utilisateurs et rôles réunis dans une console professionnelle.</p>
+</div>
     </section>
     <section class="auth-panel">
       <form class="auth-card" (ngSubmit)="loginStep() === 'credentials' ? login() : verifyOtp()">
         <span class="eyebrow">Acces securise</span>
-        <h2>{{ loginStep() === 'credentials' ? 'Connexion administrateur' : 'Verification OTP' }}</h2>
+        <h2 style="text-align: center;">{{ loginStep() === 'credentials' ? 'Connexion' : 'Verification OTP' }}</h2>
         <p>{{ loginStep() === 'credentials' ? 'Utilisez votre compte Restaurant Scan pour continuer.' : 'Entrez le code a 5 chiffres recu par email.' }}</p>
         @if (loginStep() === 'credentials') {
           <label>Adresse email<input [(ngModel)]="loginForm.email" name="email" type="email" required autocomplete="email"></label>
@@ -20,19 +20,18 @@
           <div class="otp-box">
             <label>Code de vérification</label>
             <div class="otp-inputs">
-              <input *ngFor="let digit of otpDigits; let index = index" [value]="digit" (input)="setOtpDigit($event, index)" (keydown)="handleOtpKeydown($event, index)" inputmode="numeric" maxlength="1" required>
+              <input *ngFor="let digit of otpDigits; let index = index" [value]="digit" (input)="setOtpDigit($event, index)" (keydown)="handleOtpKeydown($event, index)" (paste)="handleOtpPaste($event, index)" inputmode="numeric" autocomplete="one-time-code" maxlength="1" required>
             </div>
             <small>Nous avons envoyé un code à 5 chiffres à {{ loginForm.email }}.</small>
           </div>
           <div class="otp-actions">
             <button type="button" class="text-btn" (click)="resendAdminOtp()" [disabled]="otpResending()">{{ otpResending() ? 'Renvoi...' : 'Renvoyer le code' }}</button>
-            <button type="button" class="text-btn" (click)="loginStep.set('credentials')">Changer de compte</button>
           </div>
         }
         <div class="notice success" *ngIf="message()">{{ message() }}</div>
         <div class="notice error" *ngIf="error()">{{ error() }}</div>
         <button class="btn primary full" [disabled]="authLoading()">
-          {{ authLoading() ? 'Veuillez patienter...' : loginStep() === 'credentials' ? 'Se connecter' : 'Verifier et continuer' }}
+          {{ authLoading() ? 'Veuillez patienter...' : loginStep() === 'credentials' ? 'Se connecter' : 'Vérifier' }}
         </button>
       </form>
     </section>
@@ -45,6 +44,7 @@
         <button type="button" [class.active]="activeTab() === 'dashboard'" (click)="setTab('dashboard')"><i class="bi bi-grid-1x2-fill"></i><span>Vue générale</span></button>
         <button type="button" [class.active]="activeTab() === 'restaurants'" (click)="setTab('restaurants')"><i class="bi bi-shop-window"></i><span>Restaurants</span></button>
         <button type="button" [class.active]="activeTab() === 'payments'" (click)="setTab('payments')"><i class="bi bi-credit-card-fill"></i><span>Paiements</span></button>
+        <button type="button" [class.active]="activeTab() === 'pricing'" (click)="setTab('pricing')"><i class="bi bi-tags-fill"></i><span>Pricing</span></button>
         <span class="nav-label">Administration</span>
         <button type="button" [class.active]="activeTab() === 'users'" (click)="setTab('users')"><i class="bi bi-people-fill"></i><span>Utilisateurs</span></button>
         <button type="button" [class.active]="activeTab() === 'roles'" (click)="setTab('roles')"><i class="bi bi-person-badge-fill"></i><span>Roles</span></button>
@@ -62,8 +62,8 @@
           <img class="page-logo" src="assets/restaurant-scan.png" alt="Restaurant Scan">
           <div>
             <span class="eyebrow">Restaurant Scan</span>
-            <h1>{{ activeTab() === 'dashboard' ? 'Vue generale' : activeTab() | titlecase }}</h1>
-            <p>Gerez la plateforme, les comptes et les abonnements depuis un seul espace.</p>
+            <h1>{{ activeTab() === 'dashboard' ? 'Vue générale' : activeTab() | titlecase }}</h1>
+            <p>Gérez la plateforme, les comptes et les abonnements depuis un seul espace.</p>
           </div>
         </div>
         <div class="topbar-actions">
@@ -93,12 +93,11 @@
             <article>
               <div><strong>{{ formatMoney(metrics().revenue, 'USD') }}</strong><span>Revenu abonnement ce mois</span></div>
               <div class="stat-progress"><span style="width: 100%"></span></div>
-              <small>Paiements d'abonnements confirmes</small>
+              <small>Paiements d'abonnements confirmés</small>
             </article>
           </div>
         </section>
-        <section class="dashboard-analytics">
-          <div class="panel-head"><div><span class="eyebrow">Graphique</span><h2>Restaurants par plan</h2></div><small>{{ metrics().total }} restaurant(s) inscrit(s)</small></div>
+        <!-- <section class="dashboard-analytics">
           <div class="analytics-grid">
             <article class="panel chart-card revenue-card">
               <div class="chart-card-head"><div><h3>Plan Breakdown</h3><p>Compare par type d'abonnement</p></div><i class="bi bi-bar-chart-fill"></i></div>
@@ -121,14 +120,13 @@
               </div>
             </article>
             <article class="panel chart-card segment-card">
-              <div class="chart-card-head"><div><h3>Segments</h3><p>Repartition des plans</p></div><i class="bi bi-pie-chart-fill"></i></div>
               <div class="segment-chart" [style.background]="segmentGradient()"></div>
               <div class="segment-legend">
                 <span *ngFor="let item of planDistribution()" [class]="item.tone"><i></i>{{ item.label }} <strong>{{ item.percent }}%</strong></span>
               </div>
             </article>
           </div>
-        </section>
+        </section> -->
       }
 
       @if (activeTab() === 'restaurants') {
@@ -174,6 +172,48 @@
         <section class="panel">
           <div class="panel-head"><div><span class="eyebrow">Transactions</span><h2>Paiements abonnements</h2></div><select [ngModel]="paymentFilter()" (ngModelChange)="paymentFilter.set($event); loadPayments()"><option value="all">Tous</option><option value="paid">Payes</option><option value="pending">En attente</option><option value="failed">Echoues</option></select></div>
           <div class="table-wrap"><table><thead><tr><th>Restaurant</th><th>Reference</th><th>Methode</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody><tr *ngFor="let payment of payments()"><td>{{ payment.restaurant?.name || 'Restaurant supprime' }}</td><td>{{ payment.reference || '-' }}</td><td>{{ payment.provider || payment.method || '-' }}</td><td>{{ formatMoney(payment.amount, payment.currency) }}</td><td><em class="status" [class]="payment.status">{{ statusLabel(payment.status) }}</em></td><td>{{ payment.paid_at || payment.created_at | date:'dd/MM/yyyy HH:mm' }}</td></tr></tbody></table></div>
+        </section>
+      }
+
+      @if (activeTab() === 'pricing') {
+        <section class="panel">
+          <div class="panel-head">
+            <div><span class="eyebrow">Configuration SaaS</span><h2>Plans et tarifs</h2></div>
+            <button class="btn primary" type="button" (click)="openPlanModal()"><i class="bi bi-plus-lg"></i>Nouveau plan</button>
+          </div>
+          <div class="pricing-admin-grid">
+            <article class="pricing-admin-card" *ngFor="let plan of plans()" [class.inactive]="plan.is_active === false" [class.popular]="plan.is_popular">
+              <header>
+                <div>
+                  <span class="eyebrow">{{ plan.slug || 'plan' }}</span>
+                  <h3>{{ plan.name }}</h3>
+                </div>
+                <em class="status" [class.active]="plan.is_active !== false" [class.suspended]="plan.is_active === false">{{ plan.is_active === false ? 'Inactif' : 'Actif' }}</em>
+              </header>
+              <p>{{ plan.description || 'Aucune description.' }}</p>
+              <div class="pricing-values">
+                <div><span>Mensuel</span><strong>{{ formatMoney(displayPlanPrice(plan, 'monthly'), plan.currency) }}</strong></div>
+                <div><span>Annuel</span><strong>{{ formatMoney(displayPlanPrice(plan, 'yearly'), plan.currency) }}</strong></div>
+              </div>
+              @if (plan.has_active_promo) {
+                <p class="promo-admin-pill">{{ plan.promo_label || 'Promotion' }} -{{ plan.promo_percent }}%</p>
+              }
+              <div class="plan-limits">
+                <span>{{ plan.max_tables === null ? 'Tables illimitées' : plan.max_tables + ' tables' }}</span>
+                <span>{{ plan.max_users === null ? 'Utilisateurs illimités' : plan.max_users + ' utilisateurs' }}</span>
+                <span>{{ plan.max_dishes === null ? 'Plats illimités' : plan.max_dishes + ' plats' }}</span>
+                <span>{{ plan.max_orders_per_month === null ? 'Commandes illimitées' : plan.max_orders_per_month + ' commandes/mois' }}</span>
+                <span>{{ plan.max_restaurants }} restaurant(s)</span>
+              </div>
+              <div class="feature-tags">
+                <span *ngFor="let feature of planFeatures(plan).slice(0, 5)">{{ feature }}</span>
+              </div>
+              <footer>
+                <button class="btn ghost" type="button" (click)="openPlanModal(plan)"><i class="bi bi-pencil-square"></i>Modifier</button>
+                <button class="btn ghost danger-text" type="button" (click)="deletePlan(plan)"><i class="bi bi-trash3"></i>Supprimer</button>
+              </footer>
+            </article>
+          </div>
         </section>
       }
 
@@ -293,10 +333,67 @@
 }
 
 @if (planModalOpen()) {
-  <div class="modal-backdrop" (click)="planModalOpen.set(false)"><section class="modal-card wide" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Plan</span><h2>{{ planForm.id ? 'Modifier le plan' : 'Nouveau plan' }}</h2></div><button class="close-btn" (click)="planModalOpen.set(false)">Ã—</button></header><form (ngSubmit)="savePlan()"><div class="form-grid"><label>Nom<input [(ngModel)]="planForm.name" name="plan_name" required></label><label>Slug<input [(ngModel)]="planForm.slug" name="plan_slug" required></label><label>Prix mensuel<input [(ngModel)]="planForm.monthly_price" name="monthly_price" type="number" min="0"></label><label>Devise<select [(ngModel)]="planForm.currency" name="plan_currency"><option value="USD">USD</option><option value="CDF">CDF</option></select></label><label>Tables maximum<input [(ngModel)]="planForm.max_tables" name="max_tables" type="number" min="1"></label><label>Utilisateurs maximum<input [(ngModel)]="planForm.max_users" name="max_users" type="number" min="1"></label></div><label>Description<textarea [(ngModel)]="planForm.description" name="plan_description"></textarea></label><label>Fonctionnalites<textarea [(ngModel)]="planForm.features" name="features" placeholder="Une fonctionnalite par ligne"></textarea></label><footer><button type="button" class="btn ghost" (click)="planModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Enregistrer</button></footer></form></section></div>
+  <div class="modal-backdrop" (click)="planModalOpen.set(false)">
+    <section class="modal-card wide" (click)="$event.stopPropagation()">
+      <header>
+        <div><span class="eyebrow">Plan</span><h2>{{ planForm.id ? 'Modifier le plan' : 'Nouveau plan' }}</h2></div>
+        <button class="close-btn" (click)="planModalOpen.set(false)">×</button>
+      </header>
+      <form (ngSubmit)="savePlan()">
+        <div class="form-grid">
+          <label>Nom<input [(ngModel)]="planForm.name" name="plan_name" required></label>
+          <label>Slug<input [(ngModel)]="planForm.slug" name="plan_slug" required></label>
+          <label>Prix mensuel<input [(ngModel)]="planForm.monthly_price" name="monthly_price" type="number" min="0"></label>
+          <label>Prix annuel<input [(ngModel)]="planForm.yearly_price" name="yearly_price" type="number" min="0" placeholder="Vide = mensuel x 12"></label>
+          <label>Nom promo<input [(ngModel)]="planForm.promo_label" name="promo_label" placeholder="Noël, Black Friday..."></label>
+          <label>Réduction (%)<input [(ngModel)]="planForm.promo_percent" name="promo_percent" type="number" min="1" max="95" placeholder="Ex: 30"></label>
+          <label>Début promo<input [(ngModel)]="planForm.promo_starts_at" name="promo_starts_at" type="date"></label>
+          <label>Fin promo<input [(ngModel)]="planForm.promo_ends_at" name="promo_ends_at" type="date"></label>
+          <label>Devise<select [(ngModel)]="planForm.currency" name="plan_currency"><option value="USD">USD</option><option value="CDF">CDF</option></select></label>
+          <label>Restaurants maximum<input [(ngModel)]="planForm.max_restaurants" name="max_restaurants" type="number" min="1"></label>
+          <label>Tables maximum<input [(ngModel)]="planForm.max_tables" name="max_tables" type="number" min="1" placeholder="Vide = illimité"></label>
+          <label>Utilisateurs maximum<input [(ngModel)]="planForm.max_users" name="max_users" type="number" min="1" placeholder="Vide = illimité"></label>
+          <label>Plats maximum<input [(ngModel)]="planForm.max_dishes" name="max_dishes" type="number" min="1" placeholder="Vide = illimité"></label>
+          <label>Commandes maximum / mois<input [(ngModel)]="planForm.max_orders_per_month" name="max_orders_per_month" type="number" min="1" placeholder="Vide = illimité"></label>
+        </div>
+        <div class="toggle-row">
+          <label><input type="checkbox" [(ngModel)]="planForm.is_popular" name="is_popular"> Plan populaire</label>
+          <label><input type="checkbox" [(ngModel)]="planForm.is_active" name="is_active"> Plan actif</label>
+          <label><input type="checkbox" [(ngModel)]="planDishPromotions" name="dish_promotions"> Promotions des plats</label>
+        </div>
+        <label>Description<textarea [(ngModel)]="planForm.description" name="plan_description"></textarea></label>
+        <label>Fonctionnalités<textarea [(ngModel)]="planForm.features" name="features" placeholder="Une fonctionnalité par ligne"></textarea></label>
+        <footer>
+          <button type="button" class="btn ghost" (click)="planModalOpen.set(false)">Annuler</button>
+          <button class="btn primary" [disabled]="saving()">Enregistrer</button>
+        </footer>
+      </form>
+    </section>
+  </div>
 }
 
 @if (roleModalOpen()) {
   <div class="modal-backdrop" (click)="roleModalOpen.set(false)"><section class="modal-card" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Role</span><h2>{{ roleForm.id ? 'Modifier le role' : 'Nouveau role' }}</h2></div><button class="close-btn" (click)="roleModalOpen.set(false)">Ã—</button></header><form (ngSubmit)="saveRole()"><label>Nom du role<input [(ngModel)]="roleForm.name" name="role_name" required placeholder="Ex: administrateur"></label><footer><button type="button" class="btn ghost" (click)="roleModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Enregistrer</button></footer></form></section></div>
+}
+
+@if (installPromptOpen()) {
+  <div class="install-backdrop">
+    <section class="install-card" role="dialog" aria-modal="true">
+      <button type="button" class="install-close" aria-label="Fermer" (click)="dismissInstallPrompt()">×</button>
+      <div class="install-head">
+        <img src="assets/restaurant-scan.png" alt="">
+        <div>
+          <span class="eyebrow">Application admin</span>
+          <h2>Installer Restaurant Scan Admin</h2>
+          <p>Ajoutez l'admin développeur à votre écran d'accueil pour l'ouvrir plus vite.</p>
+        </div>
+      </div>
+      <button class="btn primary install-primary" type="button" [disabled]="!installAvailable()" (click)="installApp()">
+        <i class="bi bi-download"></i>
+        Installer l'application
+      </button>
+      <button class="btn ghost install-secondary" type="button" (click)="dismissInstallPrompt()">Plus tard</button>
+    </section>
+  </div>
 }
 

@@ -64,31 +64,47 @@
 
   <h2 class="section-title">Choisissez votre plan</h2>
   <div class="plan-grid">
-    @for (plan of plans; track plan.id) {
-      <article class="plan-card tone-{{ planTone(plan) }}" [class.current]="isCurrentPlan(plan)">
-        @if (isCurrentPlan(plan)) {
-          <span class="current-badge">Plan actuel</span>
-        }
-        <h3>{{ plan.name }}</h3>
-        <div class="plan-price">
-          <strong>{{ planPrice(plan) | number:'1.0-2' }}</strong>
-          <span>{{ displayCurrency(plan) }}/mois</span>
-        </div>
-        <p>Soit {{ dailyPrice(plan) | number:'1.0-2' }} {{ displayCurrency(plan) }}/jour</p>
-        @if (billingCycle === 'yearly') {
-          <small>{{ paymentAmount(plan) | number:'1.0-2' }} {{ displayCurrency(plan) }} facturés pour 12 mois</small>
-        }
-        <button type="button" (click)="pay(plan)" [disabled]="!!payingPlanId || waitingConfirmation">
-          @if (payingPlanId === plan.id) {
-            <span class="spinner-border spinner-border-sm"></span>
-            Paiement...
-          } @else {
-            <i class="ti ti-credit-card"></i>
-            {{ isCurrentPlan(plan) ? 'Renouveler' : 'Passer au paiement' }}
+    @if (plansLoading) {
+      @for (item of [1, 2, 3]; track item) {
+        <article class="plan-card plan-card-loading" aria-hidden="true">
+          <span></span>
+          <strong></strong>
+          <p></p>
+          <button type="button" disabled>Chargement...</button>
+        </article>
+      }
+    } @else {
+      @for (plan of plans; track plan.id) {
+        <article class="plan-card tone-{{ planTone(plan) }}" [class.current]="isCurrentPlan(plan)">
+          @if (hasActivePromo(plan)) {
+            <div class="subscription-promo">
+              <span>{{ plan.promo_label || 'Promotion' }} -{{ plan.promo_percent }}%</span>
+            </div>
           }
-        </button>
-        <em><i class="ti ti-lock"></i> Paiement sécurisé</em>
-      </article>
+          @if (isCurrentPlan(plan)) {
+            <span class="current-badge">Plan actuel</span>
+          }
+          <h3>{{ plan.name }}</h3>
+          <div class="plan-price">
+            <strong>{{ planPrice(plan) | number:'1.0-2' }}</strong>
+            <span>{{ displayCurrency(plan) }}/mois</span>
+          </div>
+          <p>Soit {{ dailyPrice(plan) | number:'1.0-2' }} {{ displayCurrency(plan) }}/jour</p>
+          @if (billingCycle === 'yearly') {
+            <small>{{ paymentAmount(plan) | number:'1.0-2' }} {{ displayCurrency(plan) }} facturés pour 12 mois</small>
+          }
+          <button type="button" (click)="pay(plan)" [disabled]="!!payingPlanId || waitingConfirmation">
+            @if (payingPlanId === plan.id) {
+              <span class="spinner-border spinner-border-sm"></span>
+              Paiement...
+            } @else {
+              <i class="ti ti-credit-card"></i>
+              {{ isCurrentPlan(plan) ? 'Renouveler' : 'Passer au paiement' }}
+            }
+          </button>
+          <em><i class="ti ti-lock"></i> Paiement sécurisé</em>
+        </article>
+      }
     }
   </div>
 
@@ -97,6 +113,20 @@
       <div>
         <span class="eyebrow">Historique</span>
         <h2><i class="ti ti-receipt"></i> Historique des paiements</h2>
+      </div>
+      <div class="payment-stats" aria-label="Résumé des paiements">
+        <article class="paid">
+          <span>Réussis</span>
+          <strong>{{ paidPaymentsCount }}</strong>
+        </article>
+        <article class="failed">
+          <span>Échoués</span>
+          <strong>{{ failedPaymentsCount }}</strong>
+        </article>
+        <article class="pending">
+          <span>En attente</span>
+          <strong>{{ pendingPaymentsCount }}</strong>
+        </article>
       </div>
       <select [(ngModel)]="paymentFilter" (ngModelChange)="loadPayments()">
         <option value="all">Tous</option>

@@ -106,10 +106,10 @@
           <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
         </div>
 
-        <button class="pay-button" [disabled]="paying || waitingConfirmation">
-          <span *ngIf="paying || waitingConfirmation" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-          <i *ngIf="!paying && !waitingConfirmation" class="bi bi-lock-fill"></i>
-          {{ paying ? 'Envoi à la passerelle...' : waitingConfirmation ? 'En attente de confirmation...' : 'Payer mon abonnement' }}
+        <button class="pay-button" [disabled]="planSyncing || !!planSyncError || paying || waitingConfirmation">
+          <span *ngIf="planSyncing || paying || waitingConfirmation" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          <i *ngIf="!planSyncing && !paying && !waitingConfirmation" class="bi bi-lock-fill"></i>
+          {{ planSyncing ? 'Actualisation du tarif...' : paying ? 'Envoi à la passerelle...' : waitingConfirmation ? 'En attente de confirmation...' : 'Payer mon abonnement' }}
         </button>
 
         <p class="message" role="alert" *ngIf="message" [ngClass]="messageType">

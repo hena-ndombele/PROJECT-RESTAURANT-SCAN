@@ -34,7 +34,7 @@ export class ListOrders implements OnInit, OnDestroy {
     updatingOrderId = signal<string | null>(null);
     updatingPaymentId = signal<string | null>(null);
     selectedOrder = signal<Order | null>(null);
-    newOrderModal = signal<Order | null>(null);
+    newOrderModals = signal<Order[]>([]);
     billRequestModal = signal<Order | null>(null);
     cashOrder = signal<Order | null>(null);
     cashReceivedAmount = signal<number | null>(null);
@@ -207,7 +207,10 @@ export class ListOrders implements OnInit, OnDestroy {
             const previous = orders.find((item) => item.id === order.id);
             const exists = Boolean(previous);
             if (!exists) {
-                this.newOrderModal.set(order);
+                this.newOrderModals.update((current) => [
+                    order,
+                    ...current.filter((item) => item.id !== order.id),
+                ].slice(0, 8));
             } else if (!this.billRequested(previous!) && this.billRequested(order)) {
                 this.billRequestModal.set(order);
                 this.successMessage.set(`Addition demandée par ${order.table?.name || "une table"}.`);
@@ -525,7 +528,16 @@ export class ListOrders implements OnInit, OnDestroy {
 
     openNewOrder(order: Order): void {
         this.selectedOrder.set(order);
-        this.newOrderModal.set(null);
+        this.dismissNewOrder(order.id);
+    }
+
+    dismissNewOrder(orderId?: string): void {
+        if (!orderId) {
+            this.newOrderModals.set([]);
+            return;
+        }
+
+        this.newOrderModals.update((orders) => orders.filter((order) => order.id !== orderId));
     }
 
     exportPdfReport(): void {

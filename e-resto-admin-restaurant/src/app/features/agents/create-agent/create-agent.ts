@@ -139,7 +139,7 @@ export class CreateAgent {
         const emailError = err.error?.errors?.email?.[0];
         const matriculeError = err.error?.errors?.matricule?.[0];
         const message = emailError
-          ? "Ce compte existe déjà avec cette adresse e-mail."
+          ? emailError
           : matriculeError
             ? "Ce matricule existe déjà. Saisissez un matricule unique."
             : err.error?.message || "Erreur lors de la création de l'employé.";

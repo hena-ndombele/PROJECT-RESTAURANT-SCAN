@@ -15,6 +15,7 @@ use App\Models\Table;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class GroupOrderController extends Controller
@@ -34,7 +35,7 @@ class GroupOrderController extends Controller
 
         if (empty($validated['restaurant_id']) && empty($validated['restaurant_slug']) && empty($validated['table_id'])) {
             return response()->json([
-                'message' => 'Choisissez un restaurant ou scannez une table pour creer une commande groupee.',
+                'message' => 'Choisissez un restaurant ou scannez une table pour créer une commande groupée.',
             ], 422);
         }
 
@@ -47,6 +48,8 @@ class GroupOrderController extends Controller
                 ], 422);
             }
 
+            $creatorCode = $this->generateCreatorCode();
+
             $groupOrder = GroupOrder::create([
                 'restaurant_id' => $restaurant->id,
                 'table_id' => $table?->id,
@@ -55,6 +58,7 @@ class GroupOrderController extends Controller
                 'creator_name' => $validated['creator_name'],
                 'creator_phone' => $validated['creator_phone'] ?? null,
                 'creator_email' => $validated['creator_email'] ?? null,
+                'creator_code_hash' => Hash::make($creatorCode),
                 'note' => $validated['note'] ?? null,
                 'expires_at' => now()->addMinutes($validated['expires_in_minutes'] ?? 180),
             ]);
@@ -64,12 +68,14 @@ class GroupOrderController extends Controller
                 'phone' => $validated['creator_phone'] ?? null,
                 'email' => $validated['creator_email'] ?? null,
                 'is_creator' => true,
+                'last_seen_at' => now(),
             ]);
 
             return response()->json([
-                'message' => 'Commande groupee creee.',
+                'message' => 'Commande groupée créée.',
                 'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
                 'creator_participant' => $participant,
+                'creator_code' => $creatorCode,
             ], 201);
         });
     }
@@ -79,6 +85,22 @@ class GroupOrderController extends Controller
         $groupOrder = $this->findByCode($code);
 
         return response()->json($this->groupOrderPayload($groupOrder));
+    }
+
+    public function activeForTable(Table $table)
+    {
+        $groupOrder = GroupOrder::with($this->relations())
+            ->where('table_id', $table->id)
+            ->where('status', 'open')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->latest()
+            ->first();
+
+        return response()->json([
+            'group_order' => $groupOrder ? $this->groupOrderPayload($groupOrder) : null,
+        ]);
     }
 
     public function join(Request $request, string $code)
@@ -100,6 +122,7 @@ class GroupOrderController extends Controller
             'phone' => $validated['phone'] ?? null,
             'email' => $validated['email'] ?? null,
             'is_creator' => false,
+            'last_seen_at' => now(),
         ]);
 
         return response()->json([
@@ -107,6 +130,83 @@ class GroupOrderController extends Controller
             'participant' => $participant,
             'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
         ], 201);
+    }
+
+    public function heartbeat(Request $request, string $code)
+    {
+        $validated = $request->validate([
+            'participant_id' => 'required|uuid|exists:group_order_participants,id',
+        ]);
+
+        $groupOrder = $this->findByCode($code);
+        $blocked = $this->blockedResponse($groupOrder);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        $participant = $groupOrder->participants()->findOrFail($validated['participant_id']);
+        $participant->update(['last_seen_at' => now()]);
+
+        return response()->json([
+            'message' => 'Participant actif.',
+            'participant' => $participant->fresh(),
+            'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
+        ]);
+    }
+
+    public function setReady(Request $request, string $code)
+    {
+        $validated = $request->validate([
+            'participant_id' => 'required|uuid|exists:group_order_participants,id',
+            'is_ready' => 'required|boolean',
+        ]);
+
+        $groupOrder = $this->findByCode($code);
+        $blocked = $this->blockedResponse($groupOrder);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        $participant = $groupOrder->participants()->findOrFail($validated['participant_id']);
+        $participant->update([
+            'is_ready' => (bool) $validated['is_ready'],
+            'last_seen_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => $participant->is_ready ? 'Participant pret.' : 'Participant en cours.',
+            'participant' => $participant->fresh(),
+            'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
+        ]);
+    }
+
+    public function recoverCreator(Request $request, string $code)
+    {
+        $validated = $request->validate([
+            'creator_code' => 'required|string|size:4',
+        ]);
+
+        $groupOrder = $this->findByCode($code);
+        $blocked = $this->blockedResponse($groupOrder);
+        if ($blocked) {
+            return $blocked;
+        }
+
+        if (!$groupOrder->creator_code_hash || !Hash::check($validated['creator_code'], $groupOrder->creator_code_hash)) {
+            return response()->json([
+                'message' => 'Code créateur incorrect.',
+            ], 422);
+        }
+
+        $participant = $groupOrder->participants()
+            ->where('is_creator', true)
+            ->firstOrFail();
+
+        return response()->json([
+            'message' => 'Createur recupere.',
+            'participant' => $participant,
+            'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
+        ]);
     }
 
     public function upsertItem(Request $request, string $code)
@@ -125,6 +225,11 @@ class GroupOrderController extends Controller
         }
 
         $participant = $groupOrder->participants()->findOrFail($validated['participant_id']);
+        $participant->update([
+            'is_ready' => false,
+            'last_seen_at' => now(),
+        ]);
+
         $plat = Plat::query()
             ->where('restaurant_id', $groupOrder->restaurant_id)
             ->where('is_available', true)
@@ -138,13 +243,13 @@ class GroupOrderController extends Controller
             ],
             [
                 'quantity' => $validated['quantity'],
-                'price_at_add' => $plat->price,
+                'price_at_add' => $plat->currentPrice(),
                 'note' => $validated['note'] ?? null,
             ]
         );
 
         return response()->json([
-            'message' => 'Plat ajoute a la commande groupee.',
+            'message' => 'Plat ajoute a la commande groupée.',
             'item' => $item->load('plat', 'participant'),
             'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
         ]);
@@ -159,13 +264,18 @@ class GroupOrderController extends Controller
         }
 
         if ($item->group_order_id !== $groupOrder->id) {
-            return response()->json(['message' => 'Plat introuvable dans cette commande groupee.'], 404);
+            return response()->json(['message' => 'Plat introuvable dans cette commande groupée.'], 404);
         }
+
+        $item->participant?->update([
+            'is_ready' => false,
+            'last_seen_at' => now(),
+        ]);
 
         $item->delete();
 
         return response()->json([
-            'message' => 'Plat retire de la commande groupee.',
+            'message' => 'Plat retire de la commande groupée.',
             'group_order' => $this->groupOrderPayload($groupOrder->fresh($this->relations())),
         ]);
     }
@@ -197,7 +307,7 @@ class GroupOrderController extends Controller
 
         if ($groupOrder->items()->count() === 0) {
             return response()->json([
-                'message' => 'Ajoutez au moins un plat avant de valider la commande groupee.',
+                'message' => 'Ajoutez au moins un plat avant de valider la commande groupée.',
             ], 422);
         }
 
@@ -210,6 +320,15 @@ class GroupOrderController extends Controller
             $blocked = $this->blockedResponse($lockedGroupOrder);
             if ($blocked) {
                 return $blocked;
+            }
+
+            $readiness = $this->readinessState($lockedGroupOrder);
+            if (!$readiness['can_checkout']) {
+                return response()->json([
+                    'message' => 'Tous les participants actifs doivent cliquer sur "J\'ai termine" avant l\'envoi.',
+                    'readiness' => $readiness,
+                    'group_order' => $this->groupOrderPayload($lockedGroupOrder),
+                ], 422);
             }
 
             $table = $lockedGroupOrder->table ?: $this->remoteTable($lockedGroupOrder->restaurant);
@@ -258,13 +377,15 @@ class GroupOrderController extends Controller
                     throw new \RuntimeException("Un plat de cette commande n'est plus disponible.");
                 }
 
+                $price = $plat->currentPrice();
+
                 $order->items()->create([
                     'plat_id' => $plat->id,
                     'quantity' => $row['quantity'],
-                    'price_at_order' => $plat->price,
+                    'price_at_order' => $price,
                 ]);
 
-                $total += (float) $plat->price * (int) $row['quantity'];
+                $total += (float) $price * (int) $row['quantity'];
                 $currency = $plat->currency;
             }
 
@@ -303,7 +424,7 @@ class GroupOrderController extends Controller
             $this->broadcastSafely(new OrderPlaced($freshOrder));
 
             return response()->json([
-                'message' => 'Commande groupee validee.',
+                'message' => 'Commande groupée validée.',
                 'order' => $freshOrder,
                 'payment' => $payment->fresh(),
                 'group_order' => $this->groupOrderPayload($lockedGroupOrder->fresh($this->relations())),
@@ -343,7 +464,7 @@ class GroupOrderController extends Controller
     {
         if ($groupOrder->status !== 'open') {
             return response()->json([
-                'message' => 'Cette commande groupee est deja cloturee.',
+                'message' => 'Cette commande groupée est déjà cloturée.',
             ], 422);
         }
 
@@ -351,7 +472,7 @@ class GroupOrderController extends Controller
             $groupOrder->update(['status' => 'expired']);
 
             return response()->json([
-                'message' => 'Cette commande groupee a expire.',
+                'message' => 'Cette commande groupée a expiré.',
             ], 422);
         }
 
@@ -374,6 +495,7 @@ class GroupOrderController extends Controller
     {
         $total = $groupOrder->items->sum(fn ($item) => (float) $item->price_at_add * (int) $item->quantity);
         $currency = $groupOrder->items->first()?->plat?->currency ?? $groupOrder->restaurant?->currency ?? 'CDF';
+        $readiness = $this->readinessState($groupOrder);
 
         return [
             'id' => $groupOrder->id,
@@ -399,12 +521,17 @@ class GroupOrderController extends Controller
             'order_id' => $groupOrder->order_id,
             'total_amount' => $total,
             'currency' => $currency,
+            'can_checkout' => $readiness['can_checkout'],
+            'readiness' => $readiness,
             'participants' => $groupOrder->participants->map(fn ($participant) => [
                 'id' => $participant->id,
                 'name' => $participant->name,
                 'phone' => $participant->phone,
                 'email' => $participant->email,
                 'is_creator' => $participant->is_creator,
+                'is_ready' => (bool) $participant->is_ready,
+                'is_active' => $this->participantIsActive($participant),
+                'last_seen_at' => $participant->last_seen_at?->toIso8601String(),
                 'items' => $participant->items->map(fn ($item) => $this->itemPayload($item))->values(),
             ])->values(),
             'items' => $groupOrder->items->map(fn ($item) => $this->itemPayload($item))->values(),
@@ -431,9 +558,45 @@ class GroupOrderController extends Controller
         ];
     }
 
+    private function readinessState(GroupOrder $groupOrder): array
+    {
+        $participants = $groupOrder->participants;
+        $activeParticipants = $participants->filter(fn ($participant) => $this->participantIsActive($participant));
+        $activeWithItems = $activeParticipants->filter(function ($participant) {
+            return $participant->items->sum('quantity') > 0;
+        });
+        $waitingParticipants = $activeWithItems
+            ->filter(fn ($participant) => !$participant->is_ready)
+            ->values();
+
+        return [
+            'active_timeout_seconds' => 120,
+            'participants_count' => $participants->count(),
+            'active_count' => $activeParticipants->count(),
+            'ready_count' => $activeWithItems->filter(fn ($participant) => $participant->is_ready)->count(),
+            'waiting_count' => $waitingParticipants->count(),
+            'waiting_participants' => $waitingParticipants->map(fn ($participant) => [
+                'id' => $participant->id,
+                'name' => $participant->name,
+            ])->values(),
+            'can_checkout' => $groupOrder->items->count() > 0
+                && $activeWithItems->count() > 0
+                && $waitingParticipants->count() === 0,
+        ];
+    }
+
+    private function participantIsActive(GroupOrderParticipant $participant): bool
+    {
+        if (!$participant->last_seen_at) {
+            return false;
+        }
+
+        return $participant->last_seen_at->greaterThanOrEqualTo(now()->subSeconds(120));
+    }
+
     private function groupOrderNote(GroupOrder $groupOrder): string
     {
-        $lines = ["Commande groupee #{$groupOrder->code}"];
+        $lines = ["Commande groupée #{$groupOrder->code}"];
 
         if ($groupOrder->note) {
             $lines[] = "Note groupe: {$groupOrder->note}";
@@ -477,7 +640,7 @@ class GroupOrderController extends Controller
         $total = $groupOrder->items->sum(fn ($item) => (float) $item->price_at_add * (int) $item->quantity);
         $currency = $groupOrder->items->first()?->plat?->currency ?? $groupOrder->restaurant?->currency ?? 'CDF';
 
-        return "Bonjour, nouvelle commande groupee Restaurant Scan.\n"
+        return "Bonjour, nouvelle commande groupée Restaurant Scan.\n"
             . "Restaurant: " . ($groupOrder->restaurant?->name ?? '-') . "\n"
             . "Groupe: #{$groupOrder->code}\n"
             . "Client principal: {$groupOrder->creator_name}\n"
@@ -519,6 +682,11 @@ class GroupOrderController extends Controller
         return $code;
     }
 
+    private function generateCreatorCode(): string
+    {
+        return (string) random_int(1000, 9999);
+    }
+
     private function broadcastSafely(object $event): void
     {
         try {
@@ -528,6 +696,3 @@ class GroupOrderController extends Controller
         }
     }
 }
-
-
-

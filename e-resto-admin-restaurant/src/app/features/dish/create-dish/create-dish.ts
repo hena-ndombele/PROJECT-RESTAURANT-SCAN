@@ -5,6 +5,7 @@ import { Router, RouterLink } from "@angular/router";
 import { CategoryDto } from "../../../models/category/CategoryDto";
 import { CategoryService } from "../../../services/category/category-service";
 import { DishService } from "../../../services/dish/dish-service";
+import { SaasService } from "../../../services/saas/saas-service";
 
 @Component({
     selector: "app-create-dish",
@@ -16,9 +17,16 @@ import { DishService } from "../../../services/dish/dish-service";
 export class CreateDish implements OnInit {
     dishForm!: FormGroup;
     ingredients: string[] = [];
+    selectedSizes: string[] = [];
+    readonly sizeOptions = [
+        { value: "small", label: "Petit" },
+        { value: "medium", label: "Moyen" },
+        { value: "large", label: "Grand" },
+    ];
     isLoading = signal<boolean>(false);
     submitAttempted = signal<boolean>(false);
     formError = signal<string>("");
+    canUseDishPromotions = signal<boolean>(false);
 
     selectedFile: File | null = null;
     thumb1File: File | null = null;
@@ -32,6 +40,7 @@ export class CreateDish implements OnInit {
 
     private categoryService = inject(CategoryService);
     private dishService = inject(DishService);
+    private saasService = inject(SaasService);
     private fb = inject(FormBuilder);
     private router = inject(Router);
 
@@ -44,18 +53,26 @@ export class CreateDish implements OnInit {
             category_id: ["", Validators.required],
             preparation_time: [30, [Validators.required, Validators.min(1)]],
             is_available: [true],
+            promotion_enabled: [false],
+            promotion_percent: [null, [Validators.min(1), Validators.max(95)]],
+            promotion_ends_at: [""],
         });
 
         this.loadCategories();
+        this.loadPlanUsage();
+    }
+
+    loadPlanUsage(): void {
+        this.saasService.restaurantUsage().subscribe({
+            next: (usage) => this.canUseDishPromotions.set(!!usage.permissions?.can_use_dish_promotions),
+            error: () => this.canUseDishPromotions.set(false),
+        });
     }
 
     loadCategories(): void {
         this.categoryService.list().subscribe({
             next: (data) => {
                 this.categories.set(data);
-                if (!data.length) {
-                    this.formError.set("Créez d'abord une catégorie avant d'ajouter un plat.");
-                }
             },
             error: (err) => {
                 this.formError.set("Impossible de charger les catégories de ce restaurant. Reconnectez-vous puis réessayez.");
@@ -97,9 +114,22 @@ export class CreateDish implements OnInit {
         this.ingredients.splice(index, 1);
     }
 
+    toggleSize(size: string, checked: boolean): void {
+        this.selectedSizes = checked ? [size] : [];
+    }
+
+    hasSize(size: string): boolean {
+        return this.selectedSizes.includes(size);
+    }
+
     onSubmit(): void {
         this.submitAttempted.set(true);
         this.formError.set("");
+
+        if (!this.categories().length) {
+            this.formError.set("Créez d'abord une catégorie avant d'ajouter un plat.");
+            return;
+        }
 
         if (this.dishForm.invalid) {
             this.dishForm.markAllAsTouched();
@@ -138,8 +168,12 @@ export class CreateDish implements OnInit {
             category_id: "",
             preparation_time: 30,
             is_available: true,
+            promotion_enabled: false,
+            promotion_percent: null,
+            promotion_ends_at: "",
         });
         this.ingredients = [];
+        this.selectedSizes = [];
         this.selectedFile = null;
         this.thumb1File = null;
         this.thumb2File = null;
@@ -162,7 +196,13 @@ export class CreateDish implements OnInit {
         formData.append("preparation_time", formValue.preparation_time.toString());
         formData.append("is_available", formValue.is_available ? "1" : "0");
 
+        if (this.canUseDishPromotions() && formValue.promotion_enabled) {
+            if (formValue.promotion_percent) formData.append("promotion_percent", formValue.promotion_percent.toString());
+            if (formValue.promotion_ends_at) formData.append("promotion_ends_at", formValue.promotion_ends_at);
+        }
+
         this.ingredients.forEach((ingredient) => formData.append("ingredients[]", ingredient));
+        this.selectedSizes.forEach((size) => formData.append("sizes[]", size));
 
         if (this.selectedFile) formData.append("image_principale", this.selectedFile);
         if (this.thumb1File) formData.append("image_secondaire_1", this.thumb1File);

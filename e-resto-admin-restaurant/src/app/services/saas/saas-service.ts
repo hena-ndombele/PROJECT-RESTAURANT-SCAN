@@ -91,4 +91,29 @@ export class SaasService {
   updateRestaurantProfile(payload: any): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/restaurant/profile`, payload);
   }
+
+  businessRestaurants(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/business/restaurants`);
+  }
+
+  createBusinessRestaurant(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/business/restaurants`, payload);
+  }
+
+  switchBusinessRestaurant(restaurantId: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/business/restaurants/${restaurantId}/switch`, {});
+  }
+
+  deleteBusinessRestaurant(restaurantId: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/business/restaurants/${restaurantId}`);
+  }
+
+  businessAnalytics(params?: { month?: number | string; year?: number | string }): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/business/analytics`, {
+      params: {
+        ...(params?.month ? { month: String(params.month) } : {}),
+        ...(params?.year ? { year: String(params.year) } : {}),
+      },
+    });
+  }
 }

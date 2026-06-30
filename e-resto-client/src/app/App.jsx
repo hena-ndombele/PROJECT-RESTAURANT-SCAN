@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { cancelOrder, createOrder, getOrder, requestBill, trackOrder, updateOrderItems } from '../features/cart/orderApi';
+import { checkoutGroupOrder, createGroupOrder, deleteGroupOrderItem, getActiveGroupOrderByTable, getGroupOrder, heartbeatGroupOrderParticipant, joinGroupOrder, setGroupOrderParticipantReady, upsertGroupOrderItem } from '../features/cart/groupOrderApi';
 import { buildReceiptPdf } from '../features/cart/receiptPdf';
 import { useCart } from '../features/cart/useCart';
 import { submitFeedback } from '../features/feedback/feedbackApi';
 import { getPublicMenu } from '../features/menu/menuApi';
 import { createReservation } from '../features/reservation/reservationApi';
-import { getEcho } from '../shared/api/realtime';
+import { subscribeToMenuRealtime, subscribeToOrderRealtime } from '../shared/api/realtime';
 import { assetUrl } from '../shared/api/httpClient';
 import { formatMoney } from '../shared/lib/money';
 
@@ -17,6 +18,21 @@ const fallbackMenuImages = [
   '/img/menu/5.jpg',
   '/img/menu/6.jpg',
 ];
+
+function hasActivePromotion(plat) {
+  return Boolean(plat?.is_promotion_active && Number(plat?.promotion_percent) > 0 && Number(plat?.promotion_price) > 0);
+}
+
+function effectiveDishPrice(plat) {
+  return hasActivePromotion(plat) ? Number(plat.promotion_price) : Number(plat?.price || 0);
+}
+
+function promotionEndLabel(plat) {
+  if (!plat?.promotion_ends_at) return '';
+  const date = new Date(plat.promotion_ends_at);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+}
 
 const fallbackCategoryImages = [
   '/img/category/1.jpg',
@@ -33,8 +49,56 @@ const ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY = 'e-resto-active-order-tracking-co
 const ACTIVE_ORDER_BY_TABLE_PREFIX = 'e-resto-active-order-table-';
 const FEEDBACK_STORAGE_PREFIX = 'e-resto-feedback-';
 const BILL_REQUEST_STORAGE_PREFIX = 'e-resto-bill-requested-';
+const GROUP_ORDER_STORAGE_PREFIX = 'e-resto-group-order-';
 let notificationAudioContext;
 let notificationAudioUnlocked = false;
+
+const dishSizeLabels = {
+  small: 'Petit',
+  medium: 'Moyen',
+  large: 'Grand',
+};
+
+function normalizeDishSizes(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value !== 'string' || !value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter(Boolean);
+  } catch {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
+function normalizeTextList(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value !== 'string' || !value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter(Boolean);
+  } catch {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
+function DishSizes({ sizes, compact = false }) {
+  const normalized = normalizeDishSizes(sizes);
+  if (!normalized.length) return null;
+
+  return (
+    <div className={compact ? 'msizes compact' : 'msizes'}>
+      {normalized.map((size) => (
+        <span key={size}>{dishSizeLabels[size] || size}</span>
+      ))}
+    </div>
+  );
+}
 
 const staticPlats = [
   {
@@ -45,6 +109,7 @@ const staticPlats = [
     currency: 'USD',
     preparation_time: 12,
     ingredients: ['Spicy', 'Bestseller', 'Beef'],
+    sizes: ['small', 'medium', 'large'],
     image_url: '/img/menu/1.jpg',
     category: { id: 'burgers', name: 'Burgers' },
   },
@@ -56,6 +121,7 @@ const staticPlats = [
     currency: 'USD',
     preparation_time: 18,
     ingredients: ['Vegetarian', 'Chef Pick', 'Italian'],
+    sizes: ['medium', 'large'],
     image_url: '/img/menu/2.jpg',
     category: { id: 'pizza', name: 'Pizza' },
   },
@@ -67,6 +133,7 @@ const staticPlats = [
     currency: 'USD',
     preparation_time: 16,
     ingredients: ['Hot', 'Chicken', 'Crunchy'],
+    sizes: ['small', 'medium'],
     image_url: '/img/menu/3.jpg',
     category: { id: 'chicken', name: 'Fried Chicken' },
   },
@@ -84,10 +151,23 @@ function useRestaurantSlug() {
   return useMemo(() => new URLSearchParams(window.location.search).get('restaurant_slug'), []);
 }
 
+function useGroupSessionFromUrl() {
+  return useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      code: params.get('group_code'),
+      participant_id: params.get('group_participant_id'),
+      participant_name: params.get('group_participant_name'),
+      is_creator: params.get('group_creator') === '1',
+    };
+  }, []);
+}
+
 export function App() {
   const tableId = useTableId();
   const orderIdFromUrl = useOrderIdFromUrl();
   const restaurantSlug = useRestaurantSlug();
+  const groupSessionFromUrl = useGroupSessionFromUrl();
   const cart = useCart();
   const [menu, setMenu] = useState({ categories: [], plats: [] });
   const [scannedTable, setScannedTable] = useState(null);
@@ -101,10 +181,15 @@ export function App() {
   const [snackbar, setSnackbar] = useState(null);
   const [backToTop, setBackToTop] = useState(false);
   const [loadingMenu, setLoadingMenu] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashBrandLoaded, setSplashBrandLoaded] = useState(false);
   const [menuError, setMenuError] = useState('');
   const [recoveryNotice, setRecoveryNotice] = useState('');
   const [feedbackOrder, setFeedbackOrder] = useState(null);
   const [orderConfirmation, setOrderConfirmation] = useState(null);
+  const [groupOrder, setGroupOrder] = useState(null);
+  const [groupParticipant, setGroupParticipant] = useState(null);
+  const [availableGroupOrder, setAvailableGroupOrder] = useState(null);
   const [brand, setBrand] = useState({
     name: 'Restaurant Scan',
     id: '',
@@ -112,7 +197,7 @@ export function App() {
     slogan: 'Fast Food & Restaurant',
     description: 'Fast Food & Restaurant',
     can_feedback: false,
-    can_Réservations: false,
+    can_reservations: false,
     can_mobile_money: false,
     can_chatbot: false,
     whatsapp_order_phone: '',
@@ -124,6 +209,11 @@ export function App() {
     },
   });
   const [cancelledOrderModal, setCancelledOrderModal] = useState(null);
+  const groupCartCount = useMemo(
+    () => groupOrder?.items?.reduce((sum, item) => sum + Number(item.quantity || 0), 0) ?? 0,
+    [groupOrder?.items],
+  );
+  const visibleCartCount = groupParticipant ? groupCartCount : cart.totals.totalQuantity;
 
   useEffect(() => {
     const prepare = () => prepareCustomerNotifications();
@@ -141,16 +231,29 @@ export function App() {
     };
   }, []);
 
-  useEffect(() => {
-    getPublicMenu(tableId ? { table_id: tableId } : (restaurantSlug ? { restaurant_slug: restaurantSlug } : {}))
+  const menuParams = useMemo(
+    () => (tableId ? { table_id: tableId } : (restaurantSlug ? { restaurant_slug: restaurantSlug } : {})),
+    [restaurantSlug, tableId]
+  );
+
+  const loadPublicMenu = (silent = false) => {
+    if (!silent) {
+      setLoadingMenu(true);
+      setShowSplash(true);
+      setSplashBrandLoaded(false);
+    }
+
+    return getPublicMenu(menuParams)
       .then((response) => {
         setMenu(response);
         setScannedTable(response.table || null);
+        setMenuError('');
         if (response.restaurant) {
           const nextBrand = buildClientBrand(response.restaurant);
           setBrand(nextBrand);
           applyClientTheme(nextBrand);
         }
+        setSplashBrandLoaded(true);
       })
       .catch((error) => {
         setMenuError(tableId
@@ -164,9 +267,35 @@ export function App() {
           ],
           plats: staticPlats,
         });
+        setSplashBrandLoaded(true);
       })
-      .finally(() => setLoadingMenu(false));
-  }, [restaurantSlug, tableId]);
+      .finally(() => {
+        if (!silent) {
+          setLoadingMenu(false);
+        }
+      });
+  };
+
+  useEffect(() => {
+    loadPublicMenu(false);
+  }, [menuParams]);
+
+  useEffect(() => {
+    if (loadingMenu) return undefined;
+    const timer = window.setTimeout(() => setShowSplash(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [loadingMenu]);
+
+  useEffect(() => {
+    const restaurantId = menu.restaurant_id || brand.id;
+    if (!restaurantId) return undefined;
+
+    return subscribeToMenuRealtime(restaurantId, {
+      onUpdate: () => {
+        loadPublicMenu(true);
+      },
+    });
+  }, [menu.restaurant_id, brand.id, menuParams]);
 
   useEffect(() => {
     const tableOrderId = tableId ? localStorage.getItem(`${ACTIVE_ORDER_BY_TABLE_PREFIX}${tableId}`) : null;
@@ -260,6 +389,191 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!tableId) return;
+    const stored = groupSessionFromUrl.code && groupSessionFromUrl.participant_id
+      ? groupSessionFromUrl
+      : readStoredGroupOrder(tableId);
+    if (!stored?.code || !stored?.participant_id) return;
+
+    let cancelled = false;
+    getGroupOrder(stored.code)
+      .then((payload) => {
+        if (cancelled || payload.status !== 'open') return;
+        setGroupOrder(payload);
+        const participant = payload.participants?.find((item) => item.id === stored.participant_id);
+        setGroupParticipant(participant || {
+          id: stored.participant_id,
+          name: stored.participant_name || 'Client',
+          is_creator: stored.is_creator === '1',
+        });
+      })
+      .catch(() => clearStoredGroupOrder(tableId));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tableId, groupSessionFromUrl.code, groupSessionFromUrl.participant_id]);
+
+  useEffect(() => {
+    if (!tableId || groupParticipant) {
+      setAvailableGroupOrder(null);
+      return;
+    }
+
+    let cancelled = false;
+    getActiveGroupOrderByTable(tableId)
+      .then((payload) => {
+        if (cancelled) return;
+        setAvailableGroupOrder(payload.group_order || null);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailableGroupOrder(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tableId, groupParticipant?.id]);
+
+  useEffect(() => {
+    if (!groupOrder?.code || !groupParticipant?.id) return;
+    const timer = window.setInterval(() => {
+      heartbeatGroupOrderParticipant(groupOrder.code, groupParticipant.id)
+        .then((payload) => {
+          const nextGroupOrder = payload.group_order || payload;
+          if (nextGroupOrder.status === 'open') {
+            setGroupOrder(nextGroupOrder);
+            const nextParticipant = nextGroupOrder.participants?.find((item) => item.id === groupParticipant.id);
+            if (nextParticipant) setGroupParticipant(nextParticipant);
+          }
+        })
+        .catch(() => undefined);
+    }, 10000);
+
+    return () => window.clearInterval(timer);
+  }, [groupOrder?.code, groupParticipant?.id]);
+
+  const handleGroupOrderClick = async () => {
+    if (!tableId) {
+      setSnackbar({
+        type: 'error',
+        title: 'Table requise',
+        message: 'La commande groupée est disponible uniquement après scan du QR code de table.',
+      });
+      return;
+    }
+
+    if (groupOrder?.code && groupParticipant?.id) {
+      setActiveView('cart');
+      return;
+    }
+
+    try {
+      const activeGroup = availableGroupOrder || (await getActiveGroupOrderByTable(tableId)).group_order;
+
+      if (activeGroup?.code) {
+        const name = window.prompt('Votre nom pour cette commande groupée ?');
+        if (!name?.trim()) return;
+
+        const response = await joinGroupOrder(activeGroup.code, { name: name.trim() });
+        setGroupOrder(response.group_order);
+        setGroupParticipant({ ...response.participant, is_creator: false });
+        setAvailableGroupOrder(null);
+        storeGroupOrder(tableId, response.group_order.code, response.participant, false);
+        syncGroupOrderUrl(tableId, response.group_order.code, response.participant, false);
+        setActiveView('cart');
+        return;
+      }
+
+      const name = window.prompt('Votre nom pour créer la commande groupée ?');
+      if (!name?.trim()) return;
+
+      const response = await createGroupOrder({
+        table_id: tableId,
+        creator_name: name.trim(),
+      });
+      setGroupOrder(response.group_order);
+      setGroupParticipant({ ...response.creator_participant, is_creator: true });
+      setAvailableGroupOrder(null);
+      storeGroupOrder(tableId, response.group_order.code, response.creator_participant, true);
+      syncGroupOrderUrl(tableId, response.group_order.code, response.creator_participant, true);
+      setActiveView('cart');
+    } catch (error) {
+      setSnackbar({
+        type: 'error',
+        title: 'Commande groupée',
+        message: error.message || 'Impossible de lancer la commande groupée.',
+      });
+    }
+  };
+
+  const addToGroupOrder = async (plat, quantity) => {
+    if (!groupOrder?.code || !groupParticipant?.id) return;
+    const existing = groupOrder.items?.find((item) => item.participant_id === groupParticipant.id && item.plat_id === plat.id);
+    const nextQuantity = Number(existing?.quantity || 0) + Number(quantity || 1);
+    const response = await upsertGroupOrderItem(groupOrder.code, {
+      participant_id: groupParticipant.id,
+      plat_id: plat.id,
+      quantity: nextQuantity,
+    });
+    setGroupOrder(response.group_order);
+    const nextParticipant = response.group_order?.participants?.find((item) => item.id === groupParticipant.id);
+    if (nextParticipant) setGroupParticipant(nextParticipant);
+    setActiveView('cart');
+  };
+
+  const updateGroupItemQuantity = async (item, quantity) => {
+    if (!groupOrder?.code || !groupParticipant?.id || item.participant_id !== groupParticipant.id) return;
+    const nextQuantity = Number(quantity);
+    const response = nextQuantity <= 0
+      ? await deleteGroupOrderItem(groupOrder.code, item.id)
+      : await upsertGroupOrderItem(groupOrder.code, {
+        participant_id: groupParticipant.id,
+        plat_id: item.plat_id,
+        quantity: nextQuantity,
+      });
+    setGroupOrder(response.group_order);
+    const nextParticipant = response.group_order?.participants?.find((participant) => participant.id === groupParticipant.id);
+    if (nextParticipant) setGroupParticipant(nextParticipant);
+  };
+
+  const toggleGroupParticipantReady = async (isReady) => {
+    if (!groupOrder?.code || !groupParticipant?.id) return;
+    try {
+      const response = await setGroupOrderParticipantReady(groupOrder.code, groupParticipant.id, isReady);
+      setGroupOrder(response.group_order);
+      setGroupParticipant(response.participant);
+    } catch (error) {
+      setSnackbar({
+        type: 'error',
+        title: 'Commande groupée',
+        message: error.message || 'Impossible de modifier votre statut.',
+      });
+    }
+  };
+
+  const submitGroupOrder = async () => {
+    if (!groupOrder?.code) return;
+    try {
+      const response = await checkoutGroupOrder(groupOrder.code, {});
+      clearStoredGroupOrder(tableId);
+      clearGroupOrderUrl();
+      setGroupOrder(null);
+      setGroupParticipant(null);
+      rememberActiveOrder(response.order, tableId, true);
+      setActiveOrder(response.order);
+      setOrderConfirmation(response.order);
+      setActiveView('orders');
+    } catch (error) {
+      setSnackbar({
+        type: 'error',
+        title: 'Commande groupée',
+        message: error.message || 'Impossible d envoyer la commande groupée.',
+      });
+    }
+  };
+
+  useEffect(() => {
     if (!brand.can_feedback || !activeOrder?.id || !canShowFeedbackForOrder(activeOrder)) return;
     if (localStorage.getItem(`${FEEDBACK_STORAGE_PREFIX}${activeOrder.id}`)) return;
 
@@ -278,11 +592,12 @@ export function App() {
 
   return (
     <>
+      {showSplash ? <SplashScreen brand={brand} ready={splashBrandLoaded} /> : null}
       <TopBar brand={brand} />
       <Navbar
         brand={brand}
         onSearch={() => setSearchOpen(true)}
-        cartCount={cart.totals.totalQuantity}
+        cartCount={visibleCartCount}
         activeView={activeView}
         activeOrder={activeOrder}
         scannedTable={scannedTable}
@@ -291,7 +606,7 @@ export function App() {
       />
       <MobileBottomNav
         brand={brand}
-        cartCount={cart.totals.totalQuantity}
+        cartCount={visibleCartCount}
         activeView={activeView}
         activeOrder={activeOrder}
         hasTable={Boolean(tableId)}
@@ -317,6 +632,7 @@ export function App() {
               loading={loadingMenu}
               error={menuError}
               scannedTable={scannedTable}
+              tableId={tableId}
               categories={menu.categories}
               plats={filteredPlats}
               search={search}
@@ -324,6 +640,10 @@ export function App() {
               onSearch={setSearch}
               onCategory={setSelectedCategory}
               onDetails={openDetails}
+              onGroupOrder={handleGroupOrderClick}
+              groupOrder={groupOrder}
+              groupParticipant={groupParticipant}
+              availableGroupOrder={availableGroupOrder}
             />
           </div>
         )}
@@ -332,6 +652,12 @@ export function App() {
             tableId={tableId}
             brand={brand}
             cart={cart}
+            groupOrder={groupOrder}
+            groupParticipant={groupParticipant}
+            onGroupQuantity={updateGroupItemQuantity}
+            onGroupReady={toggleGroupParticipantReady}
+            onGroupSubmit={submitGroupOrder}
+            onDetails={openDetails}
             onOrderCreated={(order) => {
               rememberActiveOrder(order, tableId, true);
               setActiveOrder(order);
@@ -410,7 +736,7 @@ export function App() {
             }}
           />
         )}
-        {activeView === 'Réservations' && (
+        {activeView === 'reservations' && (
           <ReservationPage
             tableId={tableId}
             brand={brand}
@@ -418,7 +744,7 @@ export function App() {
           />
         )}
       </main>
-      <MenuModal plat={selectedPlat} onClose={() => setSelectedPlat(null)} onAdd={cart.addItem} />
+      <MenuModal plat={selectedPlat} onClose={() => setSelectedPlat(null)} onAdd={groupParticipant ? addToGroupOrder : cart.addItem} />
       <CancelledOrderModal order={cancelledOrderModal} onClose={() => setCancelledOrderModal(null)} />
       <OrderConfirmationModal order={orderConfirmation} onClose={() => setOrderConfirmation(null)} onTrack={() => {
         setOrderConfirmation(null);
@@ -440,6 +766,34 @@ export function App() {
       </button>
       <OrderSnackbar snackbar={snackbar} onClose={() => setSnackbar(null)} />
     </>
+  );
+}
+
+function SplashScreen({ brand, ready }) {
+  const hasRestaurantLogo = Boolean(ready && brand?.has_restaurant_logo && brand?.logo_url);
+  const initial = (brand?.name || 'R').trim().slice(0, 1).toUpperCase();
+
+  return (
+    <div className="client-splash" style={{ background: brand?.theme?.background || 'var(--client-bg)' }}>
+      <div className="client-splash-card">
+        <div className="client-splash-logo">
+          {hasRestaurantLogo ? (
+            <img src={brand.logo_url} alt={brand?.name || 'Restaurant'} />
+          ) : (
+            <span>{ready ? initial : ''}</span>
+          )}
+        </div>
+        <div className="client-splash-text">
+          <strong>{ready ? (brand?.name || 'Restaurant') : 'Chargement'}</strong>
+          <span>SCANNER POUR COMMANDER</span>
+        </div>
+        <div className="client-splash-loader" aria-hidden="true">
+          <i></i>
+          <i></i>
+          <i></i>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -473,7 +827,7 @@ function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, scannedTa
     ['menu', 'Menu'],
     ['cart', 'Panier'],
     ...(hasTable ? [['orders', 'Commandes']] : []),
-    ...(!hasTable ? [['Réservations', 'Reserver']] : []),
+    ...(!hasTable ? [['reservations', 'Reserver']] : []),
   ];
 
   return (
@@ -547,7 +901,7 @@ function MobileBottomNav({ brand, cartCount, activeView, activeOrder, hasTable, 
         <span>Panier</span>
       </button>
       {showReservationButton ? (
-        <button type="button" className={`mobile-bottom-item ${activeView === 'Réservations' ? 'active' : ''}`} onClick={() => onView('Réservations')}>
+        <button type="button" className={`mobile-bottom-item ${activeView === 'reservations' ? 'active' : ''}`} onClick={() => onView('reservations')}>
           <i className="fas fa-calendar-check"></i>
           <span>Reserver</span>
         </button>
@@ -694,16 +1048,26 @@ function CategoryCard({ category, active, image, onSelect }) {
   );
 }
 
-function MenuSection({ loading, error, scannedTable, categories, plats, search, selectedCategory, onSearch, onCategory, onDetails }) {
+function MenuSection({ loading, error, scannedTable, tableId, categories, plats, search, selectedCategory, onSearch, onCategory, onDetails, onGroupOrder, groupOrder, groupParticipant, availableGroupOrder }) {
+  const tableLabel = scannedTable?.name || (tableId ? 'cette table' : '');
+  const groupButtonText = groupParticipant
+    ? `Commande groupée #${groupOrder?.code}`
+    : availableGroupOrder
+      ? 'Rejoindre la commande'
+      : 'Créer une commande groupée';
   return (
     <section id="menu">
       <div className="container">
         <SectionTitle eyebrow="What's Cooking" title="Our Delicious" highlight="Menu" />
-        {scannedTable ? (
+        {scannedTable || tableId ? (
           <div className="scanned-table-banner">
             <i className="fas fa-chair"></i>
             <span>Vous commandez depuis</span>
-            <strong>{scannedTable.name}</strong>
+            <strong>{tableLabel}</strong>
+            <button type="button" className={`group-order-btn ${groupParticipant ? 'active' : ''}`} onClick={onGroupOrder}>
+              <i className="fas fa-users"></i>
+              {groupButtonText}
+            </button>
           </div>
         ) : null}
         <div className="menu-inline-search">
@@ -721,9 +1085,15 @@ function MenuSection({ loading, error, scannedTable, categories, plats, search, 
           ) : null}
         </div>
         <div className="text-center mb-4">
-          <button className={`filtbtn ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => onCategory('all')}>All</button>
-          {categories.map((category) => (
-            <button className={`filtbtn ${selectedCategory === category.id ? 'active' : ''}`} key={category.id} onClick={() => onCategory(category.id)}>{category.name}</button>
+          <button className={`filtbtn ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => onCategory('all')}>
+            <img className="filtimg" src="/img/category/1.jpg" alt="" />
+            <span>All</span>
+          </button>
+          {categories.map((category, index) => (
+            <button className={`filtbtn ${selectedCategory === category.id ? 'active' : ''}`} key={category.id} onClick={() => onCategory(category.id)}>
+              <img className="filtimg" src={assetUrl(category.image_url || category.image, fallbackCategoryImages[index % fallbackCategoryImages.length])} alt="" />
+              <span>{category.name}</span>
+            </button>
           ))}
         </div>
         {error && (
@@ -748,7 +1118,7 @@ function MenuSection({ loading, error, scannedTable, categories, plats, search, 
               <MenuStateCard
                 icon="fa-bowl-food"
                 title="Menu en attente"
-                message="La liste des plats n'est pas encore disponible. Essayez une autre categorie ou revenez dans un instant."
+                message="La liste des plats n'est pas encore disponible. Essayez une autre catégorie ou revenez dans un instant."
               />
             </div>
           ) : null}
@@ -774,20 +1144,29 @@ function MenuStateCard({ icon, title, message, loading = false }) {
 
 function MenuCard({ plat, index, onDetails }) {
   const image = assetUrl(plat.image_url || plat.image, fallbackMenuImages[index % fallbackMenuImages.length]);
+  const promoActive = hasActivePromotion(plat);
   return (
     <div className="col-sm-6 col-lg-4 mwrap">
       <button className="mcard clean-btn" onClick={() => onDetails({ ...plat, image_url: image })}>
         <div className="mimg">
           <img src={image} alt={plat.name} />
-          <div className="mbdg hot"><i className="fas fa-star"></i> Hot</div>
+          {promoActive ? (
+            <div className="mbdg promo"><i className="fas fa-tag"></i> -{plat.promotion_percent}%</div>
+          ) : (
+            <div className="mbdg hot"><i className="fas fa-star"></i> Hot</div>
+          )}
           <div className="mhrt"><i className="far fa-heart"></i></div>
         </div>
         <div className="mbody">
           <div className="mcat">{plat.category?.name ?? 'Menu'}</div>
           <div className="mtit">{plat.name}</div>
+          <div className="mdesc">{plat.description || 'Description non disponible.'}</div>
           <div className="mfoot">
             <div>
-              <div className="mprice">{formatMoney(plat.price, plat.currency)}</div>
+              <div className="mprice">
+                {formatMoney(effectiveDishPrice(plat), plat.currency)}
+                {promoActive ? <span className="old-price">{formatMoney(plat.price, plat.currency)}</span> : null}
+              </div>
               <div className="mtime"><i className="fas fa-clock"></i>{plat.preparation_time ?? 20} min</div>
               <div className="mstars"><i className="fas fa-star"></i> <span style={{ color: '#bbb', fontSize: '.7rem' }}>(128)</span></div>
             </div>
@@ -815,12 +1194,24 @@ function MenuModal({ plat, onClose, onAdd }) {
 
   if (!plat) return null;
 
+  const ingredients = normalizeTextList(plat.ingredients);
+  const sizes = normalizeDishSizes(plat.sizes);
+  const hasPreparationTime = plat.preparation_time !== null && plat.preparation_time !== undefined && plat.preparation_time !== '';
+  const promoActive = hasActivePromotion(plat);
+  const promoEnd = promotionEndLabel(plat);
+
   return (
     <div id="menuPop" className="open" onClick={(event) => event.target.id === 'menuPop' && onClose()}>
       <div className="mpbox">
         <button className="mpclose" onClick={onClose}><i className="fas fa-times"></i></button>
         <div className="menu-detail-layout">
           <div className="menu-detail-media">
+            {promoActive ? (
+              <div className="menu-detail-promo-badge">
+                <span>-{plat.promotion_percent}%</span>
+                {promoEnd ? <small>Jusqu'au {promoEnd}</small> : null}
+              </div>
+            ) : null}
             <img id="mpImg" className="mpimg" src={images[activeImage] || plat.image_url} alt={plat.name} />
             <div className={`menu-detail-thumbs ${images.length <= 1 ? 'single' : ''}`}>
               {images.map((image, index) => (
@@ -831,26 +1222,60 @@ function MenuModal({ plat, onClose, onAdd }) {
             </div>
           </div>
           <div className="menu-detail-content">
-            <div className="mcat" id="mpCat">{plat.category?.name ?? 'Menu'}</div>
-            <h3 id="mpTitle">{plat.name}</h3>
-            <div className="mstars" id="mpStars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i> <span>4.9 (128 reviews)</span></div>
-            <p id="mpDesc">{plat.description}</p>
-            <div className="mpprice" id="mpPrice">{formatMoney(plat.price, plat.currency)}</div>
-            <div className="mpmeta" id="mpMeta">
-              <div className="mpm"><div className="mpmv">{plat.preparation_time ?? 20} min</div><div className="mpml">Prep Time</div></div>
-              <div className="mpm"><div className="mpmv">Fresh</div><div className="mpml">Quality</div></div>
-              <div className="mpm"><div className="mpmv">4.9/5</div><div className="mpml">Rating</div></div>
+            <div className="menu-detail-scroll">
+              <div className="mcat" id="mpCat">{plat.category?.name ?? 'Menu'}</div>
+              <div className="menu-detail-titlebar">
+                <h3 id="mpTitle">{plat.name}</h3>
+                <div className="mpqty">
+                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))}><i className="fas fa-minus"></i></button>
+                  <span id="mpQnum">{quantity}</span>
+                  <button onClick={() => setQuantity(quantity + 1)}><i className="fas fa-plus"></i></button>
+                </div>
+              </div>
+              <div className="menu-detail-price-row">
+                <div className="mpprice" id="mpPrice">
+                  {formatMoney(effectiveDishPrice(plat), plat.currency)}
+                  {promoActive ? <span className="old-price">{formatMoney(plat.price, plat.currency)}</span> : null}
+                </div>
+                {sizes.length ? <DishSizes sizes={sizes} compact /> : null}
+              </div>
+
+              <div className="menu-detail-info">
+                {hasPreparationTime ? (
+                  <div className="menu-detail-row">
+                    <span><i className="fas fa-clock"></i> Temps</span>
+                    <strong>{plat.preparation_time} min</strong>
+                  </div>
+                ) : null}
+                {plat.category?.name ? (
+                  <div className="menu-detail-row">
+                    <span><i className="fas fa-layer-group"></i> Categorie</span>
+                    <strong>{plat.category.name}</strong>
+                  </div>
+                ) : null}
+              </div>
+
+              {ingredients.length ? (
+                <div className="menu-detail-section">
+                  <strong>Ingredients</strong>
+                  <div id="mpTags">{ingredients.map((tag) => <span className="mptag" key={tag}>{tag}</span>)}</div>
+                </div>
+              ) : null}
+
+              {plat.description ? (
+                <div className="menu-detail-section">
+                  <strong>Description</strong>
+                  <p id="mpDesc">{plat.description}</p>
+                </div>
+              ) : null}
+
+              <div className="menu-detail-actions">
+                <button className="mpaddcart" id="mpAddCart" onClick={() => {
+                  onAdd(plat, quantity);
+                  onClose();
+                }}><i className="fas fa-shopping-cart"></i>Ajouter au panier</button>
+              </div>
             </div>
-            <div id="mpTags">{(plat.ingredients ?? []).map((tag) => <span className="mptag" key={tag}>{tag}</span>)}</div>
-            <div className="mpqty">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))}><i className="fas fa-minus"></i></button>
-              <span id="mpQnum">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)}><i className="fas fa-plus"></i></button>
-            </div>
-            <button className="mpaddcart" id="mpAddCart" onClick={() => {
-              onAdd(plat, quantity);
-              onClose();
-            }}><i className="fas fa-shopping-cart"></i>Ajouter au panier</button>
           </div>
         </div>
       </div>
@@ -927,8 +1352,8 @@ function ReservationPage({ tableId, brand, onStatus }) {
             <span className="slbl">Reservation</span>
             <h2>Reserver une table</h2>
           </div>
-          {!brand.can_Réservations ? (
-            <div className="client-alert error">Les Réservations ne sont pas activees pour ce restaurant.</div>
+          {!brand.can_reservations ? (
+            <div className="client-alert error">Les RÃ©servations ne sont pas activees pour ce restaurant.</div>
           ) : (
             <form className="mobile-money-form" onSubmit={submitReservation}>
               <label>Nom complet</label>
@@ -965,7 +1390,75 @@ function ReservationPage({ tableId, brand, onStatus }) {
   );
 }
 
-function CartPage({ tableId, brand, cart, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping }) {
+function SwipeableCartLine({ children, onOpen, onDelete }) {
+  const [dragX, setDragX] = useState(0);
+  const startXRef = useRef(null);
+  const dragXRef = useRef(0);
+  const movedRef = useRef(false);
+
+  const startDrag = (clientX) => {
+    startXRef.current = clientX;
+    movedRef.current = false;
+  };
+
+  const moveDrag = (clientX) => {
+    if (startXRef.current === null) return;
+    const delta = clientX - startXRef.current;
+    if (Math.abs(delta) > 8) movedRef.current = true;
+    const nextDrag = Math.min(0, Math.max(delta, -96));
+    dragXRef.current = nextDrag;
+    setDragX(nextDrag);
+  };
+
+  const endDrag = () => {
+    const shouldDelete = dragXRef.current <= -72;
+    startXRef.current = null;
+    dragXRef.current = 0;
+    setDragX(0);
+    window.setTimeout(() => {
+      movedRef.current = false;
+    }, 0);
+    if (shouldDelete) onDelete?.();
+  };
+
+  const openLine = () => {
+    if (!movedRef.current) onOpen?.();
+  };
+
+  return (
+    <div className="swipe-cart-wrap">
+      <div className="swipe-delete-action" aria-hidden="true">
+        <i className="fas fa-trash"></i>
+        <span>Supprimer</span>
+      </div>
+      <div
+        role="button"
+        tabIndex={0}
+        className="cart-line cart-line-clickable clean-btn"
+        style={{ transform: `translateX(${dragX}px)` }}
+        onClick={openLine}
+        onPointerDown={(event) => startDrag(event.clientX)}
+        onPointerMove={(event) => moveDrag(event.clientX)}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onOpen?.();
+          }
+          if (event.key === 'Delete' || event.key === 'Backspace') {
+            event.preventDefault();
+            onDelete?.();
+          }
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQuantity, onGroupReady, onGroupSubmit, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping, onDetails }) {
   const [note, setNote] = useState('');
   const [orderType, setOrderType] = useState('dine_in');
   const [customerName, setCustomerName] = useState('');
@@ -973,6 +1466,147 @@ function CartPage({ tableId, brand, cart, onOrderCreated, editingOrder, onOrderU
   const [customerAddress, setCustomerAddress] = useState('');
   const [status, setStatus] = useState({ type: '', message: '' });
   const submittingRef = useRef(false);
+
+  if (groupOrder && groupParticipant) {
+    const ownItems = groupOrder.items?.filter((item) => item.participant_id === groupParticipant.id) ?? [];
+    const participants = groupOrder.participants ?? [];
+    const currentParticipant = participants.find((participant) => participant.id === groupParticipant.id) || groupParticipant;
+    const waitingNames = groupOrder.readiness?.waiting_participants?.map((participant) => participant.name).filter(Boolean) ?? [];
+    const canCheckoutGroup = Boolean(groupOrder.can_checkout);
+
+    return (
+      <section className="cart-page app-page" id="cart-page">
+        <div className="container">
+          <div className="cart-panel-box">
+            <div className="app-page-head">
+              <span className="slbl">Commande groupée</span>
+              <h2>Groupe #{groupOrder.code}</h2>
+              <button type="button" className="receipt-share-btn" onClick={onContinueShopping}>
+                <i className="fas fa-utensils"></i>
+                Menu
+              </button>
+            </div>
+
+            <div className="group-order-info">
+              <strong>{currentParticipant.is_ready ? 'Vous avez terminé votre choix' : 'Vous participez à la commande'}</strong>
+              <span>
+                {canCheckoutGroup
+                  ? 'Tous les participants actifs sont prêts. La commande peut être envoyée.'
+                  : 'Cliquez sur "J’ai terminé" quand vos plats sont choisis. Le bouton Envoyer se débloque quand les participants actifs sont prêts.'}
+              </span>
+            </div>
+
+            {participants.map((participant) => {
+              const items = groupOrder.items?.filter((item) => item.participant_id === participant.id) ?? [];
+              return (
+                <div className="group-participant-card" key={participant.id}>
+                  <div className="group-participant-head">
+                    <strong>{participant.name}</strong>
+                    <span className={participant.is_active ? (participant.is_ready ? 'ready' : 'pending') : 'inactive'}>
+                      {participant.is_active ? (participant.is_ready ? 'Prêt' : 'En cours') : 'Inactif'}
+                    </span>
+                  </div>
+                  {items.length ? items.map((item) => {
+                    const itemPlat = item.plat || {
+                      id: item.plat_id,
+                      name: item.name,
+                      price: item.price,
+                      currency: groupOrder.currency,
+                      description: item.description,
+                      image_url: item.image_url,
+                      category: item.category,
+                    };
+
+                    return item.participant_id === groupParticipant.id ? (
+                    <SwipeableCartLine
+                      key={item.id}
+                      onOpen={() => itemPlat?.id && onDetails?.(itemPlat)}
+                      onDelete={() => onGroupQuantity(item, 0)}
+                    >
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>{formatMoney(item.price, groupOrder.currency)}</span>
+                      </div>
+                      <div className="mpqty small">
+                        <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => {
+                          event.stopPropagation();
+                          onGroupQuantity(item, Number(item.quantity) - 1);
+                        }}>-</button>
+                        <span>{item.quantity}</span>
+                        <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => {
+                          event.stopPropagation();
+                          onGroupQuantity(item, Number(item.quantity) + 1);
+                        }}>+</button>
+                      </div>
+                    </SwipeableCartLine>
+                  ) : (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="cart-line cart-line-clickable clean-btn"
+                      key={item.id}
+                      onClick={() => itemPlat?.id && onDetails?.(itemPlat)}
+                      onKeyDown={(event) => {
+                        if ((event.key === 'Enter' || event.key === ' ') && itemPlat?.id) {
+                          event.preventDefault();
+                          onDetails?.(itemPlat);
+                        }
+                      }}
+                    >
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>{formatMoney(item.price, groupOrder.currency)}</span>
+                      </div>
+                        <span className="group-item-qty">x{item.quantity}</span>
+                    </div>
+                  );
+                  }) : (
+                    <div className="group-empty-line">Aucun plat ajouté.</div>
+                  )}
+                </div>
+              );
+            })}
+
+            {ownItems.length === 0 ? (
+              <div className="client-alert info">Ajoutez vos plats depuis le menu.</div>
+            ) : null}
+
+            <div className="group-ready-panel">
+              <div>
+                <strong>{currentParticipant.is_ready ? 'Statut : prêt' : 'Statut : en cours'}</strong>
+                <span>
+                  {waitingNames.length
+                    ? `En attente : ${waitingNames.join(', ')}`
+                    : canCheckoutGroup ? 'Le groupe est prêt à envoyer.' : 'Ajoutez vos plats puis validez votre choix.'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={`receipt-share-btn ${currentParticipant.is_ready ? 'active' : ''}`}
+                disabled={!ownItems.length}
+                onClick={() => onGroupReady?.(!currentParticipant.is_ready)}
+              >
+                <i className={currentParticipant.is_ready ? 'fas fa-pen' : 'fas fa-check'}></i>
+                {currentParticipant.is_ready ? 'Modifier mon choix' : 'J’ai terminé'}
+              </button>
+            </div>
+
+            <div className="cart-total">
+              <span>Total groupe</span>
+              <strong>{formatMoney(groupOrder.total_amount, groupOrder.currency)}</strong>
+            </div>
+
+            <button className="btn-red cart-submit-btn w-100 justify-content-center" disabled={!canCheckoutGroup} onClick={onGroupSubmit}>
+              <i className="fas fa-paper-plane"></i>Envoyer la commande groupée
+            </button>
+            {!canCheckoutGroup ? (
+              <div className="client-alert info">L’envoi sera disponible quand tous les participants actifs auront terminé.</div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
   const effectiveOrderType = tableId ? orderType : 'remote';
   const whatsappOrderPhone = brand?.whatsapp_order_phone || brand?.owner_phone || '';
   const canSubmit = cart.items.length > 0
@@ -1069,17 +1703,27 @@ function CartPage({ tableId, brand, cart, onOrderCreated, editingOrder, onOrderU
             <span>Ajoutez un plat depuis le menu pour commencer.</span>
           </div>
         ) : cart.items.map((item) => (
-          <div className="cart-line" key={item.plat.id}>
+          <SwipeableCartLine
+            key={item.plat.id}
+            onOpen={() => onDetails?.(item.plat)}
+            onDelete={() => cart.removeItem(item.plat.id)}
+          >
             <div>
               <strong>{item.plat.name}</strong>
-              <span>{formatMoney(item.plat.price, item.plat.currency)}</span>
+              <span>{formatMoney(effectiveDishPrice(item.plat), item.plat.currency)}</span>
             </div>
             <div className="mpqty small">
-              <button onClick={() => cart.updateQuantity(item.plat.id, item.quantity - 1)}>-</button>
+              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => {
+                event.stopPropagation();
+                cart.updateQuantity(item.plat.id, item.quantity - 1);
+              }}>-</button>
               <span>{item.quantity}</span>
-              <button onClick={() => cart.updateQuantity(item.plat.id, item.quantity + 1)}>+</button>
+              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => {
+                event.stopPropagation();
+                cart.updateQuantity(item.plat.id, item.quantity + 1);
+              }}>+</button>
             </div>
-          </div>
+          </SwipeableCartLine>
         ))}
         {cart.items.length > 0 && (
           <>
@@ -1126,7 +1770,7 @@ function CartPage({ tableId, brand, cart, onOrderCreated, editingOrder, onOrderU
               <span>Total</span>
               <strong>{formatMoney(cart.totals.totalAmount, cart.totals.currency)}</strong>
             </div>
-            <button className="btn-red w-100 justify-content-center" disabled={!canSubmit || status.type === 'loading'} onClick={submitOrder}>
+            <button className="btn-red cart-submit-btn w-100 justify-content-center" disabled={!canSubmit || status.type === 'loading'} onClick={submitOrder}>
               <i className="fas fa-paper-plane"></i>{isEditing ? 'Enregistrer la modification' : (!tableId ? 'Envoyer et ouvrir WhatsApp' : 'Envoyer la commande')}
             </button>
           </>
@@ -1314,6 +1958,52 @@ function clearRememberedOrder(tableId) {
   }
 }
 
+function storeGroupOrder(tableId, code, participant, isCreator) {
+  if (!tableId || !code || !participant?.id) return;
+  localStorage.setItem(`${GROUP_ORDER_STORAGE_PREFIX}${tableId}`, JSON.stringify({
+    code,
+    participant_id: participant.id,
+    participant_name: participant.name,
+    is_creator: isCreator ? '1' : '0',
+  }));
+}
+
+function syncGroupOrderUrl(tableId, code, participant, isCreator) {
+  if (!code || !participant?.id) return;
+  const url = new URL(window.location.href);
+  if (tableId) {
+    url.searchParams.set('table_id', tableId);
+  }
+  url.searchParams.set('group_code', code);
+  url.searchParams.set('group_participant_id', participant.id);
+  url.searchParams.set('group_participant_name', participant.name || '');
+  url.searchParams.set('group_creator', isCreator ? '1' : '0');
+  window.history.replaceState({}, '', url.toString());
+}
+
+function clearGroupOrderUrl() {
+  const url = new URL(window.location.href);
+  ['group_code', 'group_participant_id', 'group_participant_name', 'group_creator'].forEach((key) => {
+    url.searchParams.delete(key);
+  });
+  window.history.replaceState({}, '', url.toString());
+}
+
+function readStoredGroupOrder(tableId) {
+  if (!tableId) return null;
+  try {
+    return JSON.parse(localStorage.getItem(`${GROUP_ORDER_STORAGE_PREFIX}${tableId}`) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredGroupOrder(tableId) {
+  if (tableId) {
+    localStorage.removeItem(`${GROUP_ORDER_STORAGE_PREFIX}${tableId}`);
+  }
+}
+
 function trackingLink(order, tableId) {
   const url = new URL(window.location.href);
   if (tableId) {
@@ -1400,28 +2090,15 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
       .then((freshOrder) => !cancelled && onOrderUpdate(freshOrder))
       .catch(() => undefined);
 
-    const echo = getEcho();
-    const channel = echo.channel(`orders.${order.id}`);
-
     const applyOrderUpdate = (nextOrder) => {
       orderRef.current = nextOrder;
       onOrderUpdate(nextOrder);
     };
 
-    channel.listen('.order.placed', (event) => {
-      applyOrderUpdate(event.order);
-      setConnectionState('Suivi Temps réel active');
+    const unsubscribeRealtime = subscribeToOrderRealtime(order.id, {
+      onOrder: applyOrderUpdate,
+      onState: setConnectionState,
     });
-
-    channel.listen('.order.status.updated', (event) => {
-      applyOrderUpdate(event.order);
-      setConnectionState('Statut mis a jour en direct');
-    });
-
-    const connector = echo.connector?.pusher?.connection;
-    connector?.bind('connected', () => setConnectionState('Suivi Temps réel active'));
-    connector?.bind('unavailable', () => setConnectionState('Connexion Temps réel indisponible'));
-    connector?.bind('error', () => setConnectionState('Connexion Temps réel a verifier'));
 
     const pollingId = window.setInterval(() => {
       getOrder(order.id)
@@ -1437,7 +2114,7 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
     return () => {
       cancelled = true;
       window.clearInterval(pollingId);
-      echo.leaveChannel(`orders.${order.id}`);
+      unsubscribeRealtime();
     };
   }, [order?.id, onOrderUpdate]);
 
@@ -1784,7 +2461,7 @@ function ReceiptSection({ order, brand }) {
               <i className="fas fa-file-pdf"></i>Ouvrir le PDF
             </button>
             <button className="receipt-download-btn" onClick={downloadPdf}>
-              <i className="fas fa-download"></i>Télécharger
+              <i className="fas fa-download"></i>TÃ©lÃ©charger
             </button>
             <button className="receipt-share-btn" onClick={shareReceipt}>
               <i className="fas fa-share-nodes"></i>Partager au client
@@ -1834,7 +2511,7 @@ function ReceiptSection({ order, brand }) {
             <div className="receipt-items">
               <div className="receipt-row receipt-head">
                 <span>Article</span>
-                <span>Qté</span>
+                <span>QtÃ©</span>
                 <span>Prix</span>
                 <span>Total</span>
               </div>
@@ -1879,17 +2556,17 @@ function ReceiptSection({ order, brand }) {
           <div className="receipt-pdf-viewer">
             <div className="receipt-pdf-head">
               <div>
-                <strong>Reçu PDF généré</strong>
+                <strong>ReÃ§u PDF gÃ©nÃ©rÃ©</strong>
                 <span>{pdfPreview.filename}</span>
               </div>
               <button className="clean-btn" onClick={() => setPdfPreview(null)}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <iframe src={pdfPreview.url} title="Reçu PDF Restaurant Scan"></iframe>
+            <iframe src={pdfPreview.url} title="ReÃ§u PDF Restaurant Scan"></iframe>
             <div className="receipt-pdf-actions">
               <button className="btn-red" onClick={downloadPdf}>
-                <i className="fas fa-download"></i>Télécharger le PDF
+                <i className="fas fa-download"></i>TÃ©lÃ©charger le PDF
               </button>
               <button className="receipt-share-btn" onClick={openPdf}>
                 <i className="fas fa-up-right-from-square"></i>Ouvrir dans un onglet
@@ -2068,6 +2745,7 @@ function buildClientBrand(restaurant) {
     name: hasCustomBranding ? (customName || restaurant.name || 'Restaurant Scan') : 'Restaurant Scan',
     slug: restaurant.slug || '',
     logo_url: restaurant.logo_url || '/img/logo/e-resto-logo.png',
+    has_restaurant_logo: Boolean(restaurant.logo_url),
     slogan: hasCustomBranding ? (settings.slogan || restaurant.slogan || '') : 'Menu digital pour restaurant',
     description: hasCustomBranding ? (settings.description || restaurant.description || 'Menu digital QR code') : 'Scannez, commandez et suivez votre commande avec Restaurant Scan.',
     owner_phone: restaurant.owner_phone || '',
@@ -2075,7 +2753,7 @@ function buildClientBrand(restaurant) {
     address: restaurant.address || '',
     city: restaurant.city || '',
     can_feedback: Boolean(restaurant.can_feedback),
-    can_Réservations: Boolean(restaurant.can_reservations ?? restaurant.can_Réservations),
+    can_reservations: Boolean(restaurant.can_reservations),
     can_mobile_money: false,
     can_chatbot: false,
     payment_methods: ['cash'],
@@ -2277,3 +2955,6 @@ function SectionTitle({ eyebrow, title, highlight, description }) {
     </div>
   );
 }
+
+
+

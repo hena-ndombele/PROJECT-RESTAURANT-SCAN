@@ -97,7 +97,7 @@ export class UpdateAgent implements OnInit {
         this.isLoading = false;
         Swal.fire({
           title: "Mis a jour",
-          text: "Employe mis a jour avec succes.",
+          text: "Employé mis à jour avec succès.",
           icon: "success",
           confirmButtonText: "Fermer",
           confirmButtonColor: "#ff7a1a",
@@ -107,7 +107,8 @@ export class UpdateAgent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        Swal.fire("Erreur", err.error?.message || "Impossible de modifier l'employé.", "error");
+        const emailError = err.error?.errors?.email?.[0];
+        Swal.fire("Erreur", emailError || err.error?.message || "Impossible de modifier l'employé.", "error");
       }
     });
   }

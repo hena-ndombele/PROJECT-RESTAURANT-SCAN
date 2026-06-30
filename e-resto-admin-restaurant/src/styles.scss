@@ -110,6 +110,43 @@ body.restaurant-theme .dynamic-icon {
   color: var(--dashboard-primary) !important;
 }
 
+.page-header-icon {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0 !important;
+  border-radius: 8px;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(var(--dashboard-primary-rgb, 255, 122, 26), .22);
+}
+
+.page-header-icon i,
+.page-header-icon svg {
+  color: #ffffff !important;
+  stroke: currentColor !important;
+}
+
+.page-header-icon-sm {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+}
+
+.page-header-icon img {
+  max-width: 36px;
+  max-height: 36px;
+  object-fit: contain;
+}
+
+.page-header-icon-sm img {
+  max-width: 30px;
+  max-height: 30px;
+}
+
 body.restaurant-theme .bg-primary.bg-opacity-10 {
   background-color: rgba(var(--dashboard-primary-rgb), .12) !important;
 }
@@ -285,7 +322,8 @@ body.dashboard-dark-theme .modal textarea {
 
 body.dashboard-dark-theme .modal input::placeholder,
 body.dashboard-dark-theme .modal textarea::placeholder {
-  color: #64748b !important;
+  color: #cbd5e1 !important;
+  opacity: 1;
 }
 
 body.dashboard-dark-theme .modal .btn-secondary {
@@ -354,3 +392,285 @@ body.dashboard-dark-theme .pagination .page-item.active .page-link {
   border-color: var(--dashboard-primary) !important;
   color: #111827 !important;
 }
+
+.otp-success-popup {
+  border-radius: 12px !important;
+}
+
+.otp-success-actions {
+  gap: 10px;
+}
+
+.otp-dashboard-confirm,
+.otp-menu-cancel {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-weight: 900;
+  transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+
+.otp-dashboard-confirm {
+  color: #fff;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+  box-shadow: 0 14px 28px rgba(var(--dashboard-primary-rgb, 255, 122, 26), .24);
+}
+
+.otp-menu-cancel {
+  color: #334155;
+  background: #eef2f7;
+}
+
+.otp-dashboard-confirm:hover,
+.otp-menu-cancel:hover {
+  filter: brightness(.97);
+  transform: translateY(-1px);
+}
+
+body.dashboard-dark-theme .otp-menu-cancel {
+  color: #e5e7eb;
+  background: #1f2937;
+}
+
+.sidebar-brand {
+  min-width: 0;
+}
+
+.sidebar-logo-frame {
+  width: 64px;
+  height: 44px;
+  flex: 0 0 64px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, .85);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .22);
+}
+
+.sidebar-logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.sidebar.collapsed .logo-area {
+  justify-content: center;
+  padding-inline: 12px !important;
+}
+
+.sidebar.collapsed .sidebar-logo-frame {
+  width: 44px;
+  height: 44px;
+  flex-basis: 44px;
+}
+
+.change-password-card {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.change-password-head {
+  border-bottom: 1px solid #eef2f7;
+  background:
+    linear-gradient(135deg, rgba(var(--dashboard-primary-rgb, 255, 122, 26), .12), rgba(215, 25, 32, .06)),
+    #fff;
+}
+
+.password-label {
+  color: #334155;
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.password-label span {
+  color: var(--dashboard-primary, #ff7a1a);
+}
+
+.password-input-group {
+  min-height: 50px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.password-input-group:focus-within {
+  border-color: var(--dashboard-primary, #ff7a1a);
+  box-shadow: 0 0 0 4px rgba(var(--dashboard-primary-rgb, 255, 122, 26), .14);
+}
+
+.password-input-group .input-group-text,
+.password-input-group .form-control,
+.password-input-group .password-toggle {
+  min-height: 50px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.password-input-group .input-group-text {
+  width: 52px;
+  justify-content: center;
+  color: var(--dashboard-primary, #ff7a1a);
+  font-size: 1.1rem;
+}
+
+.password-input-group .form-control {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.password-input-group .form-control::placeholder {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.password-toggle {
+  width: 50px;
+  color: #64748b;
+}
+
+.password-toggle:hover {
+  color: var(--dashboard-primary, #ff7a1a);
+  background: rgba(var(--dashboard-primary-rgb, 255, 122, 26), .08);
+}
+
+.change-password-footer {
+  border-top: 1px solid #eef2f7;
+  background: #f8fafc;
+}
+
+.change-password-cancel {
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  background: #fff;
+  font-weight: 800;
+}
+
+.change-password-cancel:hover {
+  border-color: #cbd5e1;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.change-password-submit {
+  border: 0;
+  color: #fff;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+  font-weight: 900;
+}
+
+.change-password-submit:hover:not(:disabled) {
+  color: #fff;
+  filter: brightness(.97);
+  transform: translateY(-1px);
+}
+
+.change-password-submit:disabled {
+  color: rgba(255, 255, 255, .72);
+  opacity: .68;
+}
+
+body.dashboard-dark-theme .change-password-head {
+  border-color: #374151;
+  background:
+    linear-gradient(135deg, rgba(var(--dashboard-primary-rgb, 255, 122, 26), .18), rgba(215, 25, 32, .08)),
+    #1f2937;
+}
+
+body.dashboard-dark-theme .password-label {
+  color: #d1d5db;
+}
+
+body.dashboard-dark-theme .password-input-group {
+  border-color: #374151;
+  background: #0f172a;
+}
+
+body.dashboard-dark-theme .password-toggle {
+  color: #cbd5e1;
+}
+
+body.dashboard-dark-theme .change-password-footer {
+  border-color: #374151;
+  background: #111827;
+}
+
+body.dashboard-dark-theme .change-password-cancel {
+  border-color: #374151;
+  color: #e5e7eb;
+  background: #1f2937;
+}
+
+body.dashboard-dark-theme input::placeholder,
+body.dashboard-dark-theme textarea::placeholder,
+body.dashboard-dark-theme .form-control::placeholder,
+body.dashboard-dark-theme .category-search-input::placeholder {
+  color: #cbd5e1 !important;
+  opacity: 1;
+}
+/* Business multi-restaurant switcher */
+.business-switcher-wrap { position: relative; }
+.business-switcher-btn { display: inline-flex; align-items: center; gap: 9px; max-width: 260px; min-height: 40px; padding: 5px 10px 5px 6px; border: 1px solid #e5e7eb; border-radius: 8px; color: #111827; background: #fff; box-shadow: 0 8px 20px rgba(15, 23, 42, .06); }
+.business-switcher-btn.open, .business-switcher-btn:hover { border-color: rgba(var(--dashboard-primary-rgb), .45); box-shadow: 0 12px 28px rgba(var(--dashboard-primary-rgb), .12); }
+.business-switcher-btn > i { color: #64748b; font-size: 15px; }
+.business-switcher-icon { width: 30px; height: 30px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; background: var(--dashboard-primary); flex: 0 0 30px; }
+.business-switcher-text { display: grid; min-width: 0; text-align: left; }
+.business-switcher-text small { color: #94a3b8; font-size: 9px; font-weight: 900; letter-spacing: .08em; line-height: 1; text-transform: uppercase; }
+.business-switcher-text strong { overflow: hidden; color: #111827; font-size: 12px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.business-switcher-panel { position: absolute; top: calc(100% + 12px); right: 0; z-index: 1080; width: min(390px, calc(100vw - 24px)); overflow: hidden; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
+.business-switcher-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 15px; color: #fff; background: #111827; }
+.business-switcher-head span, .business-switcher-head strong { display: block; }
+.business-switcher-head span { color: var(--dashboard-primary); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.business-switcher-head strong { font-size: 14px; }
+.business-switcher-head button { width: 32px; height: 32px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; color: #fff; background: rgba(255,255,255,.08); }
+.business-switcher-list { display: grid; gap: 6px; max-height: 280px; overflow-y: auto; padding: 10px; }
+.business-switcher-empty { padding: 18px; color: #64748b; font-size: 13px; text-align: center; }
+.business-restaurant-row { display: grid; grid-template-columns: minmax(0, 1fr) 34px; align-items: stretch; gap: 6px; }
+.business-restaurant-row.active .business-delete-btn { border-color: rgba(var(--dashboard-primary-rgb), .28); background: #fff; }
+.business-restaurant-item { display: grid; grid-template-columns: 38px 1fr 22px; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 8px; border: 1px solid transparent; border-radius: 8px; text-align: left; background: #f8fafc; }
+.business-restaurant-item:hover, .business-restaurant-item.active { border-color: rgba(var(--dashboard-primary-rgb), .38); background: rgba(var(--dashboard-primary-rgb), .08); }
+.business-restaurant-item img { width: 38px; height: 38px; border: 1px solid #e5e7eb; border-radius: 8px; object-fit: contain; background: #fff; }
+.business-restaurant-item span { min-width: 0; }
+.business-restaurant-item strong, .business-restaurant-item small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.business-restaurant-item strong { color: #111827; font-size: 13px; font-weight: 900; }
+.business-restaurant-item small { color: #64748b; font-size: 11px; }
+.business-restaurant-item > i { color: var(--dashboard-primary); font-size: 18px; }
+.business-delete-btn { min-height: 54px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #fee2e2; border-radius: 8px; color: #dc2626; background: #fff5f5; font-size: 17px; transition: .18s ease; }
+.business-delete-btn:hover { border-color: #dc2626; color: #fff; background: #dc2626; }
+.business-add-btn { width: calc(100% - 20px); min-height: 42px; margin: 0 10px 10px; border: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; color: #fff; background: var(--dashboard-primary); font-size: 13px; font-weight: 900; }
+.business-add-btn:disabled { color: #94a3b8; background: #e5e7eb; }
+.business-limit-text { margin: -2px 12px 12px; color: #b45309; font-size: 11px; font-weight: 700; }
+.business-switcher-panel, .business-switcher-panel * { color-scheme: light; }
+body.dashboard-dark-theme .business-switcher-panel { border-color: #334155; background: #fff; box-shadow: 0 24px 70px rgba(0,0,0,.45) !important; }
+body.dashboard-dark-theme .business-switcher-btn { background: #fff !important; border-color: #fb923c !important; color: #111827 !important; }
+body.dashboard-dark-theme .business-switcher-btn .business-switcher-text small { color: #64748b !important; }
+body.dashboard-dark-theme .business-switcher-btn .business-switcher-text strong { color: #111827 !important; }
+body.dashboard-dark-theme .business-switcher-btn > i { color: #475569 !important; }
+body.dashboard-dark-theme .business-restaurant-item { background: #f8fafc; }
+body.dashboard-dark-theme .business-restaurant-item:hover, body.dashboard-dark-theme .business-restaurant-item.active { background: #fff7ed; border-color: #fb923c; }
+body.dashboard-dark-theme .business-restaurant-item strong { color: #111827 !important; }
+body.dashboard-dark-theme .business-restaurant-item small { color: #475569 !important; }
+body.dashboard-dark-theme .business-delete-btn { color: #dc2626 !important; background: #fff5f5 !important; border-color: #fecaca !important; }
+body.dashboard-dark-theme .business-delete-btn:hover { color: #fff !important; background: #dc2626 !important; border-color: #dc2626 !important; }
+body.dashboard-dark-theme .business-switcher-panel .business-restaurant-item,
+body.dashboard-dark-theme .business-switcher-panel .business-restaurant-item span,
+body.dashboard-dark-theme .business-switcher-panel .business-restaurant-item div { color: #111827 !important; }
+body.dashboard-dark-theme .business-add-btn:disabled { color: #64748b !important; background: #e5e7eb !important; opacity: 1; }
+body.dashboard-dark-theme .business-limit-text { color: #c2410c !important; }
+.business-restaurant-form { padding: 10px; border-top: 1px solid #edf2f7; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form-grid label { display: grid; gap: 4px; margin: 0; }
+.form-grid label.wide { grid-column: 1 / -1; }
+.form-grid span { color: #64748b; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.form-grid input, .form-grid select { width: 100%; height: 38px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; color: #111827; background: #fff; font-size: 12px; }
+.business-form-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.business-form-actions button { min-height: 38px; border-radius: 8px; font-size: 12px; font-weight: 900; }
+.business-form-actions .secondary { border: 1px solid #e5e7eb; color: #475569; background: #fff; }
+.business-form-actions .primary { border: 0; color: #fff; background: var(--dashboard-primary); }

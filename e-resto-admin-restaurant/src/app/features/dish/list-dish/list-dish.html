@@ -4,21 +4,21 @@
             <div class="dish-menu-header">
                 <div>
                     <span class="menu-eyebrow">Restaurant Scan Admin</span>
-                    <h1>Digital Menu ({{totalCount()}})</h1>
+                    <h1>Menu Digital ({{totalCount()}})</h1>
                     <p>Gérez les plats visibles dans le menu client.</p>
                 </div>
                 <div class="dish-menu-actions">
                     <button class="btn export-menu-btn" type="button" (click)="exportExcel()">
-                        <i class="ti ti-file-spreadsheet"></i> Export Excel
+                        <i class="ti ti-file-spreadsheet"></i> Exporter vers Excel
                     </button>
                     @if (canAccess('plats.create')) {
                     @if (dishLimitReached()) {
                     <button class="btn add-dish-btn" type="button" disabled [title]="dishLimitMessage()">
-                        <i class="ti ti-plus"></i> Add a Dish
+                        <i class="ti ti-plus"></i> Ajouter un plat
                     </button>
                     } @else {
                     <a routerLink="/dish/create" class="btn add-dish-btn">
-                        <i class="ti ti-plus"></i> Add a Dish
+                        <i class="ti ti-plus"></i> Ajouter un plat
                     </a>
                     }
                     }
@@ -32,7 +32,7 @@
             <div class="dish-menu-toolbar">
                 <div class="search-group">
                     <i class="ti ti-search"></i>
-                    <input type="text" class="form-control" placeholder="Search for a dish..." (input)="onSearch($event)">
+                    <input type="text" class="form-control" placeholder="Rechercher un plat..." (input)="onSearch($event)">
                 </div>
                 <select class="form-select" [ngModel]="categoryFilter()" (ngModelChange)="onCategoryChange($event)">
                     <option value="all">Toutes les catégories</option>
@@ -48,9 +48,9 @@
         <div class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
             <div class="text-center">
                 <div class="spinner-border text-warning" role="status" style="width: 3rem; height: 3rem; border-width: 4px;">
-                    <span class="visually-hidden">Loading...</span>
+                    <span class="visually-hidden">Chargement...</span>
                 </div>
-                <p class="mt-2 fw-bold text-muted text-uppercase small" style="letter-spacing: 2px;">Loading the menu...</p>
+                <p class="mt-2 fw-bold text-muted text-uppercase small" style="letter-spacing: 2px;">Chargement du menu...</p>
             </div>
         </div>
     } @else {
@@ -105,7 +105,7 @@
                 </div>
             } @empty {
                 <div class="dish-empty-state">
-                    <p class="fw-bold text-muted">NO DISHES FOUND</p>
+                    <p class="fw-bold text-muted">Aucun plat trouvé</p>
                 </div>
             }
         </div>

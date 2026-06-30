@@ -5,6 +5,7 @@ import {DatePipe} from "@angular/common";
 import {CreateTable} from "../create-table/create-table";
 import {DeleteTable} from "../delete-table/delete-table";
 import {ShowTable} from "../show-table/show-table";
+import {UpdateTable} from "../update-table/update-table";
 import {RouterLink} from "@angular/router";
 import {SaasService} from "../../../services/saas/saas-service";
 import {RestaurantPlanUsage} from "../../../models/saas/saas.models";
@@ -18,6 +19,7 @@ import {AppPermissionService} from "../../../services/auth/permission-service";
         CreateTable,
         DeleteTable,
         ShowTable,
+        UpdateTable,
         RouterLink,
     ],
     templateUrl: "./list-table.html",
@@ -54,7 +56,7 @@ export class ListTable implements OnInit {
 
         // 1. Filtrage dynamique
         const filtered = allData.filter(table => {
-            const nameMatch = table.name.toLowerCase().includes(term);
+            const nameMatch = String(table?.name || "").toLowerCase().includes(term);
             return nameMatch; // Retourne vrai si le nom correspond
         });
 
@@ -67,7 +69,7 @@ export class ListTable implements OnInit {
     totalPages = computed(() => {
         const term = this.searchTerm().toLowerCase().trim();
         const filteredCount = this.tables().filter(table =>
-            table.name.toLowerCase().includes(term)
+            String(table?.name || "").toLowerCase().includes(term)
         ).length;
 
         return Math.ceil(filteredCount / this.pageSize);

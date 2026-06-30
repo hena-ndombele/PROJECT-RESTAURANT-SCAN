@@ -38,6 +38,7 @@ Route::prefix('saas')->group(function () {
     Route::post('/register-interest', [SaasController::class, 'registerInterest']);
 
     Route::middleware(['auth:sanctum', 'admin.only'])->group(function () {
+        Route::get('/admin/plans', [SaasController::class, 'adminPlans']);
         Route::post('/plans', [SaasController::class, 'storePlan']);
         Route::put('/plans/{plan}', [SaasController::class, 'updatePlan']);
         Route::delete('/plans/{plan}', [SaasController::class, 'destroyPlan']);
@@ -59,6 +60,11 @@ Route::prefix('saas')->group(function () {
         Route::get('/restaurant/usage', [SaasController::class, 'usage']);
         Route::get('/restaurant/payments', [SaasController::class, 'restaurantPayments']);
         Route::put('/restaurant/profile', [SaasController::class, 'updateProfile']);
+        Route::get('/business/restaurants', [SaasController::class, 'businessRestaurants']);
+        Route::post('/business/restaurants', [SaasController::class, 'storeBusinessRestaurant']);
+        Route::post('/business/restaurants/{restaurant}/switch', [SaasController::class, 'switchBusinessRestaurant']);
+        Route::delete('/business/restaurants/{restaurant}', [SaasController::class, 'destroyBusinessRestaurant']);
+        Route::get('/business/analytics', [SaasController::class, 'businessAnalytics']);
     });
 });
 
@@ -82,8 +88,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::prefix('group-orders')->group(function () {
     Route::post('/', [GroupOrderController::class, 'store']);
+    Route::get('/active/table/{table}', [GroupOrderController::class, 'activeForTable']);
     Route::get('/{code}', [GroupOrderController::class, 'show']);
+    Route::post('/{code}/creator-recovery', [GroupOrderController::class, 'recoverCreator']);
     Route::post('/{code}/participants', [GroupOrderController::class, 'join']);
+    Route::post('/{code}/participants/heartbeat', [GroupOrderController::class, 'heartbeat']);
+    Route::post('/{code}/participants/ready', [GroupOrderController::class, 'setReady']);
     Route::post('/{code}/items', [GroupOrderController::class, 'upsertItem']);
     Route::delete('/{code}/items/{item}', [GroupOrderController::class, 'destroyItem']);
     Route::get('/{code}/whatsapp', [GroupOrderController::class, 'whatsapp']);
@@ -190,7 +200,3 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/Réservations/{id}/status', [ReservationController::class, 'updateStatus']);
     Route::delete('/Réservations/{id}', [ReservationController::class, 'destroy']);
 });
-
-
-
-

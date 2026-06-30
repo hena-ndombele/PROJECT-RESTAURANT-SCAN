@@ -4,6 +4,7 @@ namespace App\Http\Controllers\users;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AccountCreatedMail;
+use App\Mail\RestaurantAccountCreatedMail;
 use App\Mail\SendOtpMail;
 use App\Models\Agent;
 use App\Models\Otp;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class AuthController extends Controller
 {
@@ -49,12 +51,12 @@ class AuthController extends Controller
             $mailSent = false;
         }
 
-        return response()->json([
-            'message' => $mailSent
-                ? 'Un code OTP a ete envoye a votre adresse email.'
-                : 'Le code OTP a ete genere, mais l email n a pas pu etre envoye en local.',
-            'dev_otp' => app()->environment('local') && !$mailSent ? $otpCode : null,
-        ]);
+      return response()->json([
+    'message' => $mailSent
+        ? 'Un code OTP a été envoyé à votre adresse e-mail.'
+        : 'Le code OTP a été généré, mais l’e-mail n’a pas pu être envoyé.',
+    'dev_otp' => app()->environment('local') && !$mailSent ? $otpCode : null,
+]);
     }
 
     public function verifyOtp(Request $request)
@@ -84,6 +86,7 @@ class AuthController extends Controller
         $expiresAt = $this->tokenExpiresAt();
         $token = $user->createToken('API Token', ['*'], $expiresAt)->plainTextToken;
         $user->load('roles.permissions', 'restaurant.plan', 'restaurant.subscription', 'agent');
+        $this->sendRestaurantAccountCreatedMailOnce($user);
 
         return response()->json([
             'message' => 'Connexion reussie',
@@ -118,7 +121,7 @@ class AuthController extends Controller
         Mail::to($user->email)->send(new SendOtpMail($otpCode));
 
         return response()->json([
-            'message' => 'Un code OTP a ete envoye a votre adresse email.',
+            'message' => 'Un code OTP a été envoyé à votre adresse e-mail.',
         ]);
     }
 
@@ -171,9 +174,12 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'agent_id' => 'required|uuid|exists:agents,id',
-            'role' => 'nullable|string|exists:roles,name',
+            'role' => 'nullable|string',
+            'role_id' => 'nullable|integer',
             'roles' => 'nullable|array',
-            'roles.*' => 'string|exists:roles,name',
+            'roles.*' => 'nullable',
+            'role_ids' => 'nullable|array',
+            'role_ids.*' => 'integer',
         ]);
 
         $agent = Agent::query()
@@ -200,13 +206,9 @@ class AuthController extends Controller
             'is_first_login' => true,
         ]);
 
-        $roles = $validated['roles'] ?? [];
-        if (!empty($validated['role'])) {
-            $roles[] = $validated['role'];
-        }
-
-        if (!empty($roles)) {
-            $user->syncRoles(array_values(array_unique($roles)));
+        $roles = $this->rolesForRequest($request, $validated);
+        if ($roles->isNotEmpty()) {
+            $user->syncRoles($roles);
         }
 
         $agent->update(['user_id' => $user->id]);
@@ -274,6 +276,36 @@ class AuthController extends Controller
         ]);
     }
 
+    private function sendRestaurantAccountCreatedMailOnce(User $user): void
+    {
+        $restaurant = $user->restaurant;
+
+        if (!$restaurant) {
+            return;
+        }
+
+        $settings = $restaurant->settings ?? [];
+
+        if (($settings['account_created_mail_sent'] ?? true) !== false) {
+            return;
+        }
+
+        try {
+            Mail::to($user->email)->send(new RestaurantAccountCreatedMail(
+                $user,
+                $restaurant->fresh(['plan', 'subscription'])
+            ));
+
+            $restaurant->update([
+                'settings' => [
+                    ...$settings,
+                    'account_created_mail_sent' => true,
+                ],
+            ]);
+        } catch (\Throwable) {
+        }
+    }
+
     public function show($id)
     {
         $user = User::with('roles.permissions', 'agent')
@@ -297,13 +329,22 @@ class AuthController extends Controller
             'address' => 'sometimes|nullable|string|max:255',
             'password' => 'sometimes|nullable|string|min:6',
             'is_first_login' => 'sometimes|boolean',
-            'role' => 'sometimes|nullable|string|exists:roles,name',
+            'role' => 'sometimes|nullable|string',
+            'role_id' => 'sometimes|nullable|integer',
             'roles' => 'sometimes|array',
-            'roles.*' => 'string|exists:roles,name',
+            'roles.*' => 'nullable',
+            'role_ids' => 'sometimes|array',
+            'role_ids.*' => 'integer',
         ]);
 
+        if ($this->requestChangesRoles($request) && $user->id === $request->user()?->id && !$this->isRestaurantOwner($request->user())) {
+            return response()->json([
+                'message' => 'Vous ne pouvez pas modifier vos propres permissions. Demandez au proprietaire du restaurant de le faire.',
+            ], 403);
+        }
+
         $data = collect($validated)
-            ->except(['password', 'role', 'roles'])
+            ->except(['password', 'role', 'role_id', 'roles', 'role_ids'])
             ->toArray();
 
         if (!empty($validated['password'])) {
@@ -312,12 +353,8 @@ class AuthController extends Controller
 
         $user->update($data);
 
-        if ($request->has('roles') || $request->has('role')) {
-            $roles = $validated['roles'] ?? [];
-            if (!empty($validated['role'])) {
-                $roles[] = $validated['role'];
-            }
-            $user->syncRoles(array_values(array_unique($roles)));
+        if ($this->requestChangesRoles($request)) {
+            $user->syncRoles($this->rolesForRequest($request, $validated));
         }
 
         return response()->json([
@@ -342,6 +379,74 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Utilisateur supprime avec succes',
         ]);
+    }
+
+    private function rolesForRequest(Request $request, array $validated)
+    {
+        $roleIds = collect($validated['role_ids'] ?? [])
+            ->push($validated['role_id'] ?? null)
+            ->merge($validated['roles'] ?? [])
+            ->filter(fn ($value) => is_numeric($value))
+            ->map(fn ($value) => (int) $value)
+            ->unique()
+            ->values();
+
+        $roleNames = collect($validated['roles'] ?? [])
+            ->push($validated['role'] ?? null)
+            ->filter(fn ($value) => is_string($value) && $value !== '' && !is_numeric($value))
+            ->unique()
+            ->values();
+
+        $requestedCount = $roleIds->count() + $roleNames->count();
+        if ($requestedCount === 0) {
+            return collect();
+        }
+
+        $query = Role::query()
+            ->when(
+                $request->user()?->restaurant_id,
+                fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId),
+                fn ($builder) => $builder->whereNull('restaurant_id')
+            );
+
+        $roles = $query
+            ->where(function ($builder) use ($roleIds, $roleNames) {
+                if ($roleIds->isNotEmpty()) {
+                    $builder->whereIn('id', $roleIds);
+                }
+
+                if ($roleNames->isNotEmpty()) {
+                    $method = $roleIds->isNotEmpty() ? 'orWhereIn' : 'whereIn';
+                    $builder->{$method}('name', $roleNames);
+                }
+            })
+            ->get();
+
+        abort_if($roles->count() !== $requestedCount, 422, 'Un ou plusieurs roles ne sont pas disponibles pour ce restaurant.');
+
+        return $roles;
+    }
+
+    private function requestChangesRoles(Request $request): bool
+    {
+        return $request->has('roles')
+            || $request->has('role')
+            || $request->has('role_ids')
+            || $request->has('role_id');
+    }
+
+    private function isRestaurantOwner(?User $user): bool
+    {
+        $restaurant = $user?->restaurant;
+        if (!$user || !$restaurant) {
+            return false;
+        }
+
+        if ($restaurant->business_owner_user_id) {
+            return $restaurant->business_owner_user_id === $user->id;
+        }
+
+        return strcasecmp((string) $restaurant->owner_email, (string) $user->email) === 0;
     }
 
     public function search(Request $request)
@@ -403,7 +508,7 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json([
-            'message' => 'Mot de passe change avec succes',
+            'message' => 'Mot de passe changé avec succès',
             'is_first_login' => $user->is_first_login,
         ]);
     }

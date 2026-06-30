@@ -89,8 +89,8 @@ export class UpdateCategory implements OnInit {
             next: (response) => {
                 this.isLoading = false;
                 Swal.fire({
-                    title: 'Updated!',
-                    text: 'Category updated successfully',
+                    title: 'Mis à jour!',
+                    text: 'Catégorie mise à jour avec succès',
                     icon: 'success',
                     timer: 3000,
                     confirmButtonColor: '#28a745'

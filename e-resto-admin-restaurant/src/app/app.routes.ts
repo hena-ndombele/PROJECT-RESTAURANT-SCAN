@@ -32,7 +32,7 @@ import {EmployeeVerify} from "./pages/employee-verify/employee-verify";
 
 export const routes: Routes = [
 
-  { path: '', component: SaasLanding, title: 'Restaura Scan- Plateforme restaurant' },
+  { path: '', component: SaasLanding, title: 'Restaurant Scan- Plateforme restaurant' },
   { path: 'pricing', component: PricingPage, title: 'Pricing Restaurant Scan' },
   { path: 'restaurant/signup', component: RestaurantSignup, title: 'Création compte restaurant - Restaurant Scan' },
   { path: 'restaurant/checkout', component: RestaurantCheckout, title: 'Paiement abonnement - Restaurant Scan' },
@@ -47,7 +47,7 @@ export const routes: Routes = [
       { path: 'dashboard', component: Dashboard, title: 'Dashboard - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'dashboard.view' } },
       { path: 'agents/list-agent', component: ListAgent, title: 'Agents - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'agents.list' } },
       { path: 'category/list-category', component: ListCategory, title: 'Category', canActivate: [AuthGuard], data: { permission: 'categories.list' } },
-      { path: 'tables/list-table', component: ListTable, title: 'Tables - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'tables.list' } },
+      { path: 'tables/list-table', component: ListTable, title: 'Tables - Restaurant Scan', canActivate: [AuthGuard], data: { permission: ['tables.list', 'tables.view', 'tables.create', 'tables.update', 'tables.delete'] } },
       { path: 'table/list-table', redirectTo: 'tables/list-table', pathMatch: 'full' },
       { path: 'auth/profile', component: Profile, title: 'Profile', canActivate: [AuthGuard], data: { permission: 'profile.view' } },
       { path: 'feedback/list', component: ListFeedback, title: 'FeedBack', canActivate: [AuthGuard], data: { permission: 'feedback.list' } },

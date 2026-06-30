@@ -11,7 +11,7 @@
     <div class="modal-dialog modal-dialog-centered table-qr-dialog">
         <div class="modal-content table-qr-content shadow-lg">
             <div class="modal-header table-qr-header">
-                <h5 class="modal-title">TABLE DETAILS</h5>
+                <h5 class="modal-title">DETAILS TABLE</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
@@ -21,7 +21,7 @@
                         <img [src]="restaurantLogo()" [alt]="restaurantName()">
                     </div>
 
-                    <h2>SCAN TO ORDER</h2>
+                    <h2>SCANNER POUR COMMANDER</h2>
 
                     <div class="scan-frame">
                         <span class="scan-corner corner-tl"></span>
@@ -51,7 +51,7 @@
                         [disabled]="!detail.qr_url"
                         (click)="printQRCode()">
                     <i class="ti ti-printer"></i>
-                    <span>PRINT QR CODE</span>
+                    <span>IMPRIMER QR CODE</span>
                 </button>
                 <button type="button"
                         class="btn qr-download-action"

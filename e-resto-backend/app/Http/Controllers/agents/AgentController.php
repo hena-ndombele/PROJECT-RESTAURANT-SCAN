@@ -4,6 +4,7 @@ namespace App\Http\Controllers\agents;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -33,6 +34,10 @@ class AgentController extends Controller
             'emergency_contact_name' => 'nullable|string|max:255',
             'emergency_contact_phone' => 'nullable|string|max:60',
         ]);
+
+        if ($response = $this->ensureEmailAvailableForAgent($validated['email'])) {
+            return $response;
+        }
 
         $restaurant = $request->user()?->restaurant()->with('plan')->first();
         $restaurantId = $request->user()?->restaurant_id;
@@ -91,7 +96,7 @@ class AgentController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Erreur lors de la creation de l agent.',
+                'message' => 'Erreur lors de la création de l\'agent.',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -222,6 +227,10 @@ class AgentController extends Controller
             'emergency_contact_phone' => 'nullable|string|max:60',
         ]);
 
+        if (array_key_exists('email', $validated) && $response = $this->ensureEmailAvailableForAgent($validated['email'], $agent->user_id)) {
+            return $response;
+        }
+
         if ($request->hasFile('photo')) {
             $validated['photo'] = $request->file('photo')->store("agents/{$agent->restaurant_id}", 'public');
         }
@@ -337,5 +346,28 @@ class AgentController extends Controller
             'created_at' => $agent->created_at?->toIso8601String(),
             'updated_at' => $agent->updated_at?->toIso8601String(),
         ];
+    }
+
+    private function ensureEmailAvailableForAgent(string $email, ?string $allowedUserId = null)
+    {
+        $existingUser = User::where('email', $email)
+            ->when($allowedUserId, fn ($query) => $query->where('id', '!=', $allowedUserId))
+            ->first();
+
+        if (!$existingUser) {
+            return null;
+        }
+
+        $sameRestaurant = $existingUser->restaurant_id === request()->user()?->restaurant_id;
+        $message = $sameRestaurant
+            ? 'Cette adresse email possède déjà un compte utilisateur dans ce restaurant.'
+            : 'Cette adresse email existe déjà comme compte utilisateur dans un autre restaurant. Utilisez un autre email ou ajoutez plus tard un accès multi-restaurant à ce compte.';
+
+        return response()->json([
+            'message' => $message,
+            'errors' => [
+                'email' => [$message],
+            ],
+        ], 422);
     }
 }

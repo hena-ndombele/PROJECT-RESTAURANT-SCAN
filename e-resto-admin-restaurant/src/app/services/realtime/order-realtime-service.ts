@@ -35,6 +35,7 @@ export class OrderRealtimeService {
     readonly connectionState = signal<"idle" | "connecting" | "connected" | "error">("idle");
     readonly orderChanged$ = new Subject<Order>();
     readonly reservationCreated$ = new Subject<ReservationDto>();
+    readonly businessRestaurantsChanged$ = new Subject<any>();
 
     readonly activeOrdersCount = computed(() => {
         return this.orders().filter((order) => this.isActiveOrder(order)).length;
@@ -123,6 +124,7 @@ export class OrderRealtimeService {
                 this.connected = true;
                 this.connectionState.set("connected");
                 this.subscribeToOrders();
+                this.subscribeToBusinessRestaurants();
                 this.subscribeToRéservations();
             });
         };
@@ -165,6 +167,17 @@ export class OrderRealtimeService {
         });
     }
 
+    private subscribeToBusinessRestaurants(): void {
+        const user = this.authService.getUserData();
+        const businessOwnerId = user?.restaurant?.business_owner_user_id || user?.id;
+        if (!businessOwnerId) return;
+
+        this.send({
+            event: "pusher:subscribe",
+            data: { channel: `business-restaurants.${businessOwnerId}` }
+        });
+    }
+
     private handleSocketMessage(raw: string): void {
         let message: any;
         try {
@@ -180,6 +193,11 @@ export class OrderRealtimeService {
 
         if (message.event === "reservation.created") {
             this.handleReservationCreated(message);
+            return;
+        }
+
+        if (message.event === "business-restaurants.updated") {
+            this.handleBusinessRestaurantsUpdated(message);
             return;
         }
 
@@ -219,6 +237,11 @@ export class OrderRealtimeService {
             ...items
         ].slice(0, 8));
         this.playNotificationSound();
+    }
+
+    private handleBusinessRestaurantsUpdated(message: any): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        this.businessRestaurantsChanged$.next(payload || {});
     }
 
     private upsertOrder(order: Order): void {

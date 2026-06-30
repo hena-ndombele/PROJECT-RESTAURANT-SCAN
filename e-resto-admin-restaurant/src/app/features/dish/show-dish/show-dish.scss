@@ -14,6 +14,32 @@
   background: #ffffff;
 }
 
+.empty-media-state {
+  color: #111827;
+}
+
+.empty-media-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 34px;
+  box-shadow: none;
+}
+
+.empty-media-icon-sm {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+  font-size: 26px;
+}
+
 :host-context(body.dashboard-dark-theme) .dish-detail-page {
   color: #f9fafb;
 }
@@ -22,6 +48,16 @@
   border-color: #f59e0b;
   color: #111827;
   background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+}
+
+:host-context(body.dashboard-dark-theme) .empty-media-state {
+  color: #f9fafb;
+}
+
+:host-context(body.dashboard-dark-theme) .empty-media-icon {
+  border-color: #475569;
+  background: #0f172a;
+  color: #f9fafb;
 }
 
 :host-context(body.dashboard-dark-theme) .card,

@@ -7,7 +7,7 @@
     <div class="nav-actions">
       <a routerLink="/">Accueil</a>
       <a routerLink="/restaurant/login">Connexion</a>
-      <a class="trial-link" routerLink="/restaurant/signup">Essai gratuit -></a>
+      <a class="trial-link" routerLink="/pricing" fragment="plans">Essai gratuit -></a>
     </div>
   </nav>
 
@@ -40,14 +40,17 @@
     </div>
 
     <div class="billing-toggle" aria-label="Choisir le cycle de facturation">
-      <button [class.active]="billingCycle === 'monthly'" type="button" (click)="billingCycle = 'monthly'">Mensuel</button>
-      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="billingCycle = 'yearly'">Annuel <span>tarif réduit</span></button>
+      <button [class.active]="billingCycle === 'monthly'" type="button" (click)="setBillingCycle('monthly')">Mensuel</button>
+      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="setBillingCycle('yearly')">Annuel <span>tarif réduit</span></button>
     </div>
 
-    <p class="sync-note" *ngIf="errorMessage">{{ errorMessage }}</p>
+    <p class="sync-note" *ngIf="!loadingPlans && errorMessage">{{ errorMessage }}</p>
 
-    <div class="plans-grid">
-      <article class="plan-card" *ngFor="let plan of plans" [class.popular]="plan.is_popular">
+    <div class="plans-grid" *ngIf="plans.length">
+      <article class="plan-card" *ngFor="let plan of plans; trackBy: trackPlan" [class.popular]="plan.is_popular">
+        <div class="pricing-promo" *ngIf="hasActivePromo(plan)">
+          <span>{{ plan.promo_label || 'Promotion' }} -{{ plan.promo_percent }}%</span>
+        </div>
         <span class="popular-badge" *ngIf="plan.is_popular">Le plus populaire</span>
         <span class="plan-audience">{{ plan.slug === 'starter' ? 'Pour démarrer' : plan.slug === 'pro' ? 'Pour accélérer' : 'Pour structurer' }}</span>
         <h2>{{ plan.name }}</h2>
@@ -60,10 +63,10 @@
         <small>par mois{{ billingCycle === 'yearly' ? ', facture annuellement' : '' }}</small>
         <em *ngIf="billingCycle === 'yearly'">{{ paymentAmount(plan) | number:'1.0-0' }} {{ displayCurrency(plan) }} débités pour 12 mois</em>
         <em *ngIf="billingCycle === 'monthly'">Sans engagement annuel</em>
-        <div class="installation-fee">
+        <div class="installation-fee" *ngIf="plan.installation_fee > 0">
           <i class="bi bi-tools"></i>
           <span>Installation unique</span>
-          <strong>{{ plan.installation_fee | number:'1.0-0' }} $</strong>
+          <strong>{{ installationFeeDisplay(plan) }}</strong>
         </div>
 
         <ul>

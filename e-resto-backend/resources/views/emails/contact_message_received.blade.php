@@ -42,7 +42,7 @@
                     </tr>
                     <tr>
                         <td style="padding:18px 28px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.6;">
-                            &copy; {{ date('Y') }} Restaurant Scan. Message conserve dans le tableau de support plateforme.
+                            &copy; {{ date('Y') }} Restaurant Scan. Message enregistré dans le tableau de bord du support.
                         </td>
                     </tr>
                 </table>

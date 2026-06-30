@@ -245,6 +245,43 @@
   background: rgba(15, 23, 42, .68);
 }
 
+.new-order-stack {
+  width: min(1280px, 100%);
+  max-height: calc(100vh - 36px);
+  display: grid;
+  gap: 12px;
+}
+
+.new-order-stack-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  background: var(--bs-body-bg);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .22);
+}
+
+.new-order-stack-head span,
+.new-order-stack-head strong {
+  display: block;
+}
+
+.new-order-stack-head span {
+  color: var(--dashboard-primary);
+  font-size: .72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.new-order-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .new-order-modal,
 .order-detail-modal {
   width: min(440px, 100%);
@@ -256,26 +293,43 @@
 }
 
 .new-order-modal {
-  padding: 28px 24px 24px;
+  position: relative;
+  padding: 18px 16px 16px;
   text-align: center;
+  animation: newOrderIn .2s ease-out;
+}
+
+.new-order-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: var(--bs-secondary-color);
+  background: rgba(148, 163, 184, .12);
 }
 
 .modal-bell {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   display: inline-grid;
   place-items: center;
   margin-bottom: 12px;
   border-radius: 50%;
   background: rgba(var(--dashboard-primary-rgb), .16);
   color: var(--dashboard-primary);
-  font-size: 2rem;
+  font-size: 1.45rem;
 }
 
 .new-order-modal h2 {
   color: var(--dashboard-primary);
   font-weight: 800;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
+  font-size: 1.15rem;
 }
 
 .new-order-summary,
@@ -286,8 +340,8 @@
 }
 
 .new-order-summary {
-  margin-bottom: 16px;
-  padding: 14px;
+  margin-bottom: 10px;
+  padding: 10px;
   border: 1px solid var(--bs-border-color);
   border-radius: 8px;
   text-align: left;
@@ -306,11 +360,23 @@
 }
 
 .new-order-items {
-  margin: -4px 0 16px;
-  padding: 12px 14px;
+  margin: -2px 0 12px;
+  padding: 9px 10px;
   border-radius: 8px;
   background: rgba(148, 163, 184, .08);
   text-align: left;
+}
+
+@keyframes newOrderIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .new-order-items div {
@@ -326,6 +392,78 @@
 
 .new-order-items strong {
   white-space: nowrap;
+}
+
+.new-order-stack.compact,
+.new-order-stack.compact .new-order-grid {
+  gap: 6px;
+}
+
+.new-order-stack.compact .new-order-stack-head {
+  padding: 6px 10px;
+}
+
+.new-order-stack.compact .new-order-modal {
+  padding: 9px;
+}
+
+.new-order-stack.compact .new-order-close {
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: .72rem;
+}
+
+.new-order-stack.compact .modal-bell {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 4px;
+  font-size: .78rem;
+}
+
+.new-order-stack.compact .new-order-modal h2 {
+  margin-bottom: 6px;
+  font-size: .78rem;
+  line-height: 1.05;
+}
+
+.new-order-stack.compact .new-order-summary {
+  gap: 4px;
+  margin-bottom: 6px;
+  padding: 6px;
+}
+
+.new-order-stack.compact .new-order-summary div {
+  font-size: .72rem;
+}
+
+.new-order-stack.compact .new-order-summary span,
+.new-order-stack.compact .new-order-summary strong {
+  font-size: .72rem;
+}
+
+.new-order-stack.compact .new-order-summary div:nth-child(1),
+.new-order-stack.compact .new-order-summary div:nth-child(3) {
+  display: none;
+}
+
+.new-order-stack.compact .new-order-items {
+  max-height: 38px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  padding: 5px 6px;
+  font-size: .7rem;
+}
+
+.new-order-stack.compact .new-order-items div {
+  padding: 2px 0;
+}
+
+.new-order-stack.compact .btn {
+  min-height: 30px;
+  padding: 4px 6px;
+  font-size: .72rem;
 }
 
 .order-detail-modal {
@@ -446,6 +584,10 @@
 }
 
 @media (max-width: 640px) {
+  .new-order-grid {
+    grid-template-columns: 1fr;
+  }
+
   .orders-pagination,
   .order-actions,
   .new-order-summary div,

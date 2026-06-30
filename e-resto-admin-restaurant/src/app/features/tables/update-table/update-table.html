@@ -1,1 +1,80 @@
-<p>update-table works!</p>
+<button type="button"
+        class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center"
+        style="width: 35px; height: 35px;"
+        data-bs-toggle="modal"
+        [attr.data-bs-target]="'#' + modalId"
+        title="Modifier la table">
+    <i class="ti ti-pencil fs-4"></i>
+</button>
+
+<div class="modal fade" [id]="modalId" tabindex="-1" aria-labelledby="updateTableModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow text-start">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fs-3 mb-1" id="updateTableModalLabel" style="font-weight: bolder">
+                        Modifier la table
+                    </h5>
+                    <p class="mb-0 text-muted small">Mettez à jour le nom et la capacité de cette table.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <form [formGroup]="tableForm" (ngSubmit)="onSubmit()" [id]="'updateTableForm' + table?.id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" [for]="'updateTableName' + table?.id">
+                                Nom de la table <span class="text-danger">*</span>
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   [id]="'updateTableName' + table?.id"
+                                   formControlName="name"
+                                   (input)="clearNameError()"
+                                   placeholder="Ex. TABLE 1 ou VIP 2">
+                            @if (tableForm.get('name')?.hasError('duplicate') && tableForm.get('name')?.touched) {
+                                <small class="text-danger">Ce nom de table existe déjà.</small>
+                            } @else if (tableForm.get('name')?.invalid && tableForm.get('name')?.touched) {
+                                <small class="text-danger">Le nom de la table est obligatoire.</small>
+                            }
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" [for]="'updateTableCapacity' + table?.id">
+                                Capacité <span class="text-danger">*</span>
+                            </label>
+                            <input type="number"
+                                   class="form-control"
+                                   [id]="'updateTableCapacity' + table?.id"
+                                   formControlName="capacity"
+                                   min="1"
+                                   placeholder="Ex. 4">
+                            @if (tableForm.get('capacity')?.invalid && tableForm.get('capacity')?.touched) {
+                                <small class="text-danger">La capacité est obligatoire et doit être supérieure à 0.</small>
+                            }
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer d-flex gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> Annuler
+                </button>
+
+                <button type="submit"
+                        [attr.form]="'updateTableForm' + table?.id"
+                        class="btn btn-primary text-black"
+                        [disabled]="tableForm.invalid || isLoading">
+                    @if (isLoading) {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    } @else {
+                        <i class="bi bi-check-circle me-1"></i>
+                    }
+                    Enregistrer les modifications
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

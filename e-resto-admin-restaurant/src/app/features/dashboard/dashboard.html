@@ -37,6 +37,179 @@
         </div>
     } -->
 
+    @if (canViewBusinessGlobal()) {
+        <div class="dashboard-view-tabs mb-4">
+            <button type="button" [class.active]="dashboardView() === 'restaurant'" (click)="switchDashboardView('restaurant')">
+                <i class="ti ti-building-store"></i>
+                Restaurant actuel
+            </button>
+            <button type="button" [class.active]="dashboardView() === 'business'" (click)="switchDashboardView('business')">
+                <i class="ti ti-chart-bar"></i>
+                Vue globale Business
+            </button>
+        </div>
+    }
+
+    @if (dashboardView() === 'business' && canViewBusinessGlobal()) {
+        @if (businessAnalytics(); as global) {
+            <section class="business-global mb-4">
+                <div class="business-global-head">
+                    <div>
+                        <span class="eyebrow">Groupe Business</span>
+                        <h2>Statistiques globales multi-restaurant</h2>
+                        <p>{{ global.period?.label || 'Ce mois' }} : comparaison de tous les restaurants du groupe.</p>
+                    </div>
+                    <div class="business-export-actions">
+                        <button class="btn btn-outline-success btn-sm" type="button" [disabled]="!!businessExporting()" (click)="exportBusinessExcel()">
+                            <i class="ti ti-file-spreadsheet me-1"></i>
+                            Excel
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" type="button" [disabled]="!!businessExporting()" (click)="exportBusinessPdf()">
+                            <i class="ti ti-file-type-pdf me-1"></i>
+                            PDF
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" type="button" [disabled]="refreshing()" (click)="loadDashboard(true)">
+                            <i class="ti ti-refresh me-1"></i>
+                            Actualiser
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>CA total du mois</span>
+                            <strong>{{ businessRevenueList('revenue_month_by_currency') }}</strong>
+                            <small>{{ global.summary?.orders_month || 0 }} commandes</small>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>CA annuel</span>
+                            <strong>{{ businessRevenueList('revenue_year_by_currency') }}</strong>
+                            <small>{{ global.summary?.orders_year || 0 }} commandes</small>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>Meilleur restaurant</span>
+                            <strong>{{ global.summary?.best_restaurant?.name || 'Aucune donnée' }}</strong>
+                            <small>{{ restaurantRevenueList(global.summary?.best_restaurant) }}</small>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>Restaurant à suivre</span>
+                            <strong>{{ global.summary?.weakest_restaurant?.name || 'Aucune donnée' }}</strong>
+                            <small>{{ restaurantRevenueList(global.summary?.weakest_restaurant) }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-xl-8">
+                        <div class="panel-card business-ranking">
+                            <div class="panel-header">
+                                <div>
+                                    <h2>Classement des restaurants</h2>
+                                    <p>Commandes et chiffre d'affaires encaissé sur le mois choisi.</p>
+                                </div>
+                                <label class="business-month-filter">
+                                    <span>Mois</span>
+                                    <select [value]="selectedBusinessMonth()" (change)="onBusinessMonthChange($any($event.target).value)">
+                                        @for (month of businessMonthOptions; track month.value) {
+                                            <option [value]="month.value">{{ month.label }}</option>
+                                        }
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th>Restaurant</th>
+                                        <th>Commandes</th>
+                                        <th>Revenus</th>
+                                        <th>Equipe</th>
+                                        <th>Tables</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (row of global.restaurants || []; track row.id) {
+                                            <tr>
+                                                <td>
+                                                    <div class="business-restaurant-cell">
+                                                        <img [src]="row.logo_url || 'assets/logo/e-resto-logo.png'" alt="">
+                                                        <div>
+                                                            <strong>{{ row.name }}</strong>
+                                                            <small>{{ row.city || 'Province non renseignée' }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{{ row.orders_count || 0 }}</td>
+                                                <td>{{ restaurantRevenueList(row) }}</td>
+                                                <td>{{ row.users_count || 0 }}</td>
+                                                <td>{{ row.tables_count || 0 }}</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-xl-4">
+                        <div class="panel-card h-100">
+                            <div class="panel-header">
+                                <div>
+                                    <h2>Top plats du groupe</h2>
+                                    <p>Plats les plus commandés ce mois.</p>
+                                </div>
+                            </div>
+                            <div class="top-list">
+                                @for (dish of global.top_dishes || []; track dish.name) {
+                                    <div class="top-item">
+                                        <div>
+                                            <strong>{{ dish.name }}</strong>
+                                            <small>{{ dish.quantity }} vendu(s)</small>
+                                        </div>
+                                        <span>{{ dish.revenue | number:'1.0-2' }}</span>
+                                    </div>
+                                } @empty {
+                                    <div class="empty-state">Aucun plat vendu ce mois.</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <div>
+                                    <h2>Evolution globale</h2>
+                                    <p>Commandes et revenus sur les 6 derniers mois.</p>
+                                </div>
+                            </div>
+                            <div class="business-evolution-grid">
+                                @for (month of global.monthly_evolution || []; track month.label) {
+                                    <article>
+                                        <span>{{ month.label }}</span>
+                                        <strong>{{ month.orders_count || 0 }} commandes</strong>
+                                        <small>{{ formatRevenueList(month.revenue_by_currency || []) }}</small>
+                                    </article>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        } @else {
+            <div class="dashboard-loading mb-4">
+                <div class="spinner-border spinner-border-sm text-primary"></div>
+                <span>Chargement des statistiques Business...</span>
+            </div>
+        }
+    } @else {
         <div class="row g-3 mb-4">
             @for (card of kpiCards(); track card.label) {
                 <div class="col-12 col-md-6">
@@ -120,6 +293,48 @@
             </div>
         </div>
         }
+
+        <div class="panel-card recent-orders-panel mb-3">
+            <div class="panel-header">
+                <div>
+                    <h2>Commandes récentes</h2>
+                    <p>{{ recentOrdersDescription() }}</p>
+                </div>
+                <a routerLink="/orders/list" class="btn btn-outline-primary btn-sm">
+                    <i class="ti ti-list-details me-1"></i>
+                    Tout voir
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Table</th>
+                        <th>Statut</th>
+                        <th>Paiement</th>
+                        <th>Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        @for (order of recentOrders(); track order.id) {
+                            <tr>
+                                <td>{{ order.tracking_code || order.id }}</td>
+                                <td>{{ order.table?.name || 'Sans table' }}</td>
+                                <td><span class="badge rounded-pill" [ngClass]="statusClass(order.status)">{{ order.status }}</span></td>
+                                <td>{{ order.payment_status }}</td>
+                                <td>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</td>
+                            </tr>
+                        } @empty {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Aucune commande récente.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 
     @if (onboardingOpen()) {
         <div class="onboarding-backdrop">

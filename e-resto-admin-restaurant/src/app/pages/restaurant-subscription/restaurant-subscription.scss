@@ -254,6 +254,53 @@ h1 {
   padding: 24px;
 }
 
+.plan-card-loading {
+  min-height: 236px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plan-card-loading span,
+.plan-card-loading strong,
+.plan-card-loading p {
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 42%, #e2e8f0 82%);
+  background-size: 220% 100%;
+  animation: subscription-loading 1.2s ease-in-out infinite;
+}
+
+.plan-card-loading span {
+  width: 42%;
+  height: 18px;
+}
+
+.plan-card-loading strong {
+  width: 70%;
+  height: 36px;
+}
+
+.plan-card-loading p {
+  width: 88%;
+  height: 16px;
+}
+
+.plan-card-loading button {
+  margin-top: auto;
+}
+
+@keyframes subscription-loading {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
+}
+
 .plan-card.current {
   border-color: var(--dashboard-primary, #ff7a1a);
 }
@@ -296,6 +343,33 @@ h1 {
   font-size: 28px;
   line-height: 1;
   font-weight: 950;
+}
+
+.subscription-promo {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, .18);
+}
+
+.subscription-promo span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .plan-card button {
@@ -352,6 +426,66 @@ h1 {
 
 .history-head select {
   max-width: 180px;
+}
+
+.payment-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  gap: 8px;
+  flex: 1;
+  max-width: 430px;
+}
+
+.payment-stats article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 23, 42, .08);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.payment-stats span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.payment-stats strong {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.payment-stats .paid {
+  border-color: rgba(22, 101, 52, .16);
+  background: #dcfce7;
+}
+
+.payment-stats .paid strong {
+  color: #166534;
+}
+
+.payment-stats .failed {
+  border-color: rgba(153, 27, 27, .16);
+  background: #fee2e2;
+}
+
+.payment-stats .failed strong {
+  color: #991b1b;
+}
+
+.payment-stats .pending {
+  border-color: rgba(133, 77, 14, .16);
+  background: #fef3c7;
+}
+
+.payment-stats .pending strong {
+  color: #854d0e;
 }
 
 table {
@@ -478,6 +612,13 @@ th {
   color: #e5e7eb;
 }
 
+:host-context(body.dashboard-dark-theme) .plan-card-loading span,
+:host-context(body.dashboard-dark-theme) .plan-card-loading strong,
+:host-context(body.dashboard-dark-theme) .plan-card-loading p {
+  background: linear-gradient(90deg, #273142 0%, #334155 42%, #273142 82%);
+  background-size: 220% 100%;
+}
+
 :host-context(body.dashboard-dark-theme) .history-pagination button {
   color: #e5e7eb;
   background: #1b1f27;
@@ -487,6 +628,26 @@ th {
 :host-context(body.dashboard-dark-theme) .history-pagination button.active {
   color: #ffffff;
   background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+}
+
+:host-context(body.dashboard-dark-theme) .payment-stats article {
+  border-color: rgba(255, 255, 255, .08);
+}
+
+:host-context(body.dashboard-dark-theme) .payment-stats span {
+  color: #cbd5e1;
+}
+
+:host-context(body.dashboard-dark-theme) .payment-stats .paid {
+  background: rgba(22, 101, 52, .24);
+}
+
+:host-context(body.dashboard-dark-theme) .payment-stats .failed {
+  background: rgba(153, 27, 27, .24);
+}
+
+:host-context(body.dashboard-dark-theme) .payment-stats .pending {
+  background: rgba(133, 77, 14, .24);
 }
 
 @media (max-width: 1100px) {
@@ -515,5 +676,11 @@ th {
 
   .history-pagination div {
     justify-content: flex-start;
+  }
+
+  .payment-stats {
+    width: 100%;
+    max-width: none;
+    grid-template-columns: 1fr;
   }
 }

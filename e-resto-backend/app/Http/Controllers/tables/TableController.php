@@ -25,7 +25,7 @@ class TableController extends Controller
             'capacity' => 'required|integer|min:1',
             'server_phone' => 'nullable|string|max:20',
         ], [
-            'name.unique' => 'Ce nom de table existe deja.',
+            'name.unique' => 'Ce nom de table existe déjà.',
         ]);
 
         $tableLimit = $restaurant?->plan?->maxTables();
@@ -58,6 +58,8 @@ class TableController extends Controller
 
     public function index(Request $request)
     {
+        $this->attachLegacyTablesToCurrentRestaurant($request);
+
         $tables = $this->scopedTables($request)
             ->latest()
             ->get()
@@ -77,6 +79,15 @@ class TableController extends Controller
     {
         if (!preg_match('/^table_[A-Za-z0-9\-]+\.svg$/', $filename)) {
             abort(404);
+        }
+
+        $tableId = substr($filename, strlen('table_'), -strlen('.svg'));
+        $table = Table::with('restaurant')->find($tableId);
+        if ($table) {
+            $currentPath = $this->generateTableQrCode($table, $this->menuUrl($table));
+            if ($table->qr_code !== $currentPath) {
+                $table->update(['qr_code' => $currentPath]);
+            }
         }
 
         $path = "qrcodes/{$filename}";
@@ -106,7 +117,7 @@ class TableController extends Controller
             'server_phone' => 'nullable|string|max:20',
             'status' => 'sometimes|string|max:50',
         ], [
-            'name.unique' => 'Ce nom de table existe deja.',
+            'name.unique' => 'Ce nom de table existe déjà.',
         ]);
 
         $table->update($validated);
@@ -129,6 +140,30 @@ class TableController extends Controller
     {
         return Table::query()
             ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId));
+    }
+
+    private function attachLegacyTablesToCurrentRestaurant(Request $request): void
+    {
+        $restaurantId = $request->user()?->restaurant_id;
+        if (!$restaurantId) {
+            return;
+        }
+
+        if (Table::where('restaurant_id', $restaurantId)->exists()) {
+            return;
+        }
+
+        $usedNames = [];
+        Table::whereNull('restaurant_id')->oldest()->get()->each(function (Table $table) use ($restaurantId, &$usedNames) {
+            $nameKey = mb_strtolower(trim((string) $table->name));
+            if ($nameKey === '' || isset($usedNames[$nameKey])) {
+                return;
+            }
+
+            $table->restaurant_id = $restaurantId;
+            $table->save();
+            $usedNames[$nameKey] = true;
+        });
     }
 
     private function tablePayload(Table $table): array
@@ -165,7 +200,7 @@ class TableController extends Controller
             $query['restaurant_slug'] = $slug;
         }
 
-        return rtrim(env('CLIENT_FRONTEND_URL', 'https://restaurascan.com'), '/') . '/?' . http_build_query($query);
+        return rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.67:5173'), '/') . '/?' . http_build_query($query);
     }
 
     private function generateTableQrCode(Table $table, string $url): string

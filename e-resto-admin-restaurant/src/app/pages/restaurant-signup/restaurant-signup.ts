@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
 import { SaasPlan } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
+import { CONGO_PROVINCES } from '../../shared/congo-provinces';
 
 @Component({
   selector: 'app-restaurant-signup',
@@ -18,6 +19,7 @@ export class RestaurantSignup implements OnInit {
   showPassword = false;
   showPasswordConfirmation = false;
   planLoading = true;
+  provinces = CONGO_PROVINCES;
 
   account = {
     restaurant_name: '',
@@ -44,6 +46,11 @@ export class RestaurantSignup implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    if (!this.hasPlanSelection()) {
+      this.router.navigate(['/pricing'], { fragment: 'plans', replaceUrl: true });
+      return;
+    }
+
     this.saas.plans().pipe(timeout(30000)).subscribe({
       next: (plans) => {
         this.resolveSelectedPlan(plans);
@@ -59,6 +66,13 @@ export class RestaurantSignup implements OnInit {
         this.message = 'Impossible de charger les plans. Vérifiez que le serveur et la base de données sont démarrés.';
       },
     });
+  }
+
+  private hasPlanSelection(): boolean {
+    const requestedPlan = this.route.snapshot.queryParamMap.get('plan');
+    const storedPlan = this.selectedPlan?.id || this.selectedPlan?.slug;
+
+    return !!requestedPlan || !!storedPlan;
   }
 
   goNext(): void {

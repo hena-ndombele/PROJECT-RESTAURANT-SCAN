@@ -92,13 +92,15 @@ class OrderController extends Controller
                         throw new \Exception("Le plat {$plat->name} n'est plus disponible.");
                     }
 
+                    $price = $plat->currentPrice();
+
                     $order->items()->create([
                         'plat_id' => $plat->id,
                         'quantity' => $item['quantity'],
-                        'price_at_order' => $plat->price,
+                        'price_at_order' => $price,
                     ]);
 
-                    $total += ((float) $plat->price * (int) $item['quantity']);
+                    $total += ((float) $price * (int) $item['quantity']);
                     $mainCurrency = $plat->currency;
                 }
 
@@ -289,13 +291,15 @@ class OrderController extends Controller
                         throw new \Exception("Le plat {$plat->name} n'est plus disponible.");
                     }
 
+                    $price = $plat->currentPrice();
+
                     $order->items()->create([
                         'plat_id' => $plat->id,
                         'quantity' => $item['quantity'],
-                        'price_at_order' => $plat->price,
+                        'price_at_order' => $price,
                     ]);
 
-                    $total += ((float) $plat->price * (int) $item['quantity']);
+                    $total += ((float) $price * (int) $item['quantity']);
                     $mainCurrency = $plat->currency;
                 }
 
