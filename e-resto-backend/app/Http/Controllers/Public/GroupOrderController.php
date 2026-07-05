@@ -82,7 +82,7 @@ class GroupOrderController extends Controller
                 'last_seen_at' => now(),
             ]);
 
-            DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'created')));
+            DB::afterCommit(fn () => $this->broadcastSafely(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'created')));
 
             return response()->json([
                 'message' => 'Commande groupée créée.',
@@ -149,7 +149,7 @@ class GroupOrderController extends Controller
             'last_seen_at' => now(),
         ]);
 
-        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'joined')));
+        DB::afterCommit(fn () => $this->broadcastSafely(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'joined')));
 
         return response()->json([
             'message' => 'Participant ajoute.',
@@ -204,7 +204,7 @@ class GroupOrderController extends Controller
             'email_feedback_requested' => (bool) ($validated['email_feedback_opt_in'] ?? $participant->email_feedback_requested),
             'last_seen_at' => now(),
         ]);
-        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'ready_changed')));
+        DB::afterCommit(fn () => $this->broadcastSafely(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'ready_changed')));
 
         return response()->json([
             'message' => $participant->is_ready ? 'Participant pret.' : 'Participant en cours.',
@@ -280,7 +280,7 @@ class GroupOrderController extends Controller
                 'note' => $validated['note'] ?? null,
             ]
         );
-        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'item_updated')));
+        DB::afterCommit(fn () => $this->broadcastSafely(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'item_updated')));
 
         return response()->json([
             'message' => 'Plat ajoute a la commande groupée.',
@@ -307,7 +307,7 @@ class GroupOrderController extends Controller
         ]);
 
         $item->delete();
-        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'item_deleted')));
+        DB::afterCommit(fn () => $this->broadcastSafely(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'item_deleted')));
 
         return response()->json([
             'message' => 'Plat retire de la commande groupée.',
@@ -465,7 +465,7 @@ class GroupOrderController extends Controller
 
             $freshOrder = $order->load(['table', 'items.plat', 'latestPayment']);
             $this->broadcastSafely(new OrderPlaced($freshOrder));
-            DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($lockedGroupOrder->fresh($this->relations()), 'checked_out')));
+            DB::afterCommit(fn () => $this->broadcastSafely(new GroupOrderUpdated($lockedGroupOrder->fresh($this->relations()), 'checked_out')));
 
             return response()->json([
                 'message' => 'Commande groupée validée.',
