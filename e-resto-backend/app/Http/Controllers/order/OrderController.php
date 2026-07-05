@@ -11,6 +11,7 @@ use App\Models\Plat;
 use App\Models\Restaurant;
 use App\Models\Table;
 use App\Services\MaishaPayService;
+use App\Services\OrderEmailFollowupService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,9 @@ class OrderController extends Controller
             'customer_name' => 'nullable|string|max:120',
             'customer_phone' => 'nullable|string|max:30',
             'customer_email' => 'nullable|email|max:160',
+            'email_contact' => 'nullable|email|max:160',
+            'email_receipt_opt_in' => 'nullable|boolean',
+            'email_feedback_opt_in' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.plat_id' => 'required|uuid|exists:plats,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -71,7 +75,7 @@ class OrderController extends Controller
                     'note' => $validated['note'] ?? null,
                     'customer_name' => $validated['customer_name'] ?? null,
                     'customer_phone' => $validated['customer_phone'] ?? ($validated['wallet_id'] ?? null),
-                    'customer_email' => $validated['customer_email'] ?? null,
+                    'customer_email' => $validated['customer_email'] ?? ($validated['email_contact'] ?? null),
                     'pickup_name' => in_array($orderType, ['takeaway', 'remote'], true) ? ($validated['customer_name'] ?? null) : null,
                     'pickup_phone' => in_array($orderType, ['takeaway', 'remote'], true) ? ($validated['customer_phone'] ?? ($validated['wallet_id'] ?? null)) : null,
                     'status' => 'pending',
@@ -121,6 +125,10 @@ class OrderController extends Controller
                     'reference' => 'ORD-' . Str::upper(substr($order->id, 0, 8)),
                     'metadata' => [
                         'message' => 'Paiement cash a confirmer par le restaurant.',
+                        'email_followup_enabled' => (bool) (($validated['email_receipt_opt_in'] ?? false) || ($validated['email_feedback_opt_in'] ?? false)),
+                        'email_receipt_requested' => (bool) ($validated['email_receipt_opt_in'] ?? false),
+                        'email_feedback_requested' => (bool) ($validated['email_feedback_opt_in'] ?? false),
+                        'email_contact' => $validated['email_contact'] ?? ($validated['customer_email'] ?? null),
                     ],
                 ]);
 
@@ -246,6 +254,9 @@ class OrderController extends Controller
             'customer_name' => 'nullable|string|max:120',
             'customer_phone' => 'nullable|string|max:30',
             'customer_email' => 'nullable|email|max:160',
+            'email_contact' => 'nullable|email|max:160',
+            'email_receipt_opt_in' => 'nullable|boolean',
+            'email_feedback_opt_in' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.plat_id' => 'required|uuid|exists:plats,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -306,6 +317,7 @@ class OrderController extends Controller
                 $nextOrderType = $validated['order_type'] ?? $order->order_type ?? 'dine_in';
                 $nextCustomerName = $validated['customer_name'] ?? $order->customer_name;
                 $nextCustomerPhone = $validated['customer_phone'] ?? $order->customer_phone;
+                $nextCustomerEmail = $validated['customer_email'] ?? ($validated['email_contact'] ?? $order->customer_email);
 
                 $order->update([
                     'note' => $validated['note'] ?? null,
@@ -314,7 +326,7 @@ class OrderController extends Controller
                     'pickup_phone' => in_array($nextOrderType, ['takeaway', 'remote'], true) ? $nextCustomerPhone : null,
                     'customer_name' => $nextCustomerName,
                     'customer_phone' => $nextCustomerPhone,
-                    'customer_email' => $validated['customer_email'] ?? $order->customer_email,
+                    'customer_email' => $nextCustomerEmail,
                     'total_amount' => $total,
                     'currency' => $mainCurrency,
                 ]);
@@ -326,6 +338,10 @@ class OrderController extends Controller
                     $metadata = $payment->metadata ?? [];
                     $metadata['modified_at'] = now()->toIso8601String();
                     $metadata['modification_message'] = 'Commande modifiee par le client avant preparation.';
+                    $metadata['email_followup_enabled'] = (bool) (($validated['email_receipt_opt_in'] ?? false) || ($validated['email_feedback_opt_in'] ?? false));
+                    $metadata['email_receipt_requested'] = (bool) ($validated['email_receipt_opt_in'] ?? false);
+                    $metadata['email_feedback_requested'] = (bool) ($validated['email_feedback_opt_in'] ?? false);
+                    $metadata['email_contact'] = $validated['email_contact'] ?? $nextCustomerEmail;
 
                     if ($order->payment_method === 'mobile_money') {
                         if (!$order->table?->restaurant?->plan?->allows('mobile_money')) {
@@ -451,7 +467,7 @@ class OrderController extends Controller
 
                 if (!empty($metadata['bill_requested'])) {
                     return response()->json([
-                        'message' => 'Addition deja demandee.',
+                        'message' => 'Addition déjà demandée.',
                         'order' => $order->fresh(['table', 'items.plat', 'latestPayment']),
                     ]);
                 }
@@ -521,10 +537,15 @@ class OrderController extends Controller
 
                 $this->releaseTableIfComplete($order);
                 $this->broadcastSafely(new OrderStatusUpdated($order));
+                $freshOrder = $order->load(['restaurant', 'table', 'items.plat', 'latestPayment']);
+
+                if ($validated['payment_status'] === 'paid') {
+                    DB::afterCommit(fn () => app(OrderEmailFollowupService::class)->sendForPaidOrder($freshOrder));
+                }
 
                 return response()->json([
                     'message' => 'Paiement mis a jour avec succes',
-                    'order' => $order->load(['table', 'items.plat', 'latestPayment']),
+                    'order' => $freshOrder,
                     'payment' => $payment->fresh(),
                 ]);
             });
@@ -556,6 +577,11 @@ class OrderController extends Controller
             $payment->order->update(['payment_status' => $status]);
             $this->releaseTableIfComplete($payment->order);
             $this->broadcastSafely(new OrderStatusUpdated($payment->order));
+
+            if ($status === 'paid') {
+                $order = $payment->order->load(['restaurant', 'table', 'items.plat', 'latestPayment']);
+                app(OrderEmailFollowupService::class)->sendForPaidOrder($order);
+            }
         }
 
         return response()->json(['message' => 'Callback paiement commande traite']);
@@ -617,11 +643,11 @@ class OrderController extends Controller
 
         if (empty($validated['code']) && empty($validated['phone']) && empty($validated['table_id'])) {
             return response()->json([
-                'message' => 'Entrez le code de suivi, le numero de telephone ou scannez une table avec commande active.',
+                'message' => 'Entrez le code de suivi, le numéro de téléphone ou scannez une table avec commande active.',
             ], 422);
         }
 
-        $query = Order::with(['table', 'items.plat', 'latestPayment']);
+        $query = Order::with(['restaurant', 'table', 'items.plat', 'latestPayment']);
 
         if (!empty($validated['order_id'])) {
             $query->whereKey($validated['order_id']);
@@ -647,19 +673,22 @@ class OrderController extends Controller
 
         if ($isTableOnlyRecovery) {
             return response()->json([
-                'message' => 'Pour proteger les clients, le QR de table seul ne restaure pas une commande existante. Entrez le code de suivi ou le numero de telephone pour retrouver votre commande.',
+                'message' => 'Pour proteger les clients, le QR de table seul ne restaure pas une commande existante. Entrez le code de suivi ou le numéro de téléphone pour retrouver votre commande.',
                 'requires_tracking_code' => true,
             ], 409);
         }
 
+        if (empty($validated['code']) && empty($validated['order_id'])) {
+            $query->whereNotIn('status', ['cancelled', 'delivered']);
+        }
+
         $order = $query
-            ->whereNotIn('status', ['cancelled', 'delivered'])
             ->latest()
             ->first();
 
         if (!$order) {
             return response()->json([
-                'message' => 'Aucune commande active trouvee avec ces informations.',
+                'message' => 'Aucune commande active trouvée avec ces informations.',
             ], 404);
         }
 
@@ -743,18 +772,47 @@ class OrderController extends Controller
         $items = $order->items->map(function ($item) {
             return "- {$item->quantity} x " . ($item->plat?->name ?? 'Plat');
         })->implode("\n");
+        $address = $this->addressFromOrderNote($order->note);
+        $note = $this->noteWithoutAddress($order->note);
+        $trackingCode = $order->tracking_code ?: Str::upper(substr((string) $order->id, 0, 8));
 
-        $message = "Bonjour, nouvelle commande en ligne Restaurant Scan.\n"
+        $message = "Bonjour, nouvelle commande en ligne.\n"
             . "Restaurant: " . ($order->restaurant?->name ?? '-') . "\n"
-            . "Commande: #{$order->tracking_code}\n"
             . "Client: " . ($order->customer_name ?: 'Client') . "\n"
-            . "Telephone: " . ($order->customer_phone ?: '-') . "\n"
-            . "Table/QR: " . ($order->table?->name ?: '-') . "\n"
+            . "Téléphone: " . ($order->customer_phone ?: '-') . "\n"
+            . "Adresse: " . ($address ?: '-') . "\n"
+            . "Code de suivi: {$trackingCode}\n"
+            . "Merci de conserver ce code pour retrouver et suivre cette commande.\n"
             . "Articles:\n{$items}\n"
             . "Total: {$order->total_amount} {$order->currency}\n"
-            . "Note: " . ($order->note ?: '-');
+            . "Note: " . ($note ?: '-');
 
         return 'https://wa.me/' . $digits . '?text=' . rawurlencode($message);
+    }
+
+    private function addressFromOrderNote(?string $note): ?string
+    {
+        if (!$note) {
+            return null;
+        }
+
+        if (preg_match('/^Adresse client:\s*(.+)$/mi', $note, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
+    }
+
+    private function noteWithoutAddress(?string $note): ?string
+    {
+        if (!$note) {
+            return null;
+        }
+
+        $clean = preg_replace('/^Adresse client:.*$/mi', '', $note);
+        $clean = trim(preg_replace("/\n{2,}/", "\n", (string) $clean));
+
+        return $clean !== '' ? $clean : null;
     }
 
     private function broadcastSafely(object $event): void

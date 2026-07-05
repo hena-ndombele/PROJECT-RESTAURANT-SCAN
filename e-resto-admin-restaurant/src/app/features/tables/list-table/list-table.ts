@@ -132,10 +132,15 @@ export class ListTable implements OnInit {
     }
 
     private resolveTablesResponse(response: any): TableDto[] {
-        if (Array.isArray(response)) return response;
-        if (Array.isArray(response?.data)) return response.data;
-        if (Array.isArray(response?.tables)) return response.tables;
-        return [];
+        const tables = Array.isArray(response)
+            ? response
+            : Array.isArray(response?.data)
+                ? response.data
+                : Array.isArray(response?.tables)
+                    ? response.tables
+                    : [];
+
+        return tables.filter((table: TableDto) => table?.name !== 'Commandes hors restaurant');
     }
 
     loadPlanUsage(): void {

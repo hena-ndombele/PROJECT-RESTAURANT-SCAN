@@ -33,6 +33,7 @@ export interface Restaurant {
   owner_phone?: string;
   address?: string;
   city?: string;
+  commune?: string;
   country: string;
   currency: string;
   status: 'pending_payment' | 'trial' | 'active' | 'past_due' | 'suspended' | 'cancelled';

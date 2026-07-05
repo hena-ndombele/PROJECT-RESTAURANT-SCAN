@@ -19,6 +19,7 @@ class Restaurant extends Model
         'owner_phone',
         'address',
         'city',
+        'commune',
         'country',
         'currency',
         'logo',

@@ -104,6 +104,7 @@ class MenuController extends Controller
             'image_url' => $plat->image ? asset("storage/{$plat->image}") : null,
             'image_secondaire_1_url' => $plat->image_secondaire_1 ? asset("storage/{$plat->image_secondaire_1}") : null,
             'image_secondaire_2_url' => $plat->image_secondaire_2 ? asset("storage/{$plat->image_secondaire_2}") : null,
+            'created_at' => optional($plat->created_at)->toIso8601String(),
             'category' => $plat->category ? [
                 'id' => $plat->category->id,
                 'name' => $plat->category->name,
@@ -152,6 +153,7 @@ class MenuController extends Controller
             'can_feedback' => (bool) $restaurant->plan?->allows('feedback'),
             'can_reservations' => (bool) $restaurant->plan?->allows('reservations'),
             'can_Réservations' => (bool) $restaurant->plan?->allows('reservations'),
+            'can_group_orders' => (bool) $restaurant->plan?->allows('group_orders'),
             'can_dish_promotions' => (bool) $restaurant->plan?->allows('dish_promotions'),
             'can_mobile_money' => false,
             'can_chatbot' => false,

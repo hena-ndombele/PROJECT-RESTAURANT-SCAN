@@ -49,10 +49,16 @@ export function heartbeatGroupOrderParticipant(code, participantId) {
   });
 }
 
-export function setGroupOrderParticipantReady(code, participantId, isReady) {
+export function setGroupOrderParticipantReady(code, participantId, isReady, emailPreferences = null) {
   return request(`/group-orders/${code}/participants/ready`, {
     method: 'POST',
-    body: JSON.stringify({ participant_id: participantId, is_ready: isReady }),
+    body: JSON.stringify({
+      participant_id: participantId,
+      is_ready: isReady,
+      email: emailPreferences?.enabled ? emailPreferences.email : undefined,
+      email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.receipt),
+      email_feedback_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.feedback),
+    }),
   });
 }
 

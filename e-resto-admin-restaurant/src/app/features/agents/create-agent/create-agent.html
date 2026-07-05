@@ -79,7 +79,7 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label">Téléphone <span class="required-star">*</span></label>
-                                        <input type="text" class="form-control" formControlName="phone_number" placeholder="+243...">
+                                        <input type="tel" class="form-control" formControlName="phone_number" placeholder="+243..." autocomplete="tel">
                                         @if (agentForm.get('phone_number')?.invalid && agentForm.get('phone_number')?.touched) {
                                             <small class="text-danger">Le téléphone est obligatoire.</small>
                                         }
@@ -161,7 +161,7 @@
 
                             <div class="col-md-4">
                                 <label class="form-label">Téléphone urgence</label>
-                                <input type="text" class="form-control" formControlName="emergency_contact_phone" placeholder="+243...">
+                                <input type="tel" class="form-control" formControlName="emergency_contact_phone" placeholder="+243..." autocomplete="tel">
                             </div>
                         </div>
                     }

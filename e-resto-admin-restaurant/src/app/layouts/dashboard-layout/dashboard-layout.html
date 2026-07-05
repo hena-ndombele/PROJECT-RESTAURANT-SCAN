@@ -117,13 +117,17 @@
                                                 }
                                             </select>
                                         </label>
-                                        <label class="wide">
+                                        <label>
+                                            <span>Commune</span>
+                                            <input type="text" formControlName="commune" placeholder="Ex: Gombe, Limete...">
+                                        </label>
+                                        <label>
                                             <span>Adresse</span>
                                             <input type="text" formControlName="address" placeholder="Adresse du restaurant">
                                         </label>
                                         <label>
                                             <span>WhatsApp</span>
-                                            <input type="text" formControlName="owner_phone" placeholder="+243...">
+                                            <input type="tel" formControlName="owner_phone" placeholder="+243..." autocomplete="tel" (blur)="businessRestaurantForm.patchValue({ owner_phone: normalizeCongoPhone(businessRestaurantForm.value.owner_phone) })">
                                         </label>
                                         <label>
                                             <span>Devise</span>

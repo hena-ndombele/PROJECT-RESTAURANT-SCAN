@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -167,6 +168,7 @@ class SaasController extends Controller
             'google_credential' => 'nullable|string',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:120',
+            'commune' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
             'saas_plan_id' => 'required|string|max:80',
@@ -205,15 +207,18 @@ class SaasController extends Controller
         return DB::transaction(function () use ($validated, $plan) {
             [$firstName, $lastName] = $this->splitName($validated['owner_name']);
 
+            $ownerPhone = $this->normalizeCongoPhone($validated['owner_phone']);
+
             $restaurant = Restaurant::create([
                 'name' => $validated['restaurant_name'],
                 'slug' => $this->uniqueRestaurantSlug($validated['restaurant_name']),
                 'legal_name' => $validated['legal_name'] ?? null,
                 'owner_name' => $validated['owner_name'],
                 'owner_email' => $validated['owner_email'],
-                'owner_phone' => $validated['owner_phone'],
+                'owner_phone' => $ownerPhone,
                 'address' => $validated['address'] ?? null,
                 'city' => $validated['city'] ?? null,
+                'commune' => $validated['commune'] ?? null,
                 'country' => $validated['country'] ?? 'CD',
                 'currency' => $validated['currency'] ?? 'CDF',
                 'status' => ((float) $plan->monthly_price) <= 0 ? 'active' : 'trial',
@@ -230,7 +235,7 @@ class SaasController extends Controller
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'email' => $validated['owner_email'],
-                'phone_number' => $validated['owner_phone'],
+                'phone_number' => $ownerPhone,
                 'address' => $validated['address'] ?? null,
                 'password' => Hash::make($validated['password'] ?? Str::random(48)),
                 'is_first_login' => false,
@@ -257,16 +262,27 @@ class SaasController extends Controller
                 'expires_at' => now()->addMinutes(5),
             ]);
 
+            $mailSent = true;
             try {
                 Mail::to($user->email)->send(new SendOtpMail((string) $otpCode));
-            } catch (\Throwable) {
+            } catch (\Throwable $exception) {
+                $mailSent = false;
+                Log::warning('Restaurant signup OTP mail failed.', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $exception->getMessage(),
+                ]);
             }
 
             return response()->json([
                 'message' => 'Compte crée. Un code OTP a été envoyé à votre adresse e-mail.',
+                'message' => $mailSent
+                    ? 'Compte cree. Un code OTP a ete envoye a votre adresse e-mail.'
+                    : 'Compte cree, mais l e-mail OTP n a pas pu etre envoye. Verifiez la configuration mail.',
                 'restaurant' => $restaurant->load(['plan', 'subscription']),
                 'owner' => $user,
                 'requires_otp' => true,
+                'mail_sent' => $mailSent,
             ], 201);
         });
     }
@@ -531,6 +547,8 @@ class SaasController extends Controller
             ], 403);
         }
 
+        $this->refreshBillingStatus($restaurant);
+
         $restaurants = $this->businessRestaurantQuery($request->user())
             ->with(['plan', 'subscription'])
             ->orderBy('created_at')
@@ -561,6 +579,9 @@ class SaasController extends Controller
             ], 403);
         }
 
+        $this->refreshBillingStatus($currentRestaurant);
+        $currentRestaurant = $currentRestaurant->fresh(['plan', 'subscription']);
+
         $limit = $currentRestaurant->plan?->max_restaurants;
         $currentCount = $this->businessRestaurantQuery($request->user())->count();
         if ($limit !== null && $currentCount >= (int) $limit) {
@@ -575,6 +596,7 @@ class SaasController extends Controller
             'owner_phone' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:120',
+            'commune' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
         ]);
@@ -586,9 +608,10 @@ class SaasController extends Controller
             'legal_name' => $validated['legal_name'] ?? null,
             'owner_name' => $currentRestaurant->owner_name ?: trim($request->user()->first_name . ' ' . $request->user()->last_name),
             'owner_email' => $currentRestaurant->owner_email ?: $request->user()->email,
-            'owner_phone' => $validated['owner_phone'] ?? $currentRestaurant->owner_phone,
+            'owner_phone' => $this->normalizeCongoPhone($validated['owner_phone'] ?? $currentRestaurant->owner_phone),
             'address' => $validated['address'] ?? null,
             'city' => $validated['city'] ?? null,
+            'commune' => $validated['commune'] ?? null,
             'country' => $validated['country'] ?? $currentRestaurant->country ?? 'CD',
             'currency' => $validated['currency'] ?? $currentRestaurant->currency ?? 'CDF',
             'status' => $currentRestaurant->status,
@@ -642,14 +665,15 @@ class SaasController extends Controller
 
         $businessOwnerId = $this->businessOwnerId($request->user());
         $restaurantOwnerId = $restaurant->business_owner_user_id ?: ($restaurant->id === $currentRestaurant->id ? $businessOwnerId : null);
+        $sameOwnerBusinessRestaurant = $this->isSameBusinessGroupRestaurant($restaurant, $currentRestaurant);
 
-        if ($restaurantOwnerId !== $businessOwnerId) {
+        if ($restaurantOwnerId !== $businessOwnerId && !$sameOwnerBusinessRestaurant) {
             return response()->json([
                 'message' => 'Ce restaurant ne fait pas partie de votre espace Business.',
             ], 403);
         }
 
-        if (!$restaurant->business_owner_user_id) {
+        if ($restaurant->business_owner_user_id !== $businessOwnerId) {
             $restaurant->update(['business_owner_user_id' => $businessOwnerId]);
         }
 
@@ -685,7 +709,8 @@ class SaasController extends Controller
         }
 
         $restaurantOwnerId = $restaurant->business_owner_user_id ?: ($restaurant->id === $currentRestaurant->id ? $businessOwnerId : null);
-        if ($restaurantOwnerId !== $businessOwnerId) {
+        $sameOwnerBusinessRestaurant = $this->isSameBusinessGroupRestaurant($restaurant, $currentRestaurant);
+        if ($restaurantOwnerId !== $businessOwnerId && !$sameOwnerBusinessRestaurant) {
             return response()->json([
                 'message' => 'Ce restaurant ne fait pas partie de votre espace Business.',
             ], 403);
@@ -904,6 +929,7 @@ class SaasController extends Controller
                 'can_customize_menu' => (bool) ($features['customization'] ?? false),
                 'can_use_feedback' => (bool) ($features['feedback'] ?? false),
                 'can_use_reservations' => (bool) ($features['reservations'] ?? false),
+                'can_use_group_orders' => (bool) ($features['group_orders'] ?? false),
                 'can_use_chatbot' => (bool) ($features['chatbot'] ?? false),
                 'can_manage_roles' => (bool) ($features['roles'] ?? false),
                 'can_create_role' => $canCreateRole,
@@ -961,6 +987,7 @@ class SaasController extends Controller
             'owner_phone' => 'sometimes|nullable|string|max:30',
             'address' => 'sometimes|nullable|string|max:255',
             'city' => 'sometimes|nullable|string|max:120',
+            'commune' => 'sometimes|nullable|string|max:120',
             'currency' => 'sometimes|string|in:USD,CDF',
             'slug' => 'sometimes|string|max:80|alpha_dash|unique:restaurants,slug,' . $restaurant->id,
             'logo_data' => 'sometimes|nullable|string',
@@ -971,10 +998,16 @@ class SaasController extends Controller
         $settingsPayload = $request->input('settings', []);
         $hasProtectedSettings = is_array($settingsPayload)
             && count(array_intersect(array_keys($settingsPayload), $protectedSettingKeys)) > 0;
-        $hasCustomization = $request->hasAny(['logo_data', 'slug']) || $hasProtectedSettings;
-        if ($hasCustomization && !$restaurant->plan?->allows('customization')) {
+        $hasAdvancedCustomization = $request->has('slug') || $hasProtectedSettings;
+        if ($hasAdvancedCustomization && !$restaurant->plan?->allows('customization')) {
             return response()->json([
                 'message' => 'La personnalisation du menu client est reservee aux plans Pro et Business.',
+            ], 403);
+        }
+
+        if ($request->has('logo_data') && !$restaurant->plan?->allows('logo_customization')) {
+            return response()->json([
+                'message' => 'La personnalisation du logo n est pas disponible pour ce plan.',
             ], 403);
         }
 
@@ -986,6 +1019,10 @@ class SaasController extends Controller
 
         if (isset($validated['settings'])) {
             $validated['settings'] = array_replace_recursive($restaurant->settings ?? [], $validated['settings']);
+        }
+
+        if (array_key_exists('owner_phone', $validated)) {
+            $validated['owner_phone'] = $this->normalizeCongoPhone($validated['owner_phone']);
         }
 
         $restaurant->update($validated);
@@ -1146,6 +1183,7 @@ class SaasController extends Controller
             'owner_phone' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:120',
+            'commune' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
             'saas_plan_id' => 'nullable|uuid|exists:saas_plans,id',
@@ -1159,6 +1197,8 @@ class SaasController extends Controller
 
         $ownerPassword = $validated['owner_password'] ?? 'Eresto@2026';
         unset($validated['owner_password']);
+        $ownerPhone = $this->normalizeCongoPhone($validated['owner_phone'] ?? null);
+        $validated['owner_phone'] = $ownerPhone;
 
         $restaurant = Restaurant::create([
             ...$validated,
@@ -1191,7 +1231,7 @@ class SaasController extends Controller
                     'restaurant_id' => $restaurant->id,
                     'first_name' => $firstName,
                     'last_name' => $lastName,
-                    'phone_number' => $validated['owner_phone'] ?? null,
+                    'phone_number' => $ownerPhone,
                     'address' => $validated['address'] ?? null,
                     'password' => Hash::make($ownerPassword),
                     'is_first_login' => true,
@@ -1212,6 +1252,7 @@ class SaasController extends Controller
             'owner_phone' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:120',
+            'commune' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
             'saas_plan_id' => 'nullable|uuid|exists:saas_plans,id',
@@ -1220,6 +1261,10 @@ class SaasController extends Controller
 
         if (isset($validated['name']) && $validated['name'] !== $restaurant->name) {
             $validated['slug'] = $this->uniqueRestaurantSlug($validated['name'], $restaurant->id);
+        }
+
+        if (array_key_exists('owner_phone', $validated)) {
+            $validated['owner_phone'] = $this->normalizeCongoPhone($validated['owner_phone']);
         }
 
         $restaurant->update($validated);
@@ -1299,6 +1344,7 @@ class SaasController extends Controller
             'owner_email' => 'required|email|max:255',
             'owner_phone' => 'nullable|string|max:30',
             'city' => 'nullable|string|max:120',
+            'commune' => 'nullable|string|max:120',
             'saas_plan_id' => 'nullable|uuid|exists:saas_plans,id',
         ]);
 
@@ -1424,6 +1470,7 @@ class SaasController extends Controller
 
     private function activateRestaurant(Restaurant $restaurant, Payment $payment): void
     {
+        $restaurant->loadMissing(['plan', 'subscription']);
         $paymentMetadata = $payment->metadata ?? [];
         $plan = !empty($paymentMetadata['plan_id'])
             ? SaasPlan::find($paymentMetadata['plan_id'])
@@ -1440,24 +1487,168 @@ class SaasController extends Controller
             : $periodStart->copy()->addMonth();
         $billingDate = $subscriptionEnd->copy()->startOfDay();
 
-        $restaurant->update([
+        $restaurantUpdates = [
             'status' => 'active',
             'saas_plan_id' => $plan?->id ?? $restaurant->saas_plan_id,
             'subscription_ends_at' => $subscriptionEnd,
-        ]);
+        ];
 
-        $restaurant->subscription()->updateOrCreate(
-            ['restaurant_id' => $restaurant->id],
-            [
-                'saas_plan_id' => $plan?->id,
+        $subscriptionUpdates = [
+            'saas_plan_id' => $plan?->id,
+            'status' => 'active',
+            'starts_at' => Carbon::today(),
+            'ends_at' => $billingDate,
+            'next_billing_at' => $billingDate,
+            'amount' => $payment->amount,
+            'currency' => $payment->currency,
+        ];
+
+        if ($plan?->allows('multi_restaurant')) {
+            $this->syncBusinessSubscription($restaurant, $restaurantUpdates, $subscriptionUpdates);
+            return;
+        }
+
+        $restaurant->update($restaurantUpdates);
+        RestaurantSubscription::updateOrCreate(['restaurant_id' => $restaurant->id], $subscriptionUpdates);
+    }
+
+    private function syncBusinessSubscription(Restaurant $sourceRestaurant, array $restaurantUpdates, array $subscriptionUpdates): void
+    {
+        $businessOwnerId = $this->businessOwnerIdForRestaurant($sourceRestaurant);
+
+        if (!$businessOwnerId) {
+            $sourceRestaurant->update($restaurantUpdates);
+            RestaurantSubscription::updateOrCreate(['restaurant_id' => $sourceRestaurant->id], $subscriptionUpdates);
+            return;
+        }
+
+        $restaurants = Restaurant::query()
+            ->where(function ($query) use ($sourceRestaurant, $businessOwnerId) {
+                $query->where('business_owner_user_id', $businessOwnerId)
+                    ->orWhere('id', $sourceRestaurant->id);
+
+                if ($sourceRestaurant->owner_email) {
+                    $query->orWhere(function ($ownerQuery) use ($sourceRestaurant) {
+                        $ownerQuery->where('owner_email', $sourceRestaurant->owner_email)
+                            ->whereNull('business_owner_user_id')
+                            ->where('saas_plan_id', $sourceRestaurant->saas_plan_id);
+                    });
+                }
+            })
+            ->get();
+
+        foreach ($restaurants as $restaurant) {
+            $updates = $restaurantUpdates;
+            if (!$restaurant->business_owner_user_id) {
+                $updates['business_owner_user_id'] = $businessOwnerId;
+            }
+
+            $restaurant->update($updates);
+            RestaurantSubscription::updateOrCreate(['restaurant_id' => $restaurant->id], $subscriptionUpdates);
+        }
+    }
+
+    private function businessOwnerIdForRestaurant(Restaurant $restaurant): ?string
+    {
+        if ($restaurant->business_owner_user_id) {
+            return $restaurant->business_owner_user_id;
+        }
+
+        if ($restaurant->owner_email) {
+            return User::where('restaurant_id', $restaurant->id)
+                ->where('email', $restaurant->owner_email)
+                ->value('id')
+                ?: User::where('email', $restaurant->owner_email)->value('id');
+        }
+
+        return null;
+    }
+
+    private function isSameBusinessGroupRestaurant(Restaurant $restaurant, Restaurant $currentRestaurant): bool
+    {
+        return (bool) $restaurant->owner_email
+            && strcasecmp((string) $restaurant->owner_email, (string) $currentRestaurant->owner_email) === 0
+            && (string) $restaurant->saas_plan_id === (string) $currentRestaurant->saas_plan_id;
+    }
+
+    private function syncBusinessSubscriptionFromGroup(Restaurant $restaurant): void
+    {
+        if (!$restaurant->plan?->allows('multi_restaurant')) {
+            return;
+        }
+
+        $businessOwnerId = $this->businessOwnerIdForRestaurant($restaurant);
+        if (!$businessOwnerId) {
+            return;
+        }
+
+        $restaurants = Restaurant::query()
+            ->with(['subscription', 'plan'])
+            ->where(function ($query) use ($restaurant, $businessOwnerId) {
+                $query->where('business_owner_user_id', $businessOwnerId)
+                    ->orWhere('id', $restaurant->id);
+
+                if ($restaurant->owner_email) {
+                    $query->orWhere(function ($ownerQuery) use ($restaurant) {
+                        $ownerQuery->where('owner_email', $restaurant->owner_email)
+                            ->whereNull('business_owner_user_id')
+                            ->where('saas_plan_id', $restaurant->saas_plan_id);
+                    });
+                }
+            })
+            ->get();
+
+        $reference = $restaurants
+            ->filter(fn (Restaurant $item) => $item->status === 'active')
+            ->map(function (Restaurant $item) {
+                $end = collect([
+                    $item->subscription_ends_at,
+                    $item->subscription?->ends_at,
+                    $item->subscription?->next_billing_at,
+                ])->filter()->map(fn ($value) => Carbon::parse($value))->max();
+
+                return ['restaurant' => $item, 'end' => $end];
+            })
+            ->filter(fn (array $item) => $item['end'] instanceof Carbon && $item['end']->isFuture())
+            ->sortByDesc(fn (array $item) => $item['end']->timestamp)
+            ->first();
+
+        if (!$reference) {
+            return;
+        }
+
+        /** @var Restaurant $referenceRestaurant */
+        $referenceRestaurant = $reference['restaurant'];
+        /** @var Carbon $subscriptionEnd */
+        $subscriptionEnd = $reference['end']->copy();
+        $billingDate = $subscriptionEnd->copy()->startOfDay();
+        $subscription = $referenceRestaurant->subscription;
+
+        foreach ($restaurants as $item) {
+            $updates = [
                 'status' => 'active',
-                'starts_at' => Carbon::today(),
-                'ends_at' => $billingDate,
-                'next_billing_at' => $billingDate,
-                'amount' => $payment->amount,
-                'currency' => $payment->currency,
-            ]
-        );
+                'saas_plan_id' => $referenceRestaurant->saas_plan_id,
+                'subscription_ends_at' => $subscriptionEnd,
+            ];
+
+            if (!$item->business_owner_user_id) {
+                $updates['business_owner_user_id'] = $businessOwnerId;
+            }
+
+            $item->update($updates);
+            RestaurantSubscription::updateOrCreate(
+                ['restaurant_id' => $item->id],
+                [
+                    'saas_plan_id' => $subscription?->saas_plan_id ?? $referenceRestaurant->saas_plan_id,
+                    'status' => 'active',
+                    'starts_at' => $subscription?->starts_at ?? Carbon::today(),
+                    'ends_at' => $billingDate,
+                    'next_billing_at' => $subscription?->next_billing_at ?? $billingDate,
+                    'amount' => $subscription?->amount ?? $referenceRestaurant->plan?->monthly_price ?? 0,
+                    'currency' => $subscription?->currency ?? $referenceRestaurant->currency,
+                ]
+            );
+        }
     }
 
     private function yearlyPrice(SaasPlan $plan): float
@@ -1485,6 +1676,10 @@ class SaasController extends Controller
         if (in_array($restaurant->status, ['suspended', 'cancelled', 'pending_payment'], true)) {
             return;
         }
+
+        $restaurant->loadMissing(['plan', 'subscription']);
+        $this->syncBusinessSubscriptionFromGroup($restaurant);
+        $restaurant->refresh()->loadMissing(['plan', 'subscription']);
 
         if ($restaurant->status === 'trial' && $restaurant->trial_ends_at && $restaurant->trial_ends_at->isPast()) {
             $restaurant->update(['status' => 'past_due']);
@@ -1536,6 +1731,35 @@ class SaasController extends Controller
         }
 
         $digits = preg_replace('/\D/', '', $value) ?? '';
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '243' . substr($digits, 1);
+        }
+
+        if (!str_starts_with($digits, '243')) {
+            $digits = '243' . $digits;
+        }
+
+        return '+' . $digits;
+    }
+
+    private function normalizeCongoPhone(?string $phone): ?string
+    {
+        $value = trim((string) $phone);
+        if ($value === '') {
+            return null;
+        }
+
+        $value = preg_replace('/[\s\-.()]/', '', $value) ?? '';
+        if (str_starts_with($value, '00')) {
+            $value = '+' . substr($value, 2);
+        }
+
+        if (str_starts_with($value, '+')) {
+            $digits = preg_replace('/\D/', '', substr($value, 1)) ?? '';
+        } else {
+            $digits = preg_replace('/\D/', '', $value) ?? '';
+        }
 
         if (str_starts_with($digits, '0')) {
             $digits = '243' . substr($digits, 1);
@@ -1621,10 +1845,52 @@ class SaasController extends Controller
     private function normalizeFeatures(mixed $features): array
     {
         if (is_string($features)) {
-            return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $features))));
+            $features = array_map('trim', preg_split('/\r\n|\r|\n|,/', $features));
         }
 
-        return is_array($features) ? array_values(array_filter($features)) : [];
+        if (!is_array($features)) {
+            return [];
+        }
+
+        $unique = [];
+        foreach ($features as $feature) {
+            $label = trim((string) $feature);
+            if ($label === '') {
+                continue;
+            }
+
+            $unique[$this->normalizeFeatureLabel($label)] = $label;
+        }
+
+        return array_values($unique);
+    }
+
+    private function withPlanFeature(array $features, string $targetSlug, string $planSlug, string $feature): array
+    {
+        if ($planSlug !== $targetSlug) {
+            return $features;
+        }
+
+        $normalized = $this->normalizeFeatureLabel($feature);
+        foreach ($features as $existingFeature) {
+            if ($this->normalizeFeatureLabel((string) $existingFeature) === $normalized) {
+                return $features;
+            }
+        }
+
+        $features[] = $feature;
+
+        return $features;
+    }
+
+    private function normalizeFeatureLabel(string $value): string
+    {
+        return Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replace(['_', '-'], ' ')
+            ->squish()
+            ->toString();
     }
 
     private function splitName(string $fullName): array
@@ -1746,13 +2012,26 @@ class SaasController extends Controller
     private function businessRestaurantQuery(User $user)
     {
         $businessOwnerId = $this->businessOwnerId($user);
+        $currentRestaurant = $user->restaurant;
         $currentRestaurantId = $user->restaurant_id;
+        $ownerEmail = $currentRestaurant?->owner_email;
+        $planId = $currentRestaurant?->saas_plan_id;
 
         return Restaurant::query()
             ->where('business_owner_user_id', $businessOwnerId)
+            ->orWhere('id', $currentRestaurantId)
             ->orWhere(function ($query) use ($currentRestaurantId) {
                 $query->where('id', $currentRestaurantId)
                     ->whereNull('business_owner_user_id');
+            })
+            ->orWhere(function ($query) use ($ownerEmail, $planId) {
+                if (!$ownerEmail) {
+                    $query->whereRaw('1 = 0');
+                    return;
+                }
+
+                $query->where('owner_email', $ownerEmail)
+                    ->when($planId, fn ($planQuery) => $planQuery->where('saas_plan_id', $planId));
             });
     }
 
@@ -1901,7 +2180,7 @@ class SaasController extends Controller
                 'max_users' => 5,
                 'max_dishes' => 15,
                 'max_orders_per_month' => 150,
-                'features' => ['15 plats', '150 commandes/mois', 'Gestion des commandes', 'Templates QR Standard', 'Promotions des plats', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
+                'features' => ['15 plats', '150 commandes/mois', 'Gestion des commandes', 'Templates QR Standard', 'Promotions des plats', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 10$'],
             ],
             [
                 'name' => 'Pro',
@@ -1914,7 +2193,7 @@ class SaasController extends Controller
                 'max_dishes' => null,
                 'max_orders_per_month' => null,
                 'is_popular' => true,
-                'features' => ['Commandes illimitées', 'Plats illimités', 'Promotions des plats', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
+                'features' => ['Commandes illimitées', 'Plats illimités', 'Promotions des plats', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 15$'],
             ],
             [
                 'name' => 'Business',
@@ -1927,26 +2206,20 @@ class SaasController extends Controller
                 'max_users' => null,
                 'max_dishes' => null,
                 'max_orders_per_month' => null,
-                'features' => ['Tout le plan Pro', 'Promotions des plats', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
+                'features' => ['Tout le plan Pro', 'Promotions des plats', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 15$', 'Multi-restaurants'],
             ],
         ];
 
         SaasPlan::whereIn('slug', ['free', 'enterprise'])->update(['is_active' => false]);
 
         foreach ($plans as $plan) {
+            $plan['features'] = $this->withPlanFeature($plan['features'], 'starter', $plan['slug'], 'Logo personnalisable');
+            $plan['features'] = $this->withPlanFeature($plan['features'], 'pro', $plan['slug'], 'Commandes groupees');
+            $plan['features'] = $this->withPlanFeature($plan['features'], 'business', $plan['slug'], 'Commandes groupees');
+
             $existing = SaasPlan::where('slug', $plan['slug'])->first();
 
             if ($existing) {
-                $defaults = [];
-                foreach (['yearly_price', 'max_dishes', 'max_orders_per_month'] as $field) {
-                    if (blank($existing->getRawOriginal($field)) && array_key_exists($field, $plan)) {
-                        $defaults[$field] = $plan[$field];
-                    }
-                }
-
-                if ($defaults) {
-                    $existing->update($defaults);
-                }
                 continue;
             }
 

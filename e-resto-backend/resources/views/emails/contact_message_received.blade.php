@@ -25,7 +25,7 @@
                                         <p style="margin:0;color:#111827;line-height:1.7;">
                                             <strong>Nom :</strong> {{ $contactMessage->name }}<br>
                                             <strong>Email :</strong> {{ $contactMessage->email }}<br>
-                                            <strong>Telephone :</strong> {{ $contactMessage->phone ?: '-' }}<br>
+                                            <strong>Téléphone :</strong> {{ $contactMessage->phone ?: '-' }}<br>
                                             <strong>Sujet :</strong> {{ $contactMessage->subject }}
                                         </p>
                                     </td>

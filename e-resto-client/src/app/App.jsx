@@ -3,10 +3,10 @@ import { cancelOrder, createOrder, getOrder, requestBill, trackOrder, updateOrde
 import { checkoutGroupOrder, createGroupOrder, deleteGroupOrderItem, getActiveGroupOrderByTable, getGroupOrder, heartbeatGroupOrderParticipant, joinGroupOrder, setGroupOrderParticipantReady, upsertGroupOrderItem } from '../features/cart/groupOrderApi';
 import { buildReceiptPdf } from '../features/cart/receiptPdf';
 import { useCart } from '../features/cart/useCart';
-import { submitFeedback } from '../features/feedback/feedbackApi';
+import { getFeedbackAvailability, submitFeedback } from '../features/feedback/feedbackApi';
 import { getPublicMenu } from '../features/menu/menuApi';
 import { createReservation } from '../features/reservation/reservationApi';
-import { subscribeToMenuRealtime, subscribeToOrderRealtime } from '../shared/api/realtime';
+import { subscribeToGroupOrderRealtime, subscribeToMenuRealtime, subscribeToOrderRealtime } from '../shared/api/realtime';
 import { assetUrl } from '../shared/api/httpClient';
 import { formatMoney } from '../shared/lib/money';
 
@@ -34,6 +34,13 @@ function promotionEndLabel(plat) {
   return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
+function isNewDish(plat) {
+  if (!plat?.created_at) return false;
+  const createdAt = new Date(plat.created_at).getTime();
+  if (Number.isNaN(createdAt)) return false;
+  return Date.now() - createdAt <= 3 * 24 * 60 * 60 * 1000;
+}
+
 const fallbackCategoryImages = [
   '/img/category/1.jpg',
   '/img/category/2.jpg',
@@ -50,6 +57,9 @@ const ACTIVE_ORDER_BY_TABLE_PREFIX = 'e-resto-active-order-table-';
 const FEEDBACK_STORAGE_PREFIX = 'e-resto-feedback-';
 const BILL_REQUEST_STORAGE_PREFIX = 'e-resto-bill-requested-';
 const GROUP_ORDER_STORAGE_PREFIX = 'e-resto-group-order-';
+const CART_DRAFT_STORAGE_PREFIX = 'e-resto-cart-draft-';
+const EMAIL_PREFERENCES_STORAGE_KEY = 'e-resto-email-preferences';
+const REMOTE_TABLE_NAME = 'Commandes hors restaurant';
 let notificationAudioContext;
 let notificationAudioUnlocked = false;
 
@@ -58,6 +68,22 @@ const dishSizeLabels = {
   medium: 'Moyen',
   large: 'Grand',
 };
+
+function isRemoteTableName(name) {
+  return String(name || '').trim().toLowerCase() === REMOTE_TABLE_NAME.toLowerCase();
+}
+
+function orderTableDisplay(order) {
+  if (order?.order_type === 'remote' || isRemoteTableName(order?.table?.name)) {
+    return 'WhatsApp';
+  }
+
+  return order?.table?.name || 'N/A';
+}
+
+function hasCompleteCongoPhone(value) {
+  return String(value || '').replace(/\D/g, '').length >= 12;
+}
 
 function normalizeDishSizes(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -147,6 +173,10 @@ function useOrderIdFromUrl() {
   return useMemo(() => new URLSearchParams(window.location.search).get('order_id'), []);
 }
 
+function useFeedbackRequestFromUrl() {
+  return useMemo(() => new URLSearchParams(window.location.search).get('feedback') === '1', []);
+}
+
 function useRestaurantSlug() {
   return useMemo(() => new URLSearchParams(window.location.search).get('restaurant_slug'), []);
 }
@@ -166,6 +196,7 @@ function useGroupSessionFromUrl() {
 export function App() {
   const tableId = useTableId();
   const orderIdFromUrl = useOrderIdFromUrl();
+  const feedbackRequestFromUrl = useFeedbackRequestFromUrl();
   const restaurantSlug = useRestaurantSlug();
   const groupSessionFromUrl = useGroupSessionFromUrl();
   const cart = useCart();
@@ -190,6 +221,7 @@ export function App() {
   const [groupOrder, setGroupOrder] = useState(null);
   const [groupParticipant, setGroupParticipant] = useState(null);
   const [availableGroupOrder, setAvailableGroupOrder] = useState(null);
+  const [groupJoinPrompt, setGroupJoinPrompt] = useState(null);
   const [brand, setBrand] = useState({
     name: 'Restaurant Scan',
     id: '',
@@ -198,22 +230,39 @@ export function App() {
     description: 'Fast Food & Restaurant',
     can_feedback: false,
     can_reservations: false,
+    can_group_orders: false,
     can_mobile_money: false,
     can_chatbot: false,
     whatsapp_order_phone: '',
     payment_methods: ['cash'],
     theme: {
-      primary: '#F9A11B',
-      secondary: '#111111',
+      primary: '#ff7a1a',
+      secondary: '#d71920',
       background: '#fff7ef',
     },
   });
+  const [emailPreferences, setEmailPreferences] = useState(() => readEmailPreferences(tableId, null));
+  const [emailPreferencesOpen, setEmailPreferencesOpen] = useState(false);
   const [cancelledOrderModal, setCancelledOrderModal] = useState(null);
+  const [cancelOrderRequest, setCancelOrderRequest] = useState(null);
+  const creatingGroupOrderRef = useRef(false);
   const groupCartCount = useMemo(
     () => groupOrder?.items?.reduce((sum, item) => sum + Number(item.quantity || 0), 0) ?? 0,
     [groupOrder?.items],
   );
   const visibleCartCount = groupParticipant ? groupCartCount : cart.totals.totalQuantity;
+  const isTechnicalRemoteTable = isRemoteTableName(scannedTable?.name);
+  const clientTableId = isTechnicalRemoteTable ? null : tableId;
+  const hasRealTable = Boolean(clientTableId);
+
+  const saveEmailPreferences = (preferences) => {
+    writeEmailPreferences(preferences, tableId, brand);
+    setEmailPreferences(preferences);
+  };
+
+  useEffect(() => {
+    setEmailPreferences(readEmailPreferences(tableId, brand));
+  }, [brand.id, brand.slug, tableId]);
 
   useEffect(() => {
     const prepare = () => prepareCustomerNotifications();
@@ -298,13 +347,61 @@ export function App() {
   }, [menu.restaurant_id, brand.id, menuParams]);
 
   useEffect(() => {
+    if (!clientTableId) return undefined;
+
+    return subscribeToGroupOrderRealtime(clientTableId, {
+      onGroupOrder: (payload) => {
+        const nextGroupOrder = payload?.groupOrder || payload?.group_order;
+        if (!nextGroupOrder?.code) return;
+
+        if (creatingGroupOrderRef.current) return;
+        if (nextGroupOrder.status === 'checked_out' && nextGroupOrder.order_id) {
+          getOrder(nextGroupOrder.order_id)
+            .then((order) => {
+              clearStoredGroupOrder(tableId);
+              clearGroupOrderUrl();
+              setGroupOrder(null);
+              setGroupParticipant(null);
+              rememberActiveOrder(order, tableId, true);
+              setActiveOrder(order);
+              setOrderConfirmation(order);
+              setActiveView('orders');
+            })
+            .catch(() => undefined);
+          return;
+        }
+
+        if (groupParticipant?.id && groupOrder?.code === nextGroupOrder.code) {
+          getGroupOrder(nextGroupOrder.code)
+            .then((payload) => {
+              if (payload.status !== 'open') return;
+              setGroupOrder(payload);
+              const nextParticipant = payload.participants?.find((item) => item.id === groupParticipant.id);
+              if (nextParticipant) setGroupParticipant(nextParticipant);
+            })
+            .catch(() => undefined);
+          return;
+        }
+
+        if (groupParticipant?.id || groupOrder?.code === nextGroupOrder.code) return;
+
+        setAvailableGroupOrder(nextGroupOrder);
+        if (payload?.action === 'created') {
+          setGroupJoinPrompt(nextGroupOrder);
+          playOrderNotificationSound('success');
+        }
+      },
+    });
+  }, [clientTableId, groupOrder?.code, groupParticipant?.id]);
+
+  useEffect(() => {
     const tableOrderId = tableId ? localStorage.getItem(`${ACTIVE_ORDER_BY_TABLE_PREFIX}${tableId}`) : null;
-    const storedOrderId = orderIdFromUrl || tableOrderId || localStorage.getItem(ACTIVE_ORDER_STORAGE_KEY);
-    const storedTrackingCode = new URLSearchParams(window.location.search).get('tracking_code')
-      || localStorage.getItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY);
+    const urlTrackingCode = new URLSearchParams(window.location.search).get('tracking_code');
+    const storedOrderId = orderIdFromUrl || tableOrderId || (!tableId ? localStorage.getItem(ACTIVE_ORDER_STORAGE_KEY) : null);
+    const storedTrackingCode = urlTrackingCode || (!tableId ? localStorage.getItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY) : null);
     if (!storedOrderId && !storedTrackingCode) {
       if (tableId) {
-        setRecoveryNotice('Entrez le code de suivi affiche apres l envoi de votre commande pour la retrouver.');
+        setRecoveryNotice('Entrez le code de suivi affiché après l\' envoi de votre commande pour la retrouver.');
       }
       return;
     }
@@ -321,6 +418,15 @@ export function App() {
 
     restoreRequest
       .then((order) => {
+        const restoredTableId = order?.table_id || order?.table?.id || null;
+        if (tableId && restoredTableId && String(restoredTableId) !== String(tableId)) {
+          if (tableOrderId || orderIdFromUrl || urlTrackingCode) {
+            clearRememberedOrder(tableId);
+          }
+          setRecoveryNotice('Aucune commande active trouvée pour cette table. Entrez votre code de suivi si besoin.');
+          return;
+        }
+
         setActiveOrder(order);
         if (order.status === 'cancelled') {
           const notification = {
@@ -338,10 +444,9 @@ export function App() {
 
         if (order.status === 'delivered') {
           clearRememberedOrder(tableId);
-          return;
+        } else {
+          rememberActiveOrder(order, tableId, Boolean(orderIdFromUrl));
         }
-
-        rememberActiveOrder(order, tableId, Boolean(orderIdFromUrl));
 
         if (storedStatus && storedStatus !== order.status) {
           const notification = {
@@ -355,7 +460,7 @@ export function App() {
         } else {
           setSnackbar({
             type: 'info',
-            title: 'Suivi restaure',
+            title: 'Suivi restauré',
             message: `Votre commande est ${statusLabels[order.status]?.toLowerCase() ?? order.status}.`,
           });
           setTimeout(() => {
@@ -420,11 +525,20 @@ export function App() {
       return;
     }
 
+    const stored = groupSessionFromUrl.code && groupSessionFromUrl.participant_id
+      ? groupSessionFromUrl
+      : readStoredGroupOrder(tableId);
+    if (stored?.code && stored?.participant_id) return;
+
     let cancelled = false;
     getActiveGroupOrderByTable(tableId)
       .then((payload) => {
         if (cancelled) return;
-        setAvailableGroupOrder(payload.group_order || null);
+        const activeGroup = payload.group_order || null;
+        setAvailableGroupOrder(activeGroup);
+        if (activeGroup?.code) {
+          setGroupJoinPrompt(activeGroup);
+        }
       })
       .catch(() => {
         if (!cancelled) setAvailableGroupOrder(null);
@@ -433,7 +547,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [tableId, groupParticipant?.id]);
+  }, [tableId, groupParticipant?.id, groupSessionFromUrl.code, groupSessionFromUrl.participant_id]);
 
   useEffect(() => {
     if (!groupOrder?.code || !groupParticipant?.id) return;
@@ -472,10 +586,15 @@ export function App() {
       const activeGroup = availableGroupOrder || (await getActiveGroupOrderByTable(tableId)).group_order;
 
       if (activeGroup?.code) {
-        const name = window.prompt('Votre nom pour cette commande groupée ?');
+        const name = window.prompt('Votre nom pour cette commande groupée.');
         if (!name?.trim()) return;
 
-        const response = await joinGroupOrder(activeGroup.code, { name: name.trim() });
+        const response = await joinGroupOrder(activeGroup.code, {
+          name: name.trim(),
+          email: emailPreferences?.enabled ? emailPreferences.email : undefined,
+          email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.receipt),
+          email_feedback_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.feedback),
+        });
         setGroupOrder(response.group_order);
         setGroupParticipant({ ...response.participant, is_creator: false });
         setAvailableGroupOrder(null);
@@ -485,12 +604,16 @@ export function App() {
         return;
       }
 
-      const name = window.prompt('Votre nom pour créer la commande groupée ?');
+      const name = window.prompt('Votre nom pour créer la commande groupée.');
       if (!name?.trim()) return;
 
+      creatingGroupOrderRef.current = true;
       const response = await createGroupOrder({
         table_id: tableId,
         creator_name: name.trim(),
+        creator_email: emailPreferences?.enabled ? emailPreferences.email : undefined,
+        email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.receipt),
+        email_feedback_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.feedback),
       });
       setGroupOrder(response.group_order);
       setGroupParticipant({ ...response.creator_participant, is_creator: true });
@@ -504,7 +627,27 @@ export function App() {
         title: 'Commande groupée',
         message: error.message || 'Impossible de lancer la commande groupée.',
       });
+    } finally {
+      creatingGroupOrderRef.current = false;
     }
+  };
+
+  const joinAvailableGroupOrder = async (activeGroup, name) => {
+    if (!activeGroup?.code || !name?.trim()) return;
+
+    const response = await joinGroupOrder(activeGroup.code, {
+      name: name.trim(),
+      email: emailPreferences?.enabled ? emailPreferences.email : undefined,
+      email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.receipt),
+      email_feedback_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.feedback),
+    });
+    setGroupOrder(response.group_order);
+    setGroupParticipant({ ...response.participant, is_creator: false });
+    setAvailableGroupOrder(null);
+    setGroupJoinPrompt(null);
+    storeGroupOrder(tableId, response.group_order.code, response.participant, false);
+    syncGroupOrderUrl(tableId, response.group_order.code, response.participant, false);
+    setActiveView('cart');
   };
 
   const addToGroupOrder = async (plat, quantity) => {
@@ -540,7 +683,7 @@ export function App() {
   const toggleGroupParticipantReady = async (isReady) => {
     if (!groupOrder?.code || !groupParticipant?.id) return;
     try {
-      const response = await setGroupOrderParticipantReady(groupOrder.code, groupParticipant.id, isReady);
+      const response = await setGroupOrderParticipantReady(groupOrder.code, groupParticipant.id, isReady, emailPreferences);
       setGroupOrder(response.group_order);
       setGroupParticipant(response.participant);
     } catch (error) {
@@ -552,10 +695,64 @@ export function App() {
     }
   };
 
+  const editGroupParticipantChoice = async () => {
+    if (!groupOrder?.code || !groupParticipant?.id) return;
+
+    if (groupParticipant.is_ready) {
+      try {
+        const response = await setGroupOrderParticipantReady(groupOrder.code, groupParticipant.id, false, emailPreferences);
+        setGroupOrder(response.group_order);
+        setGroupParticipant(response.participant);
+      } catch (error) {
+        setSnackbar({
+          type: 'error',
+          title: 'Commande groupée',
+          message: error.message || 'Impossible de modifier votre choix.',
+        });
+        return;
+      }
+    }
+
+    setActiveView('menu');
+  };
+
+  const clearMyGroupOrderItems = async () => {
+    if (!groupOrder?.code || !groupParticipant?.id) return;
+    const ownItems = groupOrder.items?.filter((item) => item.participant_id === groupParticipant.id) ?? [];
+    if (!ownItems.length) return;
+
+    try {
+      let latestGroupOrder = groupOrder;
+      for (const item of ownItems) {
+        const response = await deleteGroupOrderItem(groupOrder.code, item.id);
+        latestGroupOrder = response.group_order;
+      }
+      setGroupOrder(latestGroupOrder);
+      const nextParticipant = latestGroupOrder?.participants?.find((participant) => participant.id === groupParticipant.id);
+      if (nextParticipant) setGroupParticipant(nextParticipant);
+      setSnackbar({
+        type: 'success',
+        title: 'Commande groupée',
+        message: 'Vos plats ont été supprimés de la commande groupée.',
+      });
+    } catch (error) {
+      setSnackbar({
+        type: 'error',
+        title: 'Commande groupée',
+        message: error.message || 'Impossible de supprimer vos plats.',
+      });
+    }
+  };
+
   const submitGroupOrder = async () => {
     if (!groupOrder?.code) return;
     try {
-      const response = await checkoutGroupOrder(groupOrder.code, {});
+      const response = await checkoutGroupOrder(groupOrder.code, {
+        customer_email: emailPreferences?.enabled ? emailPreferences.email : undefined,
+        email_contact: emailPreferences?.enabled ? emailPreferences.email : undefined,
+        email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.receipt),
+        email_feedback_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.feedback),
+      });
       clearStoredGroupOrder(tableId);
       clearGroupOrderUrl();
       setGroupOrder(null);
@@ -575,14 +772,56 @@ export function App() {
 
   useEffect(() => {
     if (!brand.can_feedback || !activeOrder?.id || !canShowFeedbackForOrder(activeOrder)) return;
-    if (localStorage.getItem(`${FEEDBACK_STORAGE_PREFIX}${activeOrder.id}`)) return;
+    const storageKey = `${FEEDBACK_STORAGE_PREFIX}${activeOrder.id}`;
+    if (!feedbackRequestFromUrl && localStorage.getItem(storageKey)) return;
 
-    const feedbackTimer = window.setTimeout(() => setFeedbackOrder(activeOrder), 600);
-    return () => window.clearTimeout(feedbackTimer);
-  }, [brand.can_feedback, activeOrder?.id, activeOrder?.status, activeOrder?.order_type]);
+    let cancelled = false;
+    const feedbackTimer = window.setTimeout(() => {
+      getFeedbackAvailability(activeOrder.id)
+        .then((availability) => {
+          if (cancelled) return;
+
+          if (availability.can_submit) {
+            setFeedbackOrder(activeOrder);
+            return;
+          }
+
+          localStorage.setItem(storageKey, availability.reason === 'already_submitted' ? 'sent' : 'unavailable');
+          if (feedbackRequestFromUrl) {
+            setSnackbar({
+              type: 'info',
+              title: availability.reason === 'already_submitted' ? 'Avis déjà envoyé' : availability.reason === 'expired' ? 'Lien avis expiré' : 'Avis indisponible',
+              message: availability.reason === 'already_submitted'
+                ? 'Merci pour votre avis. Vous pouvez consulter le menu du restaurant.'
+                : availability.message || "L'avis n'est plus disponible pour cette commande.",
+            });
+            openRestaurantMenuFromFeedbackLink(activeOrder, tableId);
+            setActiveView('menu');
+          }
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          if (feedbackRequestFromUrl) {
+            setSnackbar({
+              type: 'error',
+              title: 'Avis indisponible',
+              message: error.message || "Impossible de verifier l'avis.",
+            });
+            openRestaurantMenuFromFeedbackLink(activeOrder, tableId);
+            setActiveView('menu');
+          }
+        });
+    }, feedbackRequestFromUrl ? 0 : 600);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(feedbackTimer);
+    };
+  }, [brand.can_feedback, activeOrder?.id, activeOrder?.status, activeOrder?.order_type, feedbackRequestFromUrl]);
 
   const filteredPlats = menu.plats.filter((plat) => {
-    const matchesCategory = selectedCategory === 'all' || plat.category?.id === selectedCategory;
+    const categoryId = plat.category?.id === undefined || plat.category?.id === null ? '' : String(plat.category.id);
+    const matchesCategory = selectedCategory === 'all' || categoryId === selectedCategory;
     const q = search.trim().toLowerCase();
     const matchesSearch = !q || `${plat.name} ${plat.description}`.toLowerCase().includes(q);
     return matchesCategory && matchesSearch;
@@ -600,8 +839,8 @@ export function App() {
         cartCount={visibleCartCount}
         activeView={activeView}
         activeOrder={activeOrder}
-        scannedTable={scannedTable}
-        hasTable={Boolean(tableId)}
+        scannedTable={isTechnicalRemoteTable ? null : scannedTable}
+        hasTable={hasRealTable}
         onView={setActiveView}
       />
       <MobileBottomNav
@@ -609,7 +848,7 @@ export function App() {
         cartCount={visibleCartCount}
         activeView={activeView}
         activeOrder={activeOrder}
-        hasTable={Boolean(tableId)}
+        hasTable={hasRealTable}
         onView={setActiveView}
       />
       <SearchOverlay
@@ -631,8 +870,8 @@ export function App() {
             <MenuSection
               loading={loadingMenu}
               error={menuError}
-              scannedTable={scannedTable}
-              tableId={tableId}
+              scannedTable={isTechnicalRemoteTable ? null : scannedTable}
+              tableId={clientTableId}
               categories={menu.categories}
               plats={filteredPlats}
               search={search}
@@ -644,20 +883,25 @@ export function App() {
               groupOrder={groupOrder}
               groupParticipant={groupParticipant}
               availableGroupOrder={availableGroupOrder}
+              canGroupOrders={brand.can_group_orders}
             />
           </div>
         )}
         {activeView === 'cart' && (
           <CartPage
-            tableId={tableId}
+            tableId={clientTableId}
             brand={brand}
             cart={cart}
             groupOrder={groupOrder}
             groupParticipant={groupParticipant}
             onGroupQuantity={updateGroupItemQuantity}
             onGroupReady={toggleGroupParticipantReady}
+            onGroupEditChoice={editGroupParticipantChoice}
+            onGroupClearMine={clearMyGroupOrderItems}
             onGroupSubmit={submitGroupOrder}
             onDetails={openDetails}
+            emailPreferences={emailPreferences}
+            onEmailPreferences={() => setEmailPreferencesOpen(true)}
             onOrderCreated={(order) => {
               rememberActiveOrder(order, tableId, true);
               setActiveOrder(order);
@@ -665,7 +909,7 @@ export function App() {
               setEditingOrder(null);
               setSnackbar({
                 type: 'success',
-                title: 'Commande envoyee',
+                title: 'Commande envoyée',
                 message: 'Votre suivi de commande est maintenant actif.',
               });
               setActiveView('orders');
@@ -677,8 +921,8 @@ export function App() {
               setEditingOrder(null);
               setSnackbar({
                 type: 'success',
-                title: 'Commande modifiee',
-                message: 'Votre modification a ete envoyee au restaurant.',
+                title: 'Commande modifiée',
+                message: 'Votre modification a été envoyée au restaurant.',
               });
               setActiveView('orders');
             }}
@@ -687,7 +931,7 @@ export function App() {
         )}
         {activeView === 'orders' && (
           <OrdersPage
-            tableId={tableId}
+            tableId={clientTableId}
             brand={brand}
             activeOrder={activeOrder}
             recoveryNotice={recoveryNotice}
@@ -695,36 +939,27 @@ export function App() {
               setRecoveryNotice('');
               rememberActiveOrder(order, tableId, true);
               setActiveOrder(order);
+              if (order.status === 'cancelled') {
+                setCancelledOrderModal(order);
+                playOrderNotificationSound('error');
+                clearRememberedOrder(tableId);
+                setSnackbar({
+                  type: 'error',
+                  title: 'Commande annulée',
+                  message: getStatusNotificationMessage(order.status),
+                });
+                return;
+              }
               setSnackbar({
                 type: 'success',
-                title: 'Commande retrouvee',
+                title: 'Commande retrouvée',
                 message: 'Votre suivi de commande est de nouveau actif.',
               });
             }}
             onOrderUpdate={setActiveOrder}
             onStatusNotification={(notification) => setSnackbar(notification)}
             onCancellationModal={(order) => setCancelledOrderModal(order)}
-            onCancelOrder={async (order) => {
-              const reason = window.prompt('Pourquoi voulez-vous annuler cette commande ?');
-              if (!reason || reason.trim().length < 3) {
-                setSnackbar({
-                  type: 'error',
-                  title: 'Annulation impossible',
-                  message: 'La raison d annulation est obligatoire.',
-                });
-                return;
-              }
-
-              const response = await cancelOrder(order.id, reason.trim());
-              setActiveOrder(response.order);
-              setCancelledOrderModal(response.order);
-              playOrderNotificationSound('error');
-              setSnackbar({
-                type: 'success',
-                title: 'Commande annulee',
-                message: 'Votre commande a ete annulee avant preparation.',
-              });
-            }}
+            onCancelOrder={(order) => setCancelOrderRequest(order)}
             onEditOrder={(order) => {
               if (order.status !== 'pending' || order.payment_status === 'paid') return;
               cart.replaceItems((order.items ?? []).map((item) => ({
@@ -738,14 +973,75 @@ export function App() {
         )}
         {activeView === 'reservations' && (
           <ReservationPage
-            tableId={tableId}
+            tableId={clientTableId}
             brand={brand}
             onStatus={(notification) => setSnackbar(notification)}
           />
         )}
       </main>
       <MenuModal plat={selectedPlat} onClose={() => setSelectedPlat(null)} onAdd={groupParticipant ? addToGroupOrder : cart.addItem} />
+      <EmailPreferencesModal
+        open={emailPreferencesOpen}
+        preferences={emailPreferences}
+        canFeedback={brand.can_feedback}
+        onClose={() => setEmailPreferencesOpen(false)}
+        onSave={async (preferences) => {
+          saveEmailPreferences(preferences);
+          setEmailPreferencesOpen(false);
+          if (groupOrder?.code && groupParticipant?.id) {
+            try {
+              const response = await setGroupOrderParticipantReady(
+                groupOrder.code,
+                groupParticipant.id,
+                Boolean(groupParticipant.is_ready),
+                preferences,
+              );
+              setGroupOrder(response.group_order);
+              setGroupParticipant(response.participant);
+            } catch (error) {
+              setSnackbar({
+                type: 'error',
+                title: 'Email',
+                message: error.message || 'Impossible de sauvegarder votre choix email pour la commande groupée.',
+              });
+            }
+          }
+        }}
+      />
+      <GroupJoinPromptModal
+        groupOrder={groupJoinPrompt}
+        restaurantName={brand.name}
+        onClose={() => setGroupJoinPrompt(null)}
+        onJoin={(name) => joinAvailableGroupOrder(groupJoinPrompt, name).catch((error) => {
+          setSnackbar({
+            type: 'error',
+            title: 'Commande groupée',
+            message: error.message || 'Impossible de rejoindre la commande groupée.',
+          });
+        })}
+      />
       <CancelledOrderModal order={cancelledOrderModal} onClose={() => setCancelledOrderModal(null)} />
+      <CancelOrderReasonModal
+        order={cancelOrderRequest}
+        onClose={() => setCancelOrderRequest(null)}
+        onConfirm={async (order, reason) => {
+          const response = await cancelOrder(order.id, reason);
+          setActiveOrder(response.order);
+          setCancelledOrderModal(response.order);
+          setCancelOrderRequest(null);
+          playOrderNotificationSound('error');
+          setSnackbar({
+            type: 'success',
+            title: 'Commande annulée',
+            message: 'Votre commande a été annulée avant préparation.',
+          });
+        }}
+        onError={(message) => setSnackbar({
+          type: 'error',
+          title: 'Annulation impossible',
+          message,
+        })}
+      />
       <OrderConfirmationModal order={orderConfirmation} onClose={() => setOrderConfirmation(null)} onTrack={() => {
         setOrderConfirmation(null);
         setActiveView('orders');
@@ -753,11 +1049,15 @@ export function App() {
       <FeedbackModal
         order={brand.can_feedback ? feedbackOrder : null}
         restaurantName={brand.name}
+        brand={brand}
         onClose={(submitted = false) => {
           if (feedbackOrder?.id) {
             localStorage.setItem(`${FEEDBACK_STORAGE_PREFIX}${feedbackOrder.id}`, submitted ? 'sent' : 'skipped');
           }
           setFeedbackOrder(null);
+          if (submitted) {
+            exitClientAppAfterFeedback();
+          }
         }}
         onStatus={(notification) => setSnackbar(notification)}
       />
@@ -771,21 +1071,21 @@ export function App() {
 
 function SplashScreen({ brand, ready }) {
   const hasRestaurantLogo = Boolean(ready && brand?.has_restaurant_logo && brand?.logo_url);
-  const initial = (brand?.name || 'R').trim().slice(0, 1).toUpperCase();
+  const defaultLogo = '/img/logo/e-resto-logo.png';
+  const defaultSlogan = 'Scanner pour commander';
+  const slogan = brand?.slogan || defaultSlogan;
 
   return (
     <div className="client-splash" style={{ background: brand?.theme?.background || 'var(--client-bg)' }}>
       <div className="client-splash-card">
         <div className="client-splash-logo">
-          {hasRestaurantLogo ? (
-            <img src={brand.logo_url} alt={brand?.name || 'Restaurant'} />
-          ) : (
-            <span>{ready ? initial : ''}</span>
-          )}
+          {ready ? (
+            <img src={hasRestaurantLogo ? brand.logo_url : defaultLogo} alt={hasRestaurantLogo ? (brand?.name || 'Restaurant') : 'Restaurant Scan'} />
+          ) : null}
         </div>
         <div className="client-splash-text">
           <strong>{ready ? (brand?.name || 'Restaurant') : 'Chargement'}</strong>
-          <span>SCANNER POUR COMMANDER</span>
+          <span>{ready ? slogan : 'Chargement du menu'}</span>
         </div>
         <div className="client-splash-loader" aria-hidden="true">
           <i></i>
@@ -826,8 +1126,8 @@ function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, scannedTa
   const navItems = [
     ['menu', 'Menu'],
     ['cart', 'Panier'],
-    ...(hasTable ? [['orders', 'Commandes']] : []),
     ...(!hasTable ? [['reservations', 'Reserver']] : []),
+    ['orders', hasTable ? 'Commandes' : 'Suivi'],
   ];
 
   return (
@@ -886,9 +1186,10 @@ function Navbar({ brand, onSearch, cartCount, activeView, activeOrder, scannedTa
 
 function MobileBottomNav({ brand, cartCount, activeView, activeOrder, hasTable, onView }) {
   const showReservationButton = !hasTable;
+  const itemCountClass = hasTable ? 'three-items' : 'four-items';
 
   return (
-    <nav className="mobile-bottom-nav" aria-label="Navigation mobile">
+    <nav className={`mobile-bottom-nav ${itemCountClass}`} aria-label="Navigation mobile">
       <button type="button" className={`mobile-bottom-item ${activeView === 'menu' ? 'active' : ''}`} onClick={() => onView('menu')}>
         <i className="fas fa-utensils"></i>
         <span>Menu</span>
@@ -905,16 +1206,15 @@ function MobileBottomNav({ brand, cartCount, activeView, activeOrder, hasTable, 
           <i className="fas fa-calendar-check"></i>
           <span>Reserver</span>
         </button>
-      ) : (
-        <button
-          type="button"
-          className={`mobile-bottom-item ${activeView === 'orders' ? 'active' : ''} ${activeOrder ? 'has-order' : ''}`}
-          onClick={() => onView('orders')}
-        >
-          <i className="fas fa-receipt"></i>
-          <span>Commandes</span>
-        </button>
-      )}
+      ) : null}
+      <button
+        type="button"
+        className={`mobile-bottom-item ${activeView === 'orders' ? 'active' : ''} ${activeOrder ? 'has-order' : ''}`}
+        onClick={() => onView('orders')}
+      >
+        <i className="fas fa-receipt"></i>
+        <span>{hasTable ? 'Commandes' : 'Suivi'}</span>
+      </button>
     </nav>
   );
 }
@@ -942,7 +1242,7 @@ function SearchOverlay({ open, value, categories, onChange, onClose, onPickCateg
           <button onClick={onClose}><i className="fas fa-search"></i></button>
         </div>
         <div className="sovcats">
-          <button className="sovcat active clean-btn" onClick={() => onPickCategory('all')}><img src="/img/menu/1.jpg" alt="" />All Items</button>
+          <button className="sovcat active clean-btn" onClick={() => onPickCategory('all')}><img src="/img/category/all.jfif" alt="" />All Items</button>
           {categories.map((category, index) => (
             <button className="sovcat clean-btn" key={category.id} onClick={() => onPickCategory(category.id)}>
               <img src={assetUrl(category.image_url || category.image, fallbackCategoryImages[index % fallbackCategoryImages.length])} alt="" />
@@ -1017,12 +1317,12 @@ function CategorySection({ categories, selectedCategory, onSelect }) {
       <div className="container">
         <SectionTitle eyebrow="What We Offer" title="Browse by" highlight="Category" description="From sizzling burgers to exotic world cuisines - find your favourite in our menu" />
         <div className="row g-3 justify-content-center">
-          <CategoryCard category={{ id: 'all', name: 'All Items', plats_count: visible.reduce((sum, item) => sum + (item.plats_count || 0), 0) }} active={selectedCategory === 'all'} onSelect={onSelect} image="/img/category/1.jpg" />
+          <CategoryCard category={{ id: 'all', name: 'All Items', plats_count: visible.reduce((sum, item) => sum + (item.plats_count || 0), 0) }} active={selectedCategory === 'all'} onSelect={onSelect} image="/img/category/all.jfif" />
           {visible.map((category, index) => (
             <CategoryCard
               key={category.id}
               category={category}
-              active={selectedCategory === category.id}
+              active={selectedCategory === String(category.id)}
               onSelect={onSelect}
               image={assetUrl(category.image_url || category.image, fallbackCategoryImages[(index + 1) % fallbackCategoryImages.length])}
             />
@@ -1036,8 +1336,9 @@ function CategorySection({ categories, selectedCategory, onSelect }) {
 function CategoryCard({ category, active, image, onSelect }) {
   return (
     <div className="col-6 col-sm-4 col-md-3 col-lg-2">
-      <button className={`catcard clean-btn ${active ? 'active' : ''}`} onClick={() => {
-        onSelect(category.id);
+      <button className={`catcard clean-btn ${active ? 'active' : ''}`} onClick={(event) => {
+        event.currentTarget.blur();
+        onSelect(String(category.id));
         document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
       }}>
         <img className="catimg" src={image} alt="" />
@@ -1048,8 +1349,9 @@ function CategoryCard({ category, active, image, onSelect }) {
   );
 }
 
-function MenuSection({ loading, error, scannedTable, tableId, categories, plats, search, selectedCategory, onSearch, onCategory, onDetails, onGroupOrder, groupOrder, groupParticipant, availableGroupOrder }) {
+function MenuSection({ loading, error, scannedTable, tableId, categories, plats, search, selectedCategory, onSearch, onCategory, onDetails, onGroupOrder, groupOrder, groupParticipant, availableGroupOrder, canGroupOrders }) {
   const tableLabel = scannedTable?.name || (tableId ? 'cette table' : '');
+  const isRealTable = Boolean((scannedTable || tableId) && !isRemoteTableName(scannedTable?.name));
   const groupButtonText = groupParticipant
     ? `Commande groupée #${groupOrder?.code}`
     : availableGroupOrder
@@ -1059,15 +1361,17 @@ function MenuSection({ loading, error, scannedTable, tableId, categories, plats,
     <section id="menu">
       <div className="container">
         <SectionTitle eyebrow="What's Cooking" title="Our Delicious" highlight="Menu" />
-        {scannedTable || tableId ? (
+        {isRealTable ? (
           <div className="scanned-table-banner">
             <i className="fas fa-chair"></i>
             <span>Vous commandez depuis</span>
             <strong>{tableLabel}</strong>
-            <button type="button" className={`group-order-btn ${groupParticipant ? 'active' : ''}`} onClick={onGroupOrder}>
-              <i className="fas fa-users"></i>
-              {groupButtonText}
-            </button>
+            {canGroupOrders ? (
+              <button type="button" className={`group-order-btn ${groupParticipant ? 'active' : ''}`} onClick={onGroupOrder}>
+                <i className="fas fa-users"></i>
+                {groupButtonText}
+              </button>
+            ) : null}
           </div>
         ) : null}
         <div className="menu-inline-search">
@@ -1085,12 +1389,18 @@ function MenuSection({ loading, error, scannedTable, tableId, categories, plats,
           ) : null}
         </div>
         <div className="text-center mb-4">
-          <button className={`filtbtn ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => onCategory('all')}>
-            <img className="filtimg" src="/img/category/1.jpg" alt="" />
+          <button className={`filtbtn ${selectedCategory === 'all' ? 'active' : ''}`} onClick={(event) => {
+            event.currentTarget.blur();
+            onCategory('all');
+          }}>
+            <img className="filtimg" src="/img/category/all.jfif" alt="" />
             <span>All</span>
           </button>
           {categories.map((category, index) => (
-            <button className={`filtbtn ${selectedCategory === category.id ? 'active' : ''}`} key={category.id} onClick={() => onCategory(category.id)}>
+            <button className={`filtbtn ${selectedCategory === String(category.id) ? 'active' : ''}`} key={category.id} onClick={(event) => {
+              event.currentTarget.blur();
+              onCategory(String(category.id));
+            }}>
               <img className="filtimg" src={assetUrl(category.image_url || category.image, fallbackCategoryImages[index % fallbackCategoryImages.length])} alt="" />
               <span>{category.name}</span>
             </button>
@@ -1117,6 +1427,7 @@ function MenuSection({ loading, error, scannedTable, tableId, categories, plats,
             <div className="col-12">
               <MenuStateCard
                 icon="fa-bowl-food"
+                image="/img/menu-attente.png"
                 title="Menu en attente"
                 message="La liste des plats n'est pas encore disponible. Essayez une autre catégorie ou revenez dans un instant."
               />
@@ -1128,12 +1439,16 @@ function MenuSection({ loading, error, scannedTable, tableId, categories, plats,
   );
 }
 
-function MenuStateCard({ icon, title, message, loading = false }) {
+function MenuStateCard({ icon, image, title, message, loading = false }) {
   return (
-    <div className={`menu-state-card ${loading ? 'loading' : ''}`}>
-      <div className="menu-state-icon">
-        <i className={`fas ${icon}`}></i>
-      </div>
+    <div className={`menu-state-card ${image ? 'with-image' : ''} ${loading ? 'loading' : ''}`}>
+      {image ? (
+        <img className="menu-state-image" src={image} alt="" />
+      ) : (
+        <div className="menu-state-icon">
+          <i className={`fas ${icon}`}></i>
+        </div>
+      )}
       <div>
         <strong>{title}</strong>
         <span>{message}</span>
@@ -1145,12 +1460,15 @@ function MenuStateCard({ icon, title, message, loading = false }) {
 function MenuCard({ plat, index, onDetails }) {
   const image = assetUrl(plat.image_url || plat.image, fallbackMenuImages[index % fallbackMenuImages.length]);
   const promoActive = hasActivePromotion(plat);
+  const newDish = isNewDish(plat);
   return (
     <div className="col-sm-6 col-lg-4 mwrap">
       <button className="mcard clean-btn" onClick={() => onDetails({ ...plat, image_url: image })}>
         <div className="mimg">
           <img src={image} alt={plat.name} />
-          {promoActive ? (
+          {newDish ? (
+            <div className="mbdg new"><i className="fas fa-bolt"></i> Nouveau</div>
+          ) : promoActive ? (
             <div className="mbdg promo"><i className="fas fa-tag"></i> -{plat.promotion_percent}%</div>
           ) : (
             <div className="mbdg hot"><i className="fas fa-star"></i> Hot</div>
@@ -1287,11 +1605,11 @@ function ReservationPage({ tableId, brand, onStatus }) {
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     name: '',
-    phone: '',
+    phone: '+243',
     email: '',
-    guests: 2,
+    guests: '',
     reservation_date: today,
-    reservation_time: '19:00',
+    reservation_time: '00:00',
     special_requests: '',
   });
   const [sending, setSending] = useState(false);
@@ -1299,7 +1617,7 @@ function ReservationPage({ tableId, brand, onStatus }) {
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const canSubmit = form.name.trim()
-    && form.phone.trim()
+    && hasCompleteCongoPhone(form.phone)
     && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
     && Number(form.guests) > 0
     && form.reservation_date
@@ -1322,15 +1640,15 @@ function ReservationPage({ tableId, brand, onStatus }) {
         guests: Number(form.guests),
       });
 
-      setMessage({ type: 'success', text: response.message || 'Demande de reservation envoyee.' });
+      setMessage({ type: 'success', text: response.message || 'Demande de reservation envoyée.' });
       onStatus?.({
         type: 'success',
-        title: 'Reservation envoyee',
-        message: 'Le restaurant va confirmer la disponibilite.',
+        title: 'Reservation envoyée',
+        message: 'Le restaurant va confirmer la disponibilité par email.',
       });
       setForm({
         name: '',
-        phone: '',
+        phone: '+243',
         email: '',
         guests: 2,
         reservation_date: today,
@@ -1338,7 +1656,7 @@ function ReservationPage({ tableId, brand, onStatus }) {
         special_requests: '',
       });
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'Impossible d envoyer la reservation.' });
+      setMessage({ type: 'error', text: error.message || 'Impossible d\' envoyer la réservation.' });
     } finally {
       setSending(false);
     }
@@ -1353,33 +1671,41 @@ function ReservationPage({ tableId, brand, onStatus }) {
             <h2>Reserver une table</h2>
           </div>
           {!brand.can_reservations ? (
-            <div className="client-alert error">Les RÃ©servations ne sont pas activees pour ce restaurant.</div>
+            <div className="client-alert error">Les Reservations ne sont pas activées pour ce restaurant.</div>
           ) : (
-            <form className="mobile-money-form" onSubmit={submitReservation}>
-              <label>Nom complet</label>
-              <input className="fctrl" value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="Votre nom" />
-              <label>Telephone</label>
-              <input className="fctrl" type="tel" value={form.phone} onChange={(event) => update('phone', event.target.value)} placeholder="+243..." />
-              <label>Email</label>
-              <input className="fctrl" type="email" value={form.email} onChange={(event) => update('email', event.target.value)} placeholder="nom@email.com" />
+            <form className="mobile-money-form reservation-form" onSubmit={submitReservation}>
+              <label className="reservation-field">
+                <span>Nom complet</span>
+                <input className="fctrl" value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="Votre nom" />
+              </label>
+              <label className="reservation-field">
+                <span>Téléphone</span>
+                <input className="fctrl" type="tel" value={form.phone} onChange={(event) => update('phone', event.target.value)} placeholder="+243..." />
+              </label>
+              <label className="reservation-field">
+                <span>Email</span>
+                <input className="fctrl" type="email" value={form.email} onChange={(event) => update('email', event.target.value)} placeholder="nom@email.com" />
+              </label>
               <div className="reservation-form-grid">
-                <label>
+                <label className="reservation-field">
                   <span>Personnes</span>
-                  <input className="fctrl" type="number" min="1" max="50" value={form.guests} onChange={(event) => update('guests', event.target.value)} />
+                  <input className="fctrl" type="number" min="1" max="50" value={form.guests} onChange={(event) => update('guests', event.target.value)} placeholder='Nombre de personnes' />
                 </label>
-                <label>
+                <label className="reservation-field">
                   <span>Date</span>
                   <input className="fctrl" type="date" min={today} value={form.reservation_date} onChange={(event) => update('reservation_date', event.target.value)} />
                 </label>
-                <label>
+                <label className="reservation-field">
                   <span>Heure</span>
                   <input className="fctrl" type="time" value={form.reservation_time} onChange={(event) => update('reservation_time', event.target.value)} />
                 </label>
               </div>
-              <label>Demande speciale</label>
-              <textarea className="fctrl" rows="4" value={form.special_requests} onChange={(event) => update('special_requests', event.target.value)} placeholder="Ex: table calme, anniversaire, chaise enfant..." />
+              <label className="reservation-field">
+                <span>Demande speciale</span>
+                <textarea className="fctrl" rows="4" value={form.special_requests} onChange={(event) => update('special_requests', event.target.value)} placeholder="Ex: table calme, anniversaire, chaise enfant..." />
+              </label>
               <button className="btn-red w-100 justify-content-center" type="submit" disabled={!canSubmit || sending}>
-                <i className="fas fa-calendar-check"></i>{sending ? 'Envoi...' : 'Envoyer la reservation'}
+                <i className="fas fa-calendar-check"></i>{sending ? 'Envoi...' : 'Envoyer la réservation'}
               </button>
               {message.text ? <div className={`client-alert ${message.type}`}>{message.text}</div> : null}
             </form>
@@ -1458,14 +1784,20 @@ function SwipeableCartLine({ children, onOpen, onDelete }) {
   );
 }
 
-function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQuantity, onGroupReady, onGroupSubmit, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping, onDetails }) {
-  const [note, setNote] = useState('');
-  const [orderType, setOrderType] = useState('dine_in');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
+function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQuantity, onGroupReady, onGroupEditChoice, onGroupClearMine, onGroupSubmit, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping, onDetails, emailPreferences, onEmailPreferences }) {
+  const [note, setNote] = useState(() => readCartDraft(tableId, brand).note || '');
+  const [orderType, setOrderType] = useState(() => readCartDraft(tableId, brand).orderType || 'dine_in');
+  const [customerName, setCustomerName] = useState(() => readCartDraft(tableId, brand).customerName || '');
+  const [customerPhone, setCustomerPhone] = useState(() => readCartDraft(tableId, brand).customerPhone || (tableId ? '' : '+243'));
+  const [customerAddress, setCustomerAddress] = useState(() => readCartDraft(tableId, brand).customerAddress || '');
   const [status, setStatus] = useState({ type: '', message: '' });
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (!status.message) return undefined;
+    const timer = window.setTimeout(() => setStatus({ type: '', message: '' }), 3500);
+    return () => window.clearTimeout(timer);
+  }, [status.message]);
 
   if (groupOrder && groupParticipant) {
     const ownItems = groupOrder.items?.filter((item) => item.participant_id === groupParticipant.id) ?? [];
@@ -1473,6 +1805,24 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
     const currentParticipant = participants.find((participant) => participant.id === groupParticipant.id) || groupParticipant;
     const waitingNames = groupOrder.readiness?.waiting_participants?.map((participant) => participant.name).filter(Boolean) ?? [];
     const canCheckoutGroup = Boolean(groupOrder.can_checkout);
+    const handleGroupReadyClick = () => {
+      if (currentParticipant.is_ready) {
+        setStatus({ type: '', message: '' });
+        onGroupEditChoice?.();
+        return;
+      }
+
+      if (!ownItems.length) {
+        setStatus({
+          type: 'error',
+          message: 'Ajoutez au moins un plat avant de terminer votre choix.',
+        });
+        return;
+      }
+
+      setStatus({ type: '', message: '' });
+      onGroupReady?.(true);
+    };
 
     return (
       <section className="cart-page app-page" id="cart-page">
@@ -1481,10 +1831,7 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
             <div className="app-page-head">
               <span className="slbl">Commande groupée</span>
               <h2>Groupe #{groupOrder.code}</h2>
-              <button type="button" className="receipt-share-btn" onClick={onContinueShopping}>
-                <i className="fas fa-utensils"></i>
-                Menu
-              </button>
+         
             </div>
 
             <div className="group-order-info">
@@ -1492,7 +1839,9 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
               <span>
                 {canCheckoutGroup
                   ? 'Tous les participants actifs sont prêts. La commande peut être envoyée.'
-                  : 'Cliquez sur "J’ai terminé" quand vos plats sont choisis. Le bouton Envoyer se débloque quand les participants actifs sont prêts.'}
+                  : waitingNames.length
+                    ? `En attente : ${waitingNames.join(', ')}`
+                    : 'Chaque participant actif doit ajouter au moins un plat puis cliquer sur "J’ai terminé".'}
               </span>
             </div>
 
@@ -1570,25 +1919,44 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
             {ownItems.length === 0 ? (
               <div className="client-alert info">Ajoutez vos plats depuis le menu.</div>
             ) : null}
+            {status.message ? (
+              <div className={`client-alert ${status.type || 'info'}`}>{status.message}</div>
+            ) : null}
+
+            <div className="cart-email-row">
+              <div>
+                <strong>{emailPreferenceLabel(emailPreferences)}</strong>
+                <span>{emailPreferences?.enabled ? 'Envoi automatique après paiement confirmé.' : 'Optionnel'}</span>
+              </div>
+              <button
+                type="button"
+                className={`cart-email-switch clean-btn ${emailPreferences?.enabled ? 'active' : ''}`}
+                onClick={onEmailPreferences}
+                aria-label="Configurer le reçu et avis par email"
+              >
+                <span></span>
+              </button>
+            </div>
 
             <div className="group-ready-panel">
-              <div>
+              {/* <div>
                 <strong>{currentParticipant.is_ready ? 'Statut : prêt' : 'Statut : en cours'}</strong>
                 <span>
                   {waitingNames.length
                     ? `En attente : ${waitingNames.join(', ')}`
                     : canCheckoutGroup ? 'Le groupe est prêt à envoyer.' : 'Ajoutez vos plats puis validez votre choix.'}
                 </span>
-              </div>
+              </div> */}
+              <div className="group-action-buttons">
               <button
                 type="button"
                 className={`receipt-share-btn ${currentParticipant.is_ready ? 'active' : ''}`}
-                disabled={!ownItems.length}
-                onClick={() => onGroupReady?.(!currentParticipant.is_ready)}
+                onClick={handleGroupReadyClick}
               >
                 <i className={currentParticipant.is_ready ? 'fas fa-pen' : 'fas fa-check'}></i>
                 {currentParticipant.is_ready ? 'Modifier mon choix' : 'J’ai terminé'}
               </button>
+              </div>
             </div>
 
             <div className="cart-total">
@@ -1600,7 +1968,7 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
               <i className="fas fa-paper-plane"></i>Envoyer la commande groupée
             </button>
             {!canCheckoutGroup ? (
-              <div className="client-alert info">L’envoi sera disponible quand tous les participants actifs auront terminé.</div>
+              <div className="client-alert info">L’envoi sera disponible quand tous les participants actifs auront ajouté un plat et terminé leur choix.</div>
             ) : null}
           </div>
         </div>
@@ -1611,8 +1979,25 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
   const whatsappOrderPhone = brand?.whatsapp_order_phone || brand?.owner_phone || '';
   const canSubmit = cart.items.length > 0
     && (tableId || brand?.id || brand?.slug)
-    && (effectiveOrderType !== 'remote' || (customerName.trim() && customerPhone.trim() && customerAddress.trim() && whatsappOrderPhone.trim()));
+    && (effectiveOrderType !== 'remote' || (customerName.trim() && hasCompleteCongoPhone(customerPhone) && customerAddress.trim() && whatsappOrderPhone.trim()));
   const isEditing = Boolean(editingOrder?.id);
+
+  useEffect(() => {
+    if (!tableId && !customerPhone.trim()) {
+      setCustomerPhone('+243');
+    }
+  }, [customerPhone, tableId]);
+
+  useEffect(() => {
+    if (isEditing) return;
+    writeCartDraft(tableId, brand, {
+      note,
+      orderType,
+      customerName,
+      customerPhone,
+      customerAddress,
+    });
+  }, [brand?.id, brand?.slug, customerAddress, customerName, customerPhone, isEditing, note, orderType, tableId]);
 
   useEffect(() => {
     if (!editingOrder) return;
@@ -1643,16 +2028,21 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
         wallet_id: null,
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
+        customer_email: emailPreferences?.enabled ? emailPreferences?.email : undefined,
+        email_contact: emailPreferences?.enabled ? emailPreferences?.email : undefined,
+        email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences?.receipt),
+        email_feedback_opt_in: Boolean(emailPreferences?.enabled && emailPreferences?.feedback),
         items: cart.items.map((item) => ({ plat_id: item.plat.id, quantity: item.quantity })),
       };
       const response = isEditing
         ? await updateOrderItems(editingOrder.id, payload)
         : await createOrder(payload);
       cart.clearCart();
+      clearCartDraft(tableId, brand);
       setNote('');
       setOrderType('dine_in');
       setCustomerName('');
-      setCustomerPhone('');
+      setCustomerPhone(tableId ? '' : '+243');
       setCustomerAddress('');
       setStatus({
         type: response.order?.payment_status === 'failed' ? 'error' : 'success',
@@ -1682,10 +2072,10 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
         <div className="app-page-head">
           <span className="slbl">Panier</span>
           <h2>{isEditing ? 'Modifier ma commande' : 'Mon panier'}</h2>
-          <button type="button" className="receipt-share-btn" onClick={onContinueShopping}>
+          {/* <button type="button" className="receipt-share-btn" onClick={onContinueShopping}>
             <i className="fas fa-utensils"></i>
             Menu
-          </button>
+          </button> */}
         </div>
         {isEditing && (
           <div className="client-alert info">
@@ -1727,15 +2117,28 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
         ))}
         {cart.items.length > 0 && (
           <>
-            <textarea className="fctrl" rows="3" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note pour la cuisine..." />
-            <div className="order-type-box">
-              <div className="payment-title">
-                <strong>Mode de service</strong>
-                <span>Choisissez comment le restaurant doit traiter la commande.</span>
+            <textarea className="fctrl" rows="3" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ajouter une note..." />
+            <div className="cart-email-row">
+              <div>
+                <strong>{emailPreferenceLabel(emailPreferences)}</strong>
+                <span>{emailPreferences?.enabled ? 'Envoi automatique après paiement confirmé.' : 'Optionnel'}</span>
               </div>
-              <div className="order-type-options">
-                {tableId ? (
-                  <>
+              <button
+                type="button"
+                className={`cart-email-switch clean-btn ${emailPreferences?.enabled ? 'active' : ''}`}
+                onClick={onEmailPreferences}
+                aria-label="Configurer le reçu et avis par email"
+              >
+                <span></span>
+              </button>
+            </div>
+            {tableId ? (
+              <div className="order-type-box">
+                <div className="payment-title">
+                  <strong>Mode de service</strong>
+                  <span>Choisissez comment le restaurant doit traiter la commande.</span>
+                </div>
+                <div className="order-type-options">
                     <button type="button" className={`order-type-option clean-btn ${orderType === 'dine_in' ? 'active' : ''}`} onClick={() => setOrderType('dine_in')}>
                       <i className="fas fa-utensils"></i>
                       <span>Sur place</span>
@@ -1744,23 +2147,19 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
                       <i className="fas fa-bag-shopping"></i>
                       <span>A emporter</span>
                     </button>
-                  </>
-                ) : (
-                  <button type="button" className="order-type-option clean-btn active">
-                    <i className="fab fa-whatsapp"></i>
-                    <span>Hors restaurant</span>
-                  </button>
-                )}
+                </div>
               </div>
-              {!tableId && !whatsappOrderPhone ? (
-                <p className="payment-note">Le restaurant doit configurer un numero WhatsApp pour recevoir les commandes hors restaurant.</p>
-              ) : null}
-            </div>
+            ) : null}
+            {!tableId && !whatsappOrderPhone ? (
+              <div className="client-alert error">
+                Le restaurant doit configurer un numéro WhatsApp pour recevoir les commandes hors restaurant.
+              </div>
+            ) : null}
             {!tableId && (
               <div className="mobile-money-form">
                 <label>Nom du client</label>
                 <input className="fctrl" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Votre nom" />
-                <label>Telephone</label>
+                <label>Téléphone</label>
                 <input className="fctrl" type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+243 8XX XXX XXX" />
                 <label>Adresse</label>
                 <input className="fctrl" value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} placeholder="Avenue, quartier, commune..." />
@@ -1788,7 +2187,7 @@ function OrderConfirmationModal({ order, onClose, onTrack }) {
   const code = order.tracking_code ?? String(order.id).slice(0, 8).toUpperCase();
 
   return (
-    <div className="order-confirmation-backdrop" role="dialog" aria-modal="true" aria-label="Commande envoyee">
+    <div className="order-confirmation-backdrop" role="dialog" aria-modal="true" aria-label="Commande envoyée">
       <div className="order-confirmation-modal">
         <button type="button" className="clean-btn order-confirmation-close" onClick={onClose} aria-label="Fermer">
           <i className="fas fa-times"></i>
@@ -1796,7 +2195,7 @@ function OrderConfirmationModal({ order, onClose, onTrack }) {
         <div className="order-confirmation-icon">
           <i className="fas fa-circle-check"></i>
         </div>
-        <span className="slbl">Commande envoyee</span>
+        <span className="slbl">Commande envoyée</span>
         <h2>Votre commande est bien partie</h2>
         <p>Gardez ce code pour retrouver le suivi si vous fermez l'application.</p>
         <div className="order-confirmation-code">
@@ -1804,7 +2203,10 @@ function OrderConfirmationModal({ order, onClose, onTrack }) {
           <strong>{code}</strong>
         </div>
         <div className="order-confirmation-actions">
-          <button type="button" className="receipt-share-btn" onClick={onClose}>Fermer</button>
+          <button type="button" className="btn-red order-confirmation-dismiss" onClick={onClose}>
+            <i className="fas fa-xmark"></i>
+            Fermer
+          </button>
           <button type="button" className="btn-red" onClick={onTrack}>
             <i className="fas fa-location-dot"></i>
             Voir le suivi
@@ -1815,27 +2217,180 @@ function OrderConfirmationModal({ order, onClose, onTrack }) {
   );
 }
 
+function GroupJoinPromptModal({ groupOrder, restaurantName, onClose, onJoin }) {
+  const [name, setName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (groupOrder?.code) {
+      setName('');
+      setSubmitting(false);
+    }
+  }, [groupOrder?.code]);
+
+  if (!groupOrder) return null;
+
+  const submit = async () => {
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      await onJoin(name.trim());
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="order-modal-backdrop">
+      <div className="group-join-modal">
+        <button type="button" className="clean-btn cancel-modal-close" onClick={onClose} aria-label="Fermer">
+          <i className="fas fa-times"></i>
+        </button>
+        <div className="group-join-icon">
+          <i className="fas fa-users"></i>
+        </div>
+        <span className="slbl">Commande groupée</span>
+        <h2>Une commande groupée est ouverte</h2>
+        <p>
+          Un client vient de créer une commande groupée pour cette table.
+          Voulez-vous la rejoindre ?
+        </p>
+        <label>
+          Votre nom
+          <input
+            className="fctrl"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                submit();
+              }
+            }}
+            placeholder="Ex: Hena"
+            autoFocus
+          />
+        </label>
+        <div className="group-join-actions">
+          <button type="button" className="receipt-share-btn" onClick={onClose} disabled={submitting}>
+            Plus tard
+          </button>
+          <button type="button" className="btn-red" onClick={submit} disabled={!name.trim() || submitting}>
+            <i className="fas fa-user-plus"></i>
+            {submitting ? 'Connexion...' : 'Rejoindre'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmailPreferencesModal({ open, preferences, canFeedback, onClose, onSave }) {
+  const [form, setForm] = useState(preferences || readEmailPreferences());
+
+  useEffect(() => {
+    if (open) {
+      setForm(preferences || readEmailPreferences());
+    }
+  }, [open, preferences]);
+
+  if (!open) return null;
+
+  const enabled = Boolean(form.receipt || form.feedback);
+  const save = () => {
+    const email = String(form.email || '').trim();
+    if (enabled && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      window.alert('Entrez une adresse email valide.');
+      return;
+    }
+
+    onSave({
+      enabled,
+      receipt: Boolean(form.receipt),
+      feedback: Boolean(form.feedback && canFeedback),
+      email,
+    });
+  };
+
+  return (
+    <div className="order-modal-backdrop">
+      <div className="email-preferences-modal">
+        <button type="button" className="clean-btn cancel-modal-close" onClick={onClose} aria-label="Fermer">
+          <i className="fas fa-times"></i>
+        </button>
+        <div className="email-pref-icon"><i className="fas fa-envelope"></i></div>
+        <h2>Recevoir par email</h2>
+        <p>Choisissez ce que vous voulez recevoir après confirmation du paiement.</p>
+
+        <label className="email-pref-option">
+          <input
+            type="checkbox"
+            checked={Boolean(form.receipt)}
+            onChange={(event) => setForm((current) => ({ ...current, receipt: event.target.checked }))}
+          />
+          <span>
+            <strong>Envoyer le reçu PDF par email</strong>
+            <small>Le reçu sera envoyé en pièce jointe quand la commande sera payée.</small>
+          </span>
+        </label>
+
+        <label className={`email-pref-option ${!canFeedback ? 'disabled' : ''}`}>
+          <input
+            type="checkbox"
+            disabled={!canFeedback}
+            checked={Boolean(form.feedback && canFeedback)}
+            onChange={(event) => setForm((current) => ({ ...current, feedback: event.target.checked }))}
+          />
+          <span>
+            <strong>Recevoir le lien pour donner mon avis sur le plat</strong>
+            <small>{canFeedback ? 'Un lien sera préparé avec le code de suivi.' : 'Les avis ne sont pas activés pour ce restaurant.'}</small>
+          </span>
+        </label>
+
+        <label className="email-pref-address">
+          Adresse email
+          <input
+            className="fctrl"
+            type="email"
+            value={form.email || ''}
+            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+            placeholder="client@email.com"
+          />
+        </label>
+
+        <div className="email-pref-actions">
+          <button type="button" className="receipt-share-btn" onClick={onClose}>Fermer</button>
+          <button type="button" className="btn-red" onClick={save}>
+            <i className="fas fa-check"></i>
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const orderSteps = [
-  { key: 'pending', label: 'Commande recue', icon: 'fa-receipt', description: 'Votre commande est bien arrivee en cuisine.' },
-  { key: 'preparing', label: 'En preparation', icon: 'fa-fire-burner', description: 'Notre equipe prepare vos plats.' },
-  { key: 'ready', label: 'Prete', icon: 'fa-bell', description: 'Votre commande est prete a etre servie.' },
-  { key: 'delivered', label: 'Servie', icon: 'fa-utensils', description: 'Bon appetit, votre commande est servie.' },
+  { key: 'pending', label: 'Commande reçue', icon: 'fa-receipt', description: 'Votre commande est bien arrivée en cuisine.' },
+  { key: 'preparing', label: 'En préparation', icon: 'fa-fire-burner', description: 'Notre équipe prépare vos plats.' },
+  { key: 'ready', label: 'Prête', icon: 'fa-bell', description: 'Votre commande est prête à être servie.' },
+  { key: 'delivered', label: 'Servie', icon: 'fa-utensils', description: 'Bon appétit, votre commande est servie.' },
 ];
 
 const statusLabels = {
-  pending: 'Commande recue',
-  preparing: 'En preparation',
-  ready: 'Prete',
+  pending: 'Commande reçue',
+  preparing: 'En préparation',
+  ready: 'Prête',
   delivered: 'Servie',
-  cancelled: 'Annulee',
+  cancelled: 'Annulée',
 };
 
 const paymentStatusLabels = {
-  unpaid: 'Paiement non confirme',
+  unpaid: 'Paiement non confirmé',
   pending: 'Paiement en attente',
-  paid: 'Paiement confirme',
-  failed: 'Paiement echoue',
-  refunded: 'Paiement rembourse',
+  paid: 'Paiement confirmé',
+  failed: 'Paiement échoué',
+  refunded: 'Paiement remboursé',
 };
 
 function OrdersPage({
@@ -1852,13 +2407,11 @@ function OrdersPage({
 }) {
   return (
     <section className="orders-page app-page" id="orders-page">
-      <div className="container">
+      {/* <div className="container">
         <div className="app-page-head">
-          <span className="slbl">Commandes</span>
           <h2>Suivi de commande</h2>
-          {activeOrder ? <span className="order-status-pill compact">{statusLabels[activeOrder.status] ?? activeOrder.status}</span> : null}
         </div>
-      </div>
+      </div> */}
       <OrderRecoverySection
         tableId={tableId}
         activeOrder={activeOrder}
@@ -1870,7 +2423,7 @@ function OrdersPage({
           <div className="empty-page-card">
             <i className="fas fa-receipt"></i>
             <strong>Aucune commande active</strong>
-            <span>Votre suivi apparaitra ici apres l'envoi du panier.</span>
+            <span>Votre suivi apparaitra ici après l'envoi du panier.</span>
           </div>
         </div>
       ) : null}
@@ -1883,7 +2436,6 @@ function OrdersPage({
         onCancelOrder={onCancelOrder}
         onEditOrder={onEditOrder}
       />
-      <ReceiptSection order={activeOrder} brand={brand} />
     </section>
   );
 }
@@ -2004,18 +2556,57 @@ function clearStoredGroupOrder(tableId) {
   }
 }
 
-function trackingLink(order, tableId) {
-  const url = new URL(window.location.href);
-  if (tableId) {
-    url.searchParams.set('table_id', tableId);
+function cartDraftKey(tableId, brand) {
+  return `${CART_DRAFT_STORAGE_PREFIX}${tableId || brand?.slug || brand?.id || 'default'}`;
+}
+
+function readCartDraft(tableId, brand) {
+  try {
+    return JSON.parse(localStorage.getItem(cartDraftKey(tableId, brand)) || 'null') || {};
+  } catch {
+    return {};
   }
-  if (order?.id) {
-    url.searchParams.set('order_id', order.id);
+}
+
+function writeCartDraft(tableId, brand, draft) {
+  localStorage.setItem(cartDraftKey(tableId, brand), JSON.stringify(draft));
+}
+
+function clearCartDraft(tableId, brand) {
+  localStorage.removeItem(cartDraftKey(tableId, brand));
+}
+
+function emailPreferencesKey(tableId, brand) {
+  return `${EMAIL_PREFERENCES_STORAGE_KEY}-${tableId || brand?.slug || brand?.id || 'default'}`;
+}
+
+function defaultEmailPreferences() {
+  return {
+    enabled: false,
+    receipt: false,
+    feedback: false,
+    email: '',
+  };
+}
+
+function readEmailPreferences(tableId, brand) {
+  try {
+    return JSON.parse(localStorage.getItem(emailPreferencesKey(tableId, brand)) || 'null') || defaultEmailPreferences();
+  } catch {
+    return defaultEmailPreferences();
   }
-  if (order?.tracking_code) {
-    url.searchParams.set('tracking_code', order.tracking_code);
-  }
-  return url.toString();
+}
+
+function writeEmailPreferences(preferences, tableId, brand) {
+  localStorage.setItem(emailPreferencesKey(tableId, brand), JSON.stringify(preferences));
+}
+
+function emailPreferenceLabel(preferences) {
+  if (!preferences?.enabled) return 'Envoyez reçu par email';
+  const labels = [];
+  if (preferences.receipt) labels.push('Reçu');
+  if (preferences.feedback) labels.push('avis');
+  return labels.length ? `${labels.join(' et ')} par email` : 'Envoyez reçu par email';
 }
 
 function OrderRecoverySection({ tableId, activeOrder, notice, onRecovered }) {
@@ -2069,12 +2660,11 @@ function OrderRecoverySection({ tableId, activeOrder, notice, onRecovered }) {
 }
 
 function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotification, onCancellationModal, onCancelOrder, onEditOrder }) {
-  const [connectionState, setConnectionState] = useState(order ? 'Connexion au suivi...' : '');
+  const [, setConnectionState] = useState(order ? 'Connexion au suivi...' : '');
   const [cancelling, setCancelling] = useState(false);
   const [requestingBill, setRequestingBill] = useState(false);
   const [billRequestedLocally, setBillRequestedLocally] = useState(false);
   const [alertsEnabled, setAlertsEnabled] = useState(() => notificationAudioUnlocked || getNotificationPermission() === 'granted');
-  const [statusBanner, setStatusBanner] = useState(null);
   const lastStatusRef = useRef(null);
   const orderRef = useRef(order);
 
@@ -2121,8 +2711,6 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
   useEffect(() => {
     if (!order?.id) return;
 
-    rememberActiveOrder(order, tableId);
-
     const storedStatus = localStorage.getItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
     const previousStatus = lastStatusRef.current ?? storedStatus;
 
@@ -2135,7 +2723,6 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
         message,
       };
 
-      setStatusBanner(notification);
       onStatusNotification(notification);
       playOrderNotificationSound(notification.type);
       notifyBrowser(title, message);
@@ -2146,10 +2733,11 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
     }
 
     lastStatusRef.current = order.status;
-    rememberActiveOrder(order, tableId);
 
     if (order.status === 'cancelled' || order.status === 'delivered') {
       clearRememberedOrder(tableId);
+    } else {
+      rememberActiveOrder(order, tableId);
     }
   }, [order?.id, order?.status, order?.payment_status, tableId, onStatusNotification]);
 
@@ -2173,14 +2761,16 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
 
   const currentIndex = orderSteps.findIndex((step) => step.key === order.status);
   const isCancelled = order.status === 'cancelled';
-  const activeStep = orderSteps[Math.max(currentIndex, 0)];
+  const visibleOrderSteps = isCancelled
+    ? [...orderSteps.slice(0, 1), { key: 'cancelled', label: 'Annulée', icon: 'fa-ban' }]
+    : orderSteps;
   const canClientCancel = order.status === 'pending' && order.payment_status !== 'paid';
   const canClientEdit = order.status === 'pending' && order.payment_status !== 'paid';
   const billAlreadyRequested = Boolean(order.latest_payment?.metadata?.bill_requested) || billRequestedLocally;
   const canRequestBill = order.payment_method === 'cash'
     && order.payment_status !== 'paid'
+    && order.order_type !== 'remote'
     && order.status === 'delivered';
-  const shareUrl = trackingLink(order, tableId);
 
   const handleCancel = async () => {
     if (!canClientCancel || cancelling) return;
@@ -2204,7 +2794,7 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
     setAlertsEnabled(true);
     onStatusNotification({
       type: 'success',
-      title: 'Alertes activees',
+      title: 'Alertes activées',
       message: 'Vous recevrez un son quand le statut de votre commande change.',
     });
   };
@@ -2220,8 +2810,8 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
       onOrderUpdate(response.order);
       onStatusNotification({
         type: 'success',
-        title: 'Addition demandee',
-        message: 'Le restaurant a recu votre demande d addition.',
+        title: 'Addition demandée',
+        message: 'Le restaurant a reçu votre demande d\' addition.',
       });
       playOrderNotificationSound('success');
     } catch (error) {
@@ -2238,22 +2828,18 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
   };
 
   const shareTracking = async () => {
-    const text = [
-      `Suivi de ma commande Restaurant Scan`,
-      `Code: ${order.tracking_code ?? String(order.id).slice(0, 8).toUpperCase()}`,
-      shareUrl,
-    ].join('\n');
+    const trackingCode = order.tracking_code ?? String(order.id).slice(0, 8).toUpperCase();
+    const text = `Code de suivi : ${trackingCode}`;
 
-    if (navigator.share) {
-      await navigator.share({ title: 'Suivi commande Restaurant Scan', text, url: shareUrl });
-      return;
-    }
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
 
-    await navigator.clipboard?.writeText(text);
+    navigator.clipboard?.writeText(text).catch(() => undefined);
+
     onStatusNotification({
       type: 'success',
-      title: 'Lien copie',
-      message: 'Le lien de suivi a ete copie.',
+      title: 'Code copié',
+      message: 'Le code de suivi a été copié et WhatsApp va s ouvrir.',
     });
   };
 
@@ -2261,49 +2847,44 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
     <section id="order-tracking" className="order-tracking-section">
       <div className="container">
         <div className={`order-tracker ${isCancelled ? 'cancelled' : ''}`}>
-          <div className="order-tracker-head">
-            <div>
-              <span className="slbl">Live Order Tracking</span>
-              <h2>Suivi de votre <span>commande</span></h2>
-              <p>{isCancelled ? 'Votre commande a ete annulee.' : activeStep.description}</p>
+          <div className="order-progress-panel">
+            <div className="order-tracker-head">
+              <div>
+                <span className="slbl">Suivi en temps réel</span>
+                <h2>Commande #{String(order.id).slice(0, 8).toUpperCase()}</h2>
+              </div>
             </div>
-            <div className="order-status-pill">
-              <i className={`fas ${isCancelled ? 'fa-ban' : activeStep.icon}`}></i>
-              {statusLabels[order.status] ?? order.status}
+
+            <div className="order-steps">
+              {visibleOrderSteps.map((step, index) => {
+                const done = isCancelled ? index <= 1 : currentIndex >= index;
+                const current = isCancelled ? step.key === 'cancelled' : currentIndex === index;
+                return (
+                  <div className={`order-step order-status-${step.key} ${done ? 'done' : ''} ${current ? 'current' : ''} ${step.key === 'cancelled' ? 'cancelled' : ''}`} key={step.key}>
+                    <div className="order-step-icon"><i className={`fas ${step.icon}`}></i></div>
+                    <strong>{step.label}</strong>
+                  </div>
+                );
+              })}
             </div>
           </div>
+{/* 
+          {isCancelled && order.cancellation_reason && (
+            <div className="client-alert error">
+              Motif d'annulation : {order.cancellation_reason}
+            </div>
+          )} */}
 
           {!alertsEnabled && (
             <div className="order-alerts-box">
               <div>
                 <strong>Alertes commande</strong>
-                <span>Activez le son et les notifications pour etre prevenu si le statut change.</span>
+                <span>Activez le son et les notifications pour être prevenu si le statut change.</span>
               </div>
               <button type="button" className="order-alert-button clean-btn" onClick={handleEnableAlerts}>
                 <i className="fas fa-volume-high"></i>
                 Activer
               </button>
-            </div>
-          )}
-
-          {statusBanner && (
-            <div className={`order-status-banner ${statusBanner.type}`}>
-              <div className="order-status-banner-icon">
-                <i className={`fas ${statusBanner.type === 'error' ? 'fa-triangle-exclamation' : 'fa-bell'}`}></i>
-              </div>
-              <div>
-                <strong>{statusBanner.title}</strong>
-                <span>{statusBanner.message}</span>
-              </div>
-              <button type="button" className="clean-btn" onClick={() => setStatusBanner(null)} aria-label="Fermer">
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-          )}
-
-          {isCancelled && order.cancellation_reason && (
-            <div className="client-alert error">
-              Motif d'annulation : {order.cancellation_reason}
             </div>
           )}
 
@@ -2321,52 +2902,32 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
               <strong>{formatMoney(order.total_amount, order.currency)}</strong>
             </div>
             <div>
-              <small>Connexion</small>
-              <strong>{connectionState || 'En attente'}</strong>
+              <small>Paiement</small>
+              <strong>{paymentStatusLabels[order.payment_status] ?? order.payment_status ?? 'Non confirme'}</strong>
             </div>
-            <div>
-          <small>Paiement</small>
-          <strong>{paymentStatusLabels[order.payment_status] ?? order.payment_status ?? 'Non confirme'}</strong>
-        </div>
             <div>
               <small>Service</small>
               <strong>{order.order_type === 'remote' ? 'Hors restaurant' : order.order_type === 'takeaway' ? 'A emporter' : 'Sur place'}</strong>
             </div>
-      </div>
-
-          <div className="order-steps">
-            {orderSteps.map((step, index) => {
-              const done = !isCancelled && currentIndex >= index;
-              const current = !isCancelled && currentIndex === index;
-              return (
-                <div className={`order-step ${done ? 'done' : ''} ${current ? 'current' : ''}`} key={step.key}>
-                  <div className="order-step-icon"><i className={`fas ${step.icon}`}></i></div>
-                  <div>
-                    <strong>{step.label}</strong>
-                    <span>{step.description}</span>
-                  </div>
-                </div>
-              );
-            })}
           </div>
 
           <div className="order-tracking-share no-print">
             <span>Gardez ce code pour revenir voir le statut si vous fermez la page.</span>
             <button className="receipt-share-btn" type="button" onClick={shareTracking}>
               <i className="fas fa-share-nodes"></i>
-              Partager le suivi
+              Partager le code
             </button>
           </div>
 
           {canClientCancel && (
-            <div className="d-flex flex-wrap gap-2 no-print">
+            <div className="order-bottom-actions no-print">
               <button className="btn-red" type="button" onClick={() => onEditOrder?.(order)}>
                 <i className="fas fa-pen-to-square"></i>
-                Modifier ma commande
+                Modifier
               </button>
               <button className="receipt-download-btn" type="button" disabled={cancelling} onClick={handleCancel}>
                 <i className="fas fa-ban"></i>
-                {cancelling ? 'Annulation...' : 'Annuler ma commande'}
+                {cancelling ? 'Annulation...' : 'Annuler'}
               </button>
             </div>
           )}
@@ -2375,7 +2936,7 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
             <div className="d-flex flex-wrap gap-2 no-print">
               <button className="receipt-share-btn" type="button" disabled={requestingBill || billAlreadyRequested} onClick={handleRequestBill}>
                 <i className="fas fa-receipt"></i>
-                {billAlreadyRequested ? 'Addition deja demandee' : requestingBill ? 'Demande...' : "Demander l'addition"}
+                {billAlreadyRequested ? 'Addition déjà demandée' : requestingBill ? 'Demande...' : "Demander l'addition"}
               </button>
             </div>
           )}
@@ -2402,9 +2963,10 @@ function ReceiptSection({ order, brand }) {
   if (order?.payment_status !== 'paid') return null;
 
   const receiptNumber = `ER-${String(order.id).slice(0, 8).toUpperCase()}`;
-  const paidAt = order.updated_at ? new Date(order.updated_at) : new Date();
+  const placedAt = order.created_at ? new Date(order.created_at) : new Date();
   const items = order.items ?? [];
   const paymentMethod = getPaymentMethodLabel(order);
+  const tableDisplay = orderTableDisplay(order);
 
   const generatePdf = () => buildReceiptPdf(order, brand);
 
@@ -2424,8 +2986,8 @@ function ReceiptSection({ order, brand }) {
   const shareReceipt = async () => {
     const lines = [
       `Recu ${receiptNumber}`,
-      `Table: ${order.table?.name ?? 'N/A'}`,
-      `Date: ${paidAt.toLocaleString('fr-FR')}`,
+      `Table: ${tableDisplay}`,
+      `Date: ${placedAt.toLocaleString('fr-FR')}`,
       `Moyen de paiement: ${paymentMethod}`,
       '',
       ...items.map((item) => {
@@ -2484,7 +3046,7 @@ function ReceiptSection({ order, brand }) {
             </div>
 
             <div className="receipt-title">
-              <span>Recu de paiement</span>
+              <span>Reçu de paiement</span>
               <h2>{receiptNumber}</h2>
               <p>Merci pour votre commande. Voici le recapitulatif complet.</p>
             </div>
@@ -2492,15 +3054,15 @@ function ReceiptSection({ order, brand }) {
             <div className="receipt-meta">
               <div>
                 <small>Table</small>
-                <strong>{order.table?.name ?? 'N/A'}</strong>
+                <strong>{tableDisplay}</strong>
               </div>
               <div>
                 <small>Date</small>
-                <strong>{paidAt.toLocaleDateString('fr-FR')}</strong>
+                <strong>{placedAt.toLocaleDateString('fr-FR')}</strong>
               </div>
               <div>
                 <small>Heure</small>
-                <strong>{paidAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong>
+                <strong>{placedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong>
               </div>
               <div>
                 <small>Paiement</small>
@@ -2540,13 +3102,13 @@ function ReceiptSection({ order, brand }) {
             ) : null}
 
             <div className="receipt-total">
-              <span>Total paye</span>
+              <span>Total payé</span>
               <strong>{formatMoney(order.total_amount, order.currency)}</strong>
             </div>
 
             <div className="receipt-footer">
               <p>Nous esperons vous revoir bientot chez {brand?.name || 'Restaurant Scan'}.</p>
-              <span>Recu genere automatiquement par Restaurant Scan</span>
+              <span>Reçu généré automatiquement par Restaurant Scan</span>
             </div>
           </div>
         </div>
@@ -2556,17 +3118,17 @@ function ReceiptSection({ order, brand }) {
           <div className="receipt-pdf-viewer">
             <div className="receipt-pdf-head">
               <div>
-                <strong>ReÃ§u PDF gÃ©nÃ©rÃ©</strong>
+                <strong>Reçu PDF généré</strong>
                 <span>{pdfPreview.filename}</span>
               </div>
               <button className="clean-btn" onClick={() => setPdfPreview(null)}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <iframe src={pdfPreview.url} title="ReÃ§u PDF Restaurant Scan"></iframe>
+            <iframe src={pdfPreview.url} title="Reçu PDF Restaurant Scan"></iframe>
             <div className="receipt-pdf-actions">
               <button className="btn-red" onClick={downloadPdf}>
-                <i className="fas fa-download"></i>TÃ©lÃ©charger le PDF
+                <i className="fas fa-download"></i>Télécharger le PDF
               </button>
               <button className="receipt-share-btn" onClick={openPdf}>
                 <i className="fas fa-up-right-from-square"></i>Ouvrir dans un onglet
@@ -2586,10 +3148,10 @@ function CancelledOrderModal({ order, onClose }) {
     <div className="order-modal-backdrop">
       <div className="client-cancel-modal">
         <div className="cancel-modal-icon"><i className="fas fa-ban"></i></div>
-        <h2>Commande annulee</h2>
-        <p>Votre commande a ete annulee. Voici les details transmis par le restaurant.</p>
+        <h2>Commande annulée</h2>
+        <p>Votre commande a été annulée. Voici les détails transmis par le restaurant.</p>
         <div className="cancel-modal-summary">
-          <div><span>Table</span><strong>{order.table?.name || 'Table inconnue'}</strong></div>
+          <div><span>Table</span><strong>{orderTableDisplay(order)}</strong></div>
           <div><span>Commande</span><strong>#{String(order.id).slice(0, 8).toUpperCase()}</strong></div>
           <div><span>Total</span><strong>{formatMoney(order.total_amount, order.currency)}</strong></div>
           <div><span>Motif</span><strong>{order.cancellation_reason || 'Non precise'}</strong></div>
@@ -2610,7 +3172,65 @@ function CancelledOrderModal({ order, onClose }) {
   );
 }
 
-function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
+function CancelOrderReasonModal({ order, onClose, onConfirm, onError }) {
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (order) setReason('');
+  }, [order]);
+
+  if (!order) return null;
+
+  const submit = async () => {
+    const trimmed = reason.trim();
+    if (trimmed.length < 3) {
+      onError?.('La raison d’annulation est obligatoire.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await onConfirm(order, trimmed);
+    } catch (error) {
+      onError?.(error.message || "Impossible d'annuler la commande.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="order-modal-backdrop">
+      <div className="client-cancel-modal cancel-reason-modal">
+        <button type="button" className="clean-btn cancel-modal-close" onClick={onClose} aria-label="Fermer">
+          <i className="fas fa-times"></i>
+        </button>
+        <div className="cancel-modal-icon"><i className="fas fa-ban"></i></div>
+        <h2>Annuler la commande</h2>
+        <p>Expliquez brièvement pourquoi vous souhaitez annuler cette commande.</p>
+        <textarea
+          className="fctrl cancel-reason-textarea"
+          rows="4"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Motif d’annulation..."
+          autoFocus
+        />
+        <div className="cancel-reason-actions">
+          <button className="receipt-share-btn" type="button" onClick={onClose} disabled={submitting}>
+            Fermer
+          </button>
+          <button className="btn-red" type="button" onClick={submit} disabled={submitting}>
+            <i className="fas fa-ban"></i>
+            {submitting ? 'Annulation...' : 'Annuler'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeedbackModal({ order, restaurantName, brand, onClose, onStatus }) {
   const [step, setStep] = useState(1);
   const [ratings, setRatings] = useState({ food_rating: 0, service_rating: 0, ordering_rating: 0 });
   const [recommended, setRecommended] = useState(null);
@@ -2666,7 +3286,7 @@ function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
         {step === 1 ? (
           <>
             <div className="feedback-icon"><i className="fas fa-star"></i></div>
-            <h2>Votre repas etait comment ?</h2>
+            <h2>Votre repas était comment ?</h2>
             <p>Notez votre experience chez {restaurantName || 'Restaurant Scan'}.</p>
             <div className="feedback-rating-list">
               {ratingRows.map((row) => (
@@ -2688,7 +3308,7 @@ function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
                 </div>
               ))}
             </div>
-            <button className="btn-red w-100 justify-content-center" type="button" disabled={!canContinue} onClick={() => setStep(2)}>
+            <button className="btn-red feedback-primary-action w-100 justify-content-center" type="button" disabled={!canContinue} onClick={() => setStep(2)}>
               Continuer <i className="fas fa-arrow-right"></i>
             </button>
             <button className="feedback-skip clean-btn" type="button" onClick={() => onClose(false)}>Passer</button>
@@ -2698,6 +3318,9 @@ function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
             <div className="feedback-icon subtle"><i className="fas fa-comment-dots"></i></div>
             <h2>Recommanderiez-vous ce restaurant ?</h2>
             <p>Votre avis aide les autres clients.</p>
+            {brand?.logo_url ? (
+              <img className="feedback-restaurant-logo" src={brand.logo_url} alt={restaurantName || 'Restaurant'} />
+            ) : null}
             <div className="recommend-options">
               <button type="button" className={`clean-btn ${recommended === true ? 'active' : ''}`} onClick={() => setRecommended(true)}>
                 <i className="fas fa-thumbs-up"></i>
@@ -2710,15 +3333,15 @@ function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
             </div>
             <textarea
               className="fctrl"
-              rows="4"
+              rows="2"
               value={comment}
               onChange={(event) => setComment(event.target.value)}
               placeholder="Un commentaire ? Ce que vous avez aime, ce qui pourrait etre ameliore... (optionnel)"
             />
             {error && <div className="client-alert error">{error}</div>}
             <div className="feedback-actions">
-              <button className="receipt-share-btn" type="button" onClick={() => setStep(1)}>Retour</button>
-              <button className="btn-red" type="button" disabled={sending || recommended === null} onClick={sendFeedback}>
+              <button className="receipt-share-btn feedback-secondary-action" type="button" onClick={() => setStep(1)}>Retour</button>
+              <button className="btn-red feedback-primary-action" type="button" disabled={sending || recommended === null} onClick={sendFeedback}>
                 <i className="fas fa-check"></i>{sending ? 'Envoi...' : 'Envoyer'}
               </button>
             </div>
@@ -2732,42 +3355,85 @@ function FeedbackModal({ order, restaurantName, onClose, onStatus }) {
 function buildClientBrand(restaurant) {
   const settings = restaurant.settings || {};
   const theme = restaurant.theme || settings.theme || {};
-  const defaultNames = ['menu digital', 'Restaurant Scan'];
+  const defaultNames = ['menu digital', 'menu digital qr code', 'restaurant scan'];
+  const defaultSlogans = ['menu digital', 'menu digital qr code', 'fast food & restaurant'];
   const customName = String(settings.app_name || '').trim();
-  const hasCustomBranding = Boolean(
-    restaurant.logo_url
-    || settings.slogan
-    || (customName && !defaultNames.includes(customName.toLowerCase()))
-  );
+  const customSlogan = String(settings.slogan || restaurant.slogan || '').trim();
+  const customDescription = String(settings.description || restaurant.description || '').trim();
+  const displayName = customName && !defaultNames.includes(customName.toLowerCase())
+    ? customName
+    : restaurant.name || 'Restaurant Scan';
+  const displaySlogan = customSlogan && !defaultSlogans.includes(customSlogan.toLowerCase())
+    ? customSlogan
+    : '';
+  const displayDescription = customDescription && !defaultSlogans.includes(customDescription.toLowerCase())
+    ? customDescription
+    : '';
+  const hasCustomTheme = Boolean(theme.customized);
+  const defaultTheme = {
+    primary: '#ff7a1a',
+    secondary: '#d71920',
+    background: '#fff7ef',
+  };
+  const clientTheme = hasCustomTheme
+    ? {
+      primary: theme.primary || defaultTheme.primary,
+      secondary: theme.secondary || theme.primary || defaultTheme.secondary,
+      background: theme.background || defaultTheme.background,
+    }
+    : defaultTheme;
 
   return {
     id: restaurant.id || '',
-    name: hasCustomBranding ? (customName || restaurant.name || 'Restaurant Scan') : 'Restaurant Scan',
+    name: displayName,
     slug: restaurant.slug || '',
     logo_url: restaurant.logo_url || '/img/logo/e-resto-logo.png',
     has_restaurant_logo: Boolean(restaurant.logo_url),
-    slogan: hasCustomBranding ? (settings.slogan || restaurant.slogan || '') : 'Menu digital pour restaurant',
-    description: hasCustomBranding ? (settings.description || restaurant.description || 'Menu digital QR code') : 'Scannez, commandez et suivez votre commande avec Restaurant Scan.',
+    slogan: displaySlogan,
+    description: displayDescription || displaySlogan || `Menu digital de ${displayName}`,
     owner_phone: restaurant.owner_phone || '',
     whatsapp_order_phone: settings.whatsapp_order_phone || restaurant.whatsapp_order_phone || restaurant.owner_phone || '',
     address: restaurant.address || '',
     city: restaurant.city || '',
     can_feedback: Boolean(restaurant.can_feedback),
     can_reservations: Boolean(restaurant.can_reservations),
+    can_group_orders: Boolean(restaurant.can_group_orders),
     can_mobile_money: false,
     can_chatbot: false,
     payment_methods: ['cash'],
-    theme: {
-      primary: theme.primary || '#F9A11B',
-      secondary: theme.secondary || '#111111',
-      background: theme.background || '#fff7ef',
-    },
+    theme: clientTheme,
   };
 }
 
 function canShowFeedbackForOrder(order) {
-  return order?.status === 'delivered'
-    || (order?.order_type === 'takeaway' && order?.status === 'ready');
+  return order?.payment_status === 'paid';
+}
+
+function openRestaurantMenuFromFeedbackLink(order, tableId) {
+  clearRememberedOrder(tableId);
+
+  const restaurantSlug = order?.restaurant?.slug || new URLSearchParams(window.location.search).get('restaurant_slug');
+  const url = new URL(window.location.href);
+  url.searchParams.delete('table_id');
+  url.searchParams.delete('order_id');
+  url.searchParams.delete('tracking_code');
+  url.searchParams.delete('feedback');
+  url.searchParams.delete('menu');
+
+  if (restaurantSlug) {
+    url.searchParams.set('restaurant_slug', restaurantSlug);
+  }
+
+  window.setTimeout(() => {
+    window.location.replace(url.toString());
+  }, 900);
+}
+
+function exitClientAppAfterFeedback() {
+  window.setTimeout(() => {
+    window.close();
+    window.location.replace('about:blank');
+  }, 700);
 }
 
 function applyClientTheme(brand) {
@@ -2775,19 +3441,20 @@ function applyClientTheme(brand) {
   root.style.setProperty('--primary', brand.theme.primary);
   root.style.setProperty('--secondary', brand.theme.secondary);
   root.style.setProperty('--client-bg', brand.theme.background);
+  root.style.setProperty('--client-gradient', `linear-gradient(135deg, ${brand.theme.primary}, ${brand.theme.secondary})`);
 }
 
 function getStatusNotificationMessage(status) {
   const messages = {
-    pending: 'Votre commande a ete recue par le restaurant.',
-    preparing: 'Votre commande est maintenant en preparation.',
-    ready: 'Votre commande est prete. Elle arrive bientot.',
-    delivered: 'Votre commande a ete servie. Bon appetit.',
-    paid: 'Paiement confirme. Merci pour votre visite.',
-    cancelled: 'Votre commande a ete annulee.',
+    pending: 'Votre commande a été reçue par le restaurant.',
+    preparing: 'Votre commande est maintenant en préparation.',
+    ready: 'Votre commande est prête. Elle arrive bientôt.',
+    delivered: 'Votre commande a été servie. Bon appétit.',
+    paid: 'Paiement confirmé. Merci pour votre visite.',
+    cancelled: 'Votre commande a été annulée.',
   };
 
-  return messages[status] ?? 'Le statut de votre commande a change.';
+  return messages[status] ?? 'Le statut de votre commande a changé.';
 }
 
 function notifyBrowser(title, message) {

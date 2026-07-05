@@ -44,8 +44,8 @@ export class Otp implements OnInit {
     this.email = this.route.snapshot.queryParamMap.get("email")
       || localStorage.getItem("restaurant_owner_email")
       || "";
-    const devOtp = localStorage.getItem("dev_otp");
-    this.showOtpSentToast(devOtp);
+    localStorage.removeItem("dev_otp");
+    this.showOtpSentToast();
 
     this.authService.currentEmail.subscribe((email) => {
       this.email = email || this.email;
@@ -122,11 +122,6 @@ export class Otp implements OnInit {
     this.authService.requestOtp(this.email).subscribe({
       next: (response) => {
         this.isResending = false;
-        if ((response as any).dev_otp) {
-          localStorage.setItem("dev_otp", String((response as any).dev_otp));
-          this.showToast(`Code OTP local: ${(response as any).dev_otp}`, "success");
-          return;
-        }
         this.showToast(response.message || "Un nouveau code OTP a été envoyé à votre adresse e-mail.", "success");
       },
       error: (err) => {
@@ -198,10 +193,9 @@ export class Otp implements OnInit {
       .replace(/^-+|-+$/g, "");
   }
 
-  private showOtpSentToast(devOtp: string | null): void {
+  private showOtpSentToast(): void {
     const emailInfo = this.email ? ` à ${this.email}` : " par e-mail";
-    const devInfo = devOtp ? ` Code local: ${devOtp}` : "";
-    this.showToast(`Nous avons envoyé le code OTP${emailInfo}.${devInfo}`, "success");
+    this.showToast(`Nous avons envoyé le code OTP${emailInfo}.`, "success");
   }
 
   private showToast(message: string, type: "success" | "error"): void {

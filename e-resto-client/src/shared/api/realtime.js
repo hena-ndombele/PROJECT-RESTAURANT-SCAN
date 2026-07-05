@@ -182,3 +182,72 @@ export function subscribeToMenuRealtime(restaurantId, { onUpdate, onState } = {}
     socket?.close();
   };
 }
+
+export function subscribeToGroupOrderRealtime(tableId, { onGroupOrder, onState } = {}) {
+  if (!tableId) return () => undefined;
+
+  const { scheme, host, port, key } = reverbConfig();
+  const wsProtocol = scheme === 'https' ? 'wss' : 'ws';
+  const channel = `group-orders.table.${tableId}`;
+  const url = `${wsProtocol}://${host}:${port}/app/${key}?protocol=7&client=e-resto-client&version=1.0&flash=false`;
+  let socket;
+  let reconnectTimer;
+  let stopped = false;
+
+  const send = (payload) => {
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(payload));
+    }
+  };
+
+  const connect = () => {
+    if (stopped) return;
+    onState?.('Connexion commande groupée...');
+    socket = new WebSocket(url);
+
+    socket.onopen = () => {
+      onState?.('Commande groupée temps réel active');
+      send({
+        event: 'pusher:subscribe',
+        data: { channel },
+      });
+    };
+
+    socket.onmessage = (event) => {
+      const message = parseSocketData(event.data);
+      if (!message?.event) return;
+
+      if (message.event === 'pusher:ping') {
+        send({ event: 'pusher:pong', data: {} });
+        return;
+      }
+
+      if (message.event !== 'group-order.updated') return;
+
+      const payload = parseSocketData(message.data);
+      const nextGroupOrder = payload?.groupOrder || payload?.group_order;
+      if (!nextGroupOrder?.code || nextGroupOrder.table_id !== tableId) return;
+
+      onGroupOrder?.(payload);
+      onState?.('Commande groupée mise à jour');
+    };
+
+    socket.onerror = () => {
+      onState?.('Connexion commande groupée à vérifier');
+    };
+
+    socket.onclose = () => {
+      if (stopped) return;
+      onState?.('Reconnexion commande groupée...');
+      reconnectTimer = window.setTimeout(connect, 3000);
+    };
+  };
+
+  connect();
+
+  return () => {
+    stopped = true;
+    if (reconnectTimer) window.clearTimeout(reconnectTimer);
+    socket?.close();
+  };
+}

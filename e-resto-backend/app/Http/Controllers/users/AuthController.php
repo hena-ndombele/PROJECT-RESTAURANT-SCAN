@@ -55,7 +55,6 @@ class AuthController extends Controller
     'message' => $mailSent
         ? 'Un code OTP a été envoyé à votre adresse e-mail.'
         : 'Le code OTP a été généré, mais l’e-mail n’a pas pu être envoyé.',
-    'dev_otp' => app()->environment('local') && !$mailSent ? $otpCode : null,
 ]);
     }
 
@@ -272,7 +271,6 @@ class AuthController extends Controller
             'message' => $mailSent
                 ? 'Un nouveau code OTP a ete envoye a votre adresse email.'
                 : 'Le code OTP a ete regenere, mais l email n a pas pu etre envoye en local.',
-            'dev_otp' => app()->environment('local') && !$mailSent ? $otpCode : null,
         ]);
     }
 

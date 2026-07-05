@@ -52,7 +52,7 @@ export class RestaurantSettings implements OnInit {
   restaurant: any = {
     name: '',
     owner_name: '',
-    owner_phone: '',
+    owner_phone: '+243',
     address: '',
     city: '',
     currency: 'CDF',
@@ -63,7 +63,7 @@ export class RestaurantSettings implements OnInit {
       slogan: '',
       description: '',
         google_maps_url: '',
-        whatsapp_order_phone: '',
+        whatsapp_order_phone: '+243',
         opening_time: '08:00',
         closing_time: '22:00',
         qr_template: '',
@@ -105,7 +105,6 @@ export class RestaurantSettings implements OnInit {
   }
 
   onLogoSelected(event: Event): void {
-    if (!this.canCustomize()) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
@@ -156,8 +155,11 @@ export class RestaurantSettings implements OnInit {
       currency: this.restaurant.currency,
     };
 
-    if (this.canCustomize()) {
+    if (this.logoData) {
       payload.logo_data = this.logoData;
+    }
+
+    if (this.canCustomize()) {
       payload.settings = this.customizableSettingsPayload();
     } else {
       payload.settings = {
@@ -197,7 +199,7 @@ export class RestaurantSettings implements OnInit {
     return {
       ...restaurant,
       owner_name: restaurant?.owner_name || '',
-      owner_phone: restaurant?.owner_phone || '',
+      owner_phone: restaurant?.owner_phone || '+243',
       address: restaurant?.address || '',
       city: restaurant?.city || '',
       currency: restaurant?.currency || 'CDF',
@@ -206,7 +208,7 @@ export class RestaurantSettings implements OnInit {
         slogan: settings.slogan || '',
         description: settings.description || 'Menu digital QR code',
         google_maps_url: settings.google_maps_url || '',
-        whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '',
+        whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '+243',
         opening_time: settings.opening_time || '08:00',
         closing_time: settings.closing_time || '22:00',
         qr_template: ['poster', 'table_tent'].includes(settings.qr_template) ? settings.qr_template : '',

@@ -173,6 +173,8 @@ class SaasPlan extends Model
             'customization' => in_array($tier, ['pro', 'business'], true),
             'feedback' => in_array($tier, ['pro', 'business'], true),
             'reservations' => in_array($tier, ['pro', 'business'], true),
+            'group_orders' => in_array($tier, ['pro', 'business'], true),
+            'logo_customization' => true,
             'chatbot' => $tier === 'business',
             'roles' => true,
             'multi_restaurant' => $tier === 'business',

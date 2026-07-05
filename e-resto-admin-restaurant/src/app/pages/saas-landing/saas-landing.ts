@@ -46,7 +46,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     name: '',
     owner_name: '',
     owner_email: '',
-    owner_phone: '',
+    owner_phone: '+243',
     city: '',
   };
 
@@ -60,7 +60,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   contactForm = {
     name: '',
     email: '',
-    phone: '',
+    phone: '+243',
     subject: '',
     message: '',
   };
@@ -141,7 +141,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     this.saas.registerInterest(this.lead).subscribe({
       next: () => {
         this.message = 'Abonnement initialisé. Redirection vers votre espace restaurant...';
-        this.lead = { name: '', owner_name: '', owner_email: '', owner_phone: '', city: '', saas_plan_id: this.lead.saas_plan_id };
+        this.lead = { name: '', owner_name: '', owner_email: '', owner_phone: '+243', city: '', saas_plan_id: this.lead.saas_plan_id };
         this.isSubmitting = false;
         setTimeout(() => this.router.navigate(['/dashboard']), 700);
       },
@@ -229,7 +229,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
         this.contactForm = {
           name: '',
           email: '',
-          phone: '',
+          phone: '+243',
           subject: '',
           message: '',
         };

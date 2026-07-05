@@ -56,7 +56,7 @@
                 <div class="business-global-head">
                     <div>
                         <span class="eyebrow">Groupe Business</span>
-                        <h2>Statistiques globales multi-restaurant</h2>
+                        <h2>Statistiques globales de tous les restaurants</h2>
                         <p>{{ global.period?.label || 'Ce mois' }} : comparaison de tous les restaurants du groupe.</p>
                     </div>
                     <div class="business-export-actions">
@@ -118,7 +118,7 @@
                                     <span>Mois</span>
                                     <select [value]="selectedBusinessMonth()" (change)="onBusinessMonthChange($any($event.target).value)">
                                         @for (month of businessMonthOptions; track month.value) {
-                                            <option [value]="month.value">{{ month.label }}</option>
+                                            <option [value]="month.value" [selected]="month.value === selectedBusinessMonth()">{{ month.label }}</option>
                                         }
                                     </select>
                                 </label>
@@ -203,12 +203,13 @@
                     </div>
                 </div>
             </section>
-        } @else {
+        } 
+        <!-- @else {
             <div class="dashboard-loading mb-4">
                 <div class="spinner-border spinner-border-sm text-primary"></div>
                 <span>Chargement des statistiques Business...</span>
             </div>
-        }
+        } -->
     } @else {
         <div class="row g-3 mb-4">
             @for (card of kpiCards(); track card.label) {

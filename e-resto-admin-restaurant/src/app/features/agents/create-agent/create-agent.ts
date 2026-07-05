@@ -36,7 +36,7 @@ export class CreateAgent {
     first_name: new FormControl("", [Validators.required]),
     last_name: new FormControl("", [Validators.required]),
     email: new FormControl("", [Validators.required, Validators.email]),
-    phone_number: new FormControl("", [Validators.required]),
+    phone_number: new FormControl("+243", [Validators.required]),
     address: new FormControl("", [Validators.required]),
     education_level: new FormControl(""),
     fonction: new FormControl("", [Validators.required]),
@@ -46,7 +46,7 @@ export class CreateAgent {
     shift: new FormControl("Jour"),
     hired_at: new FormControl(""),
     emergency_contact_name: new FormControl(""),
-    emergency_contact_phone: new FormControl(""),
+    emergency_contact_phone: new FormControl("+243"),
   });
 
   get fullName(): string {

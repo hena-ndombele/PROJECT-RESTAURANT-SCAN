@@ -40,7 +40,7 @@
                                 <div class="col-md-6"><label class="form-label">Prénom <span class="text-danger">*</span></label><input class="form-control" formControlName="first_name"></div>
                                 <div class="col-md-6"><label class="form-label">Nom <span class="text-danger">*</span></label><input class="form-control" formControlName="last_name"></div>
                                 <div class="col-md-6"><label class="form-label">Email <span class="text-danger">*</span></label><input class="form-control" formControlName="email"></div>
-                                <div class="col-md-6"><label class="form-label">Téléphone <span class="text-danger">*</span></label><input class="form-control" formControlName="phone_number"></div>
+                                <div class="col-md-6"><label class="form-label">Téléphone <span class="text-danger">*</span></label><input class="form-control" type="tel" formControlName="phone_number" placeholder="+243..." autocomplete="tel"></div>
                                 <div class="col-md-6"><label class="form-label">Fonction <span class="text-danger">*</span></label><input class="form-control" formControlName="fonction"></div>
                                 <div class="col-md-6"><label class="form-label">Matricule</label><input class="form-control" formControlName="matricule"></div>
                                 <div class="col-md-6"><label class="form-label">Niveau d'étude</label><input class="form-control" formControlName="education_level"></div>
@@ -72,7 +72,7 @@
                                 </div>
                                 <div class="col-md-4"><label class="form-label">Date d'embauche</label><input type="date" class="form-control" formControlName="hired_at"></div>
                                 <div class="col-md-6"><label class="form-label">Contact urgence</label><input class="form-control" formControlName="emergency_contact_name"></div>
-                                <div class="col-md-6"><label class="form-label">Téléphone urgence</label><input class="form-control" formControlName="emergency_contact_phone"></div>
+                                <div class="col-md-6"><label class="form-label">Téléphone urgence</label><input class="form-control" type="tel" formControlName="emergency_contact_phone" placeholder="+243..." autocomplete="tel"></div>
                                 <div class="col-12"><label class="form-label">Adresse <span class="text-danger">*</span></label><textarea class="form-control" rows="3" formControlName="address"></textarea></div>
                             </div>
                         </div>

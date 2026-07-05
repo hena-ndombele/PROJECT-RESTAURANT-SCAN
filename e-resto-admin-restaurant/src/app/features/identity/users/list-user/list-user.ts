@@ -44,7 +44,7 @@ export class ListUser implements OnInit {
     first_name: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
     last_name: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
     email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
-    phone_number: new FormControl("", { nonNullable: true }),
+    phone_number: new FormControl("+243", { nonNullable: true }),
     address: new FormControl("", { nonNullable: true }),
     password: new FormControl("", { nonNullable: true }),
   });
@@ -136,7 +136,7 @@ export class ListUser implements OnInit {
       first_name: "",
       last_name: "",
       email: "",
-      phone_number: "",
+      phone_number: "+243",
       address: "",
       password: "",
     });
@@ -165,7 +165,7 @@ export class ListUser implements OnInit {
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      phone_number: user.phone_number ?? "",
+      phone_number: user.phone_number ?? "+243",
       address: user.address ?? "",
       password: "",
     });
@@ -196,7 +196,7 @@ export class ListUser implements OnInit {
       first_name: agent.first_name,
       last_name: agent.last_name,
       email: agent.email,
-      phone_number: agent.phone_number ?? "",
+      phone_number: agent.phone_number ?? "+243",
       address: agent.address ?? "",
     });
   }

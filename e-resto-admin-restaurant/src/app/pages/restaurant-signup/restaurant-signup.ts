@@ -25,8 +25,9 @@ export class RestaurantSignup implements OnInit {
     restaurant_name: '',
     owner_name: '',
     owner_email: '',
-    owner_phone: '',
+    owner_phone: '+243',
     city: '',
+    commune: '',
     currency: 'CDF',
     password: '',
     password_confirmation: '',
@@ -165,6 +166,8 @@ export class RestaurantSignup implements OnInit {
         },
       }), 1200);
     }, 15000);
+    this.account.owner_phone = this.normalizeCongoPhone(this.account.owner_phone);
+
     this.saas.signup({
       ...this.account,
       saas_plan_id: planId,
@@ -184,7 +187,8 @@ export class RestaurantSignup implements OnInit {
         }
 
         localStorage.setItem('restaurant_owner_email', this.account.owner_email);
-        this.message = response.message || 'Compte créé. Entrez le code OTP envoyé par e-mail.';
+        localStorage.removeItem('dev_otp');
+        this.message = response.message || 'Compte cree. Entrez le code OTP envoye par e-mail.';
         this.router.navigate(['/auth/otp'], {
           queryParams: {
             source: 'signup',
@@ -328,6 +332,24 @@ export class RestaurantSignup implements OnInit {
     }
 
     return error?.error?.message || 'Création impossible. Vérifiez les informations.';
+  }
+
+  normalizeCongoPhone(value: string): string {
+    const raw = String(value || '').trim();
+    if (!raw || raw === '+243') return '+243';
+
+    let digits = raw.replace(/[^\d]/g, '');
+    if (digits.startsWith('00')) {
+      digits = digits.slice(2);
+    }
+    if (digits.startsWith('0')) {
+      digits = `243${digits.slice(1)}`;
+    }
+    if (!digits.startsWith('243')) {
+      digits = `243${digits}`;
+    }
+
+    return `+${digits}`;
   }
 
   private clearCreateAccountSafetyTimer(): void {

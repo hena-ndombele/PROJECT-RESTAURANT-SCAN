@@ -43,6 +43,7 @@ interface Restaurant {
   owner_email: string;
   owner_phone?: string;
   city?: string;
+  commune?: string;
   country?: string;
   currency?: string;
   status: string;
@@ -728,7 +729,11 @@ export class App implements OnInit, OnDestroy {
   saveRestaurant(): void {
     this.saving.set(true);
     this.clearNotice();
-    const payload = { ...this.restaurantForm };
+    const payload = {
+      ...this.restaurantForm,
+      owner_phone: this.normalizeCongoPhone(this.restaurantForm.owner_phone),
+    };
+    this.restaurantForm.owner_phone = payload.owner_phone;
     if (!payload.owner_password) delete payload.owner_password;
     const request = payload.id
       ? this.http.put<Restaurant>(`${this.saasUrl}/restaurants/${payload.id}`, payload)
@@ -854,10 +859,12 @@ export class App implements OnInit, OnDestroy {
     );
     const payload = {
       ...this.planForm,
+      monthly_price: Number(this.planForm.monthly_price || 0),
       yearly_price: this.planForm.yearly_price === '' ? null : this.planForm.yearly_price,
       promo_percent: this.planForm.promo_percent === '' ? null : this.planForm.promo_percent,
       promo_starts_at: this.planForm.promo_starts_at || null,
       promo_ends_at: this.planForm.promo_ends_at || null,
+      max_restaurants: Number(this.planForm.max_restaurants || 1),
       max_tables: this.planLimitValue(this.planForm.max_tables),
       max_users: this.planLimitValue(this.planForm.max_users),
       max_dishes: this.planLimitValue(this.planForm.max_dishes),
@@ -868,12 +875,12 @@ export class App implements OnInit, OnDestroy {
       ? this.http.put(`${this.saasUrl}/plans/${payload.id}`, payload)
       : this.http.post(`${this.saasUrl}/plans`, payload);
     request.subscribe({
-      next: () => {
+      next: (savedPlan) => {
         this.saving.set(false);
         this.planModalOpen.set(false);
         this.message.set('Plan enregistre.');
+        this.upsertPlan(savedPlan as SaasPlan);
         this.loadPlans();
-        this.loadAll();
       },
       error: (error) => {
         this.saving.set(false);
@@ -1032,6 +1039,21 @@ export class App implements OnInit, OnDestroy {
     return enabled ? [...cleaned, label] : cleaned;
   }
 
+  private upsertPlan(plan: SaasPlan): void {
+    if (!plan?.id) return;
+
+    const plans = this.plans();
+    const index = plans.findIndex((item) => item.id === plan.id);
+    if (index === -1) {
+      this.plans.set([...plans, plan].sort((a, b) => Number(a.monthly_price || 0) - Number(b.monthly_price || 0)));
+      return;
+    }
+
+    const next = [...plans];
+    next[index] = plan;
+    this.plans.set(next.sort((a, b) => Number(a.monthly_price || 0) - Number(b.monthly_price || 0)));
+  }
+
   private normalizeFeatureLabel(value: string): string {
     return value.trim().toLowerCase().replace(/[_-]+/g, ' ');
   }
@@ -1063,11 +1085,11 @@ export class App implements OnInit, OnDestroy {
   }
 
   private emptyRestaurant(): Restaurant {
-    return { name: '', owner_name: '', owner_email: '', owner_phone: '', city: '', country: 'CD', currency: 'CDF', status: 'trial', saas_plan_id: '', owner_password: '' };
+    return { name: '', owner_name: '', owner_email: '', owner_phone: '+243', city: '', commune: '', country: 'CD', currency: 'CDF', status: 'trial', saas_plan_id: '', owner_password: '' };
   }
 
   private emptyUser(): AdminUser {
-    return { first_name: '', last_name: '', email: '', phone_number: '', address: '', password: '', role: '' };
+    return { first_name: '', last_name: '', email: '', phone_number: '+243', address: '', password: '', role: '' };
   }
 
   private emptyPlan(): SaasPlan {
@@ -1084,6 +1106,16 @@ export class App implements OnInit, OnDestroy {
 
   private emptyRole(): Role {
     return { name: '' };
+  }
+
+  normalizeCongoPhone(value: string | null | undefined): string {
+    const raw = String(value || '').trim();
+    if (!raw || raw === '+243') return '+243';
+    let digits = raw.replace(/[^\d]/g, '');
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = `243${digits.slice(1)}`;
+    if (!digits.startsWith('243')) digits = `243${digits}`;
+    return `+${digits}`;
   }
 
   private adminListingParams(filters: Record<string, string | number>): HttpParams {

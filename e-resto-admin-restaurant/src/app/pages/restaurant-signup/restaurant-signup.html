@@ -89,7 +89,7 @@
               <div class="grid-2">
                 <label>
                   <span>Téléphone *</span>
-                  <input [(ngModel)]="account.owner_phone" name="owner_phone" placeholder="+243830000000" autocomplete="tel" required>
+                  <input [(ngModel)]="account.owner_phone" (blur)="account.owner_phone = normalizeCongoPhone(account.owner_phone)" name="owner_phone" type="tel" placeholder="+243830000000" autocomplete="tel" required>
                 </label>
                 <label>
                   <span>Province</span>
@@ -101,6 +101,11 @@
                   </select>
                 </label>
               </div>
+
+              <label>
+                <span>Commune</span>
+                <input [(ngModel)]="account.commune" name="commune" placeholder="Ex: Gombe, Limete, Matete..." autocomplete="address-level3">
+              </label>
 
               <label>
                 <span>Devise par défaut</span>

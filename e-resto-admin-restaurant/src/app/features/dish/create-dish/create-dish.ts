@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, OnInit, inject, signal } from "@angular/core";
+import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Router, RouterLink } from "@angular/router";
 import { CategoryDto } from "../../../models/category/CategoryDto";
@@ -14,7 +14,7 @@ import { SaasService } from "../../../services/saas/saas-service";
     templateUrl: "./create-dish.html",
     styleUrl: "./create-dish.scss",
 })
-export class CreateDish implements OnInit {
+export class CreateDish implements OnInit, OnDestroy {
     dishForm!: FormGroup;
     ingredients: string[] = [];
     selectedSizes: string[] = [];
@@ -43,6 +43,7 @@ export class CreateDish implements OnInit {
     private saasService = inject(SaasService);
     private fb = inject(FormBuilder);
     private router = inject(Router);
+    private previewObjectUrls: string[] = [];
 
     ngOnInit(): void {
         this.dishForm = this.fb.group({
@@ -89,14 +90,7 @@ export class CreateDish implements OnInit {
         if (type === "thumb1") this.thumb1File = file;
         if (type === "thumb2") this.thumb2File = file;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = reader.result as string;
-            if (type === "main") this.previewUrl = result;
-            if (type === "thumb1") this.thumb1Preview = result;
-            if (type === "thumb2") this.thumb2Preview = result;
-        };
-        reader.readAsDataURL(file);
+        this.setImagePreview(type, file);
     }
 
     addIngredient(event: Event): void {
@@ -177,11 +171,16 @@ export class CreateDish implements OnInit {
         this.selectedFile = null;
         this.thumb1File = null;
         this.thumb2File = null;
+        this.revokePreviewUrls();
         this.previewUrl = null;
         this.thumb1Preview = null;
         this.thumb2Preview = null;
         this.submitAttempted.set(false);
         this.formError.set("");
+    }
+
+    ngOnDestroy(): void {
+        this.revokePreviewUrls();
     }
 
     private buildFormData(): FormData {
@@ -209,5 +208,19 @@ export class CreateDish implements OnInit {
         if (this.thumb2File) formData.append("image_secondaire_2", this.thumb2File);
 
         return formData;
+    }
+
+    private setImagePreview(type: "main" | "thumb1" | "thumb2", file: File): void {
+        const previewUrl = URL.createObjectURL(file);
+        this.previewObjectUrls.push(previewUrl);
+
+        if (type === "main") this.previewUrl = previewUrl;
+        if (type === "thumb1") this.thumb1Preview = previewUrl;
+        if (type === "thumb2") this.thumb2Preview = previewUrl;
+    }
+
+    private revokePreviewUrls(): void {
+        this.previewObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+        this.previewObjectUrls = [];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Events\GroupOrderUpdated;
 use App\Events\OrderPlaced;
 use App\Http\Controllers\Controller;
 use App\Models\GroupOrder;
@@ -29,6 +30,8 @@ class GroupOrderController extends Controller
             'creator_name' => 'required|string|max:120',
             'creator_phone' => 'nullable|string|max:30',
             'creator_email' => 'nullable|email|max:160',
+            'email_receipt_opt_in' => 'nullable|boolean',
+            'email_feedback_opt_in' => 'nullable|boolean',
             'note' => 'nullable|string|max:1000',
             'expires_in_minutes' => 'nullable|integer|min:10|max:1440',
         ]);
@@ -46,6 +49,12 @@ class GroupOrderController extends Controller
                 return response()->json([
                     'message' => "Ce restaurant n'accepte pas de commandes pour le moment.",
                 ], 422);
+            }
+
+            if (!$this->restaurantAllowsGroupOrders($restaurant)) {
+                return response()->json([
+                    'message' => 'La commande groupee est reservee aux plans Pro et Business.',
+                ], 403);
             }
 
             $creatorCode = $this->generateCreatorCode();
@@ -67,9 +76,13 @@ class GroupOrderController extends Controller
                 'name' => $validated['creator_name'],
                 'phone' => $validated['creator_phone'] ?? null,
                 'email' => $validated['creator_email'] ?? null,
+                'email_receipt_requested' => (bool) ($validated['email_receipt_opt_in'] ?? false),
+                'email_feedback_requested' => (bool) ($validated['email_feedback_opt_in'] ?? false),
                 'is_creator' => true,
                 'last_seen_at' => now(),
             ]);
+
+            DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'created')));
 
             return response()->json([
                 'message' => 'Commande groupée créée.',
@@ -89,6 +102,13 @@ class GroupOrderController extends Controller
 
     public function activeForTable(Table $table)
     {
+        $table->loadMissing('restaurant.plan');
+        if (!$table->restaurant || !$this->restaurantAllowsGroupOrders($table->restaurant)) {
+            return response()->json([
+                'group_order' => null,
+            ]);
+        }
+
         $groupOrder = GroupOrder::with($this->relations())
             ->where('table_id', $table->id)
             ->where('status', 'open')
@@ -109,6 +129,8 @@ class GroupOrderController extends Controller
             'name' => 'required|string|max:120',
             'phone' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:160',
+            'email_receipt_opt_in' => 'nullable|boolean',
+            'email_feedback_opt_in' => 'nullable|boolean',
         ]);
 
         $groupOrder = $this->findByCode($code);
@@ -121,9 +143,13 @@ class GroupOrderController extends Controller
             'name' => $validated['name'],
             'phone' => $validated['phone'] ?? null,
             'email' => $validated['email'] ?? null,
+            'email_receipt_requested' => (bool) ($validated['email_receipt_opt_in'] ?? false),
+            'email_feedback_requested' => (bool) ($validated['email_feedback_opt_in'] ?? false),
             'is_creator' => false,
             'last_seen_at' => now(),
         ]);
+
+        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'joined')));
 
         return response()->json([
             'message' => 'Participant ajoute.',
@@ -159,6 +185,9 @@ class GroupOrderController extends Controller
         $validated = $request->validate([
             'participant_id' => 'required|uuid|exists:group_order_participants,id',
             'is_ready' => 'required|boolean',
+            'email' => 'nullable|email|max:160',
+            'email_receipt_opt_in' => 'nullable|boolean',
+            'email_feedback_opt_in' => 'nullable|boolean',
         ]);
 
         $groupOrder = $this->findByCode($code);
@@ -170,8 +199,12 @@ class GroupOrderController extends Controller
         $participant = $groupOrder->participants()->findOrFail($validated['participant_id']);
         $participant->update([
             'is_ready' => (bool) $validated['is_ready'],
+            'email' => $validated['email'] ?? $participant->email,
+            'email_receipt_requested' => (bool) ($validated['email_receipt_opt_in'] ?? $participant->email_receipt_requested),
+            'email_feedback_requested' => (bool) ($validated['email_feedback_opt_in'] ?? $participant->email_feedback_requested),
             'last_seen_at' => now(),
         ]);
+        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'ready_changed')));
 
         return response()->json([
             'message' => $participant->is_ready ? 'Participant pret.' : 'Participant en cours.',
@@ -247,6 +280,7 @@ class GroupOrderController extends Controller
                 'note' => $validated['note'] ?? null,
             ]
         );
+        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'item_updated')));
 
         return response()->json([
             'message' => 'Plat ajoute a la commande groupée.',
@@ -273,6 +307,7 @@ class GroupOrderController extends Controller
         ]);
 
         $item->delete();
+        DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($groupOrder->fresh($this->relations()), 'item_deleted')));
 
         return response()->json([
             'message' => 'Plat retire de la commande groupée.',
@@ -296,6 +331,9 @@ class GroupOrderController extends Controller
             'customer_name' => 'nullable|string|max:120',
             'customer_phone' => 'nullable|string|max:30',
             'customer_email' => 'nullable|email|max:160',
+            'email_contact' => 'nullable|email|max:160',
+            'email_receipt_opt_in' => 'nullable|boolean',
+            'email_feedback_opt_in' => 'nullable|boolean',
             'note' => 'nullable|string|max:1000',
         ]);
 
@@ -407,6 +445,11 @@ class GroupOrderController extends Controller
                     'group_order_id' => $lockedGroupOrder->id,
                     'group_order_code' => $lockedGroupOrder->code,
                     'message' => 'Paiement cash a confirmer par le restaurant.',
+                    'email_followup_enabled' => (bool) (($validated['email_receipt_opt_in'] ?? false) || ($validated['email_feedback_opt_in'] ?? false)),
+                    'email_receipt_requested' => (bool) ($validated['email_receipt_opt_in'] ?? false),
+                    'email_feedback_requested' => (bool) ($validated['email_feedback_opt_in'] ?? false),
+                    'email_contact' => $validated['email_contact'] ?? ($validated['customer_email'] ?? null),
+                    'group_participant_email_followups' => $this->participantEmailFollowups($lockedGroupOrder),
                 ],
             ]);
 
@@ -422,6 +465,7 @@ class GroupOrderController extends Controller
 
             $freshOrder = $order->load(['table', 'items.plat', 'latestPayment']);
             $this->broadcastSafely(new OrderPlaced($freshOrder));
+            DB::afterCommit(fn () => broadcast(new GroupOrderUpdated($lockedGroupOrder->fresh($this->relations()), 'checked_out')));
 
             return response()->json([
                 'message' => 'Commande groupée validée.',
@@ -453,6 +497,13 @@ class GroupOrderController extends Controller
         return in_array($restaurant->status, ['active', 'trial'], true);
     }
 
+    private function restaurantAllowsGroupOrders(Restaurant $restaurant): bool
+    {
+        $restaurant->loadMissing('plan');
+
+        return (bool) $restaurant->plan?->allows('group_orders');
+    }
+
     private function findByCode(string $code): GroupOrder
     {
         return GroupOrder::with($this->relations())
@@ -462,6 +513,12 @@ class GroupOrderController extends Controller
 
     private function blockedResponse(GroupOrder $groupOrder)
     {
+        if ($groupOrder->restaurant && !$this->restaurantAllowsGroupOrders($groupOrder->restaurant)) {
+            return response()->json([
+                'message' => 'La commande groupee est reservee aux plans Pro et Business.',
+            ], 403);
+        }
+
         if ($groupOrder->status !== 'open') {
             return response()->json([
                 'message' => 'Cette commande groupée est déjà cloturée.',
@@ -527,7 +584,10 @@ class GroupOrderController extends Controller
                 'id' => $participant->id,
                 'name' => $participant->name,
                 'phone' => $participant->phone,
-                'email' => $participant->email,
+                'email' => null,
+                'has_email_followup' => (bool) ($participant->email && ($participant->email_receipt_requested || $participant->email_feedback_requested)),
+                'email_receipt_requested' => (bool) $participant->email_receipt_requested,
+                'email_feedback_requested' => (bool) $participant->email_feedback_requested,
                 'is_creator' => $participant->is_creator,
                 'is_ready' => (bool) $participant->is_ready,
                 'is_active' => $this->participantIsActive($participant),
@@ -536,6 +596,21 @@ class GroupOrderController extends Controller
             ])->values(),
             'items' => $groupOrder->items->map(fn ($item) => $this->itemPayload($item))->values(),
         ];
+    }
+
+    private function participantEmailFollowups(GroupOrder $groupOrder): array
+    {
+        return $groupOrder->participants
+            ->filter(fn ($participant) => $participant->email && ($participant->email_receipt_requested || $participant->email_feedback_requested))
+            ->map(fn ($participant) => [
+                'participant_id' => $participant->id,
+                'name' => $participant->name,
+                'email' => $participant->email,
+                'receipt' => (bool) $participant->email_receipt_requested,
+                'feedback' => (bool) $participant->email_feedback_requested,
+            ])
+            ->values()
+            ->all();
     }
 
     private function itemPayload(GroupOrderItem $item): array
@@ -562,25 +637,25 @@ class GroupOrderController extends Controller
     {
         $participants = $groupOrder->participants;
         $activeParticipants = $participants->filter(fn ($participant) => $this->participantIsActive($participant));
-        $activeWithItems = $activeParticipants->filter(function ($participant) {
-            return $participant->items->sum('quantity') > 0;
+        $readyParticipants = $activeParticipants->filter(function ($participant) {
+            return $participant->is_ready && $participant->items->sum('quantity') > 0;
         });
-        $waitingParticipants = $activeWithItems
-            ->filter(fn ($participant) => !$participant->is_ready)
+        $waitingParticipants = $activeParticipants
+            ->filter(fn ($participant) => !$participant->is_ready || $participant->items->sum('quantity') <= 0)
             ->values();
 
         return [
             'active_timeout_seconds' => 120,
             'participants_count' => $participants->count(),
             'active_count' => $activeParticipants->count(),
-            'ready_count' => $activeWithItems->filter(fn ($participant) => $participant->is_ready)->count(),
+            'ready_count' => $readyParticipants->count(),
             'waiting_count' => $waitingParticipants->count(),
             'waiting_participants' => $waitingParticipants->map(fn ($participant) => [
                 'id' => $participant->id,
                 'name' => $participant->name,
             ])->values(),
             'can_checkout' => $groupOrder->items->count() > 0
-                && $activeWithItems->count() > 0
+                && $activeParticipants->count() > 0
                 && $waitingParticipants->count() === 0,
         ];
     }
@@ -644,7 +719,7 @@ class GroupOrderController extends Controller
             . "Restaurant: " . ($groupOrder->restaurant?->name ?? '-') . "\n"
             . "Groupe: #{$groupOrder->code}\n"
             . "Client principal: {$groupOrder->creator_name}\n"
-            . "Telephone: " . ($groupOrder->creator_phone ?: '-') . "\n"
+            . "Téléphone: " . ($groupOrder->creator_phone ?: '-') . "\n"
             . "Table/QR: " . ($groupOrder->table?->name ?: '-') . "\n\n"
             . $this->groupOrderNote($groupOrder) . "\n\n"
             . "Total: {$total} {$currency}";

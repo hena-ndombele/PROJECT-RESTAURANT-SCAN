@@ -3,7 +3,7 @@ import { Subject } from "rxjs";
 import { Order } from "../../models/orders/OrderDto";
 import { AuthService } from "../auth/auth-service";
 import { OderService } from "../orders/oder-service";
-import { ReservationDto } from "../reservation/reservation-service";
+import { ReservationDto, ReservationService } from "../reservation/reservation-service";
 import { API_ROOT } from "../api-url";
 
 interface OrderNotification {
@@ -20,6 +20,7 @@ interface OrderNotification {
 })
 export class OrderRealtimeService {
     private readonly orderService = inject(OderService);
+    private readonly reservationService = inject(ReservationService);
     private readonly authService = inject(AuthService);
     private readonly zone = inject(NgZone);
 
@@ -28,10 +29,12 @@ export class OrderRealtimeService {
     private pollingTimer?: ReturnType<typeof setInterval>;
     private connected = false;
     private started = false;
+    private reservationPollingInitialized = false;
+    private knownReservationIds = new Set<string>();
 
     readonly orders = signal<Order[]>([]);
     readonly notifications = signal<OrderNotification[]>([]);
-    readonly pendingRéservationsCount = signal(0);
+    readonly pendingReservationsCount = signal(0);
     readonly connectionState = signal<"idle" | "connecting" | "connected" | "error">("idle");
     readonly orderChanged$ = new Subject<Order>();
     readonly reservationCreated$ = new Subject<ReservationDto>();
@@ -45,6 +48,7 @@ export class OrderRealtimeService {
         if (this.started) return;
         this.started = true;
         this.loadInitialOrders();
+        this.refreshReservationsFromApi(true);
         this.connect();
         this.startPollingFallback();
     }
@@ -75,6 +79,7 @@ export class OrderRealtimeService {
         this.pollingTimer = setInterval(() => {
             if (!this.started) return;
             this.refreshOrdersFromApi();
+            this.refreshReservationsFromApi();
         }, 8000);
     }
 
@@ -92,7 +97,7 @@ export class OrderRealtimeService {
 
                 for (const order of freshOrders) {
                     this.orderChanged$.next(order);
-                    this.addNotification(order);
+                    this.addOrderNotification(order);
                     this.playNotificationSound();
                 }
             },
@@ -101,6 +106,28 @@ export class OrderRealtimeService {
                     this.connectionState.set("error");
                 }
             }
+        });
+    }
+
+    private refreshReservationsFromApi(initial = false): void {
+        this.reservationService.list({ status: "pending" }).subscribe({
+            next: (reservations) => {
+                this.pendingReservationsCount.set(reservations.length);
+
+                if (initial || !this.reservationPollingInitialized) {
+                    reservations.forEach((reservation) => this.knownReservationIds.add(reservation.id));
+                    this.reservationPollingInitialized = true;
+                    return;
+                }
+
+                const freshReservations = reservations
+                    .filter((reservation) => reservation.id && !this.knownReservationIds.has(reservation.id))
+                    .slice()
+                    .reverse();
+
+                freshReservations.forEach((reservation) => this.notifyReservation(reservation));
+            },
+            error: () => undefined
         });
     }
 
@@ -124,8 +151,8 @@ export class OrderRealtimeService {
                 this.connected = true;
                 this.connectionState.set("connected");
                 this.subscribeToOrders();
+                this.subscribeToReservations();
                 this.subscribeToBusinessRestaurants();
-                this.subscribeToRéservations();
             });
         };
 
@@ -157,13 +184,17 @@ export class OrderRealtimeService {
         });
     }
 
-    private subscribeToRéservations(): void {
+    private subscribeToReservations(): void {
         const restaurantId = this.authService.getUserData()?.restaurant_id;
-        const channel = restaurantId ? `Réservations.${restaurantId}` : "Réservations";
+        const channels = restaurantId
+            ? [`reservations.${restaurantId}`, `Réservations.${restaurantId}`]
+            : ["reservations", "Réservations"];
 
-        this.send({
-            event: "pusher:subscribe",
-            data: { channel }
+        channels.forEach((channel) => {
+            this.send({
+                event: "pusher:subscribe",
+                data: { channel }
+            });
         });
     }
 
@@ -214,7 +245,7 @@ export class OrderRealtimeService {
         this.orderChanged$.next(order);
 
         if (isNewOrder) {
-            this.addNotification(order);
+            this.addOrderNotification(order);
             this.playNotificationSound();
         }
     }
@@ -224,18 +255,18 @@ export class OrderRealtimeService {
         const reservation = payload?.reservation as ReservationDto | undefined;
         if (!reservation?.id) return;
 
-        this.pendingRéservationsCount.update((count) => count + 1);
+        this.notifyReservation(reservation);
+    }
+
+    private notifyReservation(reservation: ReservationDto): void {
+        if (this.knownReservationIds.has(reservation.id)) {
+            return;
+        }
+
+        this.knownReservationIds.add(reservation.id);
+        this.pendingReservationsCount.update((count) => count + 1);
         this.reservationCreated$.next(reservation);
-        this.notifications.update((items) => [
-            {
-                id: `${reservation.id}-${Date.now()}`,
-                title: "Nouvelle réservation",
-                message: `${reservation.name} - ${reservation.guests} pers. le ${reservation.reservation_date}`,
-                createdAt: new Date(),
-                route: "/table/reservation-table"
-            },
-            ...items
-        ].slice(0, 8));
+        this.addReservationNotification(reservation);
         this.playNotificationSound();
     }
 
@@ -255,7 +286,7 @@ export class OrderRealtimeService {
         });
     }
 
-    private addNotification(order: Order): void {
+    private addOrderNotification(order: Order): void {
         const tableName = order.table?.name || "Table inconnue";
         this.notifications.update((items) => [
             {
@@ -265,6 +296,19 @@ export class OrderRealtimeService {
                 createdAt: new Date(),
                 order,
                 route: "/orders/list"
+            },
+            ...items
+        ].slice(0, 8));
+    }
+
+    private addReservationNotification(reservation: ReservationDto): void {
+        this.notifications.update((items) => [
+            {
+                id: `${reservation.id}-${Date.now()}`,
+                title: "Nouvelle réservation",
+                message: `${reservation.name} - ${reservation.guests} pers. le ${reservation.reservation_date}`,
+                createdAt: new Date(),
+                route: "/table/reservation-table"
             },
             ...items
         ].slice(0, 8));

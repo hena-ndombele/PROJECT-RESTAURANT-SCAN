@@ -69,8 +69,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.businessRestaurantForm = this.fb.group({
             name: ['', [Validators.required, Validators.maxLength(255)]],
             city: ['', [Validators.maxLength(120)]],
+            commune: ['', [Validators.maxLength(120)]],
             address: ['', [Validators.maxLength(255)]],
-            owner_phone: ['', [Validators.maxLength(30)]],
+            owner_phone: ['+243', [Validators.maxLength(30)]],
             currency: ['CDF', [Validators.required]],
         });
     }
@@ -85,7 +86,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         logo: 'assets/logo/e-resto-logo.png',
         city: '',
         owner_email: '',
-        owner_phone: '',
+        owner_phone: '+243',
         features: {},
         theme: {},
     };
@@ -294,10 +295,29 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.businessRestaurantForm.reset({
             name: '',
             city: '',
+            commune: '',
             address: '',
-            owner_phone: this.restaurantData.owner_phone || '',
+            owner_phone: this.restaurantData.owner_phone || '+243',
             currency: 'CDF',
         });
+    }
+
+    protected normalizeCongoPhone(value: string | null | undefined): string {
+        const raw = String(value || '').trim();
+        if (!raw || raw === '+243') return '+243';
+
+        let digits = raw.replace(/[^\d]/g, '');
+        if (digits.startsWith('00')) {
+            digits = digits.slice(2);
+        }
+        if (digits.startsWith('0')) {
+            digits = `243${digits.slice(1)}`;
+        }
+        if (!digits.startsWith('243')) {
+            digits = `243${digits}`;
+        }
+
+        return `+${digits}`;
     }
 
     protected createBusinessRestaurant(): void {
@@ -306,8 +326,14 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             return;
         }
 
+        const payload = {
+            ...this.businessRestaurantForm.value,
+            owner_phone: this.normalizeCongoPhone(this.businessRestaurantForm.value.owner_phone),
+        };
+        this.businessRestaurantForm.patchValue({ owner_phone: payload.owner_phone }, { emitEvent: false });
+
         this.businessRestaurantSaving = true;
-        this.saasService.createBusinessRestaurant(this.businessRestaurantForm.value).subscribe({
+        this.saasService.createBusinessRestaurant(payload).subscribe({
             next: (response) => {
                 this.businessRestaurantSaving = false;
                 this.businessRestaurantFormOpen = false;
@@ -545,7 +571,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             logo: restaurant.logo_url || (restaurant.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
             city: restaurant.city || '',
             owner_email: restaurant.owner_email || '',
-            owner_phone: restaurant.owner_phone || '',
+            owner_phone: restaurant.owner_phone || '+243',
             business_owner_user_id: restaurant.business_owner_user_id || '',
             can_manage_business_restaurants: Boolean(restaurant.can_manage_business_restaurants),
             features: {

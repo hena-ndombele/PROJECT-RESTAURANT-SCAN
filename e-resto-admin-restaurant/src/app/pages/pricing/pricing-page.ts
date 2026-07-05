@@ -163,6 +163,12 @@ export class PricingPage implements OnInit {
     if (slug.includes('starter') && !features.some((feature) => this.normalizeLabel(feature).includes('dashboard'))) {
       features.splice(2, 0, 'Dashboard et statistiques');
     }
+    if (slug.includes('starter') && !features.some((feature) => this.normalizeLabel(feature).includes('logo personnalisable'))) {
+      features.splice(3, 0, 'Logo personnalisable');
+    }
+    if ((slug.includes('pro') || slug.includes('business')) && !features.some((feature) => this.normalizeLabel(feature).includes('commandes groupees'))) {
+      features.splice(slug.includes('business') ? 1 : 2, 0, 'Commandes groupées');
+    }
     if ((slug.includes('pro') || slug.includes('business')) && !features.some((feature) => this.normalizeLabel(feature).includes('templates qr premium'))) {
       features.splice(slug.includes('business') ? 1 : Math.max(features.length - 1, 0), 0, 'Templates QR premium');
     }
@@ -193,7 +199,7 @@ export class PricingPage implements OnInit {
 
   private limitationsForPlan(slug: string): string[] {
     if (slug.includes('starter')) {
-      return ['Pas de réservations', 'Pas de feedback client', 'Pas de personnalisation'];
+      return ['Pas de réservations', 'Pas de feedback client', 'Pas de commandes groupées', 'Couleurs et templates avancés réservés aux plans Pro et Business'];
     }
 
     if (slug.includes('pro')) {
@@ -271,7 +277,7 @@ export class PricingPage implements OnInit {
         max_users: 5,
         max_dishes: 15,
         max_orders_per_month: 150,
-        features: ['Gestion des commandes', 'Templates QR Standard', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 20 000 FC'],
+        features: ['Gestion des commandes', 'Templates QR Standard', 'Cash uniquement', 'Sur place / Emporter', 'Support standard', 'Installation : 10$'],
         is_popular: false,
         is_active: true,
       },
@@ -288,7 +294,7 @@ export class PricingPage implements OnInit {
         max_users: null,
         max_dishes: null,
         max_orders_per_month: null,
-        features: ['Commandes illimitées', 'Plats illimités', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 20 000 FC'],
+        features: ['Commandes illimitées', 'Plats illimités', 'Réservations', 'Feedback client', 'Statistiques détaillées', 'Couleurs personnalisées', 'Support prioritaire', 'Installation : 15$'],
         is_popular: true,
         is_active: true,
       },
@@ -305,7 +311,7 @@ export class PricingPage implements OnInit {
         max_users: null,
         max_dishes: null,
         max_orders_per_month: null,
-        features: ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 30 000 FC', 'Multi-restaurants'],
+        features: ['Tout le plan Pro', 'Assistant intelligent dashboard', 'Statistiques avancées', 'Rôles et permissions', 'Support dédié', 'Onboarding personnalisé', 'Installation : 15$', 'Multi-restaurants'],
         is_popular: false,
         is_active: true,
       },

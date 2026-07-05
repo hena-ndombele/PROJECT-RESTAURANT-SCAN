@@ -139,6 +139,7 @@ class TableController extends Controller
     private function scopedTables(Request $request)
     {
         return Table::query()
+            ->where('name', '!=', 'Commandes hors restaurant')
             ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId));
     }
 
@@ -200,7 +201,7 @@ class TableController extends Controller
             $query['restaurant_slug'] = $slug;
         }
 
-        return rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.67:5173'), '/') . '/?' . http_build_query($query);
+        return rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.73:5173'), '/') . '/?' . http_build_query($query);
     }
 
     private function generateTableQrCode(Table $table, string $url): string

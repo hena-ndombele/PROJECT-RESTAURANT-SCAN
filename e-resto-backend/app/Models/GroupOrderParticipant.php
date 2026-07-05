@@ -15,6 +15,8 @@ class GroupOrderParticipant extends Model
         'name',
         'phone',
         'email',
+        'email_receipt_requested',
+        'email_feedback_requested',
         'is_creator',
         'is_ready',
         'last_seen_at',
@@ -23,6 +25,8 @@ class GroupOrderParticipant extends Model
     protected $casts = [
         'is_creator' => 'boolean',
         'is_ready' => 'boolean',
+        'email_receipt_requested' => 'boolean',
+        'email_feedback_requested' => 'boolean',
         'last_seen_at' => 'datetime',
     ];
 
