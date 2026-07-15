@@ -5,9 +5,11 @@
             <h1 class="mb-1">Tableau de bord
 </h1>
             <p class="mb-0">Suivez les commandes, les tables et les revenus par devise depuis votre espace restaurant.</p>
-            <a routerLink="/orders/list" class="promo-action">
-                Voir les commandes <i class="ti ti-arrow-right"></i>
-            </a>
+            @if (canAccess('orders.list')) {
+                <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" class="promo-action">
+                    Voir les commandes <i class="ti ti-arrow-right"></i>
+                </a>
+            }
         </div>
         <div class="promo-side">
             <button class="btn btn-light btn-sm" type="button" [disabled]="refreshing()" (click)="loadDashboard(true)">
@@ -26,7 +28,7 @@
     }
     @if (!canViewAnalytics()) {
         <div class="alert alert-warning border-0 shadow-sm">
-            Les Statistiques detaillées sont reservees aux plans Pro et Business. Le plan Starter garde le suivi operationnel du jour.
+            Les statistiques détaillées sont réservées aux plans Pro et Business. Le plan Starter garde le suivi opérationnel du jour.
         </div>
     } -->
 
@@ -37,9 +39,183 @@
         </div>
     } -->
 
-        <div class="row g-3 mb-4">
+    @if (canViewBusinessGlobal()) {
+        <div class="dashboard-view-tabs mb-4">
+            <button type="button" [class.active]="dashboardView() === 'restaurant'" (click)="switchDashboardView('restaurant')">
+                <i class="ti ti-building-store"></i>
+                Restaurant actuel
+            </button>
+            <button type="button" [class.active]="dashboardView() === 'business'" (click)="switchDashboardView('business')">
+                <i class="ti ti-chart-bar"></i>
+                Vue globale Business
+            </button>
+        </div>
+    }
+
+    @if (dashboardView() === 'business' && canViewBusinessGlobal()) {
+        @if (businessAnalytics(); as global) {
+            <section class="business-global mb-4">
+                <div class="business-global-head">
+                    <div>
+                        <span class="eyebrow">Groupe Business</span>
+                        <h2>Statistiques globales de tous les restaurants</h2>
+                        <p>{{ global.period?.label || 'Ce mois' }} : comparaison de tous les restaurants du groupe.</p>
+                    </div>
+                    <div class="business-export-actions">
+                        <button class="btn btn-outline-success btn-sm" type="button" [disabled]="!!businessExporting()" (click)="exportBusinessExcel()">
+                            <i class="ti ti-file-spreadsheet me-1"></i>
+                            Excel
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" type="button" [disabled]="!!businessExporting()" (click)="exportBusinessPdf()">
+                            <i class="ti ti-file-type-pdf me-1"></i>
+                            PDF
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" type="button" [disabled]="refreshing()" (click)="loadDashboard(true)">
+                            <i class="ti ti-refresh me-1"></i>
+                            Actualiser
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>CA total du mois</span>
+                            <strong>{{ businessRevenueList('revenue_month_by_currency') }}</strong>
+                            <small>{{ global.summary?.orders_month || 0 }} commandes</small>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>CA annuel</span>
+                            <strong>{{ businessRevenueList('revenue_year_by_currency') }}</strong>
+                            <small>{{ global.summary?.orders_year || 0 }} commandes</small>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>Meilleur restaurant</span>
+                            <strong>{{ global.summary?.best_restaurant?.name || 'Aucune donnée' }}</strong>
+                            <small>{{ restaurantRevenueList(global.summary?.best_restaurant) }}</small>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="global-stat-card">
+                            <span>Restaurant à suivre</span>
+                            <strong>{{ global.summary?.weakest_restaurant?.name || 'Aucune donnée' }}</strong>
+                            <small>{{ restaurantRevenueList(global.summary?.weakest_restaurant) }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-xl-8">
+                        <div class="panel-card business-ranking">
+                            <div class="panel-header">
+                                <div>
+                                    <h2>Classement des restaurants</h2>
+                                    <p>Commandes et chiffre d'affaires encaissé sur le mois choisi.</p>
+                                </div>
+                                <label class="business-month-filter">
+                                    <span>Mois</span>
+                                    <select [value]="selectedBusinessMonth()" (change)="onBusinessMonthChange($any($event.target).value)">
+                                        @for (month of businessMonthOptions; track month.value) {
+                                            <option [value]="month.value" [selected]="month.value === selectedBusinessMonth()">{{ month.label }}</option>
+                                        }
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th>Restaurant</th>
+                                        <th>Commandes</th>
+                                        <th>Revenus</th>
+                                        <th>Equipe</th>
+                                        <th>Tables</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (row of global.restaurants || []; track row.id) {
+                                            <tr>
+                                                <td>
+                                                    <div class="business-restaurant-cell">
+                                                        <img [src]="row.logo_url || 'assets/logo/e-resto-logo.png'" alt="">
+                                                        <div>
+                                                            <strong>{{ row.name }}</strong>
+                                                            <small>{{ row.city || 'Province non renseignée' }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{{ row.orders_count || 0 }}</td>
+                                                <td>{{ restaurantRevenueList(row) }}</td>
+                                                <td>{{ row.users_count || 0 }}</td>
+                                                <td>{{ row.tables_count || 0 }}</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-xl-4">
+                        <div class="panel-card h-100">
+                            <div class="panel-header">
+                                <div>
+                                    <h2>Top plats du groupe</h2>
+                                    <p>Plats les plus commandés ce mois.</p>
+                                </div>
+                            </div>
+                            <div class="top-list">
+                                @for (dish of global.top_dishes || []; track dish.name) {
+                                    <div class="top-item">
+                                        <div>
+                                            <strong>{{ dish.name }}</strong>
+                                            <small>{{ dish.quantity }} vendu(s)</small>
+                                        </div>
+                                        <span>{{ dish.revenue | number:'1.0-2' }}</span>
+                                    </div>
+                                } @empty {
+                                    <div class="empty-state">Aucun plat vendu ce mois.</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <div>
+                                    <h2>Evolution globale</h2>
+                                    <p>Commandes et revenus sur les 6 derniers mois.</p>
+                                </div>
+                            </div>
+                            <div class="business-evolution-grid">
+                                @for (month of global.monthly_evolution || []; track month.label) {
+                                    <article>
+                                        <span>{{ month.label }}</span>
+                                        <strong>{{ month.orders_count || 0 }} commandes</strong>
+                                        <small>{{ formatRevenueList(month.revenue_by_currency || []) }}</small>
+                                    </article>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        } 
+        <!-- @else {
+            <div class="dashboard-loading mb-4">
+                <div class="spinner-border spinner-border-sm text-primary"></div>
+                <span>Chargement des statistiques Business...</span>
+            </div>
+        } -->
+    } @else {
+        <div class="row g-3 mb-3">
             @for (card of kpiCards(); track card.label) {
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-6 col-xl-3">
                     <div class="metric-card tone-{{ card.tone }}">
                         <div class="metric-icon">
                             <i [class]="card.icon"></i>
@@ -54,11 +230,11 @@
             }
         </div>
 
+        @if (canViewAnalytics()) {
         <div class="wallet-section mb-4">
             <div class="wallet-section-head">
                 <span class="eyebrow">Wallet restaurant</span>
-                <h2>Revenus payés par devise
-</h2>
+
             </div>
             <div class="row g-3">
                 @for (period of ['today', 'month', 'year']; track period) {
@@ -80,44 +256,139 @@
                 }
             </div>
         </div>
+        }
 
         <div class="row g-3 mb-3">
             <div class="col-12 col-xl-8">
-                <div class="panel-card">
-                    <div class="panel-header">
+                <div class="panel-card chart-card analytics-card">
+                    <div class="card-header dashboard-card-header">
                         <div>
-                            <h2>Performance 7 jours</h2>
-                            <p>Commandes et revenus encaissés ou servis.</p>
+                            <h2>Évolution volume journalier</h2>
+                            <p>Volume des commandes par heure sur la période disponible.</p>
                         </div>
-                        <a routerLink="/orders/list" class="btn btn-outline-primary btn-sm">
-                            <i class="ti ti-list-details me-1"></i>
-                            Commandes
-                        </a>
+                        @if (canAccess('orders.list')) {
+                            <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" class="btn btn-outline-primary btn-sm">
+                                <i class="ti ti-list-details me-1"></i>
+                                Commandes
+                            </a>
+                        }
                     </div>
-                    <div id="salesPurchaseChart" class="chart-box"></div>
+                    <div class="card-body p-4">
+                        <div id="salesPurchaseChart" class="chart-box"></div>
+                    </div>
                 </div>
             </div>
-
             <div class="col-12 col-xl-4">
-                <div class="panel-card h-100">
-                    <div class="panel-header">
+                <div class="panel-card chart-card analytics-card">
+                    <div class="card-header dashboard-card-header">
                         <div>
-                            <h2>Etat du service</h2>
-                            <p>Répartition des commandes du jour.</p>
+                            <h2>Répartition statuts</h2>
+                            <p>Succès, attente et échec des commandes du jour.</p>
                         </div>
                     </div>
-                    <div id="customerChart" class="chart-box chart-small"></div>
-                    <div class="status-grid">
-                        @for (item of statusSummary(); track item.status) {
-                            <div class="status-item">
-                                <span class="badge rounded-pill" [ngClass]="item.className">{{ item.count }}</span>
-                                <small>{{ item.label }}</small>
-                            </div>
-                        }
+                    <div class="card-body p-4">
+                        <div id="customerChart" class="chart-box chart-small"></div>
+                        <div class="status-grid">
+                            @for (item of statusSummary(); track item.status) {
+                                <div class="status-item">
+                                    <span class="badge rounded-pill" [ngClass]="item.className">{{ item.count }}</span>
+                                    <small>{{ item.label }}</small>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-xl-4">
+                <div class="panel-card chart-card h-100">
+                    <div class="card-header dashboard-card-header">
+                        <div>
+                            <h2>Top plats</h2>
+                            <p>Plats les plus commandés ce mois.</p>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="top-list">
+                            @for (dish of topDishes(); track dish.name + dish.currency) {
+                                <div class="top-item">
+                                    <div>
+                                        <strong>{{ dish.name }}</strong>
+                                        <small>{{ dish.quantity }} vendu(s)</small>
+                                    </div>
+                                    <span>{{ dish.revenue | number:'1.0-2' }} {{ dish.currency }}</span>
+                                </div>
+                            } @empty {
+                                <div class="empty-state">Aucun plat vendu ce mois.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-8">
+        <div class="panel-card recent-orders-panel h-100">
+            <div class="card-header dashboard-card-header recent-orders-header">
+                <div>
+                    <h2>Commandes récentes</h2>
+                    <p>{{ recentOrdersDescription() }}</p>
+                </div>
+                <div class="recent-orders-actions">
+                    <input
+                        type="search"
+                        class="form-control form-control-sm"
+                        placeholder="Recherche rapide..."
+                        [value]="recentOrderSearch()"
+                        (input)="onRecentOrderSearch($any($event.target).value)"
+                    >
+                    @if (canAccess('orders.list')) {
+                        <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" class="small text-primary text-decoration-underline">Voir tout</a>
+                    }
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 table-hover text-nowrap dashboard-table">
+                    <thead class="table-light border-light">
+                    <tr>
+                        <th>Table</th>
+                        <th>Statut</th>
+                        <th>Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        @for (order of filteredRecentOrders(); track order.id) {
+                            <tr>
+                                <td>{{ order.table?.name || 'Sans table' }}</td>
+                                <td><span class="badge rounded-pill" [ngClass]="statusClass(order.status)">{{ order.status }}</span></td>
+                                <td class="fw-bold">{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</td>
+                            </tr>
+                        } @empty {
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">Aucune commande récente.</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <td class="border-bottom-0 small text-secondary">{{ filteredRecentOrders().length }} commande(s) affichée(s)</td>
+                        <td colspan="2" class="border-bottom-0">
+                            <nav aria-label="Pagination commandes" class="d-flex justify-content-end">
+                                <ul class="pagination mb-0 pagination-sm">
+                                    <li class="page-item disabled"><span class="page-link">Précédent</span></li>
+                                    <li class="page-item active"><span class="page-link">1</span></li>
+                                    <li class="page-item disabled"><span class="page-link">Suivant</span></li>
+                                </ul>
+                            </nav>
+                        </td>
+                    </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+            </div>
+        </div>
+    }
 
     @if (onboardingOpen()) {
         <div class="onboarding-backdrop">

@@ -78,9 +78,9 @@ export class EmployeeVerify implements OnInit {
       },
       error: (err) => {
         if (err?.status === 0) {
-          this.error.set(`Impossible de joindre le serveur de verification (${verificationApiRoot}). Verifiez que Laravel est lance sur l'adresse reseau du PC.`);
+          this.error.set(`Impossible de joindre le serveur de vérification (${verificationApiRoot}). Vérifiez que Laravel est lancé sur l'adresse réseau du PC.`);
         } else {
-          this.error.set(err?.error?.message || 'Badge invalide ou employe introuvable.');
+          this.error.set(err?.error?.message || 'Badge invalide ou employé introuvable.');
         }
         this.loading.set(false);
       },

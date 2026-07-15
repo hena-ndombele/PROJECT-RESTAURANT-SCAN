@@ -4,12 +4,12 @@ namespace App\Http\Controllers\agents;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class AgentController extends Controller
 {
@@ -34,10 +34,23 @@ class AgentController extends Controller
             'emergency_contact_phone' => 'nullable|string|max:60',
         ]);
 
+        if ($response = $this->ensureEmailAvailableForAgent($validated['email'])) {
+            return $response;
+        }
+
+        $restaurant = $request->user()?->restaurant()->with('plan')->first();
+        $restaurantId = $request->user()?->restaurant_id;
+        $teamLimit = $restaurant?->plan?->maxUsers();
+
+        if ($restaurant && $teamLimit !== null && $restaurant->agents()->count() >= $teamLimit) {
+            return response()->json([
+                'message' => "Limite de {$teamLimit} utilisateurs et equipe atteinte pour le plan {$restaurant->plan?->name}.",
+                'requires_upgrade' => true,
+            ], 422);
+        }
+
         try {
-            $result = DB::transaction(function () use ($request, $validated) {
-                $restaurant = $request->user()?->restaurant;
-                $restaurantId = $request->user()?->restaurant_id;
+            $result = DB::transaction(function () use ($request, $validated, $restaurantId) {
                 $photoPath = null;
 
                 if ($request->hasFile('photo')) {
@@ -65,24 +78,18 @@ class AgentController extends Controller
                     'emergency_contact_phone' => $validated['emergency_contact_phone'] ?? null,
                 ]);
 
-                $agent = $agent->fresh();
-
-                return [
-                    'agent' => $agent,
-                    'qr_code' => $this->agentQrCode($agent),
-                ];
+                return $agent->fresh();
             });
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Employe cree avec succes',
-                'agent' => $this->agentPayload($result['agent']),
-                'qr_code' => $result['qr_code'],
+                'agent' => $this->agentPayload($result),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Erreur lors de la creation de l agent.',
+                'message' => 'Erreur lors de la création de l\'agent.',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -129,7 +136,6 @@ class AgentController extends Controller
                 'name' => $agent->restaurant?->name,
                 'logo_data_url' => $this->publicDiskDataUrl($agent->restaurant?->logo),
             ],
-            'qr_code' => $this->agentQrCode($agent),
         ], 200);
     }
 
@@ -213,6 +219,10 @@ class AgentController extends Controller
             'emergency_contact_phone' => 'nullable|string|max:60',
         ]);
 
+        if (array_key_exists('email', $validated) && $response = $this->ensureEmailAvailableForAgent($validated['email'], $agent->user_id)) {
+            return $response;
+        }
+
         if ($request->hasFile('photo')) {
             $validated['photo'] = $request->file('photo')->store("agents/{$agent->restaurant_id}", 'public');
         }
@@ -259,17 +269,6 @@ class AgentController extends Controller
         } while (Agent::where('matricule', $matricule)->exists());
 
         return $matricule;
-    }
-
-    private function agentQrCode(Agent $agent): string
-    {
-        $svg = QrCode::format('svg')
-            ->size(260)
-            ->errorCorrection('H')
-            ->margin(1)
-            ->generate($this->verificationUrl($agent));
-
-        return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
     private function verificationUrl(Agent $agent): string
@@ -328,5 +327,28 @@ class AgentController extends Controller
             'created_at' => $agent->created_at?->toIso8601String(),
             'updated_at' => $agent->updated_at?->toIso8601String(),
         ];
+    }
+
+    private function ensureEmailAvailableForAgent(string $email, ?string $allowedUserId = null)
+    {
+        $existingUser = User::where('email', $email)
+            ->when($allowedUserId, fn ($query) => $query->where('id', '!=', $allowedUserId))
+            ->first();
+
+        if (!$existingUser) {
+            return null;
+        }
+
+        $sameRestaurant = $existingUser->restaurant_id === request()->user()?->restaurant_id;
+        $message = $sameRestaurant
+            ? 'Cette adresse email possède déjà un compte utilisateur dans ce restaurant.'
+            : 'Cette adresse email existe déjà comme compte utilisateur dans un autre restaurant. Utilisez un autre email ou ajoutez plus tard un accès multi-restaurant à ce compte.';
+
+        return response()->json([
+            'message' => $message,
+            'errors' => [
+                'email' => [$message],
+            ],
+        ], 422);
     }
 }

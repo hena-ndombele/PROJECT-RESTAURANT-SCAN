@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\plats;
 
+use App\Events\MenuUpdated;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plat;
@@ -81,6 +82,10 @@ public function store(Request $request)
         'preparation_time' => 'nullable|integer', // Temps en minutes
         'is_available' => 'nullable|boolean',     // Disponibilité
         'ingredients' => 'nullable|array',         // Tableau d'ingrédients
+        'sizes' => 'nullable|array|max:1',
+        'sizes.*' => 'string|in:small,medium,large',
+        'promotion_percent' => 'nullable|integer|min:1|max:95',
+        'promotion_ends_at' => 'nullable|date|after_or_equal:today',
         'image_principale' => 'required|image|mimes:jpg,jpeg,png,webp|max:4096',
         'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
         'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
@@ -104,6 +109,22 @@ public function store(Request $request)
     if ($request->has('ingredients')) {
         $data['ingredients'] = $request->input('ingredients');
     }
+    if ($request->has('sizes')) {
+        $data['sizes'] = array_values(array_unique($request->input('sizes', [])));
+    }
+
+    $promotionFieldsRequested = $request->filled('promotion_percent') || $request->filled('promotion_ends_at');
+    if ($promotionFieldsRequested) {
+        if (!$this->canUseDishPromotions($restaurant)) {
+            return response()->json([
+                'message' => "Les promotions des plats ne sont pas activees pour ce plan.",
+                'requires_upgrade' => true,
+            ], 403);
+        }
+
+        $data['promotion_percent'] = $request->filled('promotion_percent') ? (int) $request->input('promotion_percent') : null;
+        $data['promotion_ends_at'] = $request->filled('promotion_ends_at') ? $request->input('promotion_ends_at') : null;
+    }
 
     // Stockage des images
     if ($request->hasFile('image_principale')) {
@@ -117,6 +138,7 @@ public function store(Request $request)
     }
 
     $plat = Plat::create($data);
+    $this->broadcastMenuUpdated($plat->restaurant_id, 'dish_created');
 
     return response()->json([
         'message' => 'Plat créé avec succès', 
@@ -201,6 +223,12 @@ public function update(Request $request, $id)
         'preparation_time' => 'nullable|integer',
         'is_available' => 'nullable|boolean',
         'ingredients' => 'nullable|array',
+        'sizes' => 'nullable|array|max:1',
+        'sizes.*' => 'string|in:small,medium,large',
+        'sizes_clear' => 'nullable|boolean',
+        'promotion_percent' => 'nullable|integer|min:1|max:95',
+        'promotion_ends_at' => 'nullable|date|after_or_equal:today',
+        'promotion_clear' => 'nullable|boolean',
         'image_principale' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
         'image_secondaire_1' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
         'image_secondaire_2' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
@@ -212,6 +240,31 @@ public function update(Request $request, $id)
     // Gestion de la disponibilité si présente dans la requête
     if ($request->has('is_available')) {
         $data['is_available'] = $request->boolean('is_available');
+    }
+    if ($request->has('sizes')) {
+        $data['sizes'] = array_values(array_unique($request->input('sizes', [])));
+    } elseif ($request->boolean('sizes_clear')) {
+        $data['sizes'] = [];
+    }
+    $restaurant = $request->user()?->restaurant()->with('plan')->first();
+    $promotionFieldsRequested = $request->filled('promotion_percent') || $request->filled('promotion_ends_at') || $request->boolean('promotion_clear');
+    unset($data['promotion_clear']);
+
+    if ($promotionFieldsRequested) {
+        if (!$this->canUseDishPromotions($restaurant)) {
+            return response()->json([
+                'message' => "Les promotions des plats ne sont pas activees pour ce plan.",
+                'requires_upgrade' => true,
+            ], 403);
+        }
+
+        if ($request->boolean('promotion_clear')) {
+            $data['promotion_percent'] = null;
+            $data['promotion_ends_at'] = null;
+        } else {
+            $data['promotion_percent'] = $request->filled('promotion_percent') ? (int) $request->input('promotion_percent') : null;
+            $data['promotion_ends_at'] = $request->filled('promotion_ends_at') ? $request->input('promotion_ends_at') : null;
+        }
     }
 
     // Mapping des inputs vers les colonnes de la DB
@@ -234,9 +287,10 @@ public function update(Request $request, $id)
 
     // Mise à jour globale
     $plat->update($data);
+    $this->broadcastMenuUpdated($plat->restaurant_id, 'dish_updated');
 
     return response()->json([
-        'message' => 'Plat mis à jour avec succès',
+        'message' => 'Menu mis à jour avec succès',
         'data' => $plat->load('category')
     ]);
 }
@@ -270,7 +324,9 @@ public function update(Request $request, $id)
             Storage::disk('public')->delete($plat->image);
         }
 
+        $restaurantId = $plat->restaurant_id;
         $plat->delete();
+        $this->broadcastMenuUpdated($restaurantId, 'dish_deleted');
 
         return response()->json([
             'message' => 'Plat supprimé avec succès'
@@ -308,5 +364,23 @@ public function update(Request $request, $id)
             ->paginate(10);
 
         return response()->json($plats);
+    }
+
+    private function broadcastMenuUpdated(?string $restaurantId, string $reason): void
+    {
+        if (!$restaurantId) {
+            return;
+        }
+
+        try {
+            broadcast(new MenuUpdated($restaurantId, $reason))->toOthers();
+        } catch (\Throwable) {
+            // Keep the saved change even when the realtime server is unavailable.
+        }
+    }
+
+    private function canUseDishPromotions($restaurant): bool
+    {
+        return (bool) $restaurant?->plan?->allows('dish_promotions');
     }
 }

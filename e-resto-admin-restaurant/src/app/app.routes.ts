@@ -26,18 +26,19 @@ import {RestaurantSignup} from "./pages/restaurant-signup/restaurant-signup";
 import {RestaurantCheckout} from "./pages/restaurant-checkout/restaurant-checkout";
 import {RestaurantLogin} from "./pages/restaurant-login/restaurant-login";
 import {RestaurantSettings} from "./pages/restaurant-settings/restaurant-settings";
+import {RestaurantSubscription} from "./pages/restaurant-subscription/restaurant-subscription";
 import {Otp} from "./features/auth/otp/otp";
 import {EmployeeVerify} from "./pages/employee-verify/employee-verify";
 
 export const routes: Routes = [
 
-  { path: '', component: SaasLanding, title: 'Restaura Scan- Plateforme restaurant' },
+  { path: '', component: SaasLanding, title: 'Restaurant Scan- Plateforme restaurant' },
   { path: 'pricing', component: PricingPage, title: 'Pricing Restaurant Scan' },
-  { path: 'restaurant/signup', component: RestaurantSignup, title: 'Creation compte restaurant - Restaurant Scan' },
+  { path: 'restaurant/signup', component: RestaurantSignup, title: 'Création compte restaurant - Restaurant Scan' },
   { path: 'restaurant/checkout', component: RestaurantCheckout, title: 'Paiement abonnement - Restaurant Scan' },
   { path: 'restaurant/login', component: RestaurantLogin, title: 'Connexion restaurant - Restaurant Scan' },
-  { path: 'auth/otp', component: Otp, title: 'Verification OTP - Restaurant Scan' },
-  { path: 'employee/verify/:id', component: EmployeeVerify, title: 'Verification badge employe - Restaurant Scan' },
+  { path: 'auth/otp', component: Otp, title: 'Vérification OTP - Restaurant Scan' },
+  { path: 'employee/verify/:id', component: EmployeeVerify, title: 'Vérification badge employé - Restaurant Scan' },
 
   {
     path: '',
@@ -46,12 +47,13 @@ export const routes: Routes = [
       { path: 'dashboard', component: Dashboard, title: 'Dashboard - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'dashboard.view' } },
       { path: 'agents/list-agent', component: ListAgent, title: 'Agents - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'agents.list' } },
       { path: 'category/list-category', component: ListCategory, title: 'Category', canActivate: [AuthGuard], data: { permission: 'categories.list' } },
-      { path: 'tables/list-table', component: ListTable, title: 'Tables - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'tables.list' } },
+      { path: 'tables/list-table', component: ListTable, title: 'Tables - Restaurant Scan', canActivate: [AuthGuard], data: { permission: ['tables.list', 'tables.view', 'tables.create', 'tables.update', 'tables.delete'] } },
       { path: 'table/list-table', redirectTo: 'tables/list-table', pathMatch: 'full' },
       { path: 'auth/profile', component: Profile, title: 'Profile', canActivate: [AuthGuard], data: { permission: 'profile.view' } },
       { path: 'feedback/list', component: ListFeedback, title: 'FeedBack', canActivate: [AuthGuard], data: { permission: 'feedback.list' } },
       { path: 'orders/list', component: ListOrders, title: 'Orders', canActivate: [AuthGuard], data: { permission: 'orders.list' } },
-      { path: 'restaurant/settings', component: RestaurantSettings, title: 'Parametres restaurant - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'settings.view' } },
+      { path: 'restaurant/settings', component: RestaurantSettings, title: 'Paramètres restaurant - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'settings.view' } },
+      { path: 'restaurant/subscription', component: RestaurantSubscription, title: 'Abonnement - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'subscription.view' } },
       { path: 'dish/list-dish', component: ListDish, title: 'Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.list' } },
       { path: 'dish/show/:id', component: ShowDish, title: 'Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.view' } },
       { path: 'dish/edit/:id', component: UpdateDish, title: 'Update Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.update' } },
@@ -59,7 +61,7 @@ export const routes: Routes = [
       { path: 'identity/list-roles', component: ListRole, title: 'Role - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'roles.list' } },
       { path: 'identity/list-users', component: ListUser, title: 'Users - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'users.list' } },
       { path: 'table/floor-table', component: FloorTable, title: 'Floor Table - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'tables.list' } },
-      { path: 'table/reservation-table', component: Reservation, title: 'Reservation Table - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'reservations.list' } },
+      { path: 'table/reservation-table', component: Reservation, title: 'Réservations - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'reservations.list' } },
       { path: 'create-product', component: CreateProductPageComponent, title: 'Create Product - InApp Inventory Dashboard' },
       { path: 'reports', component: ReportsPageComponent, title: 'Reports - InApp Inventory Dashboard' },
       { path: 'docs', component: DocsPageComponent, title: 'Documentation - InApp Inventory Dashboard' }

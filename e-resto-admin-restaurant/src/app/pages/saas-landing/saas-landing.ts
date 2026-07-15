@@ -46,7 +46,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     name: '',
     owner_name: '',
     owner_email: '',
-    owner_phone: '',
+    owner_phone: '+243',
     city: '',
   };
 
@@ -60,7 +60,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   contactForm = {
     name: '',
     email: '',
-    phone: '',
+    phone: '+243',
     subject: '',
     message: '',
   };
@@ -141,7 +141,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     this.saas.registerInterest(this.lead).subscribe({
       next: () => {
         this.message = 'Abonnement initialisé. Redirection vers votre espace restaurant...';
-        this.lead = { name: '', owner_name: '', owner_email: '', owner_phone: '', city: '', saas_plan_id: this.lead.saas_plan_id };
+        this.lead = { name: '', owner_name: '', owner_email: '', owner_phone: '+243', city: '', saas_plan_id: this.lead.saas_plan_id };
         this.isSubmitting = false;
         setTimeout(() => this.router.navigate(['/dashboard']), 700);
       },
@@ -229,7 +229,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
         this.contactForm = {
           name: '',
           email: '',
-          phone: '',
+          phone: '+243',
           subject: '',
           message: '',
         };
@@ -258,8 +258,8 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
 
     const slug = String(plan.slug || plan.name).toLowerCase();
     if (slug.includes('starter')) return 12;
-    if (slug.includes('pro')) return 20;
-    if (slug.includes('business')) return 25;
+    if (slug.includes('pro')) return 30;
+    if (slug.includes('business')) return 40;
 
     return price;
   }
@@ -297,11 +297,11 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
 
   private publicErrorMessage(error: any, fallback: string): string {
     if (error?.status === 0) {
-      return "Impossible de joindre le serveur. Verifiez que l'API Laravel est demarree sur le port 8000.";
+      return "Impossible de joindre le serveur.";
     }
 
     if (error?.name === 'TimeoutError') {
-      return 'Le serveur met trop de temps a repondre. Reessayez dans un instant.';
+      return 'Le serveur met trop de temps a repondre. Réessayez dans un instant.';
     }
 
     const errors = error?.error?.errors;

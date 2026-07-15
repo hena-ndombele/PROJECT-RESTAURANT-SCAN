@@ -1,5 +1,10 @@
-<button type="button" class="btn btn-primary text-black create-employee-btn" data-bs-toggle="modal" data-bs-target="#createAgentModal">
-    <i class="ti ti-plus me-1"></i> Créer un employé
+<button type="button"
+        class="btn btn-primary text-black create-employee-btn"
+        [disabled]="disabled"
+        [title]="disabled ? limitMessage : 'Creer un employe'"
+        [attr.data-bs-toggle]="disabled ? null : 'modal'"
+        [attr.data-bs-target]="disabled ? null : '#createAgentModal'">
+    <i class="ti ti-plus me-1"></i> Creer un employe
 </button>
 
 <div class="modal fade" id="createAgentModal" tabindex="-1" aria-labelledby="createAgentModalLabel" aria-hidden="true">
@@ -7,8 +12,8 @@
         <div class="modal-content border-0 shadow text-start employee-modal">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" id="createAgentModalLabel">Nouvel employé</h5>
-                    <p class="mb-0 text-muted small">Création du compte, informations RH et badge professionnel.</p>
+                    <h5 class="modal-title fs-3 mb-1" id="createAgentModalLabel">Nouvel employe</h5>
+                    <p class="mb-0 text-muted small">Creation du compte et informations employe.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -17,15 +22,11 @@
                 <div class="wizard-steps mb-4">
                     <button type="button" class="wizard-step" [class.active]="currentStep === 1" [class.done]="currentStep > 1" (click)="currentStep = 1">
                         <span>1</span>
-                        Identité
+                        Identite
                     </button>
-                    <button type="button" class="wizard-step" [class.active]="currentStep === 2" [class.done]="currentStep > 2" (click)="validateStep(1) && (currentStep = 2)">
+                    <button type="button" class="wizard-step" [class.active]="currentStep === 2" (click)="validateStep(1) && (currentStep = 2)">
                         <span>2</span>
                         Poste
-                    </button>
-                    <button type="button" class="wizard-step" [class.active]="currentStep === 3" (click)="validateStep(1) && validateStep(2) && (currentStep = 3)">
-                        <span>3</span>
-                        Badge
                     </button>
                 </div>
 
@@ -39,7 +40,7 @@
                                     } @else {
                                         <span class="photo-placeholder">
                                             <i class="ti ti-camera"></i>
-                                            Photo employé
+                                            Photo employe
                                         </span>
                                     }
                                     <input type="file" accept="image/*" (change)="onPhotoSelected($event)">
@@ -49,15 +50,15 @@
                             <div class="col-lg-8">
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label">Prénom <span class="text-danger">*</span></label>
+                                        <label class="form-label">Prenom <span class="required-star">*</span></label>
                                         <input type="text" class="form-control" formControlName="first_name" placeholder="Prenom">
                                         @if (agentForm.get('first_name')?.invalid && agentForm.get('first_name')?.touched) {
-                                            <small class="text-danger">Le prénom est obligatoire.</small>
+                                            <small class="text-danger">Le prenom est obligatoire.</small>
                                         }
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Nom <span class="text-danger">*</span></label>
+                                        <label class="form-label">Nom <span class="required-star">*</span></label>
                                         <input type="text" class="form-control" formControlName="last_name" placeholder="Nom">
                                         @if (agentForm.get('last_name')?.invalid && agentForm.get('last_name')?.touched) {
                                             <small class="text-danger">Le nom est obligatoire.</small>
@@ -65,7 +66,7 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Email de connexion <span class="text-danger">*</span></label>
+                                        <label class="form-label">Email de connexion <span class="required-star">*</span></label>
                                         <input type="email" class="form-control" formControlName="email" placeholder="email@restaurant.com">
                                         @if (agentForm.get('email')?.invalid && agentForm.get('email')?.touched) {
                                             <small class="text-danger">Entrez une adresse email valide.</small>
@@ -73,15 +74,15 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Téléphone <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" formControlName="phone_number" placeholder="+243...">
+                                        <label class="form-label">Telephone <span class="required-star">*</span></label>
+                                        <input type="tel" class="form-control" formControlName="phone_number" placeholder="+243..." autocomplete="tel">
                                         @if (agentForm.get('phone_number')?.invalid && agentForm.get('phone_number')?.touched) {
-                                            <small class="text-danger">Le téléphone est obligatoire.</small>
+                                            <small class="text-danger">Le telephone est obligatoire.</small>
                                         }
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label">Adresse <span class="text-danger">*</span></label>
+                                        <label class="form-label">Adresse <span class="required-star">*</span></label>
                                         <textarea class="form-control" formControlName="address" rows="3" placeholder="Adresse complete"></textarea>
                                         @if (agentForm.get('address')?.invalid && agentForm.get('address')?.touched) {
                                             <small class="text-danger">L'adresse est obligatoire.</small>
@@ -95,7 +96,7 @@
                     @if (currentStep === 2) {
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Fonction <span class="text-danger">*</span></label>
+                                <label class="form-label">Fonction <span class="required-star">*</span></label>
                                 <input type="text" class="form-control" formControlName="fonction" placeholder="Manager, serveur, cuisinier...">
                                 @if (agentForm.get('fonction')?.invalid && agentForm.get('fonction')?.touched) {
                                     <small class="text-danger">La fonction est obligatoire.</small>
@@ -103,7 +104,7 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Matricule <span class="text-danger">*</span></label>
+                                <label class="form-label">Matricule <span class="required-star">*</span></label>
                                 <input type="text" class="form-control" formControlName="matricule" placeholder="EMP-001">
                                 @if (agentForm.get('matricule')?.invalid && agentForm.get('matricule')?.touched) {
                                     <small class="text-danger">Le matricule est obligatoire.</small>
@@ -111,7 +112,7 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Niveau d'étude</label>
+                                <label class="form-label">Niveau d'etude</label>
                                 <input type="text" class="form-control" formControlName="education_level" placeholder="Diplome, formation...">
                             </div>
 
@@ -155,54 +156,8 @@
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label">Téléphone urgence</label>
-                                <input type="text" class="form-control" formControlName="emergency_contact_phone" placeholder="+243...">
-                            </div>
-                        </div>
-                    }
-
-                    @if (currentStep === 3) {
-                        <div class="badge-stage">
-                            <div class="employee-badge" #badgePreview>
-                                <div class="badge-top" [style.background]="restaurantData.primaryColor">
-                                    <img [src]="restaurantData.logo" alt="Logo restaurant">
-                                    <div>
-                                        <strong>{{ restaurantData.name }}</strong>
-                                        <span>Badge professionnel</span>
-                                    </div>
-                                </div>
-
-                                <div class="badge-body">
-                                    <div class="badge-photo">
-                                        @if (badgePhoto) {
-                                            <img [src]="badgePhoto" alt="Photo employe">
-                                        } @else {
-                                            <span>{{ fullName.slice(0, 2).toUpperCase() }}</span>
-                                        }
-                                    </div>
-
-                                    <div class="badge-info">
-                                        <h4>{{ fullName }}</h4>
-                                        <p>{{ agentForm.get('fonction')?.value || 'Fonction employe' }}</p>
-                                        <small>{{ restaurantData.name }}</small>
-                                        <div class="matricule-box">
-                                            <span>Matricule</span>
-                                            <strong>{{ badgeMatricule }}</strong>
-                                        </div>
-                                    </div>
-
-                                    <div class="badge-qr">
-                                        <img [src]="previewQrCode" alt="QR badge">
-                                        <span>QR Code</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="badge-actions">
-                                <div class="badge-note">
-                                    <i class="ti ti-qrcode"></i>
-                                    <span>Le QR Code officiel sera génére au moment de la création, puis integré au badge téléchargeable.</span>
-                                </div>
+                                <label class="form-label">Telephone urgence</label>
+                                <input type="tel" class="form-control" formControlName="emergency_contact_phone" placeholder="+243..." autocomplete="tel">
                             </div>
                         </div>
                     }
@@ -227,7 +182,7 @@
                                 <span class="spinner-border spinner-border-sm me-1"></span>
                             }
                             <i class="bi bi-plus-circle me-1"></i>
-                            Créer et générer le badge
+                            Créer l'employé
                         </button>
                     }
                 </div>

@@ -24,7 +24,7 @@ export class UpdateAgent implements OnInit {
     first_name: new FormControl("", [Validators.required]),
     last_name: new FormControl("", [Validators.required]),
     email: new FormControl("", [Validators.required, Validators.email]),
-    phone_number: new FormControl("", [Validators.required]),
+    phone_number: new FormControl("+243", [Validators.required]),
     address: new FormControl("", [Validators.required]),
     education_level: new FormControl(""),
     fonction: new FormControl("", [Validators.required]),
@@ -34,7 +34,7 @@ export class UpdateAgent implements OnInit {
     shift: new FormControl("Jour"),
     hired_at: new FormControl(""),
     emergency_contact_name: new FormControl(""),
-    emergency_contact_phone: new FormControl(""),
+    emergency_contact_phone: new FormControl("+243"),
   });
 
   ngOnInit(): void {
@@ -51,7 +51,7 @@ export class UpdateAgent implements OnInit {
         first_name: this.agentDetail?.first_name || "",
         last_name: this.agentDetail?.last_name || "",
         email: this.agentDetail?.email || "",
-        phone_number: this.agentDetail?.phone_number || "",
+        phone_number: this.agentDetail?.phone_number || "+243",
         address: this.agentDetail?.address || "",
         education_level: this.agentDetail?.education_level || "",
         fonction: this.agentDetail?.fonction || "",
@@ -61,7 +61,7 @@ export class UpdateAgent implements OnInit {
         shift: this.agentDetail?.shift || "Jour",
         hired_at: this.agentDetail?.hired_at || "",
         emergency_contact_name: this.agentDetail?.emergency_contact_name || "",
-        emergency_contact_phone: this.agentDetail?.emergency_contact_phone || "",
+        emergency_contact_phone: this.agentDetail?.emergency_contact_phone || "+243",
       });
     });
   }
@@ -97,17 +97,18 @@ export class UpdateAgent implements OnInit {
         this.isLoading = false;
         Swal.fire({
           title: "Mis a jour",
-          text: "Employe mis a jour avec succes.",
+          text: "Employé mis à jour avec succès.",
           icon: "success",
           confirmButtonText: "Fermer",
-          confirmButtonColor: "#F9A11B",
+          confirmButtonColor: "#ff7a1a",
           timer: 2500,
           timerProgressBar: true,
         }).then(() => window.location.reload());
       },
       error: (err) => {
         this.isLoading = false;
-        Swal.fire("Erreur", err.error?.message || "Impossible de modifier l employe.", "error");
+        const emailError = err.error?.errors?.email?.[0];
+        Swal.fire("Erreur", emailError || err.error?.message || "Impossible de modifier l'employé.", "error");
       }
     });
   }

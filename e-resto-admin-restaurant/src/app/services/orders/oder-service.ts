@@ -44,6 +44,12 @@ export class OderService {
         );
     }
 
+    show(id: string): Observable<Order> {
+        return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
+            map(response => response.order ? response.order : response)
+        );
+    }
+
     updatePaymentStatus(id: string, payload: {
         payment_status: Order["payment_status"];
         method?: string;

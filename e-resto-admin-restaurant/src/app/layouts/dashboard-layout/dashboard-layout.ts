@@ -12,11 +12,18 @@ import { Subscription } from "rxjs";
 import { AppPermissionService } from "../../services/auth/permission-service";
 import { STORAGE_ROOT } from "../../services/api-url";
 import { Order } from "../../models/orders/OrderDto";
+import { SaasService } from "../../services/saas/saas-service";
+import { CONGO_PROVINCES } from "../../shared/congo-provinces";
 
 interface BeforeInstallPromptEvent extends Event {
     readonly platforms: string[];
     readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
     prompt(): Promise<void>;
+}
+
+interface IncomingOrderAlert {
+    order: Order;
+    receivedAt: Date;
 }
 
 @Component({
@@ -38,14 +45,19 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private translate = inject(TranslateService);
     private reservationService = inject(ReservationService);
     private permissions = inject(AppPermissionService);
+    private saasService = inject(SaasService);
     private reservationBadgeTimer?: ReturnType<typeof setInterval>;
+    private businessRestaurantTimer?: ReturnType<typeof setInterval>;
     private reservationCreatedSubscription?: Subscription;
     private orderChangedSubscription?: Subscription;
+    private businessRestaurantsChangedSubscription?: Subscription;
     private deferredInstallPrompt?: BeforeInstallPromptEvent;
     private installDismissedForCurrentView = false;
     private installPromptCheckTimer?: ReturnType<typeof setTimeout>;
+    private readonly installedStorageKey = 'restaurant_scan_pwa_installed';
 
     passwordForm: FormGroup;
+    businessRestaurantForm: FormGroup;
 
     constructor() {
         this.passwordForm = this.fb.group({
@@ -53,6 +65,15 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             new_password: ['', [Validators.required, Validators.minLength(6)]],
             new_password_confirmation: ['', [Validators.required]]
         }, { validator: this.passwordMatchValidator });
+
+        this.businessRestaurantForm = this.fb.group({
+            name: ['', [Validators.required, Validators.maxLength(255)]],
+            city: ['', [Validators.maxLength(120)]],
+            commune: ['', [Validators.maxLength(120)]],
+            address: ['', [Validators.maxLength(255)]],
+            owner_phone: ['+243', [Validators.maxLength(30)]],
+            currency: ['CDF', [Validators.required]],
+        });
     }
 
     userData: any = {
@@ -64,7 +85,8 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         name: 'Restaurant Scan',
         logo: 'assets/logo/e-resto-logo.png',
         city: '',
-        owner_phone: '',
+        owner_email: '',
+        owner_phone: '+243',
         features: {},
         theme: {},
     };
@@ -86,11 +108,19 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected installAvailable = false;
     protected iosInstallHelp = false;
     protected manualInstallHelp = false;
-    protected incomingOrder: Order | null = null;
+    protected incomingOrders: IncomingOrderAlert[] = [];
+    protected readonly maxIncomingOrders = 8;
+    protected businessRestaurants: any[] = [];
+    protected businessRestaurantLimit: number | null = null;
+    protected businessRestaurantPanelOpen = false;
+    protected businessRestaurantFormOpen = false;
+    protected businessRestaurantLoading = false;
+    protected businessRestaurantSaving = false;
+    protected provinces = CONGO_PROVINCES;
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
             from: 'bot',
-            text: 'Bonjour, je suis votre Assistant Restaurant Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les reservations et votre plan.',
+            text: 'Bonjour, je suis votre Assistant Restaurant Scan. Je peux vous aider avec les commandes, les statistiques, les QR codes, les réservations et votre plan.',
         },
     ];
 
@@ -114,8 +144,11 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                 return;
             }
 
-            this.incomingOrder = order;
+            this.addIncomingOrder(order);
             this.cdref.detectChanges();
+        });
+        this.businessRestaurantsChangedSubscription = this.orderRealtime.businessRestaurantsChanged$.subscribe((payload) => {
+            this.handleBusinessRestaurantsRealtime(payload);
         });
         const userData = this.authService.getUserData();
         const restaurantSession = localStorage.getItem('restaurant_session');
@@ -132,6 +165,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         this.subscriptionInfo = this.buildSubscriptionInfo(restaurant);
         this.applyRestaurantTheme(restaurant);
+        if (this.canManageBusinessRestaurants()) {
+            this.loadBusinessRestaurants();
+            this.businessRestaurantTimer = setInterval(() => this.loadBusinessRestaurants(), 10000);
+        }
         this.loginInfo = {
             connectedAt: this.resolveLoginDate(),
         };
@@ -171,8 +208,12 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         if (this.reservationBadgeTimer) {
             clearInterval(this.reservationBadgeTimer);
         }
+        if (this.businessRestaurantTimer) {
+            clearInterval(this.businessRestaurantTimer);
+        }
         this.reservationCreatedSubscription?.unsubscribe();
         this.orderChangedSubscription?.unsubscribe();
+        this.businessRestaurantsChangedSubscription?.unsubscribe();
     }
 
     currentLang = localStorage.getItem('app_lang') || 'fr';
@@ -209,13 +250,295 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         setTimeout(() => this.orderRealtime.markNotificationsRead(), 1200);
     }
 
-    protected dismissIncomingOrder(): void {
-        this.incomingOrder = null;
+    protected dismissIncomingOrder(orderId?: string): void {
+        if (!orderId) {
+            this.incomingOrders = [];
+            return;
+        }
+
+        this.incomingOrders = this.incomingOrders.filter((item) => item.order.id !== orderId);
     }
 
-    protected openIncomingOrder(): void {
-        this.incomingOrder = null;
-        this.router.navigate(['/orders/list']);
+    protected openIncomingOrder(orderId?: string): void {
+        this.dismissIncomingOrder(orderId);
+        this.router.navigate(['/orders/list'], { queryParams: { status: 'pending' } });
+    }
+
+    protected incomingOrderIndex(index: number): number {
+        return this.incomingOrders.length - index;
+    }
+
+    private addIncomingOrder(order: Order): void {
+        if (!order?.id) return;
+
+        const withoutSameOrder = this.incomingOrders.filter((item) => item.order.id !== order.id);
+        this.incomingOrders = [
+            { order, receivedAt: new Date() },
+            ...withoutSameOrder,
+        ].slice(0, this.maxIncomingOrders);
+    }
+
+    protected toggleBusinessRestaurantPanel(): void {
+        this.businessRestaurantPanelOpen = !this.businessRestaurantPanelOpen;
+        if (this.businessRestaurantPanelOpen && this.canManageBusinessRestaurants()) {
+            this.loadBusinessRestaurants();
+        }
+    }
+
+    protected closeBusinessRestaurantPanel(): void {
+        this.businessRestaurantPanelOpen = false;
+        this.businessRestaurantFormOpen = false;
+    }
+
+    protected openBusinessRestaurantForm(): void {
+        this.businessRestaurantFormOpen = true;
+        this.businessRestaurantForm.reset({
+            name: '',
+            city: '',
+            commune: '',
+            address: '',
+            owner_phone: this.restaurantData.owner_phone || '+243',
+            currency: 'CDF',
+        });
+    }
+
+    protected normalizeCongoPhone(value: string | null | undefined): string {
+        const raw = String(value || '').trim();
+        if (!raw || raw === '+243') return '+243';
+
+        let digits = raw.replace(/[^\d]/g, '');
+        if (digits.startsWith('00')) {
+            digits = digits.slice(2);
+        }
+        if (digits.startsWith('0')) {
+            digits = `243${digits.slice(1)}`;
+        }
+        if (!digits.startsWith('243')) {
+            digits = `243${digits}`;
+        }
+
+        return `+${digits}`;
+    }
+
+    protected createBusinessRestaurant(): void {
+        if (this.businessRestaurantForm.invalid || this.businessRestaurantSaving) {
+            this.businessRestaurantForm.markAllAsTouched();
+            return;
+        }
+
+        const payload = {
+            ...this.businessRestaurantForm.value,
+            owner_phone: this.normalizeCongoPhone(this.businessRestaurantForm.value.owner_phone),
+        };
+        this.businessRestaurantForm.patchValue({ owner_phone: payload.owner_phone }, { emitEvent: false });
+
+        this.businessRestaurantSaving = true;
+        this.saasService.createBusinessRestaurant(payload).subscribe({
+            next: (response) => {
+                this.businessRestaurantSaving = false;
+                this.businessRestaurantFormOpen = false;
+                this.businessRestaurants = [...this.businessRestaurants, response.restaurant].filter(Boolean);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Restaurant ajouté',
+                    text: 'Vous pouvez maintenant basculer vers ce restaurant.',
+                    timer: 1800,
+                    showConfirmButton: false,
+                });
+                this.cdref.detectChanges();
+            },
+            error: (error) => {
+                this.businessRestaurantSaving = false;
+                Swal.fire('Impossible', error?.error?.message || 'Le restaurant n\'a pas pu etre ajouté.', 'error');
+                this.cdref.detectChanges();
+            },
+        });
+    }
+
+    protected switchBusinessRestaurant(restaurant: any): void {
+        if (!restaurant?.id || restaurant.id === this.currentRestaurantId()) {
+            this.closeBusinessRestaurantPanel();
+            return;
+        }
+
+        this.businessRestaurantLoading = true;
+        this.saasService.switchBusinessRestaurant(restaurant.id).subscribe({
+            next: (response) => {
+                if (response.user) {
+                    localStorage.setItem('user_data', JSON.stringify(response.user));
+                }
+                if (response.restaurant) {
+                    localStorage.setItem('restaurant_session', JSON.stringify(response.restaurant));
+                    this.syncRestaurantData(response.restaurant);
+                    this.subscriptionInfo = this.buildSubscriptionInfo(response.restaurant);
+                    this.applyRestaurantTheme(response.restaurant);
+                    window.dispatchEvent(new CustomEvent('restaurant-settings-updated', { detail: response.restaurant }));
+                }
+                this.businessRestaurantLoading = false;
+                this.closeBusinessRestaurantPanel();
+                this.router.navigate(['/dashboard']).then(() => window.location.reload());
+            },
+            error: (error) => {
+                this.businessRestaurantLoading = false;
+                Swal.fire('Impossible', error?.error?.message || 'Impossible de changer de restaurant.', 'error');
+                this.cdref.detectChanges();
+            },
+        });
+    }
+
+    protected canDeleteBusinessRestaurant(restaurant: any): boolean {
+        if (!restaurant?.id || this.businessRestaurants.length <= 1) return false;
+        const user = this.authService.getUserData();
+        return Boolean(
+            (user?.id && this.restaurantData.business_owner_user_id === user.id) ||
+            (user?.email && this.restaurantData.owner_email && String(this.restaurantData.owner_email).toLowerCase() === String(user.email).toLowerCase())
+        );
+    }
+
+    protected deleteBusinessRestaurant(restaurant: any, event: MouseEvent): void {
+        event.stopPropagation();
+        if (!this.canDeleteBusinessRestaurant(restaurant) || this.businessRestaurantLoading) return;
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Supprimer ce restaurant ?',
+            text: `Le restaurant "${restaurant.name}" sera retiré de votre espace Business.`,
+            showCancelButton: true,
+            confirmButtonText: 'Oui, supprimer',
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: '#dc2626',
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            this.businessRestaurantLoading = true;
+            const deletedCurrentRestaurant = restaurant.id === this.currentRestaurantId();
+            this.saasService.deleteBusinessRestaurant(restaurant.id).subscribe({
+                next: (response) => {
+                    this.businessRestaurantLoading = false;
+                    this.businessRestaurants = response?.restaurants || this.businessRestaurants.filter((item) => item.id !== restaurant.id);
+
+                    if (response?.user) {
+                        localStorage.setItem('user_data', JSON.stringify(response.user));
+                    }
+                    if (response?.restaurant) {
+                        localStorage.setItem('restaurant_session', JSON.stringify(response.restaurant));
+                        this.syncRestaurantData(response.restaurant);
+                        this.subscriptionInfo = this.buildSubscriptionInfo(response.restaurant);
+                        this.applyRestaurantTheme(response.restaurant);
+                        window.dispatchEvent(new CustomEvent('restaurant-settings-updated', { detail: response.restaurant }));
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Restaurant supprimé',
+                        text: deletedCurrentRestaurant ? 'Vous avez été basculé vers un autre restaurant du groupe.' : 'Le restaurant a été retiré du groupe Business.',
+                        timer: 1800,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        if (deletedCurrentRestaurant) {
+                            this.closeBusinessRestaurantPanel();
+                            this.router.navigate(['/dashboard']).then(() => window.location.reload());
+                        }
+                    });
+                    this.cdref.detectChanges();
+                },
+                error: (error) => {
+                    this.businessRestaurantLoading = false;
+                    Swal.fire('Impossible', error?.error?.message || 'Ce restaurant n\'a pas pu etre supprime.', 'error');
+                    this.cdref.detectChanges();
+                },
+            });
+        });
+    }
+
+    private handleBusinessRestaurantsRealtime(payload: any): void {
+        if (!this.canManageBusinessRestaurants()) return;
+
+        const deletedRestaurantId = payload?.restaurantId || payload?.restaurant_id;
+        const fallbackRestaurant = payload?.payload?.fallback_restaurant || payload?.fallback_restaurant;
+
+        if (payload?.action === 'deleted' && deletedRestaurantId && deletedRestaurantId === this.currentRestaurantId()) {
+            if (fallbackRestaurant) {
+                const user = this.authService.getUserData() || {};
+                const nextUser = {
+                    ...user,
+                    restaurant_id: fallbackRestaurant.id,
+                    restaurant: fallbackRestaurant,
+                };
+                localStorage.setItem('user_data', JSON.stringify(nextUser));
+                localStorage.setItem('restaurant_session', JSON.stringify(fallbackRestaurant));
+                this.syncRestaurantData(fallbackRestaurant);
+                this.subscriptionInfo = this.buildSubscriptionInfo(fallbackRestaurant);
+                this.applyRestaurantTheme(fallbackRestaurant);
+                window.dispatchEvent(new CustomEvent('restaurant-settings-updated', { detail: fallbackRestaurant }));
+            }
+
+            this.loadBusinessRestaurants(true);
+            this.closeBusinessRestaurantPanel();
+            this.router.navigate(['/dashboard']).then(() => window.location.reload());
+            return;
+        }
+
+        this.loadBusinessRestaurants(true);
+    }
+
+    protected currentRestaurantId(): string {
+        const session = localStorage.getItem('restaurant_session');
+        if (session) {
+            try {
+                return JSON.parse(session)?.id || '';
+            } catch {
+                return '';
+            }
+        }
+
+        return this.authService.getUserData()?.restaurant?.id || '';
+    }
+
+    protected canAddBusinessRestaurant(): boolean {
+        return this.businessRestaurantLimit === null || this.businessRestaurants.length < this.businessRestaurantLimit;
+    }
+
+    protected restaurantLogo(restaurant: any): string {
+        return restaurant?.logo_url || (restaurant?.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : 'assets/logo/e-resto-logo.png');
+    }
+
+    private loadBusinessRestaurants(force = false): void {
+        if (this.businessRestaurantLoading && !force) return;
+
+        this.businessRestaurantLoading = true;
+        this.saasService.businessRestaurants().subscribe({
+            next: (response) => {
+                this.businessRestaurants = response?.restaurants || [];
+                this.businessRestaurantLimit = response?.limit ?? null;
+                if (response?.current_restaurant_id && response.current_restaurant_id !== this.currentRestaurantId()) {
+                    const activeRestaurant = this.businessRestaurants.find((restaurant) => restaurant.id === response.current_restaurant_id);
+                    if (activeRestaurant) {
+                        const user = this.authService.getUserData() || {};
+                        localStorage.setItem('user_data', JSON.stringify({
+                            ...user,
+                            restaurant_id: activeRestaurant.id,
+                            restaurant: activeRestaurant,
+                        }));
+                        localStorage.setItem('restaurant_session', JSON.stringify(activeRestaurant));
+                        this.syncRestaurantData(activeRestaurant);
+                        this.subscriptionInfo = this.buildSubscriptionInfo(activeRestaurant);
+                        this.applyRestaurantTheme(activeRestaurant);
+                        this.businessRestaurantLoading = false;
+                        this.closeBusinessRestaurantPanel();
+                        this.router.navigate(['/dashboard']).then(() => window.location.reload());
+                        return;
+                    }
+                }
+                this.businessRestaurantLoading = false;
+                this.cdref.detectChanges();
+            },
+            error: () => {
+                this.businessRestaurantLoading = false;
+                this.businessRestaurants = [];
+                this.cdref.detectChanges();
+            },
+        });
     }
 
     protected orderItemsCount(order: Order): number {
@@ -235,20 +558,45 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         return this.permissions.has(permission);
     }
 
+    protected canAccessAny(permissions: string[]): boolean {
+        return this.permissions.hasAny(permissions);
+    }
+
     private syncRestaurantData(restaurant: any): void {
         if (!restaurant) return;
 
         this.restaurantData = {
+            id: restaurant.id || '',
             name: restaurant.name || 'Restaurant Scan',
             logo: restaurant.logo_url || (restaurant.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : 'assets/logo/e-resto-logo.png'),
             city: restaurant.city || '',
-            owner_phone: restaurant.owner_phone || '',
+            owner_email: restaurant.owner_email || '',
+            owner_phone: restaurant.owner_phone || '+243',
+            business_owner_user_id: restaurant.business_owner_user_id || '',
+            can_manage_business_restaurants: Boolean(restaurant.can_manage_business_restaurants),
             features: {
                 ...this.featuresFromPlan(restaurant.plan),
                 ...(restaurant.features || {}),
             },
             theme: restaurant.theme || restaurant.settings?.theme || restaurant.settings || {},
         };
+    }
+
+    protected canManageBusinessRestaurants(): boolean {
+        const user = this.authService.getUserData();
+        const isBusinessOwner = Boolean(
+            (user?.id && this.restaurantData.business_owner_user_id === user.id) ||
+            (user?.email && this.restaurantData.owner_email && String(this.restaurantData.owner_email).toLowerCase() === String(user.email).toLowerCase())
+        );
+
+        return Boolean(
+            this.restaurantData.features?.multi_restaurant &&
+            (
+                this.restaurantData.can_manage_business_restaurants ||
+                this.permissions.has('business-restaurants.manage') ||
+                isBusinessOwner
+            )
+        );
     }
 
     private loadReservationBadge(): void {
@@ -272,48 +620,45 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         return {
             reservations: isPro,
             feedback: isPro,
-            analytics: isPro,
+            analytics: true,
             customization: isPro,
             mobile_money: isPro,
-            roles: isBusiness,
+            roles: true,
             multi_restaurant: isBusiness,
-            chatbot: isPro,
+            chatbot: isBusiness,
         };
     }
 
     private applyRestaurantTheme(restaurant: any): void {
         const defaultTheme = {
-            primary: '#F9A11B',
-            secondary: '#111318',
-            surface: '#FFF7ED',
+            primary: '#ff7a1a',
+            secondary: '#d71920',
+            surface: '#fff7ef',
         };
-        const planFeatures = this.featuresFromPlan(restaurant?.plan);
-        const features = {
-            ...planFeatures,
-            ...(restaurant?.features || {}),
-        };
-        const canCustomize = Boolean(features.customization);
         const theme = restaurant?.theme || restaurant?.settings?.theme || restaurant?.settings || {};
-        const hasCustomTheme = canCustomize && this.hasCustomizedTheme(theme);
-        const primary = this.normalizeColor(canCustomize ? theme.primary_color || theme.primary || theme.accent : null, defaultTheme.primary);
-        const secondary = this.normalizeColor(canCustomize ? theme.secondary_color || theme.secondary : null, defaultTheme.secondary);
-        const surface = this.normalizeColor(canCustomize ? theme.background_color || theme.background || theme.surface : null, defaultTheme.surface);
+        const primary = this.normalizeColor(
+            theme.primary_color || theme.primary || theme.accent || restaurant?.primary_color,
+            defaultTheme.primary
+        );
+        const secondary = primary;
+        const surface = this.normalizeColor(
+            theme.background_color || theme.background || theme.surface || restaurant?.background_color,
+            defaultTheme.surface
+        );
         const primaryRgb = this.hexToRgb(primary);
-        const buttonBackground = hasCustomTheme
-            ? primary
-            : 'linear-gradient(135deg, #FFD166, #F9A11B, #D71920)';
+        const buttonBackground = primary;
 
         document.body.classList.add('restaurant-theme');
         document.documentElement.style.setProperty('--dashboard-primary', primary);
         document.documentElement.style.setProperty('--dashboard-primary-rgb', primaryRgb);
-        document.documentElement.style.setProperty('--dashboard-button-accent', secondary === defaultTheme.secondary ? '#FFD166' : secondary);
+        document.documentElement.style.setProperty('--dashboard-button-accent', secondary);
         document.documentElement.style.setProperty('--dashboard-button-bg', buttonBackground);
         document.documentElement.style.setProperty('--dashboard-secondary', secondary);
         document.documentElement.style.setProperty('--dashboard-surface', surface);
         document.documentElement.style.setProperty('--bs-primary', primary);
         document.documentElement.style.setProperty('--bs-primary-rgb', primaryRgb);
         document.documentElement.style.setProperty('--bs-link-color', primary);
-        document.documentElement.style.setProperty('--bs-link-hover-color', secondary);
+        document.documentElement.style.setProperty('--bs-link-hover-color', primary);
         this.setBrowserThemeColor(primary);
     }
 
@@ -323,7 +668,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         }
 
         const primary = this.normalizeColor(theme?.primary_color || theme?.primary || theme?.accent, '');
-        return Boolean(primary && !['#ff7a1a', '#ff9f1a', '#f9a11b'].includes(primary.toLowerCase()));
+        return Boolean(primary && !['#ff7a1a', '#ff9f1a'].includes(primary.toLowerCase()));
     }
 
     private setBrowserThemeColor(color: string): void {
@@ -354,7 +699,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
         const value = Number.parseInt(clean, 16);
         if (Number.isNaN(value)) {
-            return '249, 161, 27';
+            return '255, 122, 26';
         }
 
         return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
@@ -374,6 +719,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             const choice = await prompt.userChoice;
 
             if (choice.outcome === 'accepted') {
+                localStorage.setItem(this.installedStorageKey, 'true');
                 this.installPromptOpen = false;
             } else {
                 this.dismissInstallPrompt();
@@ -409,41 +755,39 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     private dashboardAssistantReply(question: string): string {
         const normalized = question.toLowerCase();
         const restaurantName = this.restaurantData.name || 'votre restaurant';
-        const planName = this.subscriptionInfo.detail.replace('Paiement confirme - ', '').replace('Essai gratuit - ', '') || 'votre plan';
+        const planName = this.subscriptionInfo.detail.replace('Paiement confirmé - ', '').replace('Essai gratuit - ', '') || 'votre plan';
 
         if (normalized.includes('commande')) {
-            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en temps reel avec son, badge et notification. Pour accelerer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
+            return `Surveillez vos commandes depuis le menu Orders. Les nouvelles commandes arrivent en temps réel avec son, badge et notification. Pour accélérer le service, traitez-les dans l'ordre pending -> preparing -> ready -> delivered.`;
         }
 
         if (normalized.includes('stat') || normalized.includes('revenu') || normalized.includes('vente')) {
-            return this.canUse('analytics')
-                ? `Votre plan permet les statistiques. Regardez le dashboard pour suivre les revenus par devise, les commandes du jour et les plats les plus commandes.`
-                : `Les statistiques detaillees sont reservees aux plans Pro et Business. Passez sur Pro pour voir les analyses avancees.`;
+            return `Votre plan permet les statistiques. Regardez le dashboard pour suivre les revenus par devise, les commandes du jour et les plats les plus commandés.`;
         }
 
         if (normalized.includes('qr') || normalized.includes('table')) {
-            return `Pour ${restaurantName}, creez vos tables puis imprimez leurs QR codes. Chaque QR ouvre le menu client et rattache la commande a la bonne table.`;
+            return `Pour ${restaurantName}, créez vos tables puis imprimez leurs QR codes. Chaque QR ouvre le menu client et rattache la commande à la bonne table.`;
         }
 
         if (normalized.includes('reservation')) {
             return this.canUse('reservations')
-                ? `Les reservations sont actives sur ${planName}. Vos clients peuvent reserver depuis le menu public et vous confirmez ensuite dans Reservations.`
-                : `Les reservations sont reservees aux plans Pro et Business.`;
+                ? `Les réservations sont actives sur ${planName}. Vos clients peuvent réserver depuis le menu public et vous confirmez ensuite dans Réservations.`
+                : `Les réservations sont réservées aux plans Pro et Business.`;
         }
 
         if (normalized.includes('plan') || normalized.includes('abonnement') || normalized.includes('jour')) {
-            return `${this.subscriptionInfo.label}. ${this.subscriptionInfo.expiresAt ? 'Fin prevue le ' + this.subscriptionInfo.expiresAt.toLocaleString() + '.' : this.subscriptionInfo.detail + '.'}`;
+            return `${this.subscriptionInfo.label}. ${this.subscriptionInfo.expiresAt ? 'Fin prévue le ' + this.subscriptionInfo.expiresAt.toLocaleString() + '.' : this.subscriptionInfo.detail + '.'}`;
         }
 
         if (normalized.includes('plat') || normalized.includes('menu')) {
-            return `Gardez votre menu court, clair et visuel. Mettez les plats populaires en avant, ajoutez des photos nettes et marquez rapidement les plats epuises.`;
+            return `Gardez votre menu court, clair et visuel. Mettez les plats populaires en avant, ajoutez des photos nettes et marquez rapidement les plats épuisés.`;
         }
 
         if (normalized.includes('fidel')) {
-            return `Le module fidelite peut recompenser les clients apres plusieurs commandes : points, tampons ou coupons. C'est ideal pour faire revenir les clients reguliers.`;
+            return `Le module fidélité peut récompenser les clients après plusieurs commandes : points, tampons ou coupons. C'est idéal pour faire revenir les clients réguliers.`;
         }
 
-        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, reservations, statistiques, abonnement et idees de fidelisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
+        return `Je peux vous guider sur ${restaurantName} : commandes, QR codes, menu, réservations, statistiques, abonnement et idées de fidélisation. Essayez par exemple "Quels conseils pour vendre plus ?"`;
     }
 
     private prepareInstallPrompt(): void {
@@ -504,9 +848,8 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             return;
         }
 
-        const canShowFallback = allowManualFallback && this.hasInstallContext();
-        if (this.installAvailable || this.iosInstallHelp || canShowFallback) {
-            this.manualInstallHelp = !this.installAvailable && !this.iosInstallHelp;
+        if (this.installAvailable || this.iosInstallHelp) {
+            this.manualInstallHelp = false;
             this.installPromptOpen = true;
             this.cdref.detectChanges();
         }
@@ -525,7 +868,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     }
 
     private async isAppInstalled(): Promise<boolean> {
-        if (this.isStandaloneApp()) {
+        if (this.isStandaloneApp() || localStorage.getItem(this.installedStorageKey) === 'true') {
             return true;
         }
 
@@ -540,12 +883,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         } catch {
             return false;
         }
-    }
-
-    private hasInstallContext(): boolean {
-        const host = window.location.hostname;
-        const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-        return window.location.protocol === 'https:' || isLocalhost;
     }
 
     private isIosDevice(): boolean {
@@ -621,7 +958,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     ? 'Abonnement actif'
                     : `${daysRemaining} jour${daysRemaining === 1 ? '' : 's'} d'abonnement restant${daysRemaining === 1 ? '' : 's'}`,
                 shortLabel: daysRemaining === null ? 'Actif' : `${daysRemaining}j actif`,
-                detail: `Paiement confirme - ${planName}`,
+                detail: `Paiement confirmé - ${planName}`,
                 tone: 'success',
                 expiresAt,
                 daysRemaining,
@@ -697,7 +1034,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     text: errorMessage || 'Error during creation.',
                     icon: 'error',
                     confirmButtonColor: '#d33',
-                    confirmButtonText: 'Try again'
+                    confirmButtonText: 'Réessayer'
                 });
             }
         });
@@ -718,7 +1055,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                     text: err.error?.message || 'Error during disconnection.',
                     icon: 'error',
                     confirmButtonColor: '#d33',
-                    confirmButtonText: 'Try again'
+                    confirmButtonText: 'Réessayer'
                 });
                 localStorage.clear();
                 this.cleanupBlockingOverlays();

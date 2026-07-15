@@ -109,7 +109,7 @@ export class RestaurantLogin implements OnInit, OnDestroy {
     }
 
     if (google && error?.status === 404) {
-      this.message = 'Ce compte Google ne possede pas encore d espace restaurant. Creez votre compte pour continuer.';
+      this.message = "Ce compte Google ne possède pas encore d'espace restaurant. Créez votre compte pour continuer.";
     }
 
     this.cdr.detectChanges();
@@ -117,11 +117,11 @@ export class RestaurantLogin implements OnInit, OnDestroy {
 
   private validationMessage(error: any): string {
     if (error?.status === 0) {
-      return `Impossible de joindre le serveur (${API_ROOT}). Verifiez que l'API Laravel est demarree sur le port 8000.`;
+      return `Impossible de joindre le serveur (${API_ROOT}). Vérifiez que l'API Laravel est démarrée sur le port 8000.`;
     }
 
     if (error?.name === 'TimeoutError') {
-      return 'Le serveur met trop de temps a repondre. Verifiez que Docker, Laravel et MySQL sont bien demarres puis reessayez.';
+      return 'Le serveur met trop de temps à répondre. Vérifiez que Docker, Laravel et MySQL sont bien démarrés puis réessayez.';
     }
 
     const errors = error?.error?.errors;
@@ -133,10 +133,10 @@ export class RestaurantLogin implements OnInit, OnDestroy {
     }
 
     if (error?.status === 401 || error?.status === 404) {
-      return 'Identifiants incorrects. Verifiez votre email et votre mot de passe.';
+      return 'Identifiants incorrects. Vérifiez votre e-mail et votre mot de passe.';
     }
 
-    return error?.error?.message || 'Connexion impossible. Verifiez vos identifiants puis reessayez.';
+    return error?.error?.message || 'Connexion impossible. Vérifiez vos identifiants puis réessayez.';
   }
 
   private isValidEmail(value: string): boolean {

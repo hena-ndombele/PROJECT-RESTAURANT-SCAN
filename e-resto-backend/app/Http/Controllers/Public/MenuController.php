@@ -14,6 +14,7 @@ class MenuController extends Controller
     public function index(Request $request)
     {
         $restaurantId = null;
+        $restaurant = null;
         $table = null;
         if ($request->filled('table_id')) {
             $table = Table::find($request->table_id);
@@ -41,7 +42,7 @@ class MenuController extends Controller
         }
 
         if ($restaurantId) {
-            $restaurant = Restaurant::find($restaurantId);
+            $restaurant = Restaurant::with('plan')->find($restaurantId);
             if (!$restaurant || !in_array($restaurant->status, ['active', 'trial'], true)) {
                 return response()->json([
                     'message' => 'Ce restaurant est temporairement indisponible.',
@@ -67,7 +68,7 @@ class MenuController extends Controller
             'plats_count' => $category->plats_count,
         ]);
 
-        $platsQuery = Plat::with('category')
+        $platsQuery = Plat::with(['category', 'restaurant.plan'])
             ->when($restaurantId, fn ($query) => $query->where('restaurant_id', $restaurantId))
             ->where('is_available', true)
             ->orderBy('name');
@@ -84,18 +85,26 @@ class MenuController extends Controller
             });
         }
 
+        $canUsePromotions = (bool) $restaurant?->plan?->allows('dish_promotions');
+
         $plats = $platsQuery->get()->map(fn ($plat) => [
             'id' => $plat->id,
             'name' => $plat->name,
             'description' => $plat->description,
             'price' => (float) $plat->price,
+            'promotion_percent' => $canUsePromotions ? $plat->promotion_percent : null,
+            'promotion_ends_at' => $canUsePromotions ? optional($plat->promotion_ends_at)->toDateString() : null,
+            'is_promotion_active' => $canUsePromotions ? $plat->promotionIsActive() : false,
+            'promotion_price' => $canUsePromotions ? $plat->promotion_price : null,
             'currency' => $plat->currency,
             'preparation_time' => $plat->preparation_time,
             'ingredients' => $plat->ingredients ?? [],
+            'sizes' => $plat->sizes ?? [],
             'image' => $plat->image,
             'image_url' => $plat->image ? asset("storage/{$plat->image}") : null,
             'image_secondaire_1_url' => $plat->image_secondaire_1 ? asset("storage/{$plat->image_secondaire_1}") : null,
             'image_secondaire_2_url' => $plat->image_secondaire_2 ? asset("storage/{$plat->image_secondaire_2}") : null,
+            'created_at' => optional($plat->created_at)->toIso8601String(),
             'category' => $plat->category ? [
                 'id' => $plat->category->id,
                 'name' => $plat->category->name,
@@ -104,7 +113,7 @@ class MenuController extends Controller
 
         return response()->json([
             'restaurant_id' => $restaurantId,
-            'restaurant' => $restaurantId ? $this->publicRestaurantPayload(Restaurant::find($restaurantId)) : null,
+            'restaurant' => $restaurantId ? $this->publicRestaurantPayload($restaurant ?: Restaurant::find($restaurantId)) : null,
             'table' => $table ? [
                 'id' => $table->id,
                 'name' => $table->name,
@@ -142,7 +151,10 @@ class MenuController extends Controller
             'closing_time' => $settings['closing_time'] ?? '22:00',
             'theme' => $settings['theme'] ?? [],
             'can_feedback' => (bool) $restaurant->plan?->allows('feedback'),
-            'can_Réservations' => (bool) $restaurant->plan?->allows('Réservations'),
+            'can_reservations' => (bool) $restaurant->plan?->allows('reservations'),
+            'can_Réservations' => (bool) $restaurant->plan?->allows('reservations'),
+            'can_group_orders' => (bool) $restaurant->plan?->allows('group_orders'),
+            'can_dish_promotions' => (bool) $restaurant->plan?->allows('dish_promotions'),
             'can_mobile_money' => false,
             'can_chatbot' => false,
             'payment_methods' => $restaurant->plan?->includedPaymentMethods() ?? ['cash'],

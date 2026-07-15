@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\category;
 
+use App\Events\MenuUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Support\Facades\Storage;
@@ -50,11 +51,23 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
+
+        $restaurantId = $request->user()?->restaurant_id;
+        $name = trim($validated['name']);
+
+        if ($this->categoryNameExists($name, $restaurantId)) {
+            return response()->json([
+                'message' => 'Une catégorie avec ce nom existe déjà.',
+                'errors' => [
+                    'name' => ['Une catégorie avec ce nom existe déjà.'],
+                ],
+            ], 422);
+        }
 
         $imagePath = null;
 
@@ -69,11 +82,12 @@ class CategoryController extends Controller
         }
 
         $category = Category::create([
-            'restaurant_id' => $request->user()?->restaurant_id,
-            'name' => $request->name,
-            'description' => $request->description,
+            'restaurant_id' => $restaurantId,
+            'name' => $name,
+            'description' => $validated['description'] ?? null,
             'image' => $imagePath,
         ]);
+        $this->broadcastMenuUpdated($restaurantId, 'category_created');
 
         return response()->json([
             'message' => 'Catégorie créée avec succès',
@@ -134,13 +148,32 @@ class CategoryController extends Controller
             ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
             ->findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'sometimes|string',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        $data = $request->only('name', 'description');
+        $data = [];
+
+        if (array_key_exists('name', $validated)) {
+            $name = trim($validated['name']);
+
+            if ($this->categoryNameExists($name, $request->user()?->restaurant_id, $category->id)) {
+                return response()->json([
+                    'message' => 'Une catégorie avec ce nom existe déjà.',
+                    'errors' => [
+                        'name' => ['Une catégorie avec ce nom existe déjà.'],
+                    ],
+                ], 422);
+            }
+
+            $data['name'] = $name;
+        }
+
+        if (array_key_exists('description', $validated)) {
+            $data['description'] = $validated['description'];
+        }
 
         if ($request->hasFile('image')) {
             if ($category->image) {
@@ -153,11 +186,24 @@ class CategoryController extends Controller
         }
 
         $category->update($data);
+        $this->broadcastMenuUpdated($category->restaurant_id, 'category_updated');
 
         return response()->json([
             'message' => 'Catégorie mise à jour',
             'data' => $category
         ]);
+    }
+
+    private function categoryNameExists(string $name, ?string $restaurantId, ?string $ignoreId = null): bool
+    {
+        $normalized = mb_strtolower(trim($name));
+
+        return Category::query()
+            ->when($restaurantId, fn ($query) => $query->where('restaurant_id', $restaurantId))
+            ->when(!$restaurantId, fn ($query) => $query->whereNull('restaurant_id'))
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
+            ->exists();
     }
 
     /**
@@ -186,7 +232,9 @@ class CategoryController extends Controller
             Storage::disk('public')->delete($category->image);
         }
 
+        $restaurantId = $category->restaurant_id;
         $category->delete();
+        $this->broadcastMenuUpdated($restaurantId, 'category_deleted');
 
         return response()->json(['message' => 'Catégorie supprimée']);
     }
@@ -225,5 +273,18 @@ class CategoryController extends Controller
             'message' => 'Résultats de la recherche',
             'data' => $categories
         ]);
+    }
+
+    private function broadcastMenuUpdated(?string $restaurantId, string $reason): void
+    {
+        if (!$restaurantId) {
+            return;
+        }
+
+        try {
+            broadcast(new MenuUpdated($restaurantId, $reason))->toOthers();
+        } catch (\Throwable) {
+            // Keep the saved change even when the realtime server is unavailable.
+        }
     }
 }

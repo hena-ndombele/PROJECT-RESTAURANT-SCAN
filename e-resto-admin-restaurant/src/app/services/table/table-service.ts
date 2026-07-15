@@ -22,6 +22,9 @@ export class TableService {
     create(formData: FormData): Observable<any> {
         return this.http.post(`${this.apiUrl}/tables`, formData);
     }
+    update(id: string | number, data: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/tables/${id}`, data);
+    }
     delete(id: string | number): Observable<any> {
         return this.http.delete(`${this.apiUrl}/tables/${id}`);
     }

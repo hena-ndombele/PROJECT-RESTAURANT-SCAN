@@ -9,16 +9,16 @@
   "sidebar": {
     "mainMenu": "Menu principal",
     "dashboard": "Tableau de bord",
-    "employee": "Employes",
-    "category": "Categories",
+    "employee": "Employés",
+    "category": "Catégories",
     "dishes": "Menu",
     "orders": "Commandes",
     "tables": "Tables",
     "Réservations": "Réservations",
-    "settings": "Parametres",
-    "feedbacks": "Feedbacks",
+    "settings": "Paramètres",
+    "feedbacks": "Avis",
     "administration": "Administration",
-    "roles": "Roles",
+    "roles": "Rôles",
     "users": "Utilisateurs"
   },
   "logout": {

@@ -1,0 +1,112 @@
+.update-dish-page {
+  color: #111827;
+}
+
+.dish-back-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #111827;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #111827;
+  background: #ffffff;
+}
+
+:host-context(body.dashboard-dark-theme) .update-dish-page {
+  color: #f9fafb;
+}
+
+:host-context(body.dashboard-dark-theme) .dish-back-btn {
+  border-color: #f59e0b;
+  color: #111827;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+}
+
+:host-context(body.dashboard-dark-theme) .card,
+:host-context(body.dashboard-dark-theme) .card-header,
+:host-context(body.dashboard-dark-theme) .card-body {
+  border-color: #334155 !important;
+  background: #111827 !important;
+  color: #f9fafb !important;
+}
+
+:host-context(body.dashboard-dark-theme) .bg-white,
+:host-context(body.dashboard-dark-theme) .bg-light,
+:host-context(body.dashboard-dark-theme) .form-check {
+  background: #0f172a !important;
+  color: #f9fafb !important;
+}
+
+:host-context(body.dashboard-dark-theme) .form-control,
+:host-context(body.dashboard-dark-theme) .form-select,
+:host-context(body.dashboard-dark-theme) .tag-input-container {
+  border-color: #475569 !important;
+  background: #0f172a !important;
+  color: #f9fafb !important;
+}
+
+:host-context(body.dashboard-dark-theme) .tag-input-container input {
+  background: transparent !important;
+  color: #f9fafb !important;
+}
+
+:host-context(body.dashboard-dark-theme) .text-muted,
+:host-context(body.dashboard-dark-theme) label {
+  color: #cbd5e1 !important;
+}
+
+.dish-form-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dish-action-btn {
+  min-height: 56px;
+  width: 100%;
+  padding: 0 16px;
+}
+
+.dish-size-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dish-size-option {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dish-size-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--dashboard-primary, #ff7a1a);
+}
+
+:host-context(body.dashboard-dark-theme) .dish-size-option {
+  border-color: #475569;
+  background: #0f172a;
+  color: #f9fafb;
+}
+
+@media (max-width: 575px) {
+  .dish-form-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .dish-size-options {
+    grid-template-columns: 1fr;
+  }
+}

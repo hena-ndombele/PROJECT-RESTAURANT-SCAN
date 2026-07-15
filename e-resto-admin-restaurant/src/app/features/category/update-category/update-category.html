@@ -12,9 +12,9 @@
 
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" style="font-weight: bolder">Update Category
+                    <h5 class="modal-title fs-3 mb-1" style="font-weight: bolder">Mettre à jour la catégorie
                         ({{ categoryDetail?.name }})</h5>
-                    <p class="mb-0 text-muted small">Edit details</p>
+                    <p class="mb-0 text-muted small">Modifier les détails</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -48,10 +48,10 @@
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold">Category Name <span style="color:red">*</span></label>
+                            <label class="form-label fw-bold">Nom de la catégorie <span style="color:red">*</span></label>
                             <input type="text" class="form-control" formControlName="name">
                             @if (categoryForm.get('name')?.invalid && categoryForm.get('name')?.touched) {
-                                <small class="text-danger">Name is required.</small>
+                                <small class="text-danger">Le nom est requis.</small>
                             }
                         </div>
                     </div>
@@ -64,7 +64,7 @@
 
                     <div class="modal-footer d-flex gap-2">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
-                                class="bi bi-x-circle me-1"></i> Cancel
+                                class="bi bi-x-circle me-1"></i> Annuler
                         </button>
 
                         <button type="submit" class="btn btn-primary text-black"
@@ -72,7 +72,7 @@
                             @if (isLoading) {
                                 <span class="spinner-border spinner-border-sm me-1"></span>
                             }
-                            <i class="bi bi-plus-circle me-1"></i> Save Changes
+                            <i class="bi bi-plus-circle me-1"></i> Enregistrer les modifications
                         </button>
                     </div>
                 </form>

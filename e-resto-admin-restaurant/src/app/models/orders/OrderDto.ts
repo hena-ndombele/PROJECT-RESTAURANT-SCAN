@@ -49,6 +49,10 @@ export interface OrderItem {
     order_id: string;
     plat_id: string;
     quantity: number;
+    original_price?: string | number | null;
+    original_currency?: string | null;
+    converted_price?: string | number | null;
+    conversion_rate?: string | number | null;
     price_at_order: string; // Reçu comme string depuis l'API (Decimal)
     created_at: string;
     updated_at: string;

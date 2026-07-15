@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
 import { SaasPlan } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
+import { CONGO_PROVINCES } from '../../shared/congo-provinces';
 
 @Component({
   selector: 'app-restaurant-signup',
@@ -18,13 +19,15 @@ export class RestaurantSignup implements OnInit {
   showPassword = false;
   showPasswordConfirmation = false;
   planLoading = true;
+  provinces = CONGO_PROVINCES;
 
   account = {
     restaurant_name: '',
     owner_name: '',
     owner_email: '',
-    owner_phone: '',
+    owner_phone: '+243',
     city: '',
+    commune: '',
     currency: 'CDF',
     password: '',
     password_confirmation: '',
@@ -44,6 +47,11 @@ export class RestaurantSignup implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    if (!this.hasPlanSelection()) {
+      this.router.navigate(['/pricing'], { fragment: 'plans', replaceUrl: true });
+      return;
+    }
+
     this.saas.plans().pipe(timeout(30000)).subscribe({
       next: (plans) => {
         this.resolveSelectedPlan(plans);
@@ -56,9 +64,16 @@ export class RestaurantSignup implements OnInit {
           return;
         }
 
-        this.message = 'Impossible de charger les plans. Verifiez que le serveur et la base de donnees sont demarres.';
+        this.message = 'Impossible de charger les plans. Vérifiez que le serveur et la base de données sont démarrés.';
       },
     });
+  }
+
+  private hasPlanSelection(): boolean {
+    const requestedPlan = this.route.snapshot.queryParamMap.get('plan');
+    const storedPlan = this.selectedPlan?.id || this.selectedPlan?.slug;
+
+    return !!requestedPlan || !!storedPlan;
   }
 
   goNext(): void {
@@ -70,7 +85,7 @@ export class RestaurantSignup implements OnInit {
     }
 
     if (this.account.password.length < 6) {
-      this.message = 'Le mot de passe doit contenir au minimum 6 caracteres.';
+      this.message = 'Le mot de passe doit contenir au minimum 6 caractères.';
       return;
     }
 
@@ -101,7 +116,7 @@ export class RestaurantSignup implements OnInit {
   }
 
   passwordStrengthLabel(): string {
-    const labels = ['Trop court', 'Faible', 'Moyen', 'Fort', 'Tres fort'];
+    const labels = ['Trop court', 'Faible', 'Moyen', 'Fort', 'Très fort'];
     return labels[this.passwordStrengthScore()];
   }
 
@@ -119,7 +134,7 @@ export class RestaurantSignup implements OnInit {
     }
 
     if (!this.account.restaurant_name || !this.account.owner_name || !this.account.owner_email || !this.account.owner_phone || !this.account.password) {
-      this.message = 'Completez les champs obligatoires pour creer le compte.';
+      this.message = 'Complétez les champs obligatoires pour créer le compte.';
       return;
     }
 
@@ -130,7 +145,7 @@ export class RestaurantSignup implements OnInit {
 
     const planId = this.selectedPlan.id;
     if (!planId) {
-      this.message = 'Choisissez un plan avant de creer le compte restaurant.';
+      this.message = 'Choisissez un plan avant de créer le compte restaurant.';
       return;
     }
 
@@ -143,7 +158,7 @@ export class RestaurantSignup implements OnInit {
 
       this.creating = false;
       localStorage.setItem('restaurant_owner_email', this.account.owner_email);
-      this.message = 'Le compte semble avoir ete cree. Redirection vers la verification OTP...';
+      this.message = 'Le compte semble avoir été créé. Redirection vers la vérification OTP...';
       setTimeout(() => this.router.navigate(['/auth/otp'], {
         queryParams: {
           source: 'signup',
@@ -151,6 +166,8 @@ export class RestaurantSignup implements OnInit {
         },
       }), 1200);
     }, 15000);
+    this.account.owner_phone = this.normalizeCongoPhone(this.account.owner_phone);
+
     this.saas.signup({
       ...this.account,
       saas_plan_id: planId,
@@ -170,7 +187,8 @@ export class RestaurantSignup implements OnInit {
         }
 
         localStorage.setItem('restaurant_owner_email', this.account.owner_email);
-        this.message = response.message || 'Compte cree. Entrez le code OTP envoye par email.';
+        localStorage.removeItem('dev_otp');
+        this.message = response.message || 'Compte cree. Entrez le code OTP envoye par e-mail.';
         this.router.navigate(['/auth/otp'], {
           queryParams: {
             source: 'signup',
@@ -198,7 +216,7 @@ export class RestaurantSignup implements OnInit {
     }
 
     navigator.clipboard?.writeText(this.publicMenuUrl);
-    this.message = 'URL du menu copiee.';
+    this.message = 'URL du menu copiée.';
   }
 
   private buildMenuUrl(restaurant: any): string {
@@ -229,7 +247,7 @@ export class RestaurantSignup implements OnInit {
       ?? plans[0];
 
     if (!selected) {
-      this.message = 'Aucun plan actif n est disponible pour le moment.';
+      this.message = "Aucun plan actif n'est disponible pour le moment.";
       return;
     }
 
@@ -273,11 +291,11 @@ export class RestaurantSignup implements OnInit {
 
   private validationMessage(error: any): string {
     if (error?.status === 0) {
-      return "Impossible de joindre le serveur. Verifiez que Laravel est demarre sur le port 8000.";
+      return "Impossible de joindre le serveur. Vérifiez que Laravel est démarré sur le port 8000.";
     }
 
     if (error?.name === 'TimeoutError') {
-      return 'La creation prend trop de temps. Si vous avez recu le code par email, ouvrez la page OTP pour verifier votre compte.';
+      return 'La création prend trop de temps. Si vous avez reçu le code par e-mail, ouvrez la page OTP pour vérifier votre compte.';
     }
 
     const errors = error?.error?.errors;
@@ -291,7 +309,7 @@ export class RestaurantSignup implements OnInit {
       }
 
       if (Array.isArray(errors.saas_plan_id) && errors.saas_plan_id.length) {
-        return 'Le plan selectionne est invalide. Retournez sur la page Tarifs et choisissez un plan.';
+        return 'Le plan sélectionné est invalide. Retournez sur la page Tarifs et choisissez un plan.';
       }
 
       const messages = Object.values(errors).flat().filter((message) => typeof message === 'string');
@@ -303,17 +321,35 @@ export class RestaurantSignup implements OnInit {
     if (error?.status === 422) {
       const message = String(error?.error?.message || '').toLowerCase();
       if (message.includes('email') || message.includes('compte') || message.includes('unique')) {
-        return 'Ce compte existe deja. Connectez-vous ou utilisez une autre adresse email.';
+        return 'Ce compte existe déjà. Connectez-vous ou utilisez une autre adresse e-mail.';
       }
 
-      return error?.error?.message || 'Certaines informations sont invalides. Corrigez les champs indiques puis reessayez.';
+      return error?.error?.message || 'Certaines informations sont invalides. Corrigez les champs indiqués puis réessayez.';
     }
 
     if (error?.status >= 500) {
-      return 'Erreur serveur pendant la creation du compte. Verifiez Laravel, la base de donnees et les logs.';
+      return 'Erreur serveur pendant la création du compte. Vérifiez Laravel, la base de données et les logs.';
     }
 
-    return error?.error?.message || 'Creation impossible. Verifiez les informations.';
+    return error?.error?.message || 'Création impossible. Vérifiez les informations.';
+  }
+
+  normalizeCongoPhone(value: string): string {
+    const raw = String(value || '').trim();
+    if (!raw || raw === '+243') return '+243';
+
+    let digits = raw.replace(/[^\d]/g, '');
+    if (digits.startsWith('00')) {
+      digits = digits.slice(2);
+    }
+    if (digits.startsWith('0')) {
+      digits = `243${digits.slice(1)}`;
+    }
+    if (!digits.startsWith('243')) {
+      digits = `243${digits}`;
+    }
+
+    return `+${digits}`;
   }
 
   private clearCreateAccountSafetyTimer(): void {

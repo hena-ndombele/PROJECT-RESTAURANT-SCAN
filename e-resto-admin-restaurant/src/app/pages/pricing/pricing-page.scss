@@ -123,6 +123,7 @@
 }
 
 .plans-shell {
+  scroll-margin-top: 96px;
   padding: 0 clamp(18px, 5vw, 76px) 78px;
   margin-top: -82px;
 }
@@ -259,8 +260,8 @@
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 24px 70px rgba(17, 19, 24, .11);
-  opacity: 0;
-  animation: card-rise .7s cubic-bezier(.2, .8, .2, 1) forwards;
+  opacity: 1;
+  animation: card-rise .7s cubic-bezier(.2, .8, .2, 1) both;
   transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
 }
 
@@ -344,6 +345,33 @@
   color: var(--muted);
   font-size: 16px;
   font-weight: 950;
+}
+
+.pricing-promo {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: calc(100% - 28px);
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, .18);
+}
+
+.pricing-promo span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .plan-card small,

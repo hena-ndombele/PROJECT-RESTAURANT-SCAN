@@ -16,6 +16,7 @@ export class AuthGuard implements CanActivate {
     { path: '/dish/list-dish', permission: 'plats.list' },
     { path: '/category/list-category', permission: 'categories.list' },
     { path: '/agents/list-agent', permission: 'agents.list' },
+    { path: '/restaurant/subscription', permission: 'subscription.view' },
     { path: '/auth/profile', permission: 'profile.view' },
   ];
 
@@ -25,8 +26,12 @@ export class AuthGuard implements CanActivate {
       return false;
     }
 
-    const requiredPermission = route.data?.['permission'] as string | undefined;
-    if (!requiredPermission || this.permissions.has(requiredPermission)) {
+    const requiredPermission = route.data?.['permission'] as string | string[] | undefined;
+    const hasRequiredPermission = Array.isArray(requiredPermission)
+      ? this.permissions.hasAny(requiredPermission)
+      : !requiredPermission || this.permissions.has(requiredPermission);
+
+    if (hasRequiredPermission) {
       return true;
     }
 

@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, inject, OnInit, signal } from "@angular/core";
+import { Component, inject, OnDestroy, OnInit, signal } from "@angular/core";
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import Swal from "sweetalert2";
@@ -8,6 +8,7 @@ import { DishDto } from "../../../models/dish/DishDto";
 import { CategoryService } from "../../../services/category/category-service";
 import { DishService } from "../../../services/dish/dish-service";
 import { STORAGE_ROOT } from "../../../services/api-url";
+import { SaasService } from "../../../services/saas/saas-service";
 
 @Component({
     selector: "app-update-dish",
@@ -16,12 +17,19 @@ import { STORAGE_ROOT } from "../../../services/api-url";
     templateUrl: "./update-dish.html",
     styleUrl: "./update-dish.scss",
 })
-export class UpdateDish implements OnInit {
+export class UpdateDish implements OnInit, OnDestroy {
     dishForm!: FormGroup;
     ingredients: string[] = [];
+    selectedSizes: string[] = [];
+    readonly sizeOptions = [
+        { value: "small", label: "Petit" },
+        { value: "medium", label: "Moyen" },
+        { value: "large", label: "Grand" },
+    ];
     categories = signal<CategoryDto[]>([]);
     isLoading = signal<boolean>(false);
     isLoadingDish = signal<boolean>(true);
+    canUseDishPromotions = signal<boolean>(false);
     errorMessage = "";
 
     dishId: string | null = null;
@@ -42,14 +50,17 @@ export class UpdateDish implements OnInit {
     private router = inject(Router);
     private dishService = inject(DishService);
     private categoryService = inject(CategoryService);
+    private saasService = inject(SaasService);
+    private previewObjectUrls: string[] = [];
 
     ngOnInit(): void {
         this.dishId = this.route.snapshot.paramMap.get("id");
         this.buildForm();
         this.loadCategories();
+        this.loadPlanUsage();
 
         if (!this.dishId) {
-            this.errorMessage = "Aucun plat selectionne.";
+            this.errorMessage = "Aucun plat sélectionné.";
             this.isLoadingDish.set(false);
             return;
         }
@@ -66,6 +77,16 @@ export class UpdateDish implements OnInit {
             category_id: ["", Validators.required],
             preparation_time: [30, [Validators.required, Validators.min(1)]],
             is_available: [true],
+            promotion_enabled: [false],
+            promotion_percent: [null, [Validators.min(1), Validators.max(95)]],
+            promotion_ends_at: [""],
+        });
+    }
+
+    loadPlanUsage(): void {
+        this.saasService.restaurantUsage().subscribe({
+            next: (usage) => this.canUseDishPromotions.set(!!usage.permissions?.can_use_dish_promotions),
+            error: () => this.canUseDishPromotions.set(false),
         });
     }
 
@@ -84,6 +105,7 @@ export class UpdateDish implements OnInit {
             next: (dish) => {
                 this.dishDetail = dish;
                 this.ingredients = this.normalizeIngredients(dish.ingredients);
+                this.selectedSizes = this.normalizeStringArray(dish.sizes).slice(0, 1);
                 this.previewUrl = this.toStorageUrl(dish.image);
                 this.thumb1Preview = this.toStorageUrl(dish.image_secondaire_1);
                 this.thumb2Preview = this.toStorageUrl(dish.image_secondaire_2);
@@ -96,6 +118,9 @@ export class UpdateDish implements OnInit {
                     category_id: dish.category_id,
                     preparation_time: dish.preparation_time,
                     is_available: dish.is_available === true || dish.is_available === 1,
+                    promotion_enabled: !!dish.promotion_percent,
+                    promotion_percent: dish.promotion_percent ?? null,
+                    promotion_ends_at: dish.promotion_ends_at ?? "",
                 });
             },
             error: (err) => {
@@ -117,14 +142,11 @@ export class UpdateDish implements OnInit {
         if (type === "thumb1") this.thumb1File = file;
         if (type === "thumb2") this.thumb2File = file;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            const preview = reader.result as string;
-            if (type === "main") this.previewUrl = preview;
-            if (type === "thumb1") this.thumb1Preview = preview;
-            if (type === "thumb2") this.thumb2Preview = preview;
-        };
-        reader.readAsDataURL(file);
+        this.setImagePreview(type, file);
+    }
+
+    ngOnDestroy(): void {
+        this.revokePreviewUrls();
     }
 
     addIngredient(event: Event): void {
@@ -142,6 +164,14 @@ export class UpdateDish implements OnInit {
         this.ingredients.splice(index, 1);
     }
 
+    toggleSize(size: string, checked: boolean): void {
+        this.selectedSizes = checked ? [size] : [];
+    }
+
+    hasSize(size: string): boolean {
+        return this.selectedSizes.includes(size);
+    }
+
     onSubmit(): void {
         if (!this.dishId || this.dishForm.invalid) {
             this.dishForm.markAllAsTouched();
@@ -153,8 +183,8 @@ export class UpdateDish implements OnInit {
             next: () => {
                 this.isLoading.set(false);
                 Swal.fire({
-                    title: "Updated!",
-                    text: "Dish updated successfully",
+                    title: "Mis à jour !",
+                    text: "Menu mis à jour avec succès",
                     icon: "success",
                     timer: 2000,
                     confirmButtonColor: "#28a745",
@@ -163,8 +193,8 @@ export class UpdateDish implements OnInit {
             error: (err) => {
                 this.isLoading.set(false);
                 Swal.fire({
-                    title: "Error",
-                    text: err.error?.message || "Error while updating dish",
+                    title: "Erreur",
+                    text: err.error?.message || "Erreur lors de la mise à jour du plat",
                     icon: "error",
                     confirmButtonColor: "#d33",
                 });
@@ -184,9 +214,22 @@ export class UpdateDish implements OnInit {
         formData.append("preparation_time", formValue.preparation_time.toString());
         formData.append("is_available", formValue.is_available ? "1" : "0");
 
+        if (this.canUseDishPromotions()) {
+            if (formValue.promotion_enabled) {
+                if (formValue.promotion_percent) formData.append("promotion_percent", formValue.promotion_percent.toString());
+                if (formValue.promotion_ends_at) formData.append("promotion_ends_at", formValue.promotion_ends_at);
+            } else {
+                formData.append("promotion_clear", "1");
+            }
+        }
+
         this.ingredients.forEach((ingredient) => {
             formData.append("ingredients[]", ingredient);
         });
+        this.selectedSizes.forEach((size) => {
+            formData.append("sizes[]", size);
+        });
+        formData.append("sizes_clear", this.selectedSizes.length ? "0" : "1");
 
         if (this.selectedFile) formData.append("image_principale", this.selectedFile);
         if (this.thumb1File) formData.append("image_secondaire_1", this.thumb1File);
@@ -196,6 +239,10 @@ export class UpdateDish implements OnInit {
     }
 
     private normalizeIngredients(value: unknown): string[] {
+        return this.normalizeStringArray(value);
+    }
+
+    private normalizeStringArray(value: unknown): string[] {
         if (Array.isArray(value)) return value;
         if (typeof value !== "string" || !value.trim()) return [];
 
@@ -213,5 +260,19 @@ export class UpdateDish implements OnInit {
         if (!path) return null;
         if (path.startsWith("http")) return path;
         return `${this.IMAGE_URL}${path}`;
+    }
+
+    private setImagePreview(type: "main" | "thumb1" | "thumb2", file: File): void {
+        const previewUrl = URL.createObjectURL(file);
+        this.previewObjectUrls.push(previewUrl);
+
+        if (type === "main") this.previewUrl = previewUrl;
+        if (type === "thumb1") this.thumb1Preview = previewUrl;
+        if (type === "thumb2") this.thumb2Preview = previewUrl;
+    }
+
+    private revokePreviewUrls(): void {
+        this.previewObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+        this.previewObjectUrls = [];
     }
 }

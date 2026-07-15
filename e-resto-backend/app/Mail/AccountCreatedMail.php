@@ -17,6 +17,7 @@ class AccountCreatedMail extends Mailable
     public function build()
     {
         $restaurant = $this->user->restaurant;
+        $restaurantName = $restaurant?->name ?? 'Restaurant Scan';
         $theme = $restaurant?->settings['theme'] ?? [];
         $primaryColor = $theme['primary'] ?? '#ff7a1a';
         $logoPath = $restaurant?->logo ? storage_path("app/public/{$restaurant->logo}") : public_path('assets/logo.png');
@@ -24,11 +25,18 @@ class AccountCreatedMail extends Mailable
             $logoPath = public_path('assets/logo.png');
         }
 
-        return $this->subject('Compte cree avec succes')
+        $mail = $this->from(config('mail.from.address'), $restaurantName)
+            ->subject("Votre accès - {$restaurantName}")
             ->view('emails.account_created', [
                 'restaurant' => $restaurant,
                 'primaryColor' => $primaryColor,
                 'logoPath' => $logoPath,
             ]);
+
+        if ($restaurant?->owner_email && filter_var($restaurant->owner_email, FILTER_VALIDATE_EMAIL)) {
+            $mail->replyTo($restaurant->owner_email, $restaurantName);
+        }
+
+        return $mail;
     }
 }

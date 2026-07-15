@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
+import { SaasPlan } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
 
 @Component({
@@ -12,7 +13,7 @@ import { SaasService } from '../../services/saas/saas-service';
   templateUrl: './restaurant-checkout.html',
   styleUrl: './restaurant-checkout.scss',
 })
-export class RestaurantCheckout implements OnDestroy {
+export class RestaurantCheckout implements OnInit, OnDestroy {
   selectedPlan = JSON.parse(localStorage.getItem('selected_plan') || '{}');
   restaurant = JSON.parse(localStorage.getItem('pending_restaurant') || localStorage.getItem('restaurant_session') || '{}');
   mobile = { provider: 'MPESA', wallet_id: '+24383' };
@@ -22,6 +23,8 @@ export class RestaurantCheckout implements OnDestroy {
   waitingConfirmation = false;
   paymentResponse: any = null;
   paymentReference = '';
+  planSyncing = true;
+  planSyncError = '';
   private paymentStatusTimer?: ReturnType<typeof setInterval>;
   private paymentStatusAttempts = 0;
 
@@ -32,7 +35,7 @@ export class RestaurantCheckout implements OnDestroy {
   }
 
   get monthlyPrice(): number {
-    return Number(this.restaurant.plan?.monthly_price ?? this.selectedPlan.monthly_price ?? this.selectedPlan.price ?? 0);
+    return this.canonicalMonthlyPrice();
   }
 
   get currency(): string {
@@ -44,30 +47,19 @@ export class RestaurantCheckout implements OnDestroy {
   }
 
   get paymentAmount(): number {
-    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice * 12 : this.monthlyPrice;
+    return this.billingCycle === 'yearly' ? this.yearlyPrice() : this.monthlyPrice;
   }
 
   get monthlyEquivalent(): number {
-    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice : this.monthlyPrice;
+    return this.billingCycle === 'yearly' ? this.annualMonthlyPrice() : this.monthlyPrice;
   }
 
   get installationFee(): number {
-    const slug = String(this.restaurant.plan?.slug || this.planName).toLowerCase();
-    return Number(this.selectedPlan.installation_fee ?? (slug.includes('business') ? 30_000 : 20_000));
+    return Number(this.selectedPlan.installation_fee ?? 0);
   }
 
-  private get annualMonthlyPrice(): number {
-    if (Number(this.selectedPlan.annual_monthly_price) > 0) {
-      return Number(this.selectedPlan.annual_monthly_price);
-    }
-
-    const slug = String(this.restaurant.plan?.slug || this.selectedPlan.slug || this.planName).toLowerCase();
-
-    if (slug.includes('starter')) return 12;
-    if (slug.includes('pro')) return 20;
-    if (slug.includes('business')) return 25;
-
-    return this.monthlyPrice;
+  ngOnInit(): void {
+    this.syncSelectedPlanFromApi();
   }
 
   get walletHint(): string {
@@ -112,8 +104,18 @@ export class RestaurantCheckout implements OnDestroy {
       return;
     }
 
+    if (this.planSyncing) {
+      this.showMessage('Actualisation du tarif en cours. Patientez un instant avant de payer.', 'info');
+      return;
+    }
+
+    if (this.planSyncError) {
+      this.showMessage(this.planSyncError, 'error');
+      return;
+    }
+
     if (!this.restaurant.id) {
-      this.router.navigate(['/restaurant/signup']);
+      this.router.navigate(['/pricing'], { fragment: 'plans' });
       return;
     }
 
@@ -121,23 +123,24 @@ export class RestaurantCheckout implements OnDestroy {
     this.mobile.wallet_id = walletId;
 
     if (!walletId || walletId === '+243') {
-      this.showMessage('Entrez le numero Mobile Money qui va payer l abonnement.', 'error');
+      this.showMessage("Entrez le numéro Mobile Money qui va payer l'abonnement.", 'error');
       return;
     }
 
     if (!this.isValidWalletForProvider(walletId)) {
-      this.showMessage(this.walletHint + '. Verifiez le numero avant de continuer.', 'error');
+      this.showMessage(this.walletHint + '. Vérifiez le numéro avant de continuer.', 'error');
       return;
     }
 
     this.paying = true;
     this.stopPaymentStatusPolling();
-    this.showMessage('Envoi de la demande de paiement vers votre telephone...', 'info');
+    this.showMessage('Envoi de la demande de paiement vers votre téléphone...', 'info');
     this.saas.checkoutMobileMoney({
       restaurant_id: this.restaurant.id,
       provider: this.mobile.provider,
       wallet_id: walletId,
       billing_cycle: this.billingCycle,
+      saas_plan_id: this.selectedPlan.id || this.restaurant.plan?.id || this.restaurant.saas_plan_id,
     }).pipe(
       timeout(60000),
       finalize(() => this.paying = false),
@@ -202,19 +205,19 @@ export class RestaurantCheckout implements OnDestroy {
 
     if (status === 'paid' && response.session?.token) {
       this.completePaidSession(response);
-      this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
+      this.showMessage(response.message || 'Paiement confirmé. Ouverture de votre espace restaurant...', 'success');
       setTimeout(() => this.router.navigate(['/dashboard']), 700);
       return;
     }
 
     if (status === 'pending') {
       this.waitingConfirmation = true;
-      this.showMessage(response.message || 'Confirmez le paiement sur votre telephone. Nous attendons le retour operateur.', 'info');
+      this.showMessage(response.message || 'Confirmez le paiement sur votre téléphone. Nous attendons le retour opérateur.', 'info');
       this.startPaymentStatusPolling(response.payment?.id);
       return;
     }
 
-    this.showMessage(response.message || 'Le paiement n a pas ete confirme. Verifiez le numero et reessayez.', 'error');
+    this.showMessage(response.message || "Le paiement n'a pas été confirmé. Vérifiez le numéro et réessayez.", 'error');
   }
 
   private startPaymentStatusPolling(paymentId?: string): void {
@@ -230,7 +233,7 @@ export class RestaurantCheckout implements OnDestroy {
       if (this.paymentStatusAttempts > 60) {
         this.stopPaymentStatusPolling();
         this.waitingConfirmation = false;
-        this.showMessage('La confirmation operateur prend trop de temps. Si vous avez valide sur le telephone, contactez le support avec la reference paiement.', 'error');
+        this.showMessage('La confirmation opérateur prend trop de temps. Si vous avez validé sur le téléphone, contactez le support avec la référence paiement.', 'error');
         return;
       }
 
@@ -240,7 +243,7 @@ export class RestaurantCheckout implements OnDestroy {
             this.stopPaymentStatusPolling();
             this.waitingConfirmation = false;
             this.completePaidSession(response);
-            this.showMessage(response.message || 'Paiement confirme. Ouverture de votre espace restaurant...', 'success');
+            this.showMessage(response.message || 'Paiement confirmé. Ouverture de votre espace restaurant...', 'success');
             setTimeout(() => this.router.navigate(['/dashboard']), 700);
             return;
           }
@@ -248,11 +251,11 @@ export class RestaurantCheckout implements OnDestroy {
           if (response.payment?.status === 'failed') {
             this.stopPaymentStatusPolling();
             this.waitingConfirmation = false;
-            this.showMessage(response.message || 'Paiement refuse ou expire. Verifiez le numero puis reessayez.', 'error');
+            this.showMessage(response.message || 'Paiement refusé ou expiré. Vérifiez le numéro puis réessayez.', 'error');
           }
         },
         error: () => {
-          this.showMessage('Paiement envoye. La confirmation operateur prend du temps, nous continuons a verifier.', 'info');
+          this.showMessage('Paiement envoyé. La confirmation opérateur prend du temps, nous continuons à vérifier.', 'info');
         },
       });
     }, 5000);
@@ -263,6 +266,69 @@ export class RestaurantCheckout implements OnDestroy {
       clearInterval(this.paymentStatusTimer);
       this.paymentStatusTimer = undefined;
     }
+  }
+
+  private syncSelectedPlanFromApi(): void {
+    const selectedIdentifier = String(this.selectedPlan.id || this.selectedPlan.slug || this.restaurant.plan?.id || this.restaurant.plan?.slug || '');
+    if (!selectedIdentifier) {
+      this.planSyncing = false;
+      return;
+    }
+
+    this.planSyncing = true;
+    this.planSyncError = '';
+    this.saas.plans().subscribe({
+      next: (plans) => {
+        const plan = plans.find((item) => item.id === selectedIdentifier || item.slug === selectedIdentifier);
+        if (!plan) {
+          this.planSyncError = 'Impossible de confirmer le tarif actuel de ce plan. Retournez sur la page Tarifs et choisissez un plan actif.';
+          this.planSyncing = false;
+          return;
+        }
+
+        this.selectedPlan = {
+          ...this.selectedPlan,
+          ...plan,
+          price: this.billingCycle === 'yearly' ? this.yearlyPrice(plan) : this.monthlyPriceForPlan(plan),
+          monthly_price: this.monthlyPriceForPlan(plan),
+          yearly_price: this.yearlyPrice(plan),
+          annual_monthly_price: this.yearlyPrice(plan) / 12,
+          cycle: this.billingCycle,
+        };
+        this.restaurant = {
+          ...this.restaurant,
+          plan: this.restaurant.plan ? { ...this.restaurant.plan, ...plan } : plan,
+          saas_plan_id: plan.id,
+        };
+        localStorage.setItem('selected_plan', JSON.stringify(this.selectedPlan));
+        this.planSyncing = false;
+      },
+      error: () => {
+        this.planSyncError = 'Impossible de charger le tarif actualise depuis le serveur. Reessayez avant de payer.';
+        this.planSyncing = false;
+      },
+    });
+  }
+
+  private canonicalMonthlyPrice(): number {
+    return this.monthlyPriceForPlan(this.currentPlan());
+  }
+
+  private annualMonthlyPrice(): number {
+    return this.yearlyPrice() / 12;
+  }
+
+  private yearlyPrice(plan = this.currentPlan()): number {
+    const yearly = Number(plan?.yearly_price ?? 0);
+    return yearly > 0 ? yearly : this.monthlyPriceForPlan(plan) * 12;
+  }
+
+  private monthlyPriceForPlan(plan: Partial<SaasPlan> | any): number {
+    return Number(plan?.monthly_price ?? plan?.price ?? 0);
+  }
+
+  private currentPlan(): Partial<SaasPlan> | any {
+    return this.restaurant.plan || this.selectedPlan || {};
   }
 
   private completePaidSession(response: any): void {
@@ -288,11 +354,11 @@ export class RestaurantCheckout implements OnDestroy {
 
   private errorMessage(error: any): string {
     if (error?.status === 0) {
-      return "Impossible de joindre le backend de paiement. Verifiez que Laravel est demarre sur le port 8000.";
+      return "Impossible de joindre le backend de paiement. Vérifiez que Laravel est démarré sur le port 8000.";
     }
 
     if (error?.name === 'TimeoutError') {
-      return 'Le gateway met trop de temps a repondre. Verifiez votre telephone avant de reessayer.';
+      return 'La passerelle met trop de temps à répondre. Vérifiez votre téléphone avant de réessayer.';
     }
 
     const errors = error?.error?.errors;
@@ -303,6 +369,6 @@ export class RestaurantCheckout implements OnDestroy {
       }
     }
 
-    return error?.error?.message || 'Paiement echoue. Verifiez le numero et reessayez.';
+    return error?.error?.message || 'Paiement échoué. Vérifiez le numéro et réessayez.';
   }
 }

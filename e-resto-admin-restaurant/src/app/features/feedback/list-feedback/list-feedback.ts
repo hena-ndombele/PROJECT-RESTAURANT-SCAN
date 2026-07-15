@@ -1,10 +1,12 @@
 import { CommonModule, DatePipe } from "@angular/common";
 import { HttpClient } from "@angular/common/http";
-import { Component, OnInit, computed, inject, signal } from "@angular/core";
+import { Component, OnDestroy, OnInit, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { API_ROOT } from "../../../services/api-url";
+import { Subscription } from "rxjs";
+import { FeedbackRealtimeDto, OrderRealtimeService } from "../../../services/realtime/order-realtime-service";
 
-type Feedback = {
+type Feedback = FeedbackRealtimeDto & {
   id: string;
   food_rating: number;
   service_rating: number;
@@ -30,9 +32,12 @@ type Feedback = {
   styleUrl: "./list-feedback.scss",
   standalone:true
 })
-export class ListFeedback implements OnInit {
+export class ListFeedback implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
+  private readonly realtime = inject(OrderRealtimeService);
+  private feedbackSubscription?: Subscription;
 
+  restaurant: any = JSON.parse(localStorage.getItem("restaurant_session") || "null");
   feedbacks = signal<Feedback[]>([]);
   selectedFeedback = signal<Feedback | null>(null);
   loading = signal(false);
@@ -78,7 +83,31 @@ export class ListFeedback implements OnInit {
   });
 
   ngOnInit(): void {
+    this.refreshRestaurantTheme();
     this.loadFeedbacks();
+    this.realtime.start();
+    this.feedbackSubscription = this.realtime.feedbackCreated$.subscribe((feedback) => {
+      this.feedbacks.update((items) => {
+        const nextFeedback = feedback as Feedback;
+        return items.some((item) => item.id === nextFeedback.id) ? items : [nextFeedback, ...items];
+      });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.feedbackSubscription?.unsubscribe();
+  }
+
+  themePrimary(): string {
+    return this.normalizeColor(this.restaurant?.settings?.theme?.primary, "#ff7a1a");
+  }
+
+  themeSecondary(): string {
+    return this.normalizeColor(this.restaurant?.settings?.theme?.secondary, "#d71920");
+  }
+
+  logoUrl(): string {
+    return this.restaurant?.logo_url || "";
   }
 
   loadFeedbacks(): void {
@@ -95,7 +124,7 @@ export class ListFeedback implements OnInit {
       error: (error) => {
         if (error?.status === 403 || error?.error?.requires_upgrade) {
           this.upgradeRequired.set(true);
-          this.errorMessage.set(error?.error?.message || "Les avis clients sont reserves aux plans Pro et Business.");
+          this.errorMessage.set(error?.error?.message || "Les avis clients sont réservés aux plans Pro et Business.");
         } else {
           this.errorMessage.set("Impossible de charger les feedbacks clients.");
         }
@@ -124,10 +153,23 @@ export class ListFeedback implements OnInit {
   recommendationLabel(feedback: Feedback): string {
     if (feedback.recommended === true) return "Recommande";
     if (feedback.recommended === false) return "Ne recommande pas";
-    return "Non renseigne";
+    return "Non renseigné";
   }
 
   closeModal(): void {
     this.selectedFeedback.set(null);
+  }
+
+  private refreshRestaurantTheme(): void {
+    try {
+      this.restaurant = JSON.parse(localStorage.getItem("restaurant_session") || "null");
+    } catch {
+      this.restaurant = null;
+    }
+  }
+
+  private normalizeColor(value: any, fallback: string): string {
+    const color = String(value || "").trim();
+    return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color) ? color : fallback;
   }
 }

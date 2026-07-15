@@ -10,12 +10,21 @@ function paymentMethodLabel(order) {
   return order.payment_method === 'cash' ? 'Cash' : (order.payment_method || 'Non renseigne');
 }
 
+function tableDisplay(order) {
+  const tableName = String(order?.table?.name || '').trim();
+  if (order?.order_type === 'remote' || tableName.toLowerCase() === 'commandes hors restaurant') {
+    return 'WhatsApp';
+  }
+
+  return tableName || 'N/A';
+}
+
 export function buildReceiptPdf(order, brand = {}) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 42;
   const receiptNumber = `ER-${String(order.id).slice(0, 8).toUpperCase()}`;
-  const paidAt = order.updated_at ? new Date(order.updated_at) : new Date();
+  const placedAt = order.created_at ? new Date(order.created_at) : new Date();
   const items = order.items ?? [];
   const paymentMethod = paymentMethodLabel(order);
   const restaurantName = brand.name || order.restaurant?.name || 'Restaurant Scan';
@@ -55,7 +64,7 @@ export function buildReceiptPdf(order, brand = {}) {
   let y = 155;
   doc.setTextColor(17, 17, 17);
   doc.setFontSize(12);
-  doc.text('Recu de paiement', margin, y);
+  doc.text('Reçu de paiement', margin, y);
   doc.setFontSize(28);
   doc.text(receiptNumber, margin, y + 34);
 
@@ -65,9 +74,9 @@ export function buildReceiptPdf(order, brand = {}) {
 
   y += 28;
   const meta = [
-    ['Table', order.table?.name ?? 'N/A'],
-    ['Date', paidAt.toLocaleDateString('fr-FR')],
-    ['Heure', paidAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })],
+    ['Table', tableDisplay(order)],
+    ['Date', placedAt.toLocaleDateString('fr-FR')],
+    ['Heure', placedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })],
     ['Paiement', paymentMethod],
   ];
   const metaWidth = (pageWidth - margin * 2) / 4;
@@ -148,7 +157,7 @@ export function buildReceiptPdf(order, brand = {}) {
   doc.setTextColor(17, 17, 17);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('Total paye', margin + 18, y + 34);
+  doc.text('Total payé', margin + 18, y + 34);
   doc.setFontSize(18);
   doc.text(formatMoney(order.total_amount, order.currency), pageWidth - margin - 150, y + 34);
 
@@ -156,7 +165,7 @@ export function buildReceiptPdf(order, brand = {}) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text(`Merci pour votre visite chez ${restaurantName}.`, pageWidth / 2, 790, { align: 'center' });
-  doc.text('Recu genere automatiquement par Restaurant Scan.', pageWidth / 2, 806, { align: 'center' });
+  doc.text('Reçu généré automatiquement par Restaurant Scan.', pageWidth / 2, 806, { align: 'center' });
 
   return {
     doc,

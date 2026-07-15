@@ -7,7 +7,7 @@
     <div class="nav-actions">
       <a routerLink="/">Accueil</a>
       <a routerLink="/restaurant/login">Connexion</a>
-      <a class="trial-link" routerLink="/restaurant/signup">Essai gratuit -></a>
+      <a class="trial-link" routerLink="/pricing" fragment="plans">Essai gratuit -></a>
     </div>
   </nav>
 
@@ -24,32 +24,35 @@
     </div>
   </section>
 
-  <section class="plans-shell">
+  <section id="plans" class="plans-shell">
     <div class="plans-intro">
       <span class="eyebrow">Choisissez votre formule</span>
       <h3>Trois plans pour grandir sans complexité</h3>
-      <p>Commencez avec l'éssentiel, puis activez les outils avancés lorsque votre activité évolue.</p>
+      <p>Commencez avec l'essentiel, puis activez les outils avancés lorsque votre activité évolue.</p>
     </div>
 
     <div class="ai-feature-strip">
       <div class="ai-feature-icon"><i class="bi bi-stars"></i></div>
       <div>
-        <span>Outils avances selon votre plan</span>
-        <strong>Statistiques, rôles, support et assistant dashboard selon le niveau choisi.</strong>
+        <span>Outils avancés selon votre plan</span>
+        <strong>Dashboard et statistiques inclus dès Starter, puis rôles, support et assistant avancés selon le niveau choisi.</strong>
       </div>
     </div>
 
     <div class="billing-toggle" aria-label="Choisir le cycle de facturation">
-      <button [class.active]="billingCycle === 'monthly'" type="button" (click)="billingCycle = 'monthly'">Mensuel</button>
-      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="billingCycle = 'yearly'">Annuel <span>tarif reduit</span></button>
+      <button [class.active]="billingCycle === 'monthly'" type="button" (click)="setBillingCycle('monthly')">Mensuel</button>
+      <button [class.active]="billingCycle === 'yearly'" type="button" (click)="setBillingCycle('yearly')">Annuel <span>tarif réduit</span></button>
     </div>
 
-    <p class="sync-note" *ngIf="errorMessage">{{ errorMessage }}</p>
+    <p class="sync-note" *ngIf="!loadingPlans && errorMessage">{{ errorMessage }}</p>
 
-    <div class="plans-grid">
-      <article class="plan-card" *ngFor="let plan of plans" [class.popular]="plan.is_popular">
+    <div class="plans-grid" *ngIf="plans.length">
+      <article class="plan-card" *ngFor="let plan of plans; trackBy: trackPlan" [class.popular]="plan.is_popular">
+        <div class="pricing-promo" *ngIf="hasActivePromo(plan)">
+          <span>{{ plan.promo_label || 'Promotion' }} -{{ plan.promo_percent }}%</span>
+        </div>
         <span class="popular-badge" *ngIf="plan.is_popular">Le plus populaire</span>
-        <span class="plan-audience">{{ plan.slug === 'starter' ? 'Pour démarrer' : plan.slug === 'pro' ? 'Pour accelerer' : 'Pour structurer' }}</span>
+        <span class="plan-audience">{{ plan.slug === 'starter' ? 'Pour démarrer' : plan.slug === 'pro' ? 'Pour accélérer' : 'Pour structurer' }}</span>
         <h2>{{ plan.name }}</h2>
         <p>{{ plan.description }}</p>
 
@@ -58,12 +61,12 @@
           <span>{{ displayCurrency(plan) }}</span>
         </div>
         <small>par mois{{ billingCycle === 'yearly' ? ', facture annuellement' : '' }}</small>
-        <em *ngIf="billingCycle === 'yearly'">{{ paymentAmount(plan) | number:'1.0-0' }} {{ displayCurrency(plan) }} debites pour 12 mois</em>
+        <em *ngIf="billingCycle === 'yearly'">{{ paymentAmount(plan) | number:'1.0-0' }} {{ displayCurrency(plan) }} débités pour 12 mois</em>
         <em *ngIf="billingCycle === 'monthly'">Sans engagement annuel</em>
-        <div class="installation-fee">
+        <div class="installation-fee" *ngIf="plan.installation_fee > 0">
           <i class="bi bi-tools"></i>
           <span>Installation unique</span>
-          <strong>{{ plan.installation_fee | number:'1.0-0' }} $</strong>
+          <strong>{{ installationFeeDisplay(plan) }}</strong>
         </div>
 
         <ul>
@@ -72,7 +75,7 @@
         </ul>
 
         <button type="button" (click)="choosePlan(plan)" [disabled]="!!selectingPlanSlug">
-          {{ selectingPlanSlug === plan.slug ? 'Preparation...' : 'Essayer gratuitement' }}
+          {{ selectingPlanSlug === plan.slug ? 'Préparation...' : 'Essayer gratuitement' }}
         </button>
       </article>
     </div>
@@ -86,13 +89,13 @@
       <div class="installation-proof">
         <article><strong>01</strong><span>Configuration guidée</span></article>
         <article><strong>02</strong><span>QR codes prêts à imprimer</span></article>
-        <article><strong>03</strong><span>Equipe prête pour le service</span></article>
+        <article><strong>03</strong><span>Équipe prête pour le service</span></article>
       </div>
     </div>
     <div class="install-grid">
-      <article><span>Etape 1</span><i class="bi bi-shop"></i><h3>Votre espace</h3><p>Informations, équipe et paramètres essentiels du restaurant.</p></article>
-      <article><span>Etape 2</span><i class="bi bi-qr-code"></i><h3>Votre menu QR</h3><p>Plats, tables et QR codes organisés pour vos clients.</p></article>
-      <article><span>Etape 3</span><i class="bi bi-bell"></i><h3>Votre premier service</h3><p>Commandes et notifications suivies en Temps réel.</p></article>
+      <article><span>Étape 1</span><i class="bi bi-shop"></i><h3>Votre espace</h3><p>Informations, équipe et paramètres essentiels du restaurant.</p></article>
+      <article><span>Étape 2</span><i class="bi bi-qr-code"></i><h3>Votre menu QR</h3><p>Plats, tables et QR codes organisés pour vos clients.</p></article>
+      <article><span>Étape 3</span><i class="bi bi-bell"></i><h3>Votre premier service</h3><p>Commandes et notifications suivies en temps réel.</p></article>
     </div>
   </section>
 </main>

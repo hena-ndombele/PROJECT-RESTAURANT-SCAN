@@ -1,0 +1,25 @@
+{
+  "name": "Restaurant Scan Admin",
+  "short_name": "Resto Admin",
+  "description": "Administration développeur Restaurant Scan.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ff7a1a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/assets/restaurant-scan.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/restaurant-scan.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ export class ShowTable implements OnInit, OnChanges {
     @Input() table: TableDto | undefined;
     @Input() tableId: string | null = null;
     tableDetail?: TableDto;
+    private readonly defaultLogo = "assets/logo/e-resto-logo.png";
 
     ngOnInit(): void {
         this.syncTableDetail();
@@ -32,13 +33,13 @@ export class ShowTable implements OnInit, OnChanges {
 
     restaurantLogo(): string {
         const cached = localStorage.getItem("restaurant_session");
-        if (!cached) return "assets/logo/e-resto-logo.png";
+        if (!cached) return this.defaultLogo;
 
         try {
             const restaurant = JSON.parse(cached);
-            return restaurant.logo_url || (restaurant.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : "assets/logo/e-resto-logo.png");
+            return restaurant.logo_data_url || restaurant.logo_url || (restaurant.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : this.defaultLogo);
         } catch {
-            return "assets/logo/e-resto-logo.png";
+            return this.defaultLogo;
         }
     }
 
@@ -76,199 +77,71 @@ export class ShowTable implements OnInit, OnChanges {
         return table.qr_url;
     }
     primaryColor(): string {
-        return getComputedStyle(document.documentElement).getPropertyValue("--dashboard-primary").trim() || "#F9A11B";
+        return getComputedStyle(document.documentElement).getPropertyValue("--dashboard-primary").trim() || "#ff7a1a";
     }
 
-    printQRCode(): void {
+    async printQRCode(): Promise<void> {
         if (!this.tableDetail?.qr_url) return;
 
-        const logoUrl = this.restaurantLogo();
-        const primary = this.primaryColor();
-        const restaurantName = this.restaurantName();
-        const tableName = this.tableDetail.name;
-        const qrUrl = this.tableQrUrl(this.tableDetail);
-        const windowPrint = window.open("", "", "left=0,top=0,width=760,height=980");
+        if (this.canUsePremiumQrTemplates()) {
+            void this.printTemplateQRCode();
+            return;
+        }
 
-        if (!windowPrint) return;
+        const canvas = await this.buildDefaultQrCanvas();
+        if (!canvas || !this.tableDetail) return;
 
-        windowPrint.document.write(`
-<html>
-<head>
-  <title>QR Code - ${this.escapeHtml(tableName)}</title>
-  <style>
-    @page { size: portrait; margin: 8mm; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-    body {
-      min-height: 100vh;
-      margin: 0;
-      display: grid;
-      place-items: center;
-      background: #ffffff;
-      font-family: Arial, Helvetica, sans-serif;
-    }
-    .scan-card {
-      width: 520px;
-      min-height: 740px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 34px 34px 28px;
-      background: #ffffff !important;
-      color: #111827 !important;
-    }
-    .brand {
-      width: 170px;
-      height: 88px;
-      display: grid;
-      place-items: center;
-      margin-bottom: 24px;
-      padding: 12px 16px;
-      border: 2px solid rgba(15, 23, 42, .12);
-      border-radius: 14px;
-      background: ${primary} !important;
-    }
-    .brand img,
-    .qr-logo img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    h1 {
-      margin: 0 0 26px;
-      color: #111827 !important;
-      font-size: 34px;
-      font-weight: 950;
-      line-height: 1;
-      text-align: center;
-    }
-    .scan-frame {
-      position: relative;
-      width: 390px;
-      padding: 25px;
-      margin-bottom: 34px;
-    }
-    .qr-box {
-      position: relative;
-      width: 340px;
-      height: 340px;
-      display: grid;
-      place-items: center;
-      border: 1px solid rgba(15, 23, 42, .28);
-      background: #ffffff !important;
-    }
-    .qr-box > img {
-      width: 294px;
-      height: 294px;
-      object-fit: contain;
-    }
-    .qr-logo {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 84px;
-      height: 62px;
-      display: grid;
-      place-items: center;
-      transform: translate(-50%, -50%);
-      padding: 7px;
-      border: 2px solid rgba(15, 23, 42, .14);
-      border-radius: 10px;
-      background: #ffffff !important;
-      box-shadow: 0 2px 12px rgba(15, 23, 42, .16);
-    }
-    .corner {
-      position: absolute;
-      width: 66px;
-      height: 66px;
-      border-color: #ffffff;
-      border-style: solid;
-      filter: drop-shadow(0 2px 2px rgba(15, 23, 42, .2));
-      z-index: 3;
-    }
-    .tl { top: 0; left: 0; border-width: 9px 0 0 9px; border-top-left-radius: 24px; }
-    .tr { top: 0; right: 0; border-width: 9px 9px 0 0; border-top-right-radius: 24px; }
-    .bl { bottom: 0; left: 0; border-width: 0 0 9px 9px; border-bottom-left-radius: 24px; }
-    .br { right: 0; bottom: 0; border-width: 0 9px 9px 0; border-bottom-right-radius: 24px; }
-    .table-name {
-      width: 430px;
-      min-height: 58px;
-      display: grid;
-      place-items: center;
-      padding: 10px 20px;
-      background: #111827 !important;
-      color: #ffffff !important;
-      font-size: 34px;
-      font-weight: 950;
-      line-height: 1;
-      text-align: center;
-      text-transform: uppercase;
-    }
-    .restaurant {
-      margin: 18px 0 0;
-      color: #6b7280 !important;
-      font-size: 14px;
-      font-weight: 700;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <div class="scan-card">
-    <div class="brand"><img src="${logoUrl}" alt="${this.escapeHtml(restaurantName)}"></div>
-    <h1>SCAN TO ORDER</h1>
-    <div class="scan-frame">
-      <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
-      <div class="qr-box">
-        <img src="${qrUrl}" alt="QR Code">
-        <div class="qr-logo"><img src="${logoUrl}" alt="${this.escapeHtml(restaurantName)}"></div>
-      </div>
-    </div>
-    <div class="table-name">${this.escapeHtml(tableName)}</div>
-    <p class="restaurant">${this.escapeHtml(restaurantName)}</p>
-  </div>
-  <script>
-    window.onload = function() {
-      setTimeout(function() { window.print(); window.close(); }, 500);
-    };
-  </script>
-</body>
-</html>`);
-        windowPrint.document.close();
+        this.printCanvasQRCode(canvas, this.tableDetail.name);
     }
 
     async downloadQRCode(): Promise<void> {
         if (!this.tableDetail?.qr_url) return;
 
+        if (this.canUsePremiumQrTemplates()) {
+            const canvas = await this.buildPremiumQrCanvas();
+            if (!canvas) return;
+            const link = document.createElement("a");
+            link.download = `qr-table-${this.slugify(this.tableDetail.name)}-${this.selectedQrTemplate()}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+            return;
+        }
+
+        const canvas = await this.buildDefaultQrCanvas();
+        if (!canvas) return;
+
+        const link = document.createElement("a");
+        link.download = `qr-table-${this.slugify(this.tableDetail.name)}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    }
+
+    private async buildDefaultQrCanvas(): Promise<HTMLCanvasElement | null> {
+        if (!this.tableDetail?.qr_url) return null;
+
         const canvas = document.createElement("canvas");
         canvas.width = 900;
         canvas.height = 1200;
         const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+        if (!ctx) return null;
 
         const primary = this.primaryColor();
-        const logo = await this.loadImage(this.restaurantLogo());
+        const logo = await this.loadRestaurantLogoImage();
         const qrUrl = this.tableQrUrl(this.tableDetail);
-        if (!qrUrl) return;
+        if (!qrUrl) return null;
         const qr = await this.loadImage(qrUrl);
-        const restaurantName = this.restaurantName();
         const tableName = this.tableDetail.name;
 
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = primary;
-        this.roundRect(ctx, 332, 92, 236, 116, 22);
-        ctx.fill();
-        ctx.strokeStyle = "rgba(15, 23, 42, .12)";
-        ctx.lineWidth = 3;
-        this.roundRect(ctx, 332, 92, 236, 116, 22);
-        ctx.stroke();
-        if (logo) ctx.drawImage(logo, 362, 118, 176, 64);
+        this.drawOuterFrame(ctx, 88, 48, 724, 1030, 4, primary);
+        if (logo) this.drawContainImage(ctx, logo, 300, 82, 300, 130);
 
         ctx.fillStyle = "#111827";
         ctx.textAlign = "center";
         ctx.textBaseline = "alphabetic";
-        ctx.font = "900 54px Arial";
+        ctx.font = "900 32px Arial";
         ctx.fillText("SCAN TO ORDER", 450, 292);
 
         const frameX = 210;
@@ -291,13 +164,13 @@ export class ShowTable implements OnInit, OnChanges {
             ctx.lineWidth = 3;
             this.roundRect(ctx, 393, 533, 114, 84, 14);
             ctx.stroke();
-            ctx.drawImage(logo, 408, 554, 84, 42);
+            this.drawContainImage(ctx, logo, 408, 548, 84, 54);
         }
 
-        this.drawCorner(ctx, frameX, frameY, "tl");
-        this.drawCorner(ctx, frameX + frameSize, frameY, "tr");
-        this.drawCorner(ctx, frameX, frameY + frameSize, "bl");
-        this.drawCorner(ctx, frameX + frameSize, frameY + frameSize, "br");
+        this.drawCorner(ctx, frameX, frameY, "tl", primary);
+        this.drawCorner(ctx, frameX + frameSize, frameY, "tr", primary);
+        this.drawCorner(ctx, frameX, frameY + frameSize, "bl", primary);
+        this.drawCorner(ctx, frameX + frameSize, frameY + frameSize, "br", primary);
 
         ctx.fillStyle = "#111827";
         ctx.fillRect(150, 875, 600, 72);
@@ -306,15 +179,309 @@ export class ShowTable implements OnInit, OnChanges {
         ctx.font = "900 44px Arial";
         ctx.fillText(this.truncateText(ctx, tableName.toUpperCase(), 540), 450, 926);
 
-        ctx.fillStyle = "#6b7280";
-        ctx.font = "700 22px Arial";
-        ctx.fillText(this.truncateText(ctx, restaurantName, 620), 450, 1002);
-
-        const link = document.createElement("a");
-        link.download = `qr-table-${tableName}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
+        return canvas;
     }
+
+    private async printTemplateQRCode(): Promise<void> {
+        const canvas = await this.buildPremiumQrCanvas();
+        if (!canvas || !this.tableDetail) return;
+
+        this.printCanvasQRCode(canvas, this.tableDetail.name);
+    }
+
+    private printCanvasQRCode(canvas: HTMLCanvasElement, tableName: string): void {
+        const imageUrl = canvas.toDataURL("image/png");
+        const printWindow = window.open("", "", "left=0,top=0,width=980,height=1200");
+        if (!printWindow) return;
+
+        printWindow.document.write(`
+<html>
+<head>
+  <title>QR Code - ${this.escapeHtml(tableName)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 6mm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; display: grid; place-items: center; background: #fff; overflow: hidden; }
+    img { max-width: calc(100vw - 12mm); max-height: calc(100vh - 12mm); width: auto; height: auto; display: block; object-fit: contain; }
+  </style>
+</head>
+<body>
+  <img src="${imageUrl}" alt="QR Code ${this.escapeHtml(tableName)}">
+  <script>window.onload = function(){ setTimeout(function(){ window.print(); window.close(); }, 400); };</script>
+</body>
+</html>`);
+        printWindow.document.close();
+    }
+
+    private async buildPremiumQrCanvas(): Promise<HTMLCanvasElement | null> {
+        if (!this.tableDetail?.qr_url) return null;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 900;
+        canvas.height = 1273;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+
+        const logo = await this.loadRestaurantLogoImage();
+        const qrUrl = this.tableQrUrl(this.tableDetail);
+        if (!qrUrl) return null;
+        const qr = await this.loadImage(qrUrl);
+        if (!qr) return null;
+        const [burgerImage, wrapImage, promoImage] = await Promise.all([
+            this.loadImage("assets/images/humb.jpg"),
+            this.loadImage("assets/images/cha.jpg"),
+            this.loadImage("assets/images/cha2.jpg"),
+        ]);
+        const foodAssets = { burgerImage, shawarmaImage: wrapImage, promoImage };
+
+        const info = this.restaurantPrintInfo();
+        if (this.selectedQrTemplate() === "table_tent") {
+            this.drawTableTentTemplate(ctx, qr, logo, info, foodAssets);
+        } else {
+            this.drawPosterTemplate(ctx, qr, logo, info, foodAssets);
+        }
+
+        return canvas;
+    }
+
+    private drawPosterTemplate(ctx: CanvasRenderingContext2D, qr: HTMLImageElement, logo: HTMLImageElement | null, info: any, foodAssets: any): void {
+        const accent = info.primary || "#ff7a1a";
+        const cardX = 58;
+        const cardY = 44;
+        const cardW = 784;
+        const cardH = 1185;
+        const innerX = 82;
+        const innerY = 72;
+        const innerW = 736;
+        const innerH = 1128;
+
+        ctx.fillStyle = "#eef2f7";
+        ctx.fillRect(0, 0, 900, 1273);
+
+        ctx.save();
+        ctx.shadowColor = "rgba(15, 23, 42, .18)";
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetY = 10;
+        ctx.fillStyle = "#cbd5e1";
+        this.roundRect(ctx, cardX, cardY, cardW, cardH, 14);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = "#ffffff";
+        this.roundRect(ctx, innerX, innerY, innerW, innerH, 8);
+        ctx.fill();
+
+        ctx.save();
+        this.roundRect(ctx, innerX, innerY, innerW, innerH, 8);
+        ctx.clip();
+
+        if (foodAssets?.burgerImage) {
+            this.drawCoverImage(ctx, foodAssets.burgerImage, innerX, innerY, innerW, 770);
+        } else {
+            ctx.fillStyle = accent;
+            ctx.fillRect(innerX, innerY, innerW, 770);
+        }
+        ctx.fillStyle = "rgba(0, 0, 0, .58)";
+        ctx.fillRect(innerX, innerY, innerW, 770);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.moveTo(innerX, 700);
+        ctx.quadraticCurveTo(265, 760, 450, 725);
+        ctx.quadraticCurveTo(645, 690, innerX + innerW, 720);
+        ctx.lineTo(innerX + innerW, innerY + innerH);
+        ctx.lineTo(innerX, innerY + innerH);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        if (logo) {
+            this.drawContainImage(ctx, logo, 300, 115, 300, 130);
+        }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        ctx.font = "900 48px Arial";
+        ctx.fillText("SCAN TO ORDER", 450, 330);
+
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, .22)";
+        ctx.shadowBlur = 18;
+        ctx.shadowOffsetY = 10;
+        ctx.fillStyle = "#ffffff";
+        this.roundRect(ctx, 160, 390, 580, 580, 42);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 6;
+        this.roundRect(ctx, 160, 390, 580, 580, 42);
+        ctx.stroke();
+        ctx.drawImage(qr, 205, 435, 490, 490);
+
+        if (logo) {
+            ctx.fillStyle = "#ffffff";
+            this.roundRect(ctx, 393, 638, 114, 84, 14);
+            ctx.fill();
+            ctx.strokeStyle = "rgba(15, 23, 42, .14)";
+            ctx.lineWidth = 3;
+            this.roundRect(ctx, 393, 638, 114, 84, 14);
+            ctx.stroke();
+            this.drawContainImage(ctx, logo, 408, 653, 84, 54);
+        }
+
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(150, 1025, 600, 72);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 42px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(this.truncateText(ctx, info.tableName.toUpperCase(), 540), 450, 1076);
+        ctx.save();
+        ctx.fillStyle = "#f8fafc";
+        this.roundRect(ctx, 255, 1120, 390, 58, 29);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(17, 24, 39, .14)";
+        ctx.lineWidth = 2;
+        this.roundRect(ctx, 255, 1120, 390, 58, 29);
+        ctx.stroke();
+        this.drawPhoneIcon(ctx, 292, 1135, "#111827");
+        ctx.fillStyle = "#111827";
+        ctx.font = "800 24px Arial";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(this.truncateText(ctx, info.phone, 290), 350, 1158);
+        ctx.restore();
+    }
+    private drawTableTentTemplate(ctx: CanvasRenderingContext2D, qr: HTMLImageElement, logo: HTMLImageElement | null, info: any, foodAssets: any): void {
+        const red = "#9f3b2b";
+        const yellow = "#ffd51f";
+
+        if (foodAssets?.shawarmaImage) {
+            this.drawCoverImage(ctx, foodAssets.shawarmaImage, 0, 0, 900, 1273);
+        } else {
+            ctx.fillStyle = "#28351f";
+            ctx.fillRect(0, 0, 900, 1273);
+        }
+
+        ctx.fillStyle = "rgba(0, 0, 0, .52)";
+        ctx.fillRect(0, 0, 900, 1273);
+        ctx.fillStyle = "rgba(38, 51, 28, .28)";
+        ctx.fillRect(0, 0, 900, 1273);
+
+        if (logo) {
+            this.drawContainImage(ctx, logo, 374, 28, 152, 112);
+        }
+
+        ctx.fillStyle = yellow;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        ctx.font = "900 46px Arial";
+        ctx.fillText("SCAN TO ORDER", 450, 330);
+
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,.28)";
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetY = 12;
+        ctx.fillStyle = "rgba(255,255,255,.94)";
+        this.roundRect(ctx, 160, 410, 580, 580, 62);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 7;
+        this.roundRect(ctx, 140, 390, 620, 620, 72);
+        ctx.stroke();
+        ctx.drawImage(qr, 205, 455, 490, 490);
+
+        if (logo) {
+            this.drawContainImage(ctx, logo, 408, 675, 84, 54);
+        }
+
+        ctx.save();
+        ctx.strokeStyle = yellow;
+        ctx.lineWidth = 4;
+        this.roundRect(ctx, 210, 1040, 480, 74, 16);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.fillStyle = red;
+        ctx.fillRect(0, 1160, 900, 113);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.45)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(560, 1185);
+        ctx.lineTo(560, 1244);
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.font = "700 24px Arial";
+        this.wrapText(ctx, info.address || "Adresse du restaurant", 54, 1206, 455, 30);
+
+        this.drawPhoneIcon(ctx, 612, 1202, "#ffffff", 0.48);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 22px Arial";
+        ctx.fillText(this.truncateText(ctx, info.phone, 220), 655, 1226);
+
+        ctx.save();
+        const displayTableName = this.truncateText(ctx, String(info.tableName || this.tableDetail?.name || this.table?.name || "TABLE").toUpperCase(), 420);
+        ctx.strokeStyle = yellow;
+        ctx.lineWidth = 4;
+        this.roundRect(ctx, 210, 1040, 480, 74, 16);
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 46px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(displayTableName, 450, 1077);
+        ctx.restore();
+    }
+    private restaurantPrintInfo(): any {
+        const restaurant = this.restaurantSession();
+        return {
+            name: this.restaurantName(),
+            phone: restaurant?.settings?.whatsapp_order_phone || restaurant?.owner_phone || "+243",
+            slogan: restaurant?.settings?.slogan || "Menu digital QR code",
+            menuUrl: this.menuUrl(restaurant),
+            primary: this.primaryColor(),
+            tableName: this.tableDetail?.name || this.table?.name || "TABLE",
+            address: [restaurant?.address, restaurant?.city].filter(Boolean).join(", "),
+        };
+    }
+
+    private selectedQrTemplate(): "poster" | "table_tent" {
+        const template = this.restaurantSession()?.settings?.qr_template;
+        return template === "table_tent" ? "table_tent" : "poster";
+    }
+
+    private canUsePremiumQrTemplates(): boolean {
+        const restaurant = this.restaurantSession();
+        const template = restaurant?.settings?.qr_template;
+        const hasSelectedTemplate = template === "poster" || template === "table_tent";
+        const slug = String(restaurant?.plan?.slug || restaurant?.plan?.name || "").toLowerCase();
+        const canCustomize = Boolean(restaurant?.features?.customization) || slug.includes("pro") || slug.includes("business");
+
+        return canCustomize && hasSelectedTemplate;
+    }
+
+    private restaurantSession(): any {
+        const cached = localStorage.getItem("restaurant_session");
+        if (!cached) return null;
+        try {
+            return JSON.parse(cached);
+        } catch {
+            return null;
+        }
+    }
+
+    private menuUrl(restaurant: any): string {
+        const slug = restaurant?.slug || "mon-restaurant";
+        const base = window.location.origin.replace(":4200", ":5173");
+        return `${base}/?restaurant_slug=${slug}`;
+    }
+
     private loadImage(src: string): Promise<HTMLImageElement | null> {
         return new Promise((resolve) => {
             const image = new Image();
@@ -323,6 +490,88 @@ export class ShowTable implements OnInit, OnChanges {
             image.onerror = () => resolve(null);
             image.src = src;
         });
+    }
+
+    private async loadRestaurantLogoImage(): Promise<HTMLImageElement | null> {
+        const logo = await this.loadImage(this.restaurantLogo());
+        if (logo) return logo;
+
+        return this.loadImage(this.defaultLogo);
+    }
+
+    private drawCoverImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number): void {
+        const imageRatio = image.width / image.height;
+        const boxRatio = width / height;
+        let sourceWidth = image.width;
+        let sourceHeight = image.height;
+        let sourceX = 0;
+        let sourceY = 0;
+
+        if (imageRatio > boxRatio) {
+            sourceWidth = image.height * boxRatio;
+            sourceX = (image.width - sourceWidth) / 2;
+        } else {
+            sourceHeight = image.width / boxRatio;
+            sourceY = (image.height - sourceHeight) / 2;
+        }
+
+        ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
+    }
+
+    private drawContainImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number): void {
+        const ratio = Math.min(width / image.width, height / image.height);
+        const drawWidth = image.width * ratio;
+        const drawHeight = image.height * ratio;
+        const drawX = x + (width - drawWidth) / 2;
+        const drawY = y + (height - drawHeight) / 2;
+        ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    }
+
+    private drawPhoneIcon(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, scale = 0.72): void {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 6;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(7, 9);
+        ctx.quadraticCurveTo(18, 35, 47, 42);
+        ctx.lineTo(57, 31);
+        ctx.lineTo(43, 20);
+        ctx.lineTo(34, 29);
+        ctx.quadraticCurveTo(24, 25, 20, 15);
+        ctx.lineTo(29, 7);
+        ctx.lineTo(18, -4);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    }
+    private drawOuterFrame(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number, color: string): void {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        this.roundRect(ctx, x, y, width, height, radius);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    private colorWithAlpha(color: string, alpha: number): string {
+        const hex = color.trim();
+        if (/^#[0-9a-f]{3}$/i.test(hex)) {
+            const r = parseInt(hex[1] + hex[1], 16);
+            const g = parseInt(hex[2] + hex[2], 16);
+            const b = parseInt(hex[3] + hex[3], 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        if (/^#[0-9a-f]{6}$/i.test(hex)) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        return color;
     }
 
     private roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
@@ -355,11 +604,11 @@ export class ShowTable implements OnInit, OnChanges {
         }
     }
 
-    private drawCorner(ctx: CanvasRenderingContext2D, x: number, y: number, corner: "tl" | "tr" | "bl" | "br"): void {
+    private drawCorner(ctx: CanvasRenderingContext2D, x: number, y: number, corner: "tl" | "tr" | "bl" | "br", color: string): void {
         const size = 74;
         const radius = 22;
         ctx.save();
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = color;
         ctx.lineWidth = 12;
         ctx.lineCap = "round";
         ctx.shadowColor = "rgba(15, 23, 42, .22)";
@@ -416,5 +665,14 @@ export class ShowTable implements OnInit, OnChanges {
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+    }
+
+    private slugify(value: string): string {
+        return value
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "table";
     }
 }

@@ -1,9 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-type AdminTab = 'dashboard' | 'restaurants' | 'payments' | 'users' | 'roles' | 'contacts' | 'newsletter' | 'support' | 'audit';
+type AdminTab = 'dashboard' | 'restaurants' | 'payments' | 'pricing' | 'users' | 'roles' | 'contacts' | 'newsletter' | 'support' | 'audit';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
 
 interface SaasPlan {
   id?: string;
@@ -11,10 +16,20 @@ interface SaasPlan {
   slug?: string;
   description?: string;
   monthly_price: number | string;
+  yearly_price?: number | string | null;
+  promo_label?: string | null;
+  promo_percent?: number | string | null;
+  promo_starts_at?: string | null;
+  promo_ends_at?: string | null;
+  has_active_promo?: boolean;
+  promo_monthly_price?: number | string | null;
+  promo_yearly_price?: number | string | null;
   currency: string;
   max_restaurants: number;
-  max_tables: number;
-  max_users: number;
+  max_tables: number | null;
+  max_users: number | null;
+  max_dishes?: number | null;
+  max_orders_per_month?: number | null;
   features: string[] | string;
   is_popular?: boolean;
   is_active?: boolean;
@@ -28,6 +43,7 @@ interface Restaurant {
   owner_email: string;
   owner_phone?: string;
   city?: string;
+  commune?: string;
   country?: string;
   currency?: string;
   status: string;
@@ -102,7 +118,7 @@ interface Paginated<T> {
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
  readonly apiRoot = 'http://localhost:8000/api';
   readonly saasUrl = `${this.apiRoot}/saas`;
 
@@ -119,6 +135,8 @@ export class App implements OnInit {
   saving = signal(false);
   message = signal('');
   error = signal('');
+  installPromptOpen = signal(false);
+  installAvailable = signal(false);
   search = signal('');
   statusFilter = signal('all');
   paymentFilter = signal('all');
@@ -131,7 +149,7 @@ export class App implements OnInit {
   payments = signal<Payment[]>([]);
   users = signal<AdminUser[]>([]);
   roles = signal<Role[]>([]);
-  support = signal<any>({ contact_messages: [], feedbacks: [], Réservations: [] });
+  support = signal<any>({ contact_messages: [], feedbacks: [], reservations: [] });
   contacts = signal<ContactMessage[]>([]);
   newsletterSubscribers = signal<NewsletterSubscriber[]>([]);
   auditEvents = signal<any[]>([]);
@@ -165,9 +183,13 @@ export class App implements OnInit {
   roleModalOpen = signal(false);
   restaurantForm: Restaurant = this.emptyRestaurant();
   planForm: SaasPlan = this.emptyPlan();
+  planDishPromotions = true;
   userForm: AdminUser = this.emptyUser();
   roleForm: Role = this.emptyRole();
   ownerPassword = '';
+  private deferredInstallPrompt?: BeforeInstallPromptEvent;
+  private installCheckTimer?: ReturnType<typeof setTimeout>;
+  private readonly installDismissKey = 'e-resto-admin-install-dismissed-until';
 
   filteredRestaurants = computed(() => {
     const query = this.search().trim().toLowerCase();
@@ -250,19 +272,90 @@ export class App implements OnInit {
     return [
       { label: 'Restaurants actifs ou en essai', value: active, percent: Math.round((active / total) * 100), tone: 'active' },
       { label: 'Restaurants en retard de paiement', value: pastDue, percent: Math.round((pastDue / total) * 100), tone: 'past_due' },
-      { label: 'Restaurants suspendus ou annules', value: suspended, percent: Math.round((suspended / total) * 100), tone: 'suspended' },
+      { label: 'Restaurants suspendus ou annulés', value: suspended, percent: Math.round((suspended / total) * 100), tone: 'suspended' },
     ];
   });
 
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
+    this.registerInstallPrompt();
+
     if (this.isTokenExpired()) {
       this.clearAdminSession();
       return;
     }
 
     if (this.token()) this.loadAll();
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+    window.removeEventListener('appinstalled', this.handleAppInstalled);
+    if (this.installCheckTimer) clearTimeout(this.installCheckTimer);
+  }
+
+  async installApp(): Promise<void> {
+    if (!this.deferredInstallPrompt) {
+      this.installPromptOpen.set(false);
+      return;
+    }
+
+    const promptEvent = this.deferredInstallPrompt;
+    this.deferredInstallPrompt = undefined;
+    this.installAvailable.set(false);
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice.catch(() => null);
+
+    if (choice?.outcome === 'accepted') {
+      localStorage.removeItem(this.installDismissKey);
+    } else {
+      this.dismissInstallPrompt();
+    }
+
+    this.installPromptOpen.set(false);
+  }
+
+  dismissInstallPrompt(): void {
+    const threeDays = 3 * 24 * 60 * 60 * 1000;
+    localStorage.setItem(this.installDismissKey, String(Date.now() + threeDays));
+    this.installPromptOpen.set(false);
+  }
+
+  private registerInstallPrompt(): void {
+    window.addEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', this.handleAppInstalled);
+
+    this.installCheckTimer = setTimeout(() => {
+      if (this.deferredInstallPrompt && !this.installDismissed() && !this.isStandaloneApp()) {
+        this.installPromptOpen.set(true);
+      }
+    }, 1200);
+  }
+
+  private handleBeforeInstallPrompt = (event: Event): void => {
+    event.preventDefault();
+    this.deferredInstallPrompt = event as BeforeInstallPromptEvent;
+    this.installAvailable.set(true);
+
+    if (!this.installDismissed() && !this.isStandaloneApp()) {
+      this.installPromptOpen.set(true);
+    }
+  };
+
+  private handleAppInstalled = (): void => {
+    localStorage.removeItem(this.installDismissKey);
+    this.deferredInstallPrompt = undefined;
+    this.installAvailable.set(false);
+    this.installPromptOpen.set(false);
+  };
+
+  private installDismissed(): boolean {
+    return Date.now() < Number(localStorage.getItem(this.installDismissKey) || 0);
+  }
+
+  private isStandaloneApp(): boolean {
+    return window.matchMedia?.('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
   }
 
   login(): void {
@@ -273,17 +366,27 @@ export class App implements OnInit {
       password: this.loginForm.password,
     }).subscribe({
       next: () => {
+        this.otpDigits = ['', '', '', '', ''];
+        this.loginForm.otp = '';
         this.loginStep.set('otp');
         this.authLoading.set(false);
-        this.showTemporaryMessage('Un code OTP a ete envoye a votre adresse email.');
+        this.showTemporaryMessage('Un code OTP a été envoyé à votre adresse e-mail.');
+        this.focusOtpInput(0);
       },
       error: (error) => this.authError(error),
     });
   }
 
   verifyOtp(): void {
-    this.authLoading.set(true);
     this.clearNotice();
+    this.loginForm.otp = this.otpDigits.join('');
+
+    if (this.loginForm.otp.length !== 5) {
+      this.error.set('Veuillez saisir les 5 chiffres du code OTP.');
+      return;
+    }
+
+    this.authLoading.set(true);
     this.http.post<any>(`${this.apiRoot}/admin/auth/verify-otp`, {
       email: this.loginForm.email,
       otp: this.loginForm.otp,
@@ -329,23 +432,109 @@ export class App implements OnInit {
 
   setOtpDigit(event: Event, index: number): void {
     const input = event.target as HTMLInputElement;
-    const digit = input.value.replace(/\D/g, '').slice(-1);
+    const value = input.value.replace(/\D/g, '');
+
+    if (value.length > 1) {
+      this.fillOtpDigits(value, index);
+      return;
+    }
+
+    const digit = value.slice(0, 1);
     this.otpDigits[index] = digit;
     input.value = digit;
-    this.loginForm.otp = this.otpDigits.join('');
+    this.syncOtpCode();
 
     if (digit && index < this.otpDigits.length - 1) {
-      const next = input.parentElement?.children[index + 1] as HTMLInputElement | undefined;
-      next?.focus();
+      this.focusOtpInput(index + 1);
     }
   }
 
   handleOtpKeydown(event: KeyboardEvent, index: number): void {
     const input = event.target as HTMLInputElement;
-    if (event.key === 'Backspace' && !input.value && index > 0) {
-      const previous = input.parentElement?.children[index - 1] as HTMLInputElement | undefined;
-      previous?.focus();
+
+    if (event.key === 'Backspace') {
+      event.preventDefault();
+
+      if (input.value) {
+        this.otpDigits[index] = '';
+        input.value = '';
+        this.syncOtpCode();
+        return;
+      }
+
+      if (index > 0) {
+        this.otpDigits[index - 1] = '';
+        this.syncOtpCode();
+        this.refreshOtpInputs();
+        this.focusOtpInput(index - 1);
+      }
+      return;
     }
+
+    if (event.key === 'ArrowLeft' && index > 0) {
+      event.preventDefault();
+      this.focusOtpInput(index - 1);
+      return;
+    }
+
+    if (event.key === 'ArrowRight' && index < this.otpDigits.length - 1) {
+      event.preventDefault();
+      this.focusOtpInput(index + 1);
+      return;
+    }
+
+    if (/^\d$/.test(event.key) && input.value) {
+      event.preventDefault();
+      this.otpDigits[index] = event.key;
+      this.syncOtpCode();
+      this.refreshOtpInputs();
+      this.focusOtpInput(Math.min(index + 1, this.otpDigits.length - 1));
+      return;
+    }
+
+    if (event.key.length === 1 && !/^\d$/.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  handleOtpPaste(event: ClipboardEvent, index: number): void {
+    event.preventDefault();
+    const pasted = event.clipboardData?.getData('text') ?? '';
+    this.fillOtpDigits(pasted, index);
+  }
+
+  private fillOtpDigits(value: string, startIndex = 0): void {
+    const digits = value.replace(/\D/g, '').slice(0, this.otpDigits.length - startIndex).split('');
+
+    digits.forEach((digit, offset) => {
+      this.otpDigits[startIndex + offset] = digit;
+    });
+
+    this.syncOtpCode();
+    this.refreshOtpInputs();
+    this.focusOtpInput(Math.min(startIndex + digits.length, this.otpDigits.length - 1));
+  }
+
+  private syncOtpCode(): void {
+    this.loginForm.otp = this.otpDigits.join('');
+  }
+
+  private refreshOtpInputs(): void {
+    this.otpInputs().forEach((input, index) => {
+      input.value = this.otpDigits[index] || '';
+    });
+  }
+
+  private focusOtpInput(index: number): void {
+    setTimeout(() => {
+      const input = this.otpInputs()[index];
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  private otpInputs(): HTMLInputElement[] {
+    return Array.from(document.querySelectorAll<HTMLInputElement>('.otp-inputs input'));
   }
 
   logout(): void {
@@ -361,6 +550,7 @@ export class App implements OnInit {
     this.clearNotice();
     if (tab === 'users') this.loadUsers();
     if (tab === 'roles') this.loadRoles();
+    if (tab === 'pricing') this.loadPlans();
     if (tab === 'contacts') this.loadContacts();
     if (tab === 'newsletter') this.loadNewsletterSubscribers();
   }
@@ -377,6 +567,10 @@ export class App implements OnInit {
     }
     if (this.activeTab() === 'payments') {
       this.loadPayments();
+      return;
+    }
+    if (this.activeTab() === 'pricing') {
+      this.loadPlans();
       return;
     }
     if (this.activeTab() === 'users') {
@@ -410,12 +604,12 @@ export class App implements OnInit {
     this.http.get<any>(`${this.saasUrl}/overview`).subscribe({
       next: (overview) => {
         this.overview.set(overview);
-        this.plans.set(overview.plans ?? []);
       },
       error: (error) => this.showError(error),
     });
     this.loadRestaurants();
     this.loadPayments();
+    this.loadPlans();
     this.loadSupport();
     this.loadAudit();
     this.loadRoles();
@@ -440,6 +634,13 @@ export class App implements OnInit {
         this.loading.set(false);
         this.showError(error);
       },
+    });
+  }
+
+  loadPlans(): void {
+    this.http.get<SaasPlan[]>(`${this.saasUrl}/admin/plans`).subscribe({
+      next: (plans) => this.plans.set(plans ?? []),
+      error: (error) => this.showError(error),
     });
   }
 
@@ -528,7 +729,11 @@ export class App implements OnInit {
   saveRestaurant(): void {
     this.saving.set(true);
     this.clearNotice();
-    const payload = { ...this.restaurantForm };
+    const payload = {
+      ...this.restaurantForm,
+      owner_phone: this.normalizeCongoPhone(this.restaurantForm.owner_phone),
+    };
+    this.restaurantForm.owner_phone = payload.owner_phone;
     if (!payload.owner_password) delete payload.owner_password;
     const request = payload.id
       ? this.http.put<Restaurant>(`${this.saasUrl}/restaurants/${payload.id}`, payload)
@@ -629,33 +834,70 @@ export class App implements OnInit {
 
   openPlanModal(plan?: SaasPlan): void {
     this.planForm = plan
-      ? { ...plan, monthly_price: Number(plan.monthly_price), features: this.planFeatures(plan).join('\n') }
+      ? {
+          ...plan,
+          monthly_price: Number(plan.monthly_price),
+          yearly_price: plan.yearly_price === null || plan.yearly_price === undefined ? '' : Number(plan.yearly_price),
+          promo_percent: plan.promo_percent ?? null,
+          promo_starts_at: this.dateInputValue(plan.promo_starts_at),
+          promo_ends_at: this.dateInputValue(plan.promo_ends_at),
+          features: this.planFeatures(plan).join('\n'),
+        }
       : this.emptyPlan();
+    this.planDishPromotions = plan ? this.planHasFeature(plan, 'Promotions des plats') : true;
     this.planModalOpen.set(true);
   }
 
   savePlan(): void {
     this.saving.set(true);
-    const payload = {
-      ...this.planForm,
-      features: typeof this.planForm.features === 'string'
+    const features = this.withPlanFeature(
+      typeof this.planForm.features === 'string'
         ? this.planForm.features.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean)
         : this.planForm.features,
+      'Promotions des plats',
+      this.planDishPromotions,
+    );
+    const payload = {
+      ...this.planForm,
+      monthly_price: Number(this.planForm.monthly_price || 0),
+      yearly_price: this.planForm.yearly_price === '' ? null : this.planForm.yearly_price,
+      promo_percent: this.planForm.promo_percent === '' ? null : this.planForm.promo_percent,
+      promo_starts_at: this.planForm.promo_starts_at || null,
+      promo_ends_at: this.planForm.promo_ends_at || null,
+      max_restaurants: Number(this.planForm.max_restaurants || 1),
+      max_tables: this.planLimitValue(this.planForm.max_tables),
+      max_users: this.planLimitValue(this.planForm.max_users),
+      max_dishes: this.planLimitValue(this.planForm.max_dishes),
+      max_orders_per_month: this.planLimitValue(this.planForm.max_orders_per_month),
+      features,
     };
     const request = payload.id
       ? this.http.put(`${this.saasUrl}/plans/${payload.id}`, payload)
       : this.http.post(`${this.saasUrl}/plans`, payload);
     request.subscribe({
-      next: () => {
+      next: (savedPlan) => {
         this.saving.set(false);
         this.planModalOpen.set(false);
         this.message.set('Plan enregistre.');
-        this.loadAll();
+        this.upsertPlan(savedPlan as SaasPlan);
+        this.loadPlans();
       },
       error: (error) => {
         this.saving.set(false);
         this.showError(error);
       },
+    });
+  }
+
+  deletePlan(plan: SaasPlan): void {
+    if (!confirm(`Supprimer le plan ${plan.name} ?`)) return;
+    this.http.delete(`${this.saasUrl}/plans/${plan.id}`).subscribe({
+      next: () => {
+        this.message.set('Plan supprime.');
+        this.loadPlans();
+        this.loadAll();
+      },
+      error: (error) => this.showError(error),
     });
   }
 
@@ -670,7 +912,7 @@ export class App implements OnInit {
       next: () => {
         this.saving.set(false);
         this.userModalOpen.set(false);
-        this.message.set('Compte utilisateur cree.');
+        this.message.set('Compte utilisateur crée.');
         this.loadUsers();
       },
       error: (error) => {
@@ -761,10 +1003,59 @@ export class App implements OnInit {
     return `${Number(amount || 0).toLocaleString('fr-FR')} ${currency}`;
   }
 
+  yearlyPlanPrice(plan: SaasPlan): number {
+    const yearly = Number(plan.yearly_price ?? 0);
+    return yearly > 0 ? yearly : Number(plan.monthly_price || 0) * 12;
+  }
+
+  displayPlanPrice(plan: SaasPlan, cycle: 'monthly' | 'yearly'): number {
+    if (cycle === 'monthly' && plan.has_active_promo && plan.promo_monthly_price !== null && plan.promo_monthly_price !== undefined) {
+      return Number(plan.promo_monthly_price);
+    }
+    if (cycle === 'yearly' && plan.has_active_promo && plan.promo_yearly_price !== null && plan.promo_yearly_price !== undefined) {
+      return Number(plan.promo_yearly_price);
+    }
+
+    return cycle === 'yearly' ? this.yearlyPlanPrice(plan) : Number(plan.monthly_price || 0);
+  }
+
   planFeatures(plan: SaasPlan): string[] {
     return Array.isArray(plan.features)
       ? plan.features
       : String(plan.features || '').split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+  }
+
+  planHasFeature(plan: SaasPlan, label: string): boolean {
+    const needle = this.normalizeFeatureLabel(label);
+    return this.planFeatures(plan).some((feature) => this.normalizeFeatureLabel(feature) === needle);
+  }
+
+  private withPlanFeature(features: string[] | string, label: string, enabled: boolean): string[] {
+    const list = Array.isArray(features)
+      ? features
+      : String(features || '').split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+    const needle = this.normalizeFeatureLabel(label);
+    const cleaned = list.filter((feature) => this.normalizeFeatureLabel(feature) !== needle);
+    return enabled ? [...cleaned, label] : cleaned;
+  }
+
+  private upsertPlan(plan: SaasPlan): void {
+    if (!plan?.id) return;
+
+    const plans = this.plans();
+    const index = plans.findIndex((item) => item.id === plan.id);
+    if (index === -1) {
+      this.plans.set([...plans, plan].sort((a, b) => Number(a.monthly_price || 0) - Number(b.monthly_price || 0)));
+      return;
+    }
+
+    const next = [...plans];
+    next[index] = plan;
+    this.plans.set(next.sort((a, b) => Number(a.monthly_price || 0) - Number(b.monthly_price || 0)));
+  }
+
+  private normalizeFeatureLabel(value: string): string {
+    return value.trim().toLowerCase().replace(/[_-]+/g, ' ');
   }
 
   statusLabel(status?: string): string {
@@ -794,19 +1085,37 @@ export class App implements OnInit {
   }
 
   private emptyRestaurant(): Restaurant {
-    return { name: '', owner_name: '', owner_email: '', owner_phone: '', city: '', country: 'CD', currency: 'CDF', status: 'trial', saas_plan_id: '', owner_password: '' };
+    return { name: '', owner_name: '', owner_email: '', owner_phone: '+243', city: '', commune: '', country: 'CD', currency: 'CDF', status: 'trial', saas_plan_id: '', owner_password: '' };
   }
 
   private emptyUser(): AdminUser {
-    return { first_name: '', last_name: '', email: '', phone_number: '', address: '', password: '', role: '' };
+    return { first_name: '', last_name: '', email: '', phone_number: '+243', address: '', password: '', role: '' };
   }
 
   private emptyPlan(): SaasPlan {
-    return { name: '', slug: '', description: '', monthly_price: 0, currency: 'USD', max_restaurants: 1, max_tables: 10, max_users: 3, features: '', is_popular: false, is_active: true };
+    return { name: '', slug: '', description: '', monthly_price: 0, yearly_price: null, promo_label: '', promo_percent: null, promo_starts_at: null, promo_ends_at: null, currency: 'USD', max_restaurants: 1, max_tables: 10, max_users: 3, max_dishes: 15, max_orders_per_month: 150, features: 'Promotions des plats', is_popular: false, is_active: true };
+  }
+
+  private dateInputValue(value?: string | null): string | null {
+    return value ? String(value).slice(0, 10) : null;
+  }
+
+  private planLimitValue(value: number | string | null | undefined): number | null {
+    return value === null || value === undefined || value === '' ? null : Number(value);
   }
 
   private emptyRole(): Role {
     return { name: '' };
+  }
+
+  normalizeCongoPhone(value: string | null | undefined): string {
+    const raw = String(value || '').trim();
+    if (!raw || raw === '+243') return '+243';
+    let digits = raw.replace(/[^\d]/g, '');
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = `243${digits.slice(1)}`;
+    if (!digits.startsWith('243')) digits = `243${digits}`;
+    return `+${digits}`;
   }
 
   private adminListingParams(filters: Record<string, string | number>): HttpParams {

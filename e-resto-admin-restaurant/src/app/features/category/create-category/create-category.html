@@ -1,5 +1,5 @@
 <button type="button" class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#addInventoryModal">
-    <i class="ti ti-plus me-1"></i> Create Category
+    <i class="ti ti-plus me-1"></i> Créer une catégorie
 </button>
 
 <div class="modal fade" id="addInventoryModal" tabindex="-1" aria-labelledby="addInventoryModalLabel"
@@ -9,9 +9,8 @@
 
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">Create
-                        Category</h5>
-                    <p class="mb-0 text-muted small">Manage your category</p>
+                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">Créer une catégorie</h5>
+                    <p class="mb-0 text-muted small">Gérez votre catégorie</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -20,32 +19,35 @@
                 <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()" id="addProductForm">
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="productName" class="form-label">Category Name <span
+                            <label for="productName" class="form-label">Nom de la catégorie <span
                                     style="color:red">*</span></label>
                             <input type="text" class="form-control" id="productName" formControlName="name"
-                                   placeholder="Enter category name">
-                            @if (categoryForm.get('name')?.invalid && categoryForm.get('name')?.touched) {
-                                <small class="text-danger">Name is required.</small>
+                                   (input)="clearDuplicateNameError()"
+                                   placeholder="Saisissez le nom de la catégorie">
+                            @if (categoryForm.get('name')?.hasError('duplicate') && categoryForm.get('name')?.touched) {
+                                <small class="text-danger">Une catégorie avec ce nom existe déjà.</small>
+                            } @else if (categoryForm.get('name')?.invalid && categoryForm.get('name')?.touched) {
+                                <small class="text-danger">Le nom est requis.</small>
                             }
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="image" class="form-label">Category Image <span style="color:red">*</span></label>
+                        <label for="image" class="form-label">Image de la catégorie <span style="color:red">*</span></label>
                         <input type="file" class="form-control" id="image" accept="image/*"
                                (change)="onFileSelected($event)">
 
                         @if (!selectedFile && categoryForm.get('name')?.touched) {
-                            <small class="text-danger d-block">Please select an image.</small>
+                            <small class="text-danger d-block">Veuillez sélectionner une image.</small>
                         }
                     </div>
 
                     <div class="mb-3">
                         <label for="categoryDescription" class="form-label">Description <span style="color:red">*</span></label>
                         <textarea class="form-control" id="categoryDescription" formControlName="description" rows="4"
-                                  placeholder="Enter category description"></textarea>
+                                  placeholder="Saisissez la description de la catégorie"></textarea>
                         @if (categoryForm.get('description')?.invalid && categoryForm.get('description')?.touched) {
-                            <small class="text-danger">Description is required.</small>
+                            <small class="text-danger">La description est requise.</small>
                         }
                     </div>
                 </form>
@@ -53,7 +55,7 @@
 
             <div class="modal-footer d-flex gap-2">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle me-1"></i> Cancel
+                    <i class="bi bi-x-circle me-1"></i> Annuler
                 </button>
 
                 <button type="submit"
@@ -67,7 +69,7 @@
                         <i class="bi bi-plus-circle me-1"></i>
                     }
 
-                    Create Category
+                    Créer une catégorie
                 </button>
             </div>
         </div>

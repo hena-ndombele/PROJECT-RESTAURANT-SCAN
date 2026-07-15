@@ -15,6 +15,8 @@ class Order extends Model
         'order_type',
         'total_amount',
         'currency',
+        'exchange_rate',
+        'exchange_rate_pair',
         'payment_method',
         'payment_provider',
         'payment_status',
@@ -32,6 +34,7 @@ class Order extends Model
 
     protected $casts = [
         'cancelled_at' => 'datetime',
+        'exchange_rate' => 'decimal:4',
     ];
 
     /**

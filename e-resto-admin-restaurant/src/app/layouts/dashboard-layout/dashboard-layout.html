@@ -20,16 +20,137 @@
             </h6>
             <div class="d-flex align-items-center gap-1">
                 <span class="badge-admin">{{ restaurantData.city || 'RESTAURANT' }}</span>
-                <span class="subscription-pill" [ngClass]="subscriptionInfo.tone">
-                    <i class="ti ti-calendar-stats"></i>
-                    {{ subscriptionInfo.shortLabel }}
-                </span>
+                @if (canAccess('subscription.view')) {
+                    <span class="subscription-pill" [ngClass]="subscriptionInfo.tone">
+                        <i class="ti ti-calendar-stats"></i>
+                        {{ subscriptionInfo.shortLabel }}
+                    </span>
+                }
             </div>
         </div>
     </div>
 
     <div class="ms-auto">
         <ul class="list-unstyled d-flex align-items-center mb-0 gap-2 gap-md-3">
+
+            @if (canManageBusinessRestaurants()) {
+                <li class="business-switcher-wrap">
+                    <button class="business-switcher-btn"
+                            type="button"
+                            (click)="toggleBusinessRestaurantPanel()"
+                            [class.open]="businessRestaurantPanelOpen">
+                        <span class="business-switcher-icon"><i class="ti ti-building-store"></i></span>
+                        <span class="business-switcher-text">
+                            <small>Business</small>
+                            <strong>{{ restaurantData.name }}</strong>
+                        </span>
+                        <i class="ti ti-chevron-down"></i>
+                    </button>
+
+                    @if (businessRestaurantPanelOpen) {
+                        <div class="business-switcher-panel shadow-lg">
+                            <div class="business-switcher-head">
+                                <div>
+                                    <span>Multi-restaurant</span>
+                                    <strong>{{ businessRestaurants.length }}{{ businessRestaurantLimit ? ' / ' + businessRestaurantLimit : '' }} espaces</strong>
+                                </div>
+                                <button type="button" (click)="closeBusinessRestaurantPanel()" aria-label="Fermer">
+                                    <i class="ti ti-x"></i>
+                                </button>
+                            </div>
+
+                            <div class="business-switcher-list">
+                                @if (businessRestaurantLoading && businessRestaurants.length === 0) {
+                                    <div class="business-switcher-empty">Chargement...</div>
+                                } @else {
+                                    @for (restaurant of businessRestaurants; track restaurant.id) {
+                                        <div class="business-restaurant-row" [class.active]="restaurant.id === currentRestaurantId()">
+                                            <button type="button"
+                                                    class="business-restaurant-item"
+                                                    [class.active]="restaurant.id === currentRestaurantId()"
+                                                    (click)="switchBusinessRestaurant(restaurant)">
+                                                <img [src]="restaurantLogo(restaurant)" alt="">
+                                                <span>
+                                                    <strong>{{ restaurant.name }}</strong>
+                                                    <small>{{ restaurant.city || restaurant.address || 'Restaurant Business' }}</small>
+                                                </span>
+                                                @if (restaurant.id === currentRestaurantId()) {
+                                                    <i class="ti ti-check"></i>
+                                                }
+                                            </button>
+                                            @if (canDeleteBusinessRestaurant(restaurant)) {
+                                                <button type="button"
+                                                        class="business-delete-btn"
+                                                        title="Supprimer ce restaurant"
+                                                        aria-label="Supprimer ce restaurant"
+                                                        (click)="deleteBusinessRestaurant(restaurant, $event)">
+                                                    <i class="ti ti-trash"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            @if (!businessRestaurantFormOpen) {
+                                <button class="business-add-btn"
+                                        type="button"
+                                        (click)="openBusinessRestaurantForm()"
+                                        [disabled]="!canAddBusinessRestaurant()">
+                                    <i class="ti ti-plus"></i>
+                                    Ajouter un restaurant
+                                </button>
+                                @if (!canAddBusinessRestaurant()) {
+                                    <p class="business-limit-text">Limite du plan Business atteinte.</p>
+                                }
+                            } @else {
+                                <form class="business-restaurant-form" [formGroup]="businessRestaurantForm" (ngSubmit)="createBusinessRestaurant()">
+                                    <div class="form-grid">
+                                        <label>
+                                            <span>Nom du restaurant</span>
+                                            <input type="text" formControlName="name" placeholder="Ex: Restaurant Gombe">
+                                        </label>
+                                        <label>
+                                            <span>Province</span>
+                                            <select formControlName="city">
+                                                <option value="">Choisir</option>
+                                                @for (province of provinces; track province.province) {
+                                                    <option [value]="province.province">{{ province.province }} - {{ province.capital }}</option>
+                                                }
+                                            </select>
+                                        </label>
+                                        <label>
+                                            <span>Commune</span>
+                                            <input type="text" formControlName="commune" placeholder="Ex: Gombe, Limete...">
+                                        </label>
+                                        <label>
+                                            <span>Adresse</span>
+                                            <input type="text" formControlName="address" placeholder="Adresse du restaurant">
+                                        </label>
+                                        <label>
+                                            <span>WhatsApp</span>
+                                            <input type="tel" formControlName="owner_phone" placeholder="+243..." autocomplete="tel" (blur)="businessRestaurantForm.patchValue({ owner_phone: normalizeCongoPhone(businessRestaurantForm.value.owner_phone) })">
+                                        </label>
+                                        <label>
+                                            <span>Devise</span>
+                                            <select formControlName="currency">
+                                                <option value="CDF">CDF</option>
+                                                <option value="USD">USD</option>
+                                            </select>
+                                        </label>
+                                    </div>
+                                    <div class="business-form-actions">
+                                        <button type="button" class="secondary" (click)="businessRestaurantFormOpen = false">Annuler</button>
+                                        <button type="submit" class="primary" [disabled]="businessRestaurantSaving">
+                                            {{ businessRestaurantSaving ? 'Ajout...' : 'Créer' }}
+                                        </button>
+                                    </div>
+                                </form>
+                            }
+                        </div>
+                    }
+                </li>
+            }
 
             <li class="nav-item d-none d-lg-flex">
                 <div class="language-toggle" [class.active-fr]="currentLang === 'fr'" (click)="switchLanguage()">
@@ -129,19 +250,21 @@
                         </div>
                     </div>
                     <div class="px-2 pt-2">
-                        <div class="session-summary">
-                            <div>
-                                <span>Abonnement</span>
-                                <strong>{{ subscriptionInfo.label }}</strong>
-                                <small>{{ subscriptionInfo.detail }}</small>
+                        @if (canAccess('subscription.view')) {
+                            <div class="session-summary">
+                                <div>
+                                    <span>Abonnement</span>
+                                    <strong>{{ subscriptionInfo.label }}</strong>
+                                    <small>{{ subscriptionInfo.detail }}</small>
+                                </div>
+                                <i class="ti ti-clock-dollar"></i>
                             </div>
-                            <i class="ti ti-clock-dollar"></i>
-                        </div>
-                        @if (subscriptionInfo.expiresAt) {
-                            <div class="session-meta">
-                                <i class="ti ti-calendar-due"></i>
-                                Fin prevue le {{ subscriptionInfo.expiresAt | date:'dd/MM/yyyy HH:mm' }}
-                            </div>
+                            @if (subscriptionInfo.expiresAt) {
+                                <div class="session-meta">
+                                    <i class="ti ti-calendar-due"></i>
+                                    Fin prevue le {{ subscriptionInfo.expiresAt | date:'dd/MM/yyyy HH:mm' }}
+                                </div>
+                            }
                         }
                         <div class="session-meta">
                             <i class="ti ti-login-2"></i>
@@ -149,10 +272,12 @@
                         </div>
                     </div>
                     <div class="p-2 d-flex flex-column gap-1">
-                        <a class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2"
-                           routerLink="/auth/profile">
-                            <i class="ti ti-user-circle fs-5 text-primary"></i> {{ 'topbar.profile' | translate }}
-                        </a>
+                        @if (canAccess('profile.view')) {
+                            <a class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2"
+                               routerLink="/auth/profile">
+                                <i class="ti ti-user-circle fs-5 text-primary"></i> {{ 'topbar.profile' | translate }}
+                            </a>
+                        }
 
 
                         <button class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2 text-black "
@@ -178,12 +303,9 @@
 <aside id="sidebar" class="sidebar shadow-lg" [class.collapsed]="isSidebarCollapsed"
        [class.mobile-show]="isMobileSidebarOpen">
     <div class="logo-area d-flex align-items-center py-3 px-3">
-        <a routerLink="/" class="d-flex align-items-center text-decoration-none" (click)="closeMobileSidebar()">
-            <div class="mb-3">
-                <img [src]="restaurantData.logo" alt="Logo"
-                     style="height: 42px;width: 64px;margin-top: 15px; object-fit: contain; border-radius: 0; border:2px solid white">
-
-
+        <a routerLink="/" class="sidebar-brand d-flex align-items-center text-decoration-none" (click)="closeMobileSidebar()">
+            <div class="sidebar-logo-frame">
+                <img [src]="restaurantData.logo" alt="Logo" class="sidebar-logo-img">
             </div>
             <span class="logo-text ms-2">Restaurant Scan</span>
         </a>
@@ -230,7 +352,7 @@
 
             @if (canAccess('orders.list')) {
             <li>
-                <a routerLink="/orders/list" routerLinkActive="active"
+                <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" routerLinkActive="active"
                    class="nav-link d-flex align-items-center"
                    (click)="closeMobileSidebar()">
 
@@ -246,7 +368,7 @@
             </li>
             }
 
-            @if (canAccess('tables.list')) {
+            @if (canAccessAny(['tables.list', 'tables.view', 'tables.create', 'tables.update', 'tables.delete'])) {
             <li>
                 <a routerLink="/tables/list-table" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
@@ -257,9 +379,9 @@
 
             @if (canUse('reservations') && canAccess('reservations.list')) {
             <li>
-                <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
+                <a routerLink="/table/reservation-table" [queryParams]="{ status: 'pending' }" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-calendar-event"></i><span class="nav-text">Reservations</span>
+                    <i class="ti ti-calendar-event"></i><span class="nav-text">Réservations</span>
                     @if (pendingReservationsCount > 0) {
                         <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
                             {{ pendingReservationsCount }}
@@ -274,6 +396,15 @@
                 <a routerLink="/restaurant/settings" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-settings"></i><span class="nav-text">{{ 'sidebar.settings' | translate }}</span>
+                </a>
+            </li>
+            }
+
+            @if (canAccess('subscription.view')) {
+            <li>
+                <a routerLink="/restaurant/subscription" routerLinkActive="active" class="nav-link"
+                   (click)="closeMobileSidebar()">
+                    <i class="ti ti-credit-card"></i><span class="nav-text">Abonnement</span>
                 </a>
             </li>
             }
@@ -294,7 +425,7 @@
             <li>
                 <a routerLink="/identity/list-roles" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-shield-lock"></i><span class="nav-text">Roles</span>
+                    <i class="ti ti-shield-lock"></i><span class="nav-text">Rôles</span>
                 </a>
             </li>
             }
@@ -330,7 +461,7 @@
                 </div>
 
                 <div class="assistant-suggestions">
-                    <button type="button" (click)="askAssistant('Comment mieux gerer mes commandes ?')">Commandes</button>
+                    <button type="button" (click)="askAssistant('Comment mieux gérer mes commandes ?')">Commandes</button>
                     <button type="button" (click)="askAssistant('Que disent mes statistiques ?')">Stats</button>
                     <button type="button" (click)="askAssistant('Comment utiliser mes QR codes ?')">QR code</button>
                 </div>
@@ -374,64 +505,81 @@
                 <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
                 <div>
                     <h2 id="installAppTitle">Installer Restaurant Scan</h2>
-                    <p>Ajoutez l'application sur votre appareil pour acceder plus vite a votre dashboard.</p>
+                    <p>Ajoutez l'application sur votre appareil pour accéder plus vite à votre dashboard.</p>
                 </div>
             </div>
 
             @if (iosInstallHelp && !installAvailable) {
                 <div class="install-ios-help">
                     <span><i class="ti ti-share-3"></i> Appuyez sur Partager</span>
-                    <span><i class="ti ti-square-plus"></i> Puis choisissez Ajouter a l'ecran d'accueil</span>
-                </div>
-            }
-
-            @if (manualInstallHelp && !iosInstallHelp && !installAvailable) {
-                <div class="install-ios-help">
-                    <span><i class="ti ti-device-desktop-down"></i> Utilisez l'icone d'installation dans la barre d'adresse ou le menu du navigateur.</span>
-                    <span><i class="ti ti-refresh"></i> Apres une desinstallation, rechargez la page si le bouton natif n'apparait pas encore.</span>
+                    <span><i class="ti ti-square-plus"></i> Puis choisissez Ajouter à l'écran d'accueil</span>
                 </div>
             }
 
             <button class="install-primary" type="button" (click)="installApp()">
                 <i class="ti ti-download"></i>
-                {{ iosInstallHelp && !installAvailable ? 'Voir comment installer' : "Ajouter a l'ecran d'accueil" }}
+                {{ iosInstallHelp && !installAvailable ? 'Voir comment installer' : "Ajouter à l'écran d'accueil" }}
             </button>
             <button class="install-secondary" type="button" (click)="dismissInstallPrompt()">Plus tard</button>
         </section>
     </div>
 }
 
-@if (incomingOrder; as order) {
+@if (incomingOrders.length > 0) {
     <div class="global-order-backdrop">
-        <section class="global-order-modal" role="dialog" aria-modal="true" aria-labelledby="incomingOrderTitle">
-            <button type="button" class="global-order-close" aria-label="Fermer" (click)="dismissIncomingOrder()">
-                <i class="ti ti-x"></i>
-            </button>
-
-            <div class="global-order-icon">
-                <i class="ti ti-bell-ringing"></i>
-            </div>
-
-            <span class="global-order-eyebrow">Commande recue</span>
-            <h2 id="incomingOrderTitle">Nouvelle commande !</h2>
-
-            <div class="global-order-grid">
-                <div><span>Table</span><strong>{{ order.table?.name || 'Table inconnue' }}</strong></div>
-                <div><span>Client</span><strong>{{ order.customer_name || order.customer_phone || 'Client QR' }}</strong></div>
-                <div><span>Service</span><strong>{{ orderTypeLabel(order) }}</strong></div>
-                <div><span>Articles</span><strong>{{ orderItemsCount(order) }}</strong></div>
-                <div><span>Total</span><strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong></div>
-                <div><span>Suivi</span><strong>{{ order.tracking_code || 'N/A' }}</strong></div>
-            </div>
-
-            <div class="global-order-actions">
-                <button class="btn btn-outline-secondary" type="button" (click)="dismissIncomingOrder()">Ignorer</button>
-                <button class="btn btn-primary" type="button" (click)="openIncomingOrder()">
-                    <i class="ti ti-shopping-cart-check"></i>
-                    Voir la commande
+        <div class="global-order-stack" [class.compact]="incomingOrders.length > 4">
+            <div class="global-order-stack-head">
+                <div>
+                    <span>Commandes en direct</span>
+                    <strong>{{ incomingOrders.length }} nouvelle{{ incomingOrders.length > 1 ? 's' : '' }} commande{{ incomingOrders.length > 1 ? 's' : '' }}</strong>
+                </div>
+                <button type="button" (click)="dismissIncomingOrder()" aria-label="Tout fermer">
+                    <i class="ti ti-x"></i>
+                    Tout fermer
                 </button>
             </div>
-        </section>
+
+            @for (item of incomingOrders; track item.order.id; let index = $index) {
+                <section class="global-order-modal"
+                         [style.--order-index]="index"
+                         [style.--order-rank]="incomingOrderIndex(index)"
+                         role="dialog"
+                         aria-modal="true"
+                         aria-labelledby="incomingOrderTitle">
+                    <button type="button" class="global-order-close" aria-label="Fermer" (click)="dismissIncomingOrder(item.order.id)">
+                        <i class="ti ti-x"></i>
+                    </button>
+
+                    <div class="global-order-top">
+                        <div class="global-order-icon">
+                            <i class="ti ti-bell-ringing"></i>
+                        </div>
+                        <div>
+                            <span class="global-order-eyebrow">Commande reçue</span>
+                            <h2 id="incomingOrderTitle">Nouvelle commande !</h2>
+                            <small>{{ item.receivedAt | date:'HH:mm:ss' }}</small>
+                        </div>
+                    </div>
+
+                    <div class="global-order-grid">
+                        <div><span>Table</span><strong>{{ item.order.table?.name || 'Table inconnue' }}</strong></div>
+                        <div><span>Client</span><strong>{{ item.order.customer_name || item.order.customer_phone || 'Client QR' }}</strong></div>
+                        <div><span>Service</span><strong>{{ orderTypeLabel(item.order) }}</strong></div>
+                        <div><span>Articles</span><strong>{{ orderItemsCount(item.order) }}</strong></div>
+                        <div><span>Total</span><strong>{{ item.order.total_amount | number:'1.0-2' }} {{ item.order.currency }}</strong></div>
+                        <div><span>Suivi</span><strong>{{ item.order.tracking_code || 'N/A' }}</strong></div>
+                    </div>
+
+                    <div class="global-order-actions">
+                        <button class="btn btn-outline-secondary" type="button" (click)="dismissIncomingOrder(item.order.id)">Ignorer</button>
+                        <button class="btn btn-primary" type="button" (click)="openIncomingOrder(item.order.id)">
+                            <i class="ti ti-shopping-cart-check"></i>
+                            Voir la commande
+                        </button>
+                    </div>
+                </section>
+            }
+        </div>
     </div>
 }
 
@@ -484,9 +632,9 @@
 <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="addInventoryModalLabel"
      aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content border-0 shadow change-password-card">
 
-            <div class="modal-header">
+            <div class="modal-header change-password-head">
                 <div>
                     <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">{{ 'topbar.changePassword' | translate }}</h5>
                     <p class="mb-0 text-muted small">{{ 'password.subtitle' | translate }}</p>
@@ -497,14 +645,13 @@
             <div class="modal-body p-4">
                 <form [formGroup]="passwordForm" (ngSubmit)="onSubmit()" id="passwordFormElement">
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase">Mot de passe actuel <span
-                                style="color:red">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-0"><i class="ti ti-key"></i></span>
-                            <input #oldPwd [type]="oldPwd.type" class="form-control bg-light border-0"
-                                   formControlName="current_password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
-                            <button class="btn btn-light border-0" type="button"
+                    <div class="password-field mb-3">
+                        <label class="form-label password-label">Mot de passe actuel <span>*</span></label>
+                        <div class="input-group password-input-group">
+                            <span class="input-group-text"><i class="ti ti-key"></i></span>
+                            <input #oldPwd [type]="oldPwd.type" class="form-control"
+                                   formControlName="current_password" placeholder="••••••••">
+                            <button class="btn password-toggle" type="button"
                                     (click)="oldPwd.type = oldPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="oldPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
                             </button>
@@ -514,31 +661,29 @@
                         }
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase">Nouveau mot de passe <span
-                                style="color:red">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-0"><i class="ti ti-lock"></i></span>
-                            <input #newPwd [type]="newPwd.type" class="form-control bg-light border-0"
-                                   formControlName="new_password" placeholder="Min. 6 caractÃ¨res">
-                            <button class="btn btn-light border-0" type="button"
+                    <div class="password-field mb-3">
+                        <label class="form-label password-label">Nouveau mot de passe <span>*</span></label>
+                        <div class="input-group password-input-group">
+                            <span class="input-group-text"><i class="ti ti-lock"></i></span>
+                            <input #newPwd [type]="newPwd.type" class="form-control"
+                                   formControlName="new_password" placeholder="Min. 6 caractères">
+                            <button class="btn password-toggle" type="button"
                                     (click)="newPwd.type = newPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="newPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
                             </button>
                         </div>
                         @if (passwordForm.get('new_password')?.invalid && passwordForm.get('new_password')?.touched) {
-                            <small class="text-danger x-small">Requis (min. 6 caractÃ¨res).</small>
+                            <small class="text-danger x-small">Requis (min. 6 caractères).</small>
                         }
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase">Confirmer le mot de passe <span
-                                style="color:red">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-0"><i class="ti ti-circle-check"></i></span>
-                            <input #confirmPwd [type]="confirmPwd.type" class="form-control bg-light border-0"
-                                   formControlName="new_password_confirmation" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
-                            <button class="btn btn-light border-0" type="button"
+                    <div class="password-field mb-3">
+                        <label class="form-label password-label">Confirmer le mot de passe <span>*</span></label>
+                        <div class="input-group password-input-group">
+                            <span class="input-group-text"><i class="ti ti-circle-check"></i></span>
+                            <input #confirmPwd [type]="confirmPwd.type" class="form-control"
+                                   formControlName="new_password_confirmation" placeholder="••••••••">
+                            <button class="btn password-toggle" type="button"
                                     (click)="confirmPwd.type = confirmPwd.type === 'password' ? 'text' : 'password'">
                                 <i [class]="confirmPwd.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off'"></i>
                             </button>
@@ -550,11 +695,11 @@
                 </form>
             </div>
 
-            <div class="modal-footer d-flex gap-2">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ 'common.cancel' | translate }}</button>
+            <div class="modal-footer change-password-footer d-flex gap-2">
+                <button type="button" class="btn change-password-cancel" data-bs-dismiss="modal">{{ 'common.cancel' | translate }}</button>
                 <button type="submit"
                         form="passwordFormElement"
-                        class="btn btn-primary text-black px-4 shadow-sm"
+                        class="btn change-password-submit px-4 shadow-sm"
                         [disabled]="passwordForm.invalid || isLoading">
                     @if (isLoading) {
                         <span class="spinner-border spinner-border-sm me-2"></span>

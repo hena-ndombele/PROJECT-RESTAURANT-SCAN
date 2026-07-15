@@ -37,7 +37,7 @@ export class ShowDish implements OnInit {
         this.dishDetail.set(null);
 
         if (!id) {
-            this.errorMessage.set("Aucun plat selectionne.");
+            this.errorMessage.set("Aucun plat sélectionné.");
             this.isLoading.set(false);
             return;
         }

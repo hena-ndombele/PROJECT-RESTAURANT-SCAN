@@ -12,6 +12,10 @@ export interface DishDto {
     name: string;
     description: string;
     price: string; // Ou number selon ton retour API
+    promotion_percent?: number | string | null;
+    promotion_ends_at?: string | null;
+    is_promotion_active?: boolean;
+    promotion_price?: number | string | null;
     currency: string; // Ajouté: CDF ou USD
     category_id: string | number;
 
@@ -19,6 +23,7 @@ export interface DishDto {
     preparation_time: number; // Ajouté
     is_available: boolean | number; // Ajouté (pour le switch stock)
     ingredients?: string[] | string; // Ajouté (si tu les stockes en JSON ou relation)
+    sizes?: string[] | string | null;
 
     // Gestion des images
     // Note: En réception API c'est souvent une string (URL),

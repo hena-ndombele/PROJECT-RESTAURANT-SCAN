@@ -1,0 +1,205 @@
+<section class="subscription-page">
+  <header class="subscription-head">
+    <div>
+      <span class="eyebrow">Abonnement</span>
+      <h1><i class="ti ti-credit-card"></i> Abonnement</h1>
+      <p>Gérez votre plan, vos renouvellements et vos paiements Mobile Money.</p>
+    </div>
+    <button class="refresh-btn" type="button" (click)="refreshPage()" [disabled]="refreshing">
+      @if (refreshing) {
+        <span class="spinner-border spinner-border-sm"></span>
+      } @else {
+        <i class="ti ti-refresh"></i>
+      }
+      Actualiser
+    </button>
+  </header>
+
+  <article class="status-card">
+    <div class="status-icon"><i class="ti ti-confetti"></i></div>
+    <div class="status-content">
+      <h2>{{ statusTitle }}</h2>
+      <p>{{ statusDescription }}</p>
+      <div class="progress-line"><span [style.width.%]="progressPercent"></span></div>
+      <div class="progress-meta">
+        <small>{{ currentPlanName }}</small>
+        <small>{{ progressPercent | number:'1.0-0' }}% utilisé</small>
+      </div>
+    </div>
+  </article>
+
+  <section class="billing-panel">
+    <strong>Période de facturation</strong>
+    <button type="button" [class.active]="billingCycle === 'monthly'" (click)="billingCycle = 'monthly'">Mensuel</button>
+    <button type="button" [class.active]="billingCycle === 'yearly'" (click)="billingCycle = 'yearly'">Annuel</button>
+    <span>Vous pouvez payer ou changer de plan à tout moment.</span>
+  </section>
+
+  @if (message) {
+    <div class="subscription-message" [class]="messageType">{{ message }}</div>
+  }
+
+  @if (!canPaySubscription()) {
+    <div class="subscription-message error">Vous n'avez pas la permission de payer l'abonnement.</div>
+  }
+
+  @if (canPaySubscription()) {
+  <section class="payment-box">
+    <div>
+      <span class="eyebrow">Paiement sécurisé</span>
+      <h2>Numéro Mobile Money</h2>
+      <div class="mobile-money-brand">
+        <img [src]="providerLogo()" [alt]="providerLabel()">
+        <span>{{ providerLabel() }}</span>
+      </div>
+    </div>
+    <label>
+      <span>Opérateur</span>
+      <select [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
+        <option value="MPESA">M-Pesa</option>
+        <option value="AIRTEL">Airtel Money</option>
+        <option value="ORANGE">Orange Money</option>
+      </select>
+    </label>
+    <label>
+      <span>Numéro wallet</span>
+      <input [(ngModel)]="mobile.wallet_id" type="tel" placeholder="+24383...">
+    </label>
+  </section>
+  }
+
+  <h2 class="section-title">Choisissez votre plan</h2>
+  <div class="plan-grid">
+    @if (plansLoading) {
+      @for (item of [1, 2, 3]; track item) {
+        <article class="plan-card plan-card-loading" aria-hidden="true">
+          <span></span>
+          <strong></strong>
+          <p></p>
+          <button type="button" disabled>Chargement...</button>
+        </article>
+      }
+    } @else {
+      @for (plan of plans; track plan.id) {
+        <article class="plan-card tone-{{ planTone(plan) }}" [class.current]="isCurrentPlan(plan)">
+          @if (hasActivePromo(plan)) {
+            <div class="subscription-promo">
+              <span>{{ plan.promo_label || 'Promotion' }} -{{ plan.promo_percent }}%</span>
+            </div>
+          }
+          @if (isCurrentPlan(plan)) {
+            <span class="current-badge">Plan actuel</span>
+          }
+          <h3>{{ plan.name }}</h3>
+          <div class="plan-price">
+            <strong>{{ planPrice(plan) | number:'1.0-2' }}</strong>
+            <span>{{ displayCurrency(plan) }}/mois</span>
+          </div>
+          <p>Soit {{ dailyPrice(plan) | number:'1.0-2' }} {{ displayCurrency(plan) }}/jour</p>
+          @if (billingCycle === 'yearly') {
+            <small>{{ paymentAmount(plan) | number:'1.0-2' }} {{ displayCurrency(plan) }} facturés pour 12 mois</small>
+          }
+          <button type="button" (click)="pay(plan)" [disabled]="!canPaySubscription() || !!payingPlanId || waitingConfirmation">
+            @if (payingPlanId === plan.id) {
+              <span class="spinner-border spinner-border-sm"></span>
+              Paiement...
+            } @else if (!canPaySubscription()) {
+              <i class="ti ti-lock"></i>
+              Paiement non autorise
+            } @else {
+              <i class="ti ti-credit-card"></i>
+              {{ isCurrentPlan(plan) ? 'Renouveler' : 'Passer au paiement' }}
+            }
+          </button>
+          <em><i class="ti ti-lock"></i> Paiement sécurisé</em>
+        </article>
+      }
+    }
+  </div>
+
+  <section class="history-card">
+    <div class="history-head">
+      <div>
+        <span class="eyebrow">Historique</span>
+        <h2><i class="ti ti-receipt"></i> Historique des paiements</h2>
+      </div>
+      <div class="payment-stats" aria-label="Résumé des paiements">
+        <article class="paid">
+          <span>Réussis</span>
+          <strong>{{ paidPaymentsCount }}</strong>
+        </article>
+        <article class="failed">
+          <span>Échoués</span>
+          <strong>{{ failedPaymentsCount }}</strong>
+        </article>
+        <article class="pending">
+          <span>En attente</span>
+          <strong>{{ pendingPaymentsCount }}</strong>
+        </article>
+      </div>
+      <select [(ngModel)]="paymentFilter" (ngModelChange)="loadPayments()">
+        <option value="all">Tous</option>
+        <option value="paid">Payés</option>
+        <option value="pending">En attente</option>
+        <option value="failed">Échoués</option>
+      </select>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Référence</th>
+            <th>Plan</th>
+            <th>Méthode</th>
+            <th>Montant</th>
+            <th>Statut</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading) {
+            <tr><td colspan="6" class="empty">Chargement...</td></tr>
+          } @else {
+            @for (payment of paginatedPayments; track payment.id) {
+              <tr>
+                <td>{{ payment.reference || '-' }}</td>
+                <td>{{ payment.metadata?.plan_name || payment.metadata?.plan_slug || currentPlanName }}</td>
+                <td>{{ payment.provider || payment.method || '-' }}</td>
+                <td>{{ formatMoney(payment.amount, payment.currency) }}</td>
+                <td><span class="status {{ payment.status }}">{{ statusLabel(payment.status) }}</span></td>
+                <td>{{ payment.paid_at || payment.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="empty">Aucun paiement trouvé.</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (!loading && payments.length > paymentPageSize) {
+      <div class="history-pagination">
+        <span>
+          {{ ((currentPaymentPage - 1) * paymentPageSize) + 1 }}
+          -
+          {{ currentPaymentPage * paymentPageSize > payments.length ? payments.length : currentPaymentPage * paymentPageSize }}
+          sur {{ payments.length }}
+        </span>
+        <div>
+          <button type="button" [disabled]="currentPaymentPage === 1" (click)="goToPaymentPage(currentPaymentPage - 1)">
+            Précédent
+          </button>
+          @for (page of paymentPages; track page) {
+            <button type="button" [class.active]="page === currentPaymentPage" (click)="goToPaymentPage(page)">
+              {{ page }}
+            </button>
+          }
+          <button type="button" [disabled]="currentPaymentPage === totalPaymentPages" (click)="goToPaymentPage(currentPaymentPage + 1)">
+            Suivant
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</section>

@@ -31,4 +31,20 @@ export class AppPermissionService {
   hasAny(permissions: string[]): boolean {
     return permissions.some((permission) => this.has(permission));
   }
+
+  hasRole(roleName: string): boolean {
+    const user = this.auth.getUserData();
+    const roles = user?.roles ?? [];
+    const expected = this.normalizeRoleName(roleName);
+
+    return roles.some((role: any) => this.normalizeRoleName(role?.name) === expected);
+  }
+
+  hasAnyRole(roleNames: string[]): boolean {
+    return roleNames.some((roleName) => this.hasRole(roleName));
+  }
+
+  private normalizeRoleName(value: any): string {
+    return String(value || "").toLowerCase().trim().replace(/[\s_]+/g, "-");
+  }
 }

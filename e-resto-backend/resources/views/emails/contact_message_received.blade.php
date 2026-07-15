@@ -25,7 +25,7 @@
                                         <p style="margin:0;color:#111827;line-height:1.7;">
                                             <strong>Nom :</strong> {{ $contactMessage->name }}<br>
                                             <strong>Email :</strong> {{ $contactMessage->email }}<br>
-                                            <strong>Telephone :</strong> {{ $contactMessage->phone ?: '-' }}<br>
+                                            <strong>Téléphone :</strong> {{ $contactMessage->phone ?: '-' }}<br>
                                             <strong>Sujet :</strong> {{ $contactMessage->subject }}
                                         </p>
                                     </td>
@@ -42,7 +42,7 @@
                     </tr>
                     <tr>
                         <td style="padding:18px 28px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.6;">
-                            &copy; {{ date('Y') }} Restaurant Scan. Message conserve dans le tableau de support plateforme.
+                            &copy; {{ date('Y') }} Restaurant Scan. Message enregistré dans le tableau de bord du support.
                         </td>
                     </tr>
                 </table>

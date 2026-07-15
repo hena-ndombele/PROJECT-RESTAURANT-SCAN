@@ -8,6 +8,8 @@ import {UpdateAgent} from "../update-agent/update-agent";
 import {ShowAgent} from "../show-agent/show-agent";
 import * as XLSX from 'xlsx';
 import {AppPermissionService} from "../../../services/auth/permission-service";
+import {SaasService} from "../../../services/saas/saas-service";
+import {RestaurantPlanUsage} from "../../../models/saas/saas.models";
 
 @Component({
   selector: "app-list-agent",
@@ -25,15 +27,28 @@ import {AppPermissionService} from "../../../services/auth/permission-service";
 export class ListAgent {
   private agentService = inject(AgentService);
   private permissions = inject(AppPermissionService);
+  private saasService = inject(SaasService);
   isLoading = signal<boolean>(true);
 
   // Signaux d'état
   agents = signal<AgentDto[]>([]);
+  planUsage = signal<RestaurantPlanUsage | null>(null);
   searchTerm = signal<string>('');
   currentPage = signal<number>(1);
   pageSize = 10;
 
     totalEmployeeCount = computed(() => this.agents().length);
+    employeeLimit = computed(() => this.resolveEmployeeLimit());
+    employeeLimitReached = computed(() => {
+      const limit = this.employeeLimit();
+      return limit !== null && this.totalEmployeeCount() >= limit;
+    });
+    employeeLimitMessage = computed(() => {
+      const limit = this.employeeLimit();
+      return limit
+        ? `Limite de ${limit} employés atteinte pour ce plan.`
+        : "Votre plan ne permet pas de créer plus d'employés.";
+    });
 
   // Calcul automatique de la liste filtrée et paginée
   filteredAgents = computed(() => {
@@ -63,6 +78,7 @@ export class ListAgent {
 
   ngOnInit(): void {
     this.loadCategories();
+    this.loadPlanUsage();
   }
 
   canAccess(permission: string): boolean {
@@ -92,6 +108,38 @@ export class ListAgent {
         this.isLoading.set(false);
       }
     });
+  }
+
+    loadPlanUsage(): void {
+    this.saasService.restaurantUsage().subscribe({
+      next: (usage) => this.planUsage.set(usage),
+      error: () => this.planUsage.set(null),
+    });
+  }
+
+  private resolveEmployeeLimit(): number | null {
+    const apiLimit = this.planUsage()?.limits?.users;
+    if (apiLimit !== null && apiLimit !== undefined) {
+      return apiLimit;
+    }
+
+    return this.isStarterPlan() ? 5 : null;
+  }
+
+  private isStarterPlan(): boolean {
+    const plan = this.planUsage()?.plan || this.resolveRestaurantPlan();
+    const slug = String(plan?.slug || plan?.name || "").toLowerCase();
+    return slug.includes("starter");
+  }
+
+  private resolveRestaurantPlan(): any {
+    try {
+      const userData = JSON.parse(localStorage.getItem("user_data") || "null");
+      const restaurant = JSON.parse(localStorage.getItem("restaurant_session") || "null") || userData?.restaurant;
+      return restaurant?.plan || null;
+    } catch {
+      return null;
+    }
   }
 
   // Action de recherche

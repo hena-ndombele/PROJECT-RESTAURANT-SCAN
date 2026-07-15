@@ -43,9 +43,13 @@ class ReservationCreated implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        $channels = [new Channel('Réservations')];
+        $channels = [
+            new Channel('reservations'),
+            new Channel('Réservations'),
+        ];
 
         if ($this->restaurantId) {
+            $channels[] = new Channel("reservations.{$this->restaurantId}");
             $channels[] = new Channel("Réservations.{$this->restaurantId}");
         }
 

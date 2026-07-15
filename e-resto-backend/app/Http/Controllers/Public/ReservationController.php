@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Public;
 
 use App\Events\ReservationCreated;
+use App\Events\ReservationChanged;
 use App\Http\Controllers\Controller;
+use App\Mail\ReservationStatusMail;
 use App\Models\Reservation;
 use App\Models\Restaurant;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ReservationController extends Controller
 {
@@ -39,7 +43,7 @@ class ReservationController extends Controller
                 ], 422);
             }
 
-            if (!$restaurant->plan?->allows('Réservations')) {
+            if (!$restaurant->plan?->allows('reservations')) {
                 return response()->json([
                     'message' => 'Les Réservations sont reservees aux plans Pro et Business.',
                     'requires_upgrade' => true,
@@ -60,10 +64,17 @@ class ReservationController extends Controller
                 'source' => 'qr_client',
             ]);
 
-            broadcast(new ReservationCreated($reservation))->toOthers();
+            try {
+                broadcast(new ReservationCreated($reservation))->toOthers();
+            } catch (\Throwable $exception) {
+                Log::warning('Reservation broadcast failed', [
+                    'reservation_id' => $reservation->id,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
 
             return response()->json([
-                'message' => 'Demande de reservation envoyee. Le restaurant va confirmer la disponibilite.',
+                'message' => 'Demande de réservation envoyée. Le restaurant va confirmer la disponibilité par email.',
                 'data' => $reservation->load(['table', 'restaurant']),
             ], 201);
         });
@@ -74,7 +85,7 @@ class ReservationController extends Controller
         $restaurantId = $request->user()?->restaurant_id;
         $restaurant = $restaurantId ? Restaurant::with('plan')->find($restaurantId) : null;
 
-        if ($restaurant && !$restaurant->plan?->allows('Réservations')) {
+        if ($restaurant && !$restaurant->plan?->allows('reservations')) {
             return response()->json([
                 'message' => 'Les Réservations sont reservees aux plans Pro et Business.',
                 'requires_upgrade' => true,
@@ -106,10 +117,11 @@ class ReservationController extends Controller
         ]);
 
         return DB::transaction(function () use ($request, $id, $validated) {
-            $reservation = Reservation::with('table')
+            $reservation = Reservation::with(['table', 'restaurant'])
                 ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
                 ->lockForUpdate()
                 ->findOrFail($id);
+            $previousStatus = $reservation->status;
 
             $updates = [
                 'status' => $validated['status'],
@@ -131,22 +143,65 @@ class ReservationController extends Controller
             }
 
             $reservation->update($updates);
+            $freshReservation = $reservation->fresh(['table', 'restaurant']);
+
+            if ($previousStatus !== $freshReservation->status && $this->shouldNotifyClient($freshReservation)) {
+                DB::afterCommit(fn () => $this->sendReservationStatusMail($freshReservation));
+            }
+
+            DB::afterCommit(fn () => $this->broadcastReservationChanged($freshReservation, 'updated'));
 
             return response()->json([
                 'message' => 'Reservation mise a jour.',
-                'data' => $reservation->fresh(['table', 'restaurant']),
+                'data' => $freshReservation,
             ]);
         });
+    }
+
+    private function shouldNotifyClient(Reservation $reservation): bool
+    {
+        return filled($reservation->email)
+            && in_array($reservation->status, ['confirmed', 'cancelled', 'no_show'], true);
+    }
+
+    private function sendReservationStatusMail(Reservation $reservation): void
+    {
+        try {
+            Mail::to($reservation->email)->send(new ReservationStatusMail($reservation));
+        } catch (\Throwable $exception) {
+            Log::warning('Reservation status email failed', [
+                'reservation_id' => $reservation->id,
+                'email' => $reservation->email,
+                'status' => $reservation->status,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     public function destroy(Request $request, string $id)
     {
         $reservation = Reservation::query()
+            ->with(['table', 'restaurant'])
             ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
             ->findOrFail($id);
 
+        $deletedReservation = clone $reservation;
         $reservation->delete();
+        $this->broadcastReservationChanged($deletedReservation, 'deleted');
 
         return response()->json(['message' => 'Reservation supprimee.']);
+    }
+
+    private function broadcastReservationChanged(Reservation $reservation, string $action): void
+    {
+        try {
+            broadcast(new ReservationChanged($reservation, $action))->toOthers();
+        } catch (\Throwable $exception) {
+            Log::warning('Reservation changed broadcast failed', [
+                'reservation_id' => $reservation->id,
+                'action' => $action,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }

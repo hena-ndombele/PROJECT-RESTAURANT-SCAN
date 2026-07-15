@@ -1,11 +1,18 @@
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-2">
+<div class="container-fluid py-4 create-dish-page">
+    <div class="create-dish-header">
         <div>
             <h1 class="fs-3 fw-black text-uppercase mb-1">
-                Add a New Dish</h1>
-            <p class="mb-0 text-muted small">Restaurant Scan ADMIN > MENU MANAGEMENT</p>
+                Ajouter un nouveau plat</h1>
+            <p class="mb-0 text-muted small">Restaurant Scan ADMIN > Gestion des menus</p>
         </div>
+        <a routerLink="/dish/list-dish" class="btn back-to-menu-btn">
+            <i class="ti ti-arrow-left"></i>
+            Retour
+        </a>
+    </div>
 
+    <div *ngIf="formError()" class="alert alert-danger rounded-0 border-2 fw-bold mb-4">
+        {{ formError() }}
     </div>
 
     <form [formGroup]="dishForm" (ngSubmit)="onSubmit()">
@@ -13,21 +20,21 @@
             <div class="col-lg-7">
                 <div class="card shadow-sm border-2 rounded-0">
                     <div class="card-header bg-white py-3 border-bottom border-2">
-                        <h5 class="mb-0 fw-bold text-uppercase">Product Details</h5>
+                        <h5 class="mb-0 fw-bold text-uppercase">Détails du produit</h5>
                     </div>
                     <div class="card-body p-4">
                         <div class="row g-3">
                             <div class="col-md-8">
-                                <label class="form-label fw-bold small text-uppercase">Name <span
+                                <label class="form-label fw-bold small text-uppercase">Nom <span
                                         style="color:red">*</span></label>
                                 <input type="text" class="form-control rounded-0 border-2" formControlName="name"
-                                       placeholder="Name...">
+                                       placeholder="Nom...">
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label fw-bold small text-uppercase">Category <span style="color:red">*</span></label>
+                                <label class="form-label fw-bold small text-uppercase">Categorie<span style="color:red">*</span></label>
                                 <select formControlName="category_id" class="form-select rounded-0 border-2">
-                                    <option value="" disabled>Choose...</option>
+                                    <option value="" disabled>Choisir...</option>
                                     <option *ngFor="let cat of categories()" [value]="cat.id">{{ cat.name }}</option>
                                 </select>
                             </div>
@@ -40,7 +47,7 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-uppercase">Price <span
+                                <label class="form-label fw-bold small text-uppercase">Prix <span
                                         style="color:red">*</span></label>
                                 <div class="input-group">
                                     <input type="number" class="form-control rounded-0 border-2"
@@ -53,7 +60,7 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label fw-bold small text-uppercase">Time (Min)</label>
+                                <label class="form-label fw-bold small text-uppercase">Temps (Min)</label>
                                 <input type="number" class="form-control rounded-0 border-2"
                                        formControlName="preparation_time">
                             </div>
@@ -63,7 +70,7 @@
                                 <div class="form-check form-switch p-2 ps-5 border border-2 rounded-0 bg-light">
                                     <input class="form-check-input" type="checkbox" formControlName="is_available"
                                            id="stockStatus">
-                                    <label class="form-check-label fw-bold text-uppercase" for="stockStatus">available
+                                    <label class="form-check-label fw-bold text-uppercase" for="stockStatus">disponible
                                         </label>
                                 </div>
                             </div>
@@ -77,7 +84,40 @@
                                         <i class="ti ti-x ms-2 cursor-pointer" (click)="removeIngredient(i)"></i>
                                     </span>
                                     <input type="text" (keydown.enter)="addIngredient($event)"
-                                           class="border-0 flex-grow-1" style="outline: none;" placeholder="Add...">
+                                           class="border-0 flex-grow-1" style="outline: none;" placeholder="Ajouter un ingrédient...">
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-uppercase">
+                                    Tailles disponibles <span class="text-muted">(optionnel)</span>
+                                </label>
+                                <div class="dish-size-options">
+                                    <label *ngFor="let size of sizeOptions" class="dish-size-option">
+                                        <input type="checkbox"
+                                               [checked]="hasSize(size.value)"
+                                               (change)="toggleSize(size.value, $any($event.target).checked)">
+                                        <span>{{ size.label }}</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-12" *ngIf="canUseDishPromotions()">
+                                <div class="border border-2 rounded-0 p-3 bg-light">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" formControlName="promotion_enabled" id="promotionEnabled">
+                                        <label class="form-check-label fw-bold text-uppercase small" for="promotionEnabled">Plat en promotion</label>
+                                    </div>
+                                    <div class="row g-3" *ngIf="dishForm.get('promotion_enabled')?.value">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-uppercase">Remise (%)</label>
+                                            <input type="number" min="1" max="95" class="form-control rounded-0 border-2" formControlName="promotion_percent" placeholder="Ex: 20">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-uppercase">Fin de la promo</label>
+                                            <input type="date" class="form-control rounded-0 border-2" formControlName="promotion_ends_at">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -88,12 +128,12 @@
             <div class="col-lg-5">
                 <div class="card shadow-sm border-2 rounded-0 mb-4">
                     <div class="card-header bg-white py-3 border-bottom border-2">
-                        <h5 class="mb-0 fw-bold text-uppercase">Dish Media</h5>
+                        <h5 class="mb-0 fw-bold text-uppercase">Média du plat</h5>
                     </div>
                     <div class="card-body p-4">
                         <div class="mb-4">
                             <label class="form-label fw-bold small text-uppercase text-warning">
-                                Main Image <span style="color:red">*</span></label>
+                                Image principale <span style="color:red">*</span></label>
                             <div class="preview-box border-2 border-dashed bg-light mb-2 d-flex align-items-center justify-content-center overflow-hidden"
                                  style="height: 220px;">
                                 <img *ngIf="previewUrl" [src]="previewUrl"
@@ -131,20 +171,16 @@
                     </div>
                 </div>
 
-                <div class="d-grid gap-2">
-                    <div *ngIf="formError()" class="alert alert-danger rounded-0 border-2 fw-bold">
-                        {{ formError() }}
-                    </div>
-
+                <div class="dish-form-actions">
                     <button type="submit"
-                            class="btn dynamic-primary py-3 fw-black rounded-0 text-black shadow-sm d-flex align-items-center justify-content-center"
+                            class="btn dynamic-primary dish-action-btn fw-black rounded-0 text-black shadow-sm d-flex align-items-center justify-content-center"
                             [disabled]="isLoading()" style="color:black">
                         <span *ngIf="isLoading()" class="spinner-border spinner-border-sm me-2"></span>
-                        <i class="bi bi-x-circle me-1"></i>  {{ isLoading() ? 'IN PROGRESS...' : 'PUBLISH THE DISH' }}
+                        <i class="bi bi-x-circle me-1"></i>  {{ isLoading() ? 'EN COURS...' : 'PUBLIER LE PLAT' }}
                     </button>
-                    <button type="button" class="btn btn-secondary py-2 fw-bold rounded-0 border border-2"
+                    <button type="button" class="btn btn-secondary dish-action-btn fw-bold rounded-0 border border-2"
                             (click)="resetForm()">
-                        <i class="bi bi-x-circle me-1"></i>    CANCEL
+                        <i class="bi bi-x-circle me-1"></i>    ANNULER
                     </button>
                 </div>
             </div>

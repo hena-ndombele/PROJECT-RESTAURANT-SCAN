@@ -111,7 +111,8 @@ class MaishaPayService
             return [
                 'status_code' => 503,
                 'transactionStatus' => 'FAILED',
-                'message' => 'Paiement echoue. Verifiez le numero puis reessayez.',
+                'message' => $error->getMessage() ?: 'Impossible de joindre MaishaPay.',
+                'exception' => class_basename($error),
             ];
         }
 

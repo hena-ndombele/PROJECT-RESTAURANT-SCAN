@@ -55,9 +55,9 @@
   border: 0;
   border-radius: 10px;
   color: #111318;
-  background: var(--dashboard-button-bg, linear-gradient(135deg, #FFD166, #F9A11B, #D71920));
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
   font-weight: 850;
-  box-shadow: 0 14px 28px rgba(249, 161, 27, .22);
+  box-shadow: 0 14px 28px rgba(255, 122, 26, .22);
 }
 
 .badge-reprint-btn:hover {

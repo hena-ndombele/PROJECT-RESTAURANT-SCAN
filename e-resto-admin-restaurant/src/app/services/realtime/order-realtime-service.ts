@@ -3,7 +3,7 @@ import { Subject } from "rxjs";
 import { Order } from "../../models/orders/OrderDto";
 import { AuthService } from "../auth/auth-service";
 import { OderService } from "../orders/oder-service";
-import { ReservationDto } from "../reservation/reservation-service";
+import { ReservationDto, ReservationService } from "../reservation/reservation-service";
 import { API_ROOT } from "../api-url";
 
 interface OrderNotification {
@@ -15,11 +15,32 @@ interface OrderNotification {
     route?: string;
 }
 
+export interface FeedbackRealtimeDto {
+    id: string;
+    restaurant_id?: string | null;
+    food_rating?: number;
+    service_rating?: number;
+    ordering_rating?: number;
+    recommended?: boolean | null;
+    comment?: string | null;
+    customer_name?: string | null;
+    customer_phone?: string | null;
+    created_at?: string;
+    order?: {
+        id: string;
+        total_amount?: number;
+        currency?: string;
+        table?: { id: string; name: string } | null;
+    } | null;
+    table?: { id: string; name: string } | null;
+}
+
 @Injectable({
     providedIn: "root"
 })
 export class OrderRealtimeService {
     private readonly orderService = inject(OderService);
+    private readonly reservationService = inject(ReservationService);
     private readonly authService = inject(AuthService);
     private readonly zone = inject(NgZone);
 
@@ -28,13 +49,19 @@ export class OrderRealtimeService {
     private pollingTimer?: ReturnType<typeof setInterval>;
     private connected = false;
     private started = false;
+    private reservationPollingInitialized = false;
+    private knownReservationIds = new Set<string>();
 
     readonly orders = signal<Order[]>([]);
     readonly notifications = signal<OrderNotification[]>([]);
-    readonly pendingRéservationsCount = signal(0);
+    readonly pendingReservationsCount = signal(0);
     readonly connectionState = signal<"idle" | "connecting" | "connected" | "error">("idle");
     readonly orderChanged$ = new Subject<Order>();
     readonly reservationCreated$ = new Subject<ReservationDto>();
+    readonly reservationChanged$ = new Subject<{ action: "created" | "updated" | "deleted"; reservation: ReservationDto }>();
+    readonly feedbackCreated$ = new Subject<FeedbackRealtimeDto>();
+    readonly businessRestaurantsChanged$ = new Subject<any>();
+    readonly menuUpdated$ = new Subject<{ restaurant_id?: string; reason?: string }>();
 
     readonly activeOrdersCount = computed(() => {
         return this.orders().filter((order) => this.isActiveOrder(order)).length;
@@ -44,6 +71,7 @@ export class OrderRealtimeService {
         if (this.started) return;
         this.started = true;
         this.loadInitialOrders();
+        this.refreshReservationsFromApi(true);
         this.connect();
         this.startPollingFallback();
     }
@@ -74,6 +102,7 @@ export class OrderRealtimeService {
         this.pollingTimer = setInterval(() => {
             if (!this.started) return;
             this.refreshOrdersFromApi();
+            this.refreshReservationsFromApi();
         }, 8000);
     }
 
@@ -91,7 +120,7 @@ export class OrderRealtimeService {
 
                 for (const order of freshOrders) {
                     this.orderChanged$.next(order);
-                    this.addNotification(order);
+                    this.addOrderNotification(order);
                     this.playNotificationSound();
                 }
             },
@@ -103,6 +132,28 @@ export class OrderRealtimeService {
         });
     }
 
+    private refreshReservationsFromApi(initial = false): void {
+        this.reservationService.list({ status: "pending" }).subscribe({
+            next: (reservations) => {
+                this.pendingReservationsCount.set(reservations.length);
+
+                if (initial || !this.reservationPollingInitialized) {
+                    reservations.forEach((reservation) => this.knownReservationIds.add(reservation.id));
+                    this.reservationPollingInitialized = true;
+                    return;
+                }
+
+                const freshReservations = reservations
+                    .filter((reservation) => reservation.id && !this.knownReservationIds.has(reservation.id))
+                    .slice()
+                    .reverse();
+
+                freshReservations.forEach((reservation) => this.notifyReservation(reservation));
+            },
+            error: () => undefined
+        });
+    }
+
     private connect(): void {
         if (!this.started || this.socket?.readyState === WebSocket.OPEN || this.socket?.readyState === WebSocket.CONNECTING) {
             return;
@@ -110,7 +161,7 @@ export class OrderRealtimeService {
 
         const apiUrl = new URL(API_ROOT);
         const host = apiUrl.hostname || window.location.hostname;
-        const key = "e-resto-key";
+        const key = "restaurant-scan-key";
         const port = 8080;
         const protocol = apiUrl.protocol === "https:" ? "wss" : "ws";
         const url = `${protocol}://${host}:${port}/app/${key}?protocol=7&client=angular-native&version=1.0&flash=false`;
@@ -123,7 +174,10 @@ export class OrderRealtimeService {
                 this.connected = true;
                 this.connectionState.set("connected");
                 this.subscribeToOrders();
-                this.subscribeToRéservations();
+                this.subscribeToReservations();
+                this.subscribeToFeedbacks();
+                this.subscribeToMenu();
+                this.subscribeToBusinessRestaurants();
             });
         };
 
@@ -155,13 +209,49 @@ export class OrderRealtimeService {
         });
     }
 
-    private subscribeToRéservations(): void {
+    private subscribeToReservations(): void {
         const restaurantId = this.authService.getUserData()?.restaurant_id;
-        const channel = restaurantId ? `Réservations.${restaurantId}` : "Réservations";
+        const channels = restaurantId
+            ? [`reservations.${restaurantId}`, `Réservations.${restaurantId}`]
+            : ["reservations", "Réservations"];
+
+        channels.forEach((channel) => {
+            this.send({
+                event: "pusher:subscribe",
+                data: { channel }
+            });
+        });
+    }
+
+    private subscribeToFeedbacks(): void {
+        const restaurantId = this.authService.getUserData()?.restaurant_id;
+        const channel = restaurantId ? `feedbacks.${restaurantId}` : "feedbacks";
 
         this.send({
             event: "pusher:subscribe",
             data: { channel }
+        });
+    }
+
+    private subscribeToMenu(): void {
+        const user = this.authService.getUserData();
+        const restaurantId = user?.restaurant_id || user?.restaurant?.id;
+        if (!restaurantId) return;
+
+        this.send({
+            event: "pusher:subscribe",
+            data: { channel: `menu.${restaurantId}` }
+        });
+    }
+
+    private subscribeToBusinessRestaurants(): void {
+        const user = this.authService.getUserData();
+        const businessOwnerId = user?.restaurant?.business_owner_user_id || user?.id;
+        if (!businessOwnerId) return;
+
+        this.send({
+            event: "pusher:subscribe",
+            data: { channel: `business-restaurants.${businessOwnerId}` }
         });
     }
 
@@ -183,6 +273,26 @@ export class OrderRealtimeService {
             return;
         }
 
+        if (["reservation.updated", "reservation.deleted"].includes(message.event)) {
+            this.handleReservationChanged(message, message.event === "reservation.deleted" ? "deleted" : "updated");
+            return;
+        }
+
+        if (message.event === "feedback.created") {
+            this.handleFeedbackCreated(message);
+            return;
+        }
+
+        if (message.event === "business-restaurants.updated") {
+            this.handleBusinessRestaurantsUpdated(message);
+            return;
+        }
+
+        if (message.event === "menu.updated") {
+            this.handleMenuUpdated(message);
+            return;
+        }
+
         if (!["order.placed", "order.status.updated"].includes(message.event)) {
             return;
         }
@@ -196,7 +306,7 @@ export class OrderRealtimeService {
         this.orderChanged$.next(order);
 
         if (isNewOrder) {
-            this.addNotification(order);
+            this.addOrderNotification(order);
             this.playNotificationSound();
         }
     }
@@ -206,19 +316,61 @@ export class OrderRealtimeService {
         const reservation = payload?.reservation as ReservationDto | undefined;
         if (!reservation?.id) return;
 
-        this.pendingRéservationsCount.update((count) => count + 1);
-        this.reservationCreated$.next(reservation);
-        this.notifications.update((items) => [
-            {
-                id: `${reservation.id}-${Date.now()}`,
-                title: "Nouvelle reservation",
-                message: `${reservation.name} - ${reservation.guests} pers. le ${reservation.reservation_date}`,
-                createdAt: new Date(),
-                route: "/table/reservation-table"
-            },
-            ...items
-        ].slice(0, 8));
+        this.notifyReservation(reservation);
+    }
+
+    private handleReservationChanged(message: any, action: "updated" | "deleted"): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        const reservation = payload?.reservation as ReservationDto | undefined;
+        if (!reservation?.id) return;
+
+        if (action === "deleted") {
+            this.knownReservationIds.delete(reservation.id);
+            if (reservation.status === "pending") {
+                this.pendingReservationsCount.update((count) => Math.max(0, count - 1));
+            }
+        } else {
+            this.knownReservationIds.add(reservation.id);
+            this.refreshReservationsFromApi();
+        }
+
+        this.reservationChanged$.next({ action, reservation });
+    }
+
+    private handleFeedbackCreated(message: any): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        const feedback = payload?.feedback as FeedbackRealtimeDto | undefined;
+        if (!feedback?.id) return;
+
+        this.feedbackCreated$.next(feedback);
+        this.addFeedbackNotification(feedback);
         this.playNotificationSound();
+    }
+
+    private notifyReservation(reservation: ReservationDto): void {
+        if (this.knownReservationIds.has(reservation.id)) {
+            return;
+        }
+
+        this.knownReservationIds.add(reservation.id);
+        this.pendingReservationsCount.update((count) => count + 1);
+        this.reservationCreated$.next(reservation);
+        this.reservationChanged$.next({ action: "created", reservation });
+        this.addReservationNotification(reservation);
+        this.playNotificationSound();
+    }
+
+    private handleBusinessRestaurantsUpdated(message: any): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        this.businessRestaurantsChanged$.next(payload || {});
+    }
+
+    private handleMenuUpdated(message: any): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        this.menuUpdated$.next({
+            restaurant_id: payload?.restaurant_id,
+            reason: payload?.reason || "menu_updated"
+        });
     }
 
     private upsertOrder(order: Order): void {
@@ -232,7 +384,7 @@ export class OrderRealtimeService {
         });
     }
 
-    private addNotification(order: Order): void {
+    private addOrderNotification(order: Order): void {
         const tableName = order.table?.name || "Table inconnue";
         this.notifications.update((items) => [
             {
@@ -241,7 +393,34 @@ export class OrderRealtimeService {
                 message: `${tableName} - ${Number(order.total_amount || 0).toLocaleString("fr-FR")} ${order.currency}`,
                 createdAt: new Date(),
                 order,
-                route: "/orders/list"
+                route: "/orders/list?status=pending"
+            },
+            ...items
+        ].slice(0, 8));
+    }
+
+    private addReservationNotification(reservation: ReservationDto): void {
+        this.notifications.update((items) => [
+            {
+                id: `${reservation.id}-${Date.now()}`,
+                title: "Nouvelle réservation",
+                message: `${reservation.name} - ${reservation.guests} pers. le ${reservation.reservation_date}`,
+                createdAt: new Date(),
+                route: "/table/reservation-table"
+            },
+            ...items
+        ].slice(0, 8));
+    }
+
+    private addFeedbackNotification(feedback: FeedbackRealtimeDto): void {
+        const tableName = feedback.order?.table?.name || feedback.table?.name || "Table inconnue";
+        this.notifications.update((items) => [
+            {
+                id: `${feedback.id}-${Date.now()}`,
+                title: "Nouveau feedback",
+                message: `${tableName} - avis client recu`,
+                createdAt: new Date(),
+                route: "/feedback/list"
             },
             ...items
         ].slice(0, 8));

@@ -11,6 +11,8 @@ use App\Http\Controllers\Public\ContactController;
 use App\Http\Controllers\Public\MenuController;
 use App\Http\Controllers\Public\ReservationController;
 use App\Http\Controllers\Public\FeedbackController;
+use App\Http\Controllers\Public\RestaurantController as PublicRestaurantController;
+use App\Http\Controllers\Public\GroupOrderController;
 use App\Http\Controllers\Saas\SaasController;
 
 //*****************************************ADMIN****************************************************************
@@ -36,6 +38,7 @@ Route::prefix('saas')->group(function () {
     Route::post('/register-interest', [SaasController::class, 'registerInterest']);
 
     Route::middleware(['auth:sanctum', 'admin.only'])->group(function () {
+        Route::get('/admin/plans', [SaasController::class, 'adminPlans']);
         Route::post('/plans', [SaasController::class, 'storePlan']);
         Route::put('/plans/{plan}', [SaasController::class, 'updatePlan']);
         Route::delete('/plans/{plan}', [SaasController::class, 'destroyPlan']);
@@ -55,18 +58,48 @@ Route::prefix('saas')->group(function () {
     Route::middleware(['auth:sanctum', 'restaurant.only'])->group(function () {
         Route::get('/me', [SaasController::class, 'me']);
         Route::get('/restaurant/usage', [SaasController::class, 'usage']);
+        Route::get('/restaurant/payments', [SaasController::class, 'restaurantPayments']);
         Route::put('/restaurant/profile', [SaasController::class, 'updateProfile']);
+        Route::get('/business/restaurants', [SaasController::class, 'businessRestaurants']);
+        Route::post('/business/restaurants', [SaasController::class, 'storeBusinessRestaurant']);
+        Route::post('/business/restaurants/{restaurant}/switch', [SaasController::class, 'switchBusinessRestaurant']);
+        Route::delete('/business/restaurants/{restaurant}', [SaasController::class, 'destroyBusinessRestaurant']);
+        Route::get('/business/analytics', [SaasController::class, 'businessAnalytics']);
     });
 });
 
 //*****************************************CLIENT PUBLIC***************************************************************
 Route::get('/public/menu', [MenuController::class, 'index']);
+Route::get('/public/restaurants', [PublicRestaurantController::class, 'index']);
+Route::get('/public/restaurants/search', [PublicRestaurantController::class, 'search']);
+Route::get('/public/restaurants/{restaurant}', [PublicRestaurantController::class, 'show']);
 Route::post('/public/contact', [ContactController::class, 'store']);
 Route::post('/public/reservations', [ReservationController::class, 'store']);
 Route::post('/public/Réservations', [ReservationController::class, 'store']);
+Route::get('/public/feedbacks/availability', [FeedbackController::class, 'availability']);
 Route::post('/public/feedbacks', [FeedbackController::class, 'store']);
 Route::get('/public/employees/verify/{id}', [AgentController::class, 'verify']);
 Route::get('/table-qrcodes/{filename}', [TableController::class, 'qrCode'])->where('filename', 'table_[A-Za-z0-9\\-]+\\.svg');
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/public/favorites/restaurants', [PublicRestaurantController::class, 'favorites']);
+    Route::post('/public/restaurants/{restaurant}/favorite', [PublicRestaurantController::class, 'favorite']);
+    Route::delete('/public/restaurants/{restaurant}/favorite', [PublicRestaurantController::class, 'unfavorite']);
+});
+
+Route::prefix('group-orders')->group(function () {
+    Route::post('/', [GroupOrderController::class, 'store']);
+    Route::get('/active/table/{table}', [GroupOrderController::class, 'activeForTable']);
+    Route::get('/{code}', [GroupOrderController::class, 'show']);
+    Route::post('/{code}/creator-recovery', [GroupOrderController::class, 'recoverCreator']);
+    Route::post('/{code}/participants', [GroupOrderController::class, 'join']);
+    Route::post('/{code}/participants/heartbeat', [GroupOrderController::class, 'heartbeat']);
+    Route::post('/{code}/participants/ready', [GroupOrderController::class, 'setReady']);
+    Route::post('/{code}/items', [GroupOrderController::class, 'upsertItem']);
+    Route::delete('/{code}/items/{item}', [GroupOrderController::class, 'destroyItem']);
+    Route::get('/{code}/whatsapp', [GroupOrderController::class, 'whatsapp']);
+    Route::post('/{code}/checkout', [GroupOrderController::class, 'checkout']);
+});
 
 
 Route::middleware('auth:sanctum')->group(function () {

@@ -1,13 +1,13 @@
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 dish-detail-page">
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex align-items-center gap-3 border-bottom border-2 pb-3">
-                <button class="btn btn-outline-dark rounded-0 px-3" onclick="history.back()">
-                    <i class="ti ti-arrow-left me-1"></i> BACK
+                <button class="btn dish-back-btn" onclick="history.back()">
+                    <i class="ti ti-arrow-left me-1"></i> RETOUR
                 </button>
                 <div>
-                    <h1 class="fs-4 mb-0 fw-black text-uppercase">Dish Details</h1>
-                    <p class="mb-0 text-muted small">VIEWING INFO FOR: {{ dishDetail()?.name }}</p>
+                    <h1 class="fs-4 mb-0 fw-black text-uppercase">Détails du plat</h1>
+                    <p class="mb-0 text-muted small">Informations de visualisation pour : {{ dishDetail()?.name }}</p>
                 </div>
             </div>
         </div>
@@ -16,7 +16,7 @@
     @if (isLoading()) {
         <div class="text-center py-5">
             <div class="spinner-border text-dark rounded-0" role="status"></div>
-            <p class="mt-2 fw-bold text-uppercase">Synchronizing with server...</p>
+            <p class="mt-2 fw-bold text-uppercase">Synchronisation avec le serveur...</p>
         </div>
     } @else if (errorMessage()) {
         <div class="alert alert-danger rounded-0 border-2 fw-bold text-uppercase" role="alert">
@@ -27,7 +27,7 @@
             <div class="col-lg-5">
                 <div class="card border-2 rounded-0 shadow-sm mb-4 overflow-hidden">
                     <div class="card-header bg-white border-bottom border-2 py-3">
-                        <h5 class="mb-0 fw-bold text-uppercase">Dish Media</h5>
+                        <h5 class="mb-0 fw-bold text-uppercase">Plat Média</h5>
                     </div>
                     <div class="position-relative bg-light d-flex align-items-center justify-content-center" style="min-height: 380px;">
                         @if (imageUrl(dish.image); as dishImageUrl) {
@@ -35,9 +35,11 @@
                                  [alt]="dish.name || 'Dish image'"
                                  class="img-fluid w-100 h-100 object-fit-cover">
                         } @else {
-                            <div class="text-center text-muted">
-                                <i class="ti ti-photo-off fs-1 d-block mb-2"></i>
-                                <span class="small fw-bold">NO IMAGE</span>
+                            <div class="empty-media-state text-center">
+                                <span class="empty-media-icon">
+                                    <i class="ti ti-photo-off"></i>
+                                </span>
+                                <span class="small fw-bold">PAS D'IMAGE</span>
                             </div>
                         }
                     </div>
@@ -52,14 +54,16 @@
                                          [alt]="(dish.name || 'Dish') + ' secondary image 1'"
                                          class="img-fluid w-100 h-100 object-fit-cover">
                                 } @else {
-                                    <div class="text-center text-muted">
-                                        <i class="ti ti-photo-off fs-2 d-block mb-1"></i>
-                                        <span class="small fw-bold">NO IMAGE 1</span>
+                                    <div class="empty-media-state text-center">
+                                        <span class="empty-media-icon empty-media-icon-sm">
+                                            <i class="ti ti-photo-off"></i>
+                                        </span>
+                                        <span class="small fw-bold">PAS D'IMAGE 1</span>
                                     </div>
                                 }
                             </div>
                             <div class="card-footer bg-white border-top border-2 py-2">
-                                <span class="small fw-bold text-uppercase">Secondary Image 1</span>
+                                <span class="small fw-bold text-uppercase">Image Secondaire 1</span>
                             </div>
                         </div>
                     </div>
@@ -72,14 +76,16 @@
                                          [alt]="(dish.name || 'Dish') + ' secondary image 2'"
                                          class="img-fluid w-100 h-100 object-fit-cover">
                                 } @else {
-                                    <div class="text-center text-muted">
-                                        <i class="ti ti-photo-off fs-2 d-block mb-1"></i>
-                                        <span class="small fw-bold">NO IMAGE 2</span>
+                                    <div class="empty-media-state text-center">
+                                        <span class="empty-media-icon empty-media-icon-sm">
+                                            <i class="ti ti-photo-off"></i>
+                                        </span>
+                                        <span class="small fw-bold">PAS D'IMAGE 2</span>
                                     </div>
                                 }
                             </div>
                             <div class="card-footer bg-white border-top border-2 py-2">
-                                <span class="small fw-bold text-uppercase">Secondary Image 2</span>
+                                <span class="small fw-bold text-uppercase">Image Secondaire 2</span>
                             </div>
                         </div>
                     </div>
@@ -91,7 +97,7 @@
                         @for (item of dish.ingredients ?? []; track $index) {
                             <span class="badge bg-dark rounded-0 text-uppercase">{{ item }}</span>
                         } @empty {
-                            <span class="text-muted small italic">No ingredients listed</span>
+                            <span class="text-muted small italic">Pas d'ingrédients listés</span>
                         }
                     </div>
                 </div>
@@ -120,42 +126,42 @@
 
                         <div class="row g-4">
                             <div class="col-md-6">
-                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Prep Time</h6>
+                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Temps Préparation </h6>
                                 <p class="fw-bold mb-0">
                                     <i class="ti ti-clock me-1"></i> {{ dish.preparation_time || 0 }} MIN
                                 </p>
                             </div>
 
                             <div class="col-md-6">
-                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Category</h6>
+                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Catégorie</h6>
                                 <p class="fw-bold text-uppercase mb-0">
-                                    <i class="ti ti-category me-1"></i> {{ dish.category?.name || 'No category' }}
+                                    <i class="ti ti-category me-1"></i> {{ dish.category?.name || 'Pas de catégorie' }}
                                 </p>
                             </div>
 
 
 
                             <div class="col-md-6">
-                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Status</h6>
+                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Statut</h6>
                                 <span class="badge border border-2 rounded-0 fw-bold"
                                       [class.text-bg-success]="dish.is_available"
                                       [class.text-bg-danger]="!dish.is_available">
-                                    {{ dish.is_available ? 'AVAILABLE' : 'UNAVAILABLE' }}
+                                    {{ dish.is_available ? 'DISPONIBLE' : 'INDISPONIBLE' }}
                                 </span>
                             </div>
 
                             <div class="col-md-6">
-                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Currency</h6>
+                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Devise</h6>
                                 <p class="fw-bold mb-0">{{ dish.currency || 'None' }}</p>
                             </div>
 
                             <div class="col-md-6">
-                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Created At</h6>
+                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Créé À</h6>
                                 <p class="text-muted small mb-0">{{ dish.created_at | date:'dd/MM/yyyy HH:mm' }}</p>
                             </div>
 
                             <div class="col-md-6">
-                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Updated At</h6>
+                                <h6 class="text-uppercase fw-bold text-muted small mb-1">Mis À Jour À</h6>
                                 <p class="text-muted small mb-0">{{ dish.updated_at | date:'dd/MM/yyyy HH:mm' }}</p>
                             </div>
                         </div>
@@ -164,23 +170,23 @@
                             <hr class="my-4">
 
                             <div>
-                                <h6 class="text-uppercase fw-bold text-muted small mb-3">Category Details</h6>
+                                <h6 class="text-uppercase fw-bold text-muted small mb-3">Details de la Catégorie</h6>
                                 <div class="row g-3">
 
                                     <div class="col-md-6">
-                                        <p class="small text-muted mb-1">Name</p>
+                                        <p class="small text-muted mb-1">Nom</p>
                                         <p class="fw-bold mb-0 text-uppercase">{{ dish.category.name }}</p>
                                     </div>
                                     <div class="col-12">
                                         <p class="small text-muted mb-1">Description</p>
-                                        <p class="mb-0">{{ dish.category.description || 'No category description' }}</p>
+                                        <p class="mb-0">{{ dish.category.description || 'Pas de description de catégorie' }}</p>
                                     </div>
                                     <div class="col-md-6">
-                                        <p class="small text-muted mb-1">Created At</p>
+                                        <p class="small text-muted mb-1">Créé À</p>
                                         <p class="mb-0">{{ dish.category.created_at | date:'dd/MM/yyyy HH:mm' }}</p>
                                     </div>
                                     <div class="col-md-6">
-                                        <p class="small text-muted mb-1">Updated At</p>
+                                        <p class="small text-muted mb-1">Mis À Jour À</p>
                                         <p class="mb-0">{{ dish.category.updated_at | date:'dd/MM/yyyy HH:mm' }}</p>
                                     </div>
                                 </div>

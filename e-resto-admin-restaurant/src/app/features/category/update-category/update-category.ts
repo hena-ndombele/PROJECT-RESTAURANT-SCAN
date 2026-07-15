@@ -89,8 +89,8 @@ export class UpdateCategory implements OnInit {
             next: (response) => {
                 this.isLoading = false;
                 Swal.fire({
-                    title: 'Updated!',
-                    text: 'Category updated successfully',
+                    title: 'Mis à jour!',
+                    text: 'Catégorie mise à jour avec succès',
                     icon: 'success',
                     timer: 3000,
                     confirmButtonColor: '#28a745'
@@ -101,8 +101,8 @@ export class UpdateCategory implements OnInit {
             error: (err) => {
                 this.isLoading = false;
                 Swal.fire({
-                    title: 'Error',
-                    text: err.error?.message || 'Error while editing categories',
+                    title: 'Erreur',
+                    text: err.error?.message || 'Erreur lors de la modification des catégories.',
                     icon: 'error',
                     confirmButtonColor: '#d33'
                 });

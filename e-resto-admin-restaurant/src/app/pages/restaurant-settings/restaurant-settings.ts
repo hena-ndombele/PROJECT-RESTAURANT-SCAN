@@ -25,8 +25,17 @@ export class RestaurantSettings implements OnInit {
   logoPreview = signal<string | null>(null);
   planUsage = signal<RestaurantPlanUsage | null>(null);
   logoData: string | null = null;
+  readonly defaultRestaurantLogo = 'assets/logo/e-resto-logo.png';
+
+  displayLogoUrl(): string {
+    return this.logoPreview() || this.defaultRestaurantLogo;
+  }
 
   canCustomize(): boolean {
+    return this.canUpdateSettings();
+  }
+
+  canUsePremiumQrTemplates(): boolean {
     if (!this.canUpdateSettings()) {
       return false;
     }
@@ -47,7 +56,7 @@ export class RestaurantSettings implements OnInit {
   restaurant: any = {
     name: '',
     owner_name: '',
-    owner_phone: '',
+    owner_phone: '+243',
     address: '',
     city: '',
     currency: 'CDF',
@@ -58,11 +67,13 @@ export class RestaurantSettings implements OnInit {
       slogan: '',
       description: '',
         google_maps_url: '',
-        whatsapp_order_phone: '',
+        whatsapp_order_phone: '+243',
+        usd_cdf_rate: 2850,
         opening_time: '08:00',
         closing_time: '22:00',
+        qr_template: '',
         theme: {
-        primary: '#ff9f1a',
+        primary: '#ff7a1a',
         secondary: '#d71920',
         background: '#fff7ef',
       },
@@ -91,7 +102,7 @@ export class RestaurantSettings implements OnInit {
           this.restaurant = this.normalizeRestaurant(JSON.parse(cached));
           this.logoPreview.set(this.restaurant.logo_url || null);
         } else {
-          this.error.set('Impossible de charger les parametres du restaurant.');
+          this.error.set('Impossible de charger les paramètres du restaurant.');
         }
         this.loading.set(false);
       },
@@ -99,7 +110,6 @@ export class RestaurantSettings implements OnInit {
   }
 
   onLogoSelected(event: Event): void {
-    if (!this.canCustomize()) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
@@ -146,37 +156,62 @@ export class RestaurantSettings implements OnInit {
       owner_name: this.restaurant.owner_name,
       owner_phone: this.restaurant.owner_phone,
       address: this.restaurant.address,
+      commune: this.restaurant.commune,
       city: this.restaurant.city,
       currency: this.restaurant.currency,
     };
 
-    if (this.canCustomize()) {
-      payload.logo_data = this.logoData;
-      payload.settings = this.customizableSettingsPayload();
-    } else {
-      payload.settings = {
-        whatsapp_order_phone: this.restaurant.settings.whatsapp_order_phone,
-        opening_time: this.restaurant.settings.opening_time,
-        closing_time: this.restaurant.settings.closing_time,
-      };
+    if (this.restaurant.id) {
+      payload.restaurant_id = this.restaurant.id;
     }
+
+    if (this.logoData) {
+      payload.logo_data = this.logoData;
+    }
+
+    payload.settings = this.customizableSettingsPayload();
 
     this.saas.updateRestaurantProfile(payload).subscribe({
       next: (restaurant) => {
-        this.restaurant = this.normalizeRestaurant(restaurant);
-        this.logoPreview.set(this.restaurant.logo_url || null);
-        this.logoData = null;
-        localStorage.setItem('restaurant_session', JSON.stringify(this.restaurant));
-        this.applyRestaurantTheme(this.restaurant);
-        this.broadcastRestaurantSettings(this.restaurant);
-        this.message.set('Parametres sauvegardes. Les changements sont appliques dans votre espace.');
-        this.saving.set(false);
+        this.saas.currentRestaurant().subscribe({
+          next: (freshRestaurant) => this.applySavedRestaurant(freshRestaurant),
+          error: () => this.applySavedRestaurant(restaurant),
+        });
+        this.message.set('Paramètres sauvegardés. Les changements sont appliqués dans votre espace.');
       },
       error: (error) => {
-        this.error.set(error?.error?.message || 'Impossible de sauvegarder les parametres.');
+        this.error.set(error?.error?.message || 'Impossible de sauvegarder les paramètres.');
         this.saving.set(false);
       },
     });
+  }
+
+  private applySavedRestaurant(restaurant: any): void {
+    this.restaurant = this.normalizeRestaurant(restaurant);
+    this.logoPreview.set(this.restaurant.logo_url || null);
+    this.logoData = null;
+    this.persistRestaurantSession(this.restaurant);
+    this.applyRestaurantTheme(this.restaurant);
+    this.broadcastRestaurantSettings(this.restaurant);
+    this.message.set('Paramètres sauvegardés. Les changements sont appliqués dans votre espace.');
+    this.saving.set(false);
+  }
+
+  private persistRestaurantSession(restaurant: any): void {
+    localStorage.setItem('restaurant_session', JSON.stringify(restaurant));
+
+    const userData = localStorage.getItem('user_data');
+    if (!userData) return;
+
+    try {
+      const user = JSON.parse(userData);
+      localStorage.setItem('user_data', JSON.stringify({
+        ...user,
+        restaurant,
+      }));
+    } catch {
+      localStorage.setItem('restaurant_session', JSON.stringify(restaurant));
+    }
   }
 
   menuUrl(): string {
@@ -187,12 +222,16 @@ export class RestaurantSettings implements OnInit {
   private normalizeRestaurant(restaurant: any): any {
     const settings = restaurant?.settings || {};
     const theme = settings.theme || {};
+    const primary = this.normalizeColor(theme.primary_color || theme.primary || theme.accent, '#ff7a1a');
+    const secondary = primary;
+    const background = this.normalizeColor(theme.background_color || theme.background || theme.surface, '#fff7ef');
 
     return {
       ...restaurant,
       owner_name: restaurant?.owner_name || '',
-      owner_phone: restaurant?.owner_phone || '',
+      owner_phone: restaurant?.owner_phone || '+243',
       address: restaurant?.address || '',
+      commune: restaurant?.commune || '',
       city: restaurant?.city || '',
       currency: restaurant?.currency || 'CDF',
       settings: {
@@ -200,14 +239,16 @@ export class RestaurantSettings implements OnInit {
         slogan: settings.slogan || '',
         description: settings.description || 'Menu digital QR code',
         google_maps_url: settings.google_maps_url || '',
-        whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '',
+        whatsapp_order_phone: settings.whatsapp_order_phone || restaurant?.owner_phone || '+243',
+        usd_cdf_rate: Number(settings.usd_cdf_rate || settings.exchange_rate_usd_cdf || 2850),
         opening_time: settings.opening_time || '08:00',
         closing_time: settings.closing_time || '22:00',
+        qr_template: ['poster', 'table_tent'].includes(settings.qr_template) ? settings.qr_template : '',
         theme: {
-          primary: theme.primary || '#ff9f1a',
-          secondary: theme.secondary || '#d71920',
-          background: theme.background || '#fff7ef',
-          customized: theme.customized === true || theme.is_customized === true,
+          primary,
+          secondary,
+          background,
+          customized: theme.customized === true || theme.is_customized === true || primary !== '#ff7a1a',
         },
       },
     };
@@ -224,12 +265,13 @@ export class RestaurantSettings implements OnInit {
   }
 
   private customizableSettingsPayload(): any {
-    return {
+    const payload: any = {
       app_name: this.restaurant.name,
       slogan: this.restaurant.settings.slogan,
       description: this.restaurant.settings.description,
       google_maps_url: this.restaurant.settings.google_maps_url,
       whatsapp_order_phone: this.restaurant.settings.whatsapp_order_phone,
+      usd_cdf_rate: Number(this.restaurant.settings.usd_cdf_rate || 2850),
       opening_time: this.restaurant.settings.opening_time,
       closing_time: this.restaurant.settings.closing_time,
       theme: {
@@ -239,6 +281,12 @@ export class RestaurantSettings implements OnInit {
         customized: true,
       },
     };
+
+    payload.qr_template = this.canUsePremiumQrTemplates()
+      ? this.restaurant.settings.qr_template
+      : '';
+
+    return payload;
   }
 
   onColorInput(): void {
@@ -262,13 +310,11 @@ export class RestaurantSettings implements OnInit {
 
   private applyRestaurantTheme(restaurant: any): void {
     const theme = restaurant?.settings?.theme || restaurant?.theme || {};
-    const primary = this.normalizeColor(theme.primary_color || theme.primary || theme.accent, '#F9A11B');
-    const secondary = this.normalizeColor(theme.secondary_color || theme.secondary, '#111318');
-    const surface = this.normalizeColor(theme.background_color || theme.background || theme.surface, '#FFF7ED');
+    const primary = this.normalizeColor(theme.primary_color || theme.primary || theme.accent, '#ff7a1a');
+    const secondary = primary;
+    const surface = this.normalizeColor(theme.background_color || theme.background || theme.surface, '#fff7ef');
     const primaryRgb = this.hexToRgb(primary);
-    const buttonBackground = theme.customized === true || theme.is_customized === true
-      ? primary
-      : 'linear-gradient(135deg, #FFD166, #F9A11B, #D71920)';
+    const buttonBackground = primary;
 
     document.body.classList.add('restaurant-theme');
     document.documentElement.style.setProperty('--dashboard-primary', primary);
@@ -280,7 +326,7 @@ export class RestaurantSettings implements OnInit {
     document.documentElement.style.setProperty('--bs-primary', primary);
     document.documentElement.style.setProperty('--bs-primary-rgb', primaryRgb);
     document.documentElement.style.setProperty('--bs-link-color', primary);
-    document.documentElement.style.setProperty('--bs-link-hover-color', secondary);
+    document.documentElement.style.setProperty('--bs-link-hover-color', primary);
   }
 
   private normalizeColor(value: any, fallback: string): string {
@@ -296,7 +342,7 @@ export class RestaurantSettings implements OnInit {
 
     const value = Number.parseInt(clean, 16);
     if (Number.isNaN(value)) {
-      return '249, 161, 27';
+      return '255, 122, 26';
     }
 
     return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
