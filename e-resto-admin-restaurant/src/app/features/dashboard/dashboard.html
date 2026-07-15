@@ -5,9 +5,11 @@
             <h1 class="mb-1">Tableau de bord
 </h1>
             <p class="mb-0">Suivez les commandes, les tables et les revenus par devise depuis votre espace restaurant.</p>
-            <a routerLink="/orders/list" class="promo-action">
-                Voir les commandes <i class="ti ti-arrow-right"></i>
-            </a>
+            @if (canAccess('orders.list')) {
+                <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" class="promo-action">
+                    Voir les commandes <i class="ti ti-arrow-right"></i>
+                </a>
+            }
         </div>
         <div class="promo-side">
             <button class="btn btn-light btn-sm" type="button" [disabled]="refreshing()" (click)="loadDashboard(true)">
@@ -211,9 +213,9 @@
             </div>
         } -->
     } @else {
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-3">
             @for (card of kpiCards(); track card.label) {
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-6 col-xl-3">
                     <div class="metric-card tone-{{ card.tone }}">
                         <div class="metric-icon">
                             <i [class]="card.icon"></i>
@@ -232,8 +234,7 @@
         <div class="wallet-section mb-4">
             <div class="wallet-section-head">
                 <span class="eyebrow">Wallet restaurant</span>
-                <h2>Revenus payés par devise
-</h2>
+
             </div>
             <div class="row g-3">
                 @for (period of ['today', 'month', 'year']; track period) {
@@ -255,84 +256,136 @@
                 }
             </div>
         </div>
+        }
 
         <div class="row g-3 mb-3">
             <div class="col-12 col-xl-8">
-                <div class="panel-card">
-                    <div class="panel-header">
+                <div class="panel-card chart-card analytics-card">
+                    <div class="card-header dashboard-card-header">
                         <div>
-                            <h2>Performance 7 jours</h2>
-                            <p>Commandes et revenus encaissés ou servis.</p>
+                            <h2>Évolution volume journalier</h2>
+                            <p>Volume des commandes par heure sur la période disponible.</p>
                         </div>
-                        <a routerLink="/orders/list" class="btn btn-outline-primary btn-sm">
-                            <i class="ti ti-list-details me-1"></i>
-                            Commandes
-                        </a>
+                        @if (canAccess('orders.list')) {
+                            <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" class="btn btn-outline-primary btn-sm">
+                                <i class="ti ti-list-details me-1"></i>
+                                Commandes
+                            </a>
+                        }
                     </div>
-                    <div id="salesPurchaseChart" class="chart-box"></div>
+                    <div class="card-body p-4">
+                        <div id="salesPurchaseChart" class="chart-box"></div>
+                    </div>
                 </div>
             </div>
-
             <div class="col-12 col-xl-4">
-                <div class="panel-card h-100">
-                    <div class="panel-header">
+                <div class="panel-card chart-card analytics-card">
+                    <div class="card-header dashboard-card-header">
                         <div>
-                            <h2>État du service</h2>
-                            <p>Répartition des commandes du jour.</p>
+                            <h2>Répartition statuts</h2>
+                            <p>Succès, attente et échec des commandes du jour.</p>
                         </div>
                     </div>
-                    <div id="customerChart" class="chart-box chart-small"></div>
-                    <div class="status-grid">
-                        @for (item of statusSummary(); track item.status) {
-                            <div class="status-item">
-                                <span class="badge rounded-pill" [ngClass]="item.className">{{ item.count }}</span>
-                                <small>{{ item.label }}</small>
-                            </div>
-                        }
+                    <div class="card-body p-4">
+                        <div id="customerChart" class="chart-box chart-small"></div>
+                        <div class="status-grid">
+                            @for (item of statusSummary(); track item.status) {
+                                <div class="status-item">
+                                    <span class="badge rounded-pill" [ngClass]="item.className">{{ item.count }}</span>
+                                    <small>{{ item.label }}</small>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        }
 
-        <div class="panel-card recent-orders-panel mb-3">
-            <div class="panel-header">
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-xl-4">
+                <div class="panel-card chart-card h-100">
+                    <div class="card-header dashboard-card-header">
+                        <div>
+                            <h2>Top plats</h2>
+                            <p>Plats les plus commandés ce mois.</p>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="top-list">
+                            @for (dish of topDishes(); track dish.name + dish.currency) {
+                                <div class="top-item">
+                                    <div>
+                                        <strong>{{ dish.name }}</strong>
+                                        <small>{{ dish.quantity }} vendu(s)</small>
+                                    </div>
+                                    <span>{{ dish.revenue | number:'1.0-2' }} {{ dish.currency }}</span>
+                                </div>
+                            } @empty {
+                                <div class="empty-state">Aucun plat vendu ce mois.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-8">
+        <div class="panel-card recent-orders-panel h-100">
+            <div class="card-header dashboard-card-header recent-orders-header">
                 <div>
                     <h2>Commandes récentes</h2>
                     <p>{{ recentOrdersDescription() }}</p>
                 </div>
-                <a routerLink="/orders/list" class="btn btn-outline-primary btn-sm">
-                    <i class="ti ti-list-details me-1"></i>
-                    Tout voir
-                </a>
+                <div class="recent-orders-actions">
+                    <input
+                        type="search"
+                        class="form-control form-control-sm"
+                        placeholder="Recherche rapide..."
+                        [value]="recentOrderSearch()"
+                        (input)="onRecentOrderSearch($any($event.target).value)"
+                    >
+                    @if (canAccess('orders.list')) {
+                        <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" class="small text-primary text-decoration-underline">Voir tout</a>
+                    }
+                </div>
             </div>
             <div class="table-responsive">
-                <table class="table align-middle mb-0">
-                    <thead>
+                <table class="table align-middle mb-0 table-hover text-nowrap dashboard-table">
+                    <thead class="table-light border-light">
                     <tr>
-                        <th>Code</th>
                         <th>Table</th>
                         <th>Statut</th>
-                        <th>Paiement</th>
                         <th>Total</th>
                     </tr>
                     </thead>
                     <tbody>
-                        @for (order of recentOrders(); track order.id) {
+                        @for (order of filteredRecentOrders(); track order.id) {
                             <tr>
-                                <td>{{ order.tracking_code || order.id }}</td>
                                 <td>{{ order.table?.name || 'Sans table' }}</td>
                                 <td><span class="badge rounded-pill" [ngClass]="statusClass(order.status)">{{ order.status }}</span></td>
-                                <td>{{ order.payment_status }}</td>
-                                <td>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</td>
+                                <td class="fw-bold">{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</td>
                             </tr>
                         } @empty {
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">Aucune commande récente.</td>
+                                <td colspan="3" class="text-center text-muted py-4">Aucune commande récente.</td>
                             </tr>
                         }
                     </tbody>
+                    <tfoot>
+                    <tr>
+                        <td class="border-bottom-0 small text-secondary">{{ filteredRecentOrders().length }} commande(s) affichée(s)</td>
+                        <td colspan="2" class="border-bottom-0">
+                            <nav aria-label="Pagination commandes" class="d-flex justify-content-end">
+                                <ul class="pagination mb-0 pagination-sm">
+                                    <li class="page-item disabled"><span class="page-link">Précédent</span></li>
+                                    <li class="page-item active"><span class="page-link">1</span></li>
+                                    <li class="page-item disabled"><span class="page-link">Suivant</span></li>
+                                </ul>
+                            </nav>
+                        </td>
+                    </tr>
+                    </tfoot>
                 </table>
+            </div>
+        </div>
             </div>
         </div>
     }

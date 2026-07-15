@@ -55,6 +55,7 @@ export class ListRole implements OnInit {
     orders: { label: "Commandes", description: "Suivi et traitement des commandes." },
     feedback: { label: "Avis clients", description: "Consultation des retours clients." },
     settings: { label: "Paramètres", description: "Configuration du restaurant." },
+    subscription: { label: "Abonnement", description: "Consultation et paiement de l'abonnement." },
     "business-restaurants": { label: "Multi-restaurant", description: "Accès aux restaurants du groupe Business." },
     profile: { label: "Profil", description: "Profil personnel et mot de passe." },
   };
@@ -65,6 +66,7 @@ export class ListRole implements OnInit {
     create: "Créer",
     update: "Modifier",
     delete: "Supprimer",
+    pay: "Payer l'abonnement",
     "update-status": "Changer le statut",
     "change-password": "Changer le mot de passe",
   };

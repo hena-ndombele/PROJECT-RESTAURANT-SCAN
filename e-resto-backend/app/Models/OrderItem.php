@@ -12,7 +12,18 @@ class OrderItem extends Model
         'order_id',
         'plat_id',
         'quantity', 
-        'price_at_order'
+        'price_at_order',
+        'original_price',
+        'original_currency',
+        'converted_price',
+        'conversion_rate',
+    ];
+
+    protected $casts = [
+        'price_at_order' => 'decimal:2',
+        'original_price' => 'decimal:2',
+        'converted_price' => 'decimal:2',
+        'conversion_rate' => 'decimal:6',
     ];
 
     /**

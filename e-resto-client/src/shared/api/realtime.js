@@ -11,7 +11,7 @@ function reverbConfig() {
   const scheme = import.meta.env.VITE_REVERB_SCHEME ?? (isLocal ? 'http' : window.location.protocol.replace(':', '') || 'http');
   const host = import.meta.env.VITE_REVERB_HOST ?? window.location.hostname;
   const port = Number(import.meta.env.VITE_REVERB_PORT ?? (scheme === 'https' ? 443 : 8080));
-  const key = import.meta.env.VITE_REVERB_APP_KEY ?? 'e-resto-key';
+  const key = import.meta.env.VITE_REVERB_APP_KEY ?? 'restaurant-scan-key';
 
   return { scheme, host, port, key };
 }
@@ -92,7 +92,7 @@ export function subscribeToOrderRealtime(orderId, { onOrder, onState } = {}) {
       if (!order?.id || order.id !== orderId) return;
 
       onOrder?.(order);
-      onState?.(message.event === 'order.status.updated' ? 'Statut mis a jour en direct' : 'Commande recue en direct');
+      onState?.(message.event === 'order.status.updated' ? 'Statut mis a jour en direct' : 'Commande reçue en direct');
     };
 
     socket.onerror = () => {

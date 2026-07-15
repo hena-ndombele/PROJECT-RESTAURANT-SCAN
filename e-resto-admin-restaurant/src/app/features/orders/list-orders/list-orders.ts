@@ -1,6 +1,7 @@
 import { CommonModule, DatePipe } from "@angular/common";
 import { Component, OnDestroy, OnInit, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import { Subscription } from "rxjs";
 import { Order } from "../../../models/orders/OrderDto";
 import { OderService } from "../../../services/orders/oder-service";
@@ -10,6 +11,7 @@ import { RestaurantPlanUsage } from "../../../models/saas/saas.models";
 import { TableService } from "../../../services/table/table-service";
 import { TableDto } from "../../../models/table/TableDto";
 import { AppPermissionService } from "../../../services/auth/permission-service";
+import { STORAGE_ROOT } from "../../../services/api-url";
 
 @Component({
     selector: "app-list-orders",
@@ -25,7 +27,10 @@ import { AppPermissionService } from "../../../services/auth/permission-service"
 export class ListOrders implements OnInit, OnDestroy {
     private readonly realtime = inject(OrderRealtimeService);
     private readonly permissions = inject(AppPermissionService);
+    private readonly route = inject(ActivatedRoute);
     private realtimeSubscription?: Subscription;
+    private menuUpdatedSubscription?: Subscription;
+    private routeSubscription?: Subscription;
 
     orders = signal<Order[]>([]);
     loading = signal<boolean>(false);
@@ -42,11 +47,11 @@ export class ListOrders implements OnInit, OnDestroy {
     tables = signal<TableDto[]>([]);
 
     readonly statusOptions: { value: Order["status"]; label: string }[] = [
-        { value: "pending", label: "Recue" },
-        { value: "preparing", label: "En preparation" },
-        { value: "ready", label: "Prete" },
+        { value: "pending", label: "Reçue" },
+        { value: "preparing", label: "En préparation" },
+        { value: "ready", label: "Prête" },
         { value: "delivered", label: "Servie" },
-        { value: "cancelled", label: "Annulee" }
+        { value: "cancelled", label: "Annulée" }
     ];
 
     readonly statusTabs = computed(() => {
@@ -55,10 +60,10 @@ export class ListOrders implements OnInit, OnDestroy {
             { value: "all", label: "Toutes", icon: "bi-grid", count: orders.length },
             { value: "online", label: "En ligne", icon: "bi-whatsapp", count: orders.filter((order) => order.order_type === "remote").length },
             { value: "pending", label: "Nouvelles", icon: "bi-bell", count: orders.filter((order) => order.status === "pending").length },
-            { value: "preparing", label: "En preparation", icon: "bi-hourglass-split", count: orders.filter((order) => order.status === "preparing").length },
-            { value: "ready", label: "Pretes", icon: "bi-check-square", count: orders.filter((order) => order.status === "ready").length },
+            { value: "preparing", label: "En préparation", icon: "bi-hourglass-split", count: orders.filter((order) => order.status === "preparing").length },
+            { value: "ready", label: "Prêtes", icon: "bi-check-square", count: orders.filter((order) => order.status === "ready").length },
             { value: "delivered", label: "Servies", icon: "bi-bag-check", count: orders.filter((order) => order.status === "delivered").length },
-            { value: "cancelled", label: "Annulees", icon: "bi-x-lg", count: orders.filter((order) => order.status === "cancelled").length }
+            { value: "cancelled", label: "Annulées", icon: "bi-x-lg", count: orders.filter((order) => order.status === "cancelled").length }
         ];
 
         return tabs;
@@ -68,7 +73,7 @@ export class ListOrders implements OnInit, OnDestroy {
     pageSize = 10;
 
     searchTerm = signal<string>("");
-    statusFilter = signal<Order["status"] | "all" | "online">("all");
+    statusFilter = signal<Order["status"] | "all" | "online">("pending");
     tableFilter = signal<string>("all");
 
     filters = {
@@ -150,6 +155,14 @@ export class ListOrders implements OnInit, OnDestroy {
     ngOnInit(): void {
         this.realtime.start();
         this.realtimeSubscription = this.realtime.orderChanged$.subscribe((order) => this.upsertRealtimeOrder(order));
+        this.menuUpdatedSubscription = this.realtime.menuUpdated$.subscribe(() => this.refreshSelectedOrder());
+        this.routeSubscription = this.route.queryParamMap.subscribe((params) => {
+            const status = params.get("status");
+            if (this.isStatusFilter(status)) {
+                this.statusFilter.set(status);
+                this.currentPage.set(1);
+            }
+        });
         this.loadPlanUsage();
         this.loadTables();
         this.loadOrders();
@@ -157,6 +170,8 @@ export class ListOrders implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.realtimeSubscription?.unsubscribe();
+        this.menuUpdatedSubscription?.unsubscribe();
+        this.routeSubscription?.unsubscribe();
     }
 
     canAccess(permission: string): boolean {
@@ -219,6 +234,25 @@ export class ListOrders implements OnInit, OnDestroy {
             return exists
                 ? orders.map((item) => item.id === order.id ? { ...item, ...order } : item)
                 : [order, ...orders];
+        });
+
+        if (this.selectedOrder()?.id === order.id) {
+            this.selectedOrder.update((current) => current ? { ...current, ...order } : order);
+        }
+    }
+
+    private refreshSelectedOrder(): void {
+        const selected = this.selectedOrder();
+        if (!selected?.id) return;
+
+        this.orderService.show(selected.id).subscribe({
+            next: (freshOrder) => {
+                this.selectedOrder.set(freshOrder);
+                this.orders.update((orders) =>
+                    orders.map((order) => order.id === freshOrder.id ? { ...order, ...freshOrder } : order)
+                );
+            },
+            error: () => undefined
         });
     }
 
@@ -308,6 +342,33 @@ export class ListOrders implements OnInit, OnDestroy {
         this.cashReceivedAmount.set(null);
     }
 
+    setCashReceivedAmount(amount: number): void {
+        this.cashReceivedAmount.set(Math.max(0, Number(amount || 0)));
+    }
+
+    appendCashDigit(value: string): void {
+        const current = String(this.cashReceivedAmount() ?? "");
+        const next = `${current}${value}`.replace(",", ".");
+        const normalized = next.replace(/^0+(?=\d)/, "");
+        const amount = Number(normalized);
+        if (Number.isNaN(amount)) return;
+        this.cashReceivedAmount.set(amount);
+    }
+
+    backspaceCashInput(): void {
+        const current = String(this.cashReceivedAmount() ?? "");
+        const next = current.slice(0, -1);
+        this.cashReceivedAmount.set(next ? Number(next) : 0);
+    }
+
+    clearCashInput(): void {
+        this.cashReceivedAmount.set(0);
+    }
+
+    addCashQuickAmount(amount: number): void {
+        this.cashReceivedAmount.set(Number(this.cashReceivedAmount() || 0) + amount);
+    }
+
     cashChangeAmount(): number {
         const order = this.cashOrder();
         if (!order) return 0;
@@ -328,6 +389,36 @@ export class ListOrders implements OnInit, OnDestroy {
         const order = this.cashOrder();
         if (!order?.id || this.updatingPaymentId() === order.id || !this.cashAmountIsEnough()) return;
 
+        const receiptWindow = window.open("", "_blank", "width=420,height=720");
+        if (!receiptWindow) {
+            this.errorMessage.set("Impossible d'ouvrir le recu. Autorisez les popups du navigateur.");
+            return;
+        }
+
+        receiptWindow.document.open();
+        receiptWindow.document.write(`
+            <!doctype html>
+            <html lang="fr">
+            <head>
+                <meta charset="utf-8">
+                <title>Préparation du reçu</title>
+                <style>
+                    body {
+                        min-height: 100vh;
+                        margin: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-family: Arial, sans-serif;
+                        color: #111827;
+                    }
+                </style>
+            </head>
+            <body>Préparation du reçu...</body>
+            </html>
+        `);
+        receiptWindow.document.close();
+
         this.updatingPaymentId.set(order.id);
         this.errorMessage.set("");
         this.successMessage.set("");
@@ -344,13 +435,294 @@ export class ListOrders implements OnInit, OnDestroy {
                 this.successMessage.set("Paiement cash confirmé et comptabilisé.");
                 this.updatingPaymentId.set(null);
                 this.cashOrder.set(updatedOrder);
-                setTimeout(() => this.printCashReceipt(updatedOrder), 100);
+                this.printCashReceiptWithFreshRestaurant(updatedOrder, receiptWindow);
             },
             error: (err) => {
                 this.errorMessage.set("Impossible de confirmer le paiement cash.");
                 this.updatingPaymentId.set(null);
+                receiptWindow.close();
             }
         });
+    }
+
+    private printCashReceiptWithFreshRestaurant(order: Order, receiptWindow?: Window | null): void {
+        this.saasService.currentRestaurant().subscribe({
+            next: (restaurant) => {
+                if (restaurant) {
+                    localStorage.setItem("restaurant_session", JSON.stringify(restaurant));
+                }
+                setTimeout(() => this.printCashReceiptTicket(order, receiptWindow), 100);
+            },
+            error: () => setTimeout(() => this.printCashReceiptTicket(order, receiptWindow), 100)
+        });
+    }
+
+    printCashReceiptTicket(order: Order, receiptWindow?: Window | null): void {
+        const restaurant = this.currentRestaurantFromStorage();
+        const payment = order.latest_payment;
+        const metadata = payment?.metadata || {};
+        const received = Number(metadata.received_amount ?? this.cashReceivedAmount() ?? order.total_amount ?? 0);
+        const change = Number(metadata.change_amount ?? Math.max(0, received - this.orderTotal(order)));
+        const paymentDate = payment?.paid_at ? new Date(payment.paid_at) : new Date();
+        const formattedDate = paymentDate.toLocaleString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        });
+        const restaurantName = this.escapeReceiptText(restaurant?.name || restaurant?.business_name || restaurant?.restaurant_name || "Restaurant Scan");
+        const restaurantAddress = this.escapeReceiptText(restaurant?.address || restaurant?.settings?.address || "");
+        const restaurantPhone = this.escapeReceiptText(restaurant?.phone || restaurant?.owner_phone || restaurant?.settings?.phone || "");
+        const logoUrl = this.receiptLogoUrl(restaurant);
+        const customer = this.escapeReceiptText(order.customer_name || order.pickup_name || order.customer_phone || order.pickup_phone || "Client QR");
+        const table = this.escapeReceiptText(order.table?.name || "Table inconnue");
+        const orderCode = this.escapeReceiptText(order.tracking_code || order.id.slice(0, 8).toUpperCase());
+        const trackingUrl = this.receiptTrackingUrl(order, restaurant);
+        const qrCodeUrl = this.receiptQrCodeUrl(trackingUrl);
+        const rows = (order.items || []).map((item) => `
+            <tr>
+                <td class="item-name">${this.escapeReceiptText(item.plat?.name || "Plat")}</td>
+                <td class="qty">${item.quantity}</td>
+                <td class="amount">${this.formatCurrency(this.itemLineTotal(item), order.currency)}</td>
+            </tr>
+        `).join("");
+        const receipt = receiptWindow || window.open("", "_blank", "width=420,height=720");
+
+        if (!receipt) {
+            this.errorMessage.set("Impossible d'ouvrir le recu. Autorisez les popups du navigateur.");
+            return;
+        }
+
+        const logo = logoUrl
+            ? `<img src="${this.escapeReceiptText(logoUrl)}" alt="Logo" class="logo">`
+            : `<div class="logo-placeholder">${restaurantName.slice(0, 2).toUpperCase()}</div>`;
+        const receiptHtml = `
+            <!doctype html>
+            <html lang="fr">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Recu cash - ${restaurantName}</title>
+                <style>
+                    @page { size: auto; margin: 8mm; }
+                    * { box-sizing: border-box; }
+                    html {
+                        margin: 0;
+                        background: #f3f4f6;
+                    }
+                    body {
+                        margin: 0;
+                        min-height: 100vh;
+                        display: flex;
+                        justify-content: center;
+                        align-items: flex-start;
+                        padding: 12px 0;
+                        background: #f3f4f6;
+                        color: #000;
+                        font-family: "Courier New", Courier, monospace;
+                        font-size: 12px;
+                    }
+                    .receipt {
+                        width: 76mm;
+                        margin: 0 auto;
+                        padding: 10px 9px;
+                        border: 1.5px dashed #000;
+                        outline: 1px solid rgba(0, 0, 0, .16);
+                        outline-offset: 3px;
+                        background: #fff;
+                        line-height: 1.35;
+                    }
+                    .header { text-align: center; }
+                    .logo, .logo-placeholder {
+                        width: 62px;
+                        height: 62px;
+                        margin: 0 auto 6px;
+                        border-radius: 8px;
+                        object-fit: cover;
+                    }
+                    .logo-placeholder {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border: 1px solid #000;
+                        font-size: 20px;
+                        font-weight: 800;
+                    }
+                    h1 { margin: 0; font-size: 17px; text-transform: uppercase; }
+                    .subtitle { margin: 3px 0 0; font-size: 11px; }
+                    .divider { border-top: 1px dashed #000; margin: 9px 0; }
+                    .title { text-align: center; text-transform: uppercase; font-weight: 800; margin: 0 0 6px; }
+                    .row { display: flex; justify-content: space-between; gap: 8px; margin: 3px 0; }
+                    .row span:first-child { font-weight: 700; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { padding: 4px 0; border-bottom: 1px dashed #999; vertical-align: top; }
+                    th { text-align: left; text-transform: uppercase; font-size: 11px; }
+                    .qty { width: 24px; text-align: center; }
+                    .amount { text-align: right; white-space: nowrap; }
+                    .item-name { max-width: 42mm; }
+                    .credit {
+                        text-align: center;
+                        font-size: 15px;
+                        font-weight: 800;
+                        margin: 10px 0;
+                        padding: 7px 0;
+                        border-top: 1px dashed #000;
+                        border-bottom: 1px dashed #000;
+                    }
+                    .qr-box {
+                        text-align: center;
+                        margin: 10px 0 4px;
+                        padding-top: 8px;
+                        border-top: 1px dashed #000;
+                    }
+                    .qr-box img {
+                        width: 92px;
+                        height: 92px;
+                        display: block;
+                        margin: 0 auto 5px;
+                        image-rendering: pixelated;
+                    }
+                    .qr-box span {
+                        display: block;
+                        font-size: 10px;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                    }
+                    .total-line { font-size: 15px; font-weight: 900; }
+                    .thanks { text-align: center; font-weight: 700; margin: 10px 0 0; }
+                    @media print {
+                        html, body {
+                            width: 100%;
+                            min-height: auto;
+                            display: flex;
+                            justify-content: center;
+                            align-items: flex-start;
+                            padding: 0;
+                            background: #fff;
+                        }
+                        .receipt {
+                            width: 76mm;
+                            margin: 0 auto;
+                            border: 1.5px dashed #000;
+                            outline: 0;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="receipt">
+                    <div class="header">
+                        ${logo}
+                        <h1>${restaurantName}</h1>
+                        ${restaurantAddress ? `<p class="subtitle">${restaurantAddress}</p>` : ""}
+                        ${restaurantPhone ? `<p class="subtitle">Tel: ${restaurantPhone}</p>` : ""}
+                        <p class="subtitle">${formattedDate}</p>
+                    </div>
+                    <div class="divider"></div>
+                    <p class="title">Recu de paiement cash</p>
+                    <div class="row"><span>Commande</span><strong>#${orderCode}</strong></div>
+                    <div class="row"><span>Table</span><strong>${table}</strong></div>
+                    <div class="row"><span>Client</span><strong>${customer}</strong></div>
+                    <div class="row"><span>Paiement</span><strong>Cash</strong></div>
+                    <div class="divider"></div>
+                    <table>
+                        <thead><tr><th>Article</th><th class="qty">Qte</th><th class="amount">Total</th></tr></thead>
+                        <tbody>${rows || `<tr><td colspan="3">Aucun article</td></tr>`}</tbody>
+                    </table>
+                    <div class="divider"></div>
+                    <div class="row total-line"><span>Total</span><span>${this.formatCurrency(this.orderTotal(order), order.currency)}</span></div>
+                    <div class="row"><span>Montant reçu</span><span>${this.formatCurrency(received, order.currency)}</span></div>
+                    <div class="row"><span>Monnaie</span><span>${this.formatCurrency(change, order.currency)}</span></div>
+                    <div class="credit">PAYE: ${this.formatCurrency(this.orderTotal(order), order.currency)}</div>
+                    <div class="qr-box">
+                        <img src="${this.escapeReceiptText(qrCodeUrl)}" alt="QR code suivi commande">
+                        <span>Scanner pour suivre la commande</span>
+                        <small>${orderCode}</small>
+                    </div>
+                    <p class="thanks">Merci pour votre visite !</p>
+                </div>
+                <script>
+                    window.addEventListener("load", function () {
+                        setTimeout(function () {
+                            window.focus();
+                            window.print();
+                        }, 650);
+                    });
+                </script>
+            </body>
+            </html>
+        `;
+
+        receipt.document.open();
+        receipt.document.write(receiptHtml);
+        receipt.document.close();
+    }
+
+    private currentRestaurantFromStorage(): any {
+        try {
+            const restaurant = JSON.parse(localStorage.getItem("restaurant_session") || "null");
+            if (restaurant) return restaurant;
+            const user = JSON.parse(localStorage.getItem("user_data") || "null");
+            return user?.restaurant || null;
+        } catch {
+            return null;
+        }
+    }
+
+    private receiptLogoUrl(restaurant: any): string {
+        const logo = restaurant?.logo_data_url
+            || restaurant?.logo_url
+            || restaurant?.settings?.logo_data_url
+            || restaurant?.settings?.logo_url
+            || restaurant?.logo_path
+            || restaurant?.settings?.logo
+            || restaurant?.logo;
+        if (!logo) return "";
+        if (/^(data:|https?:\/\/|blob:)/i.test(String(logo))) return String(logo);
+        const path = String(logo).replace(/^\/+/, "");
+        if (path.startsWith("public/")) {
+            return `${STORAGE_ROOT}/${path.replace(/^public\//, "")}`;
+        }
+        if (path.startsWith("storage/")) {
+            return `${STORAGE_ROOT.replace(/\/storage$/, "")}/${path}`;
+        }
+        return `${STORAGE_ROOT}/${path}`;
+    }
+
+    private receiptTrackingUrl(order: Order, restaurant: any): string {
+        const url = new URL(window.location.origin.replace(":4200", ":5173"));
+        const restaurantSlug = restaurant?.slug || restaurant?.settings?.slug;
+
+        if (restaurantSlug) {
+            url.searchParams.set("restaurant_slug", String(restaurantSlug));
+        }
+
+        if (order.table_id) {
+            url.searchParams.set("table_id", order.table_id);
+        }
+
+        url.searchParams.set("order_id", order.id);
+
+        if (order.tracking_code) {
+            url.searchParams.set("tracking_code", order.tracking_code);
+        }
+
+        return url.toString();
+    }
+
+    private receiptQrCodeUrl(value: string): string {
+        return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(value)}`;
+    }
+
+    private escapeReceiptText(value: unknown): string {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     printCashReceipt(order: Order): void {
@@ -358,6 +730,8 @@ export class ListOrders implements OnInit, OnDestroy {
         const metadata = payment?.metadata || {};
         const received = Number(metadata.received_amount ?? this.cashReceivedAmount() ?? order.total_amount ?? 0);
         const change = Number(metadata.change_amount ?? Math.max(0, received - this.orderTotal(order)));
+        const restaurant = this.currentRestaurantFromStorage();
+        const qrCodeUrl = this.receiptQrCodeUrl(this.receiptTrackingUrl(order, restaurant));
         const rows = (order.items || []).map((item) => `
             <tr>
                 <td>${item.plat?.name || "Plat"}</td>
@@ -385,6 +759,9 @@ export class ListOrders implements OnInit, OnDestroy {
                     th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 4px; font-size: 12px; text-align: left; }
                     .totals div { display: flex; justify-content: space-between; padding: 6px 0; }
                     .total { font-weight: 800; font-size: 18px; border-top: 2px solid #111827; margin-top: 8px; padding-top: 10px; }
+                    .qr { text-align: center; margin-top: 16px; }
+                    .qr img { width: 110px; height: 110px; }
+                    .qr span { display: block; margin-top: 6px; font-size: 11px; font-weight: 800; }
                 </style>
             </head>
             <body>
@@ -401,6 +778,10 @@ export class ListOrders implements OnInit, OnDestroy {
                     <div><span>Recu</span><span>${this.formatCurrency(received, order.currency)}</span></div>
                     <div><span>Monnaie</span><span>${this.formatCurrency(change, order.currency)}</span></div>
                     <div><span>Paiement</span><span>Cash</span></div>
+                </div>
+                <div class="qr">
+                    <img src="${this.escapeReceiptText(qrCodeUrl)}" alt="QR code suivi commande">
+                    <span>Scanner pour suivre la commande</span>
                 </div>
                 <p class="muted">Merci pour votre visite.</p>
                 <script>window.onload = function(){ window.print(); }</script>
@@ -514,11 +895,18 @@ export class ListOrders implements OnInit, OnDestroy {
         return Number(item.price_at_order || item.plat?.price || 0) * Number(item.quantity || 0);
     }
 
+    itemName(item: any): string {
+        return item?.plat?.name || item?.dish?.name || item?.name || item?.plat_name || "Plat";
+    }
+
     formatCurrency(amount: number, currency = "USD"): string {
         return `${amount.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency}`;
     }
 
     viewOrder(order: Order): void {
+        this.billRequestModal.set(null);
+        this.cashOrder.set(null);
+        this.dismissNewOrder(order.id);
         this.selectedOrder.set(order);
     }
 
@@ -527,8 +915,7 @@ export class ListOrders implements OnInit, OnDestroy {
     }
 
     openNewOrder(order: Order): void {
-        this.selectedOrder.set(order);
-        this.dismissNewOrder(order.id);
+        this.viewOrder(order);
     }
 
     dismissNewOrder(orderId?: string): void {
@@ -622,5 +1009,9 @@ export class ListOrders implements OnInit, OnDestroy {
         }
 
         return Array.from(totals.values()).sort((a, b) => a.currency.localeCompare(b.currency));
+    }
+
+    private isStatusFilter(value: string | null): value is Order["status"] | "all" | "online" {
+        return ["all", "online", "pending", "preparing", "ready", "delivered", "cancelled"].includes(String(value));
     }
 }

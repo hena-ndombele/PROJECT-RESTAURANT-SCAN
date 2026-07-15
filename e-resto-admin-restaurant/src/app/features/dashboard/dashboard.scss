@@ -260,7 +260,7 @@
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+    box-shadow: none;
 }
 
 .metric-card {
@@ -268,7 +268,7 @@
     display: flex;
     gap: 16px;
     min-height: 118px;
-    padding: 20px;
+    padding: 24px;
 }
 
 .metric-icon {
@@ -293,43 +293,64 @@
 
 .metric-content span,
 .summary-label {
-    color: #64748b;
-    font-size: 0.82rem;
+    color: #111827;
+    font-size: 0.95rem;
     font-weight: 700;
-    text-transform: uppercase;
+    text-transform: none;
 }
 
 .metric-content strong {
     color: #111827;
-    font-size: 1.75rem;
+    font-size: 20px;
     line-height: 1.2;
 }
 
 .metric-content small,
 .summary-card small,
 .panel-header p,
+.dashboard-card-header p,
 .top-item small {
     color: #64748b;
 }
 
+.metric-card.tone-primary {
+    border-color: rgba(13, 110, 253, .25);
+    background: rgba(13, 110, 253, .1);
+}
+
+.metric-card.tone-success {
+    border-color: rgba(25, 135, 84, .25);
+    background: rgba(25, 135, 84, .1);
+}
+
+.metric-card.tone-info {
+    border-color: rgba(13, 202, 240, .25);
+    background: rgba(13, 202, 240, .1);
+}
+
+.metric-card.tone-warning {
+    border-color: rgba(255, 193, 7, .32);
+    background: rgba(255, 193, 7, .12);
+}
+
 .tone-primary .metric-icon {
-    background: #dbeafe;
-    color: #0d6efd;
+    background: #0d6efd;
+    color: #fff;
 }
 
 .tone-success .metric-icon {
-    background: #dcfce7;
-    color: #16a34a;
+    background: #198754;
+    color: #fff;
 }
 
 .tone-info .metric-icon {
-    background: #e0f2fe;
-    color: #0284c7;
+    background: #0dcaf0;
+    color: #fff;
 }
 
 .tone-warning .metric-icon {
-    background: rgba(var(--dashboard-primary-rgb, 255, 122, 26), .14);
-    color: var(--dashboard-primary, #ff7a1a);
+    background: #ffc107;
+    color: #fff;
 }
 
 .summary-card {
@@ -340,15 +361,19 @@
 }
 
 .wallet-section {
-    padding: 18px;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     background: #fff;
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+    box-shadow: none;
 }
 
 .wallet-section-head {
-    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    min-height: 58px;
+    padding: 16px 20px;
+    margin-bottom: 0;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .wallet-section-head .eyebrow {
@@ -358,8 +383,12 @@
 .wallet-section-head h2 {
     margin: 0;
     color: #111827;
-    font-size: 1.2rem;
-    font-weight: 950;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.wallet-section > .row {
+    padding: 20px;
 }
 
 .wallet-card {
@@ -432,7 +461,7 @@
     z-index: 1;
     display: block;
     margin: 18px 0;
-    font-size: clamp(2rem, 4vw, 2.7rem);
+    font-size: 20px;
     line-height: 1;
     font-weight: 950;
 }
@@ -522,32 +551,48 @@
     font-size: 1.55rem;
 }
 
-.panel-card {
-    padding: 20px;
-}
+.panel-card { padding: 0; }
 
-.panel-header {
+.panel-header,
+.dashboard-card-header {
     align-items: flex-start;
     display: flex;
     gap: 16px;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 0;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    background: transparent;
 }
 
-.panel-header h2 {
+.panel-header h2,
+.dashboard-card-header h2 {
     color: #111827;
-    font-size: 1.05rem;
-    font-weight: 800;
+    font-size: 1rem;
+    font-weight: 700;
     margin-bottom: 2px;
 }
 
-.panel-header p {
+.panel-header p,
+.dashboard-card-header p {
     font-size: 0.9rem;
     margin: 0;
 }
 
+.chart-card {
+    overflow: hidden;
+}
+
+.analytics-card {
+    height: 100%;
+}
+
 .chart-box {
-    min-height: 320px;
+    min-height: 250px;
+}
+
+.analytics-card .chart-box {
+    min-height: 250px;
 }
 
 .chart-small {
@@ -595,6 +640,85 @@
     color: #64748b;
     font-size: 0.75rem;
     text-transform: uppercase;
+}
+
+.recent-orders-header { align-items: center; }
+
+.recent-orders-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+
+.recent-orders-actions .form-control { width: min(220px, 100%); }
+
+.dashboard-table thead th {
+    color: #111827;
+    font-size: .78rem;
+    font-weight: 600;
+    text-transform: none;
+}
+
+.pagination .page-item.active .page-link {
+    color: #fff;
+    background: var(--dashboard-primary, #ff7a1a);
+    border-color: var(--dashboard-primary, #ff7a1a);
+}
+
+:host-context(body.dashboard-dark-theme) .dashboard-card-header,
+:host-context(body.dashboard-dark-theme) .recent-orders-panel,
+:host-context(body.dashboard-dark-theme) .chart-card {
+    border-color: #374151;
+    background: #111827;
+}
+
+:host-context(body.dashboard-dark-theme) .top-item,
+:host-context(body.dashboard-dark-theme) .status-item {
+    border-color: #334155;
+    background: #0f172a;
+    color: #e5e7eb;
+}
+
+:host-context(body.dashboard-dark-theme) .top-item span,
+:host-context(body.dashboard-dark-theme) .top-item small,
+:host-context(body.dashboard-dark-theme) .dashboard-card-header p {
+    color: #8aa0c8;
+}
+
+:host-context(body.dashboard-dark-theme) .dashboard-table {
+    --bs-table-bg: #111827;
+    --bs-table-color: #e5e7eb;
+    --bs-table-border-color: #334155;
+    --bs-table-hover-bg: #172033;
+    --bs-table-hover-color: #fff;
+}
+
+:host-context(body.dashboard-dark-theme) .dashboard-table thead th,
+:host-context(body.dashboard-dark-theme) .dashboard-table tfoot td,
+:host-context(body.dashboard-dark-theme) .dashboard-table > :not(caption) > * > * {
+    border-color: #334155;
+    background: #111827 !important;
+    color: #e5e7eb !important;
+    box-shadow: none !important;
+}
+
+:host-context(body.dashboard-dark-theme) .dashboard-table thead th {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+}
+
+:host-context(body.dashboard-dark-theme) .dashboard-table tbody tr:hover > * {
+    background: #172033 !important;
+}
+
+:host-context(body.dashboard-dark-theme) .recent-orders-actions .form-control {
+    border-color: #334155;
+    background: #0f172a;
+    color: #e5e7eb;
+}
+
+:host-context(body.dashboard-dark-theme) .recent-orders-actions .form-control::placeholder {
+    color: #cbd5e1;
+}
+
+:host-context(body.dashboard-dark-theme) .recent-orders-actions a {
+    color: #cbd5e1 !important;
 }
 
 .onboarding-backdrop {

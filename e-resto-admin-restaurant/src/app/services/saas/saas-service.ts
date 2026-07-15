@@ -76,7 +76,9 @@ export class SaasService {
   }
 
   currentRestaurant(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/me`);
+    return this.http.get<any>(`${this.apiUrl}/me`, {
+      params: { _ts: Date.now().toString() },
+    });
   }
 
   restaurantUsage(): Observable<RestaurantPlanUsage> {

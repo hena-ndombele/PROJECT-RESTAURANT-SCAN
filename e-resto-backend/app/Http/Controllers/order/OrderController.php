@@ -85,7 +85,8 @@ class OrderController extends Controller
                 ]);
 
                 $total = 0;
-                $mainCurrency = $table->restaurant->currency ?? 'CDF';
+                $mainCurrency = $this->restaurantCurrency($table->restaurant);
+                $exchangeRate = $this->usdCdfRate($table->restaurant);
 
                 foreach ($validated['items'] as $item) {
                     $plat = Plat::query()
@@ -96,21 +97,26 @@ class OrderController extends Controller
                         throw new \Exception("Le plat {$plat->name} n'est plus disponible.");
                     }
 
-                    $price = $plat->currentPrice();
+                    $pricing = $this->convertedPlatPricing($plat, $mainCurrency, $exchangeRate);
 
                     $order->items()->create([
                         'plat_id' => $plat->id,
                         'quantity' => $item['quantity'],
-                        'price_at_order' => $price,
+                        'price_at_order' => $pricing['converted_price'],
+                        'original_price' => $pricing['original_price'],
+                        'original_currency' => $pricing['original_currency'],
+                        'converted_price' => $pricing['converted_price'],
+                        'conversion_rate' => $pricing['conversion_rate'],
                     ]);
 
-                    $total += ((float) $price * (int) $item['quantity']);
-                    $mainCurrency = $plat->currency;
+                    $total += ((float) $pricing['converted_price'] * (int) $item['quantity']);
                 }
 
                 $order->update([
-                    'total_amount' => $total,
+                    'total_amount' => round($total, 2),
                     'currency' => $mainCurrency,
+                    'exchange_rate' => $exchangeRate,
+                    'exchange_rate_pair' => 'USD/CDF',
                 ]);
 
                 $payment = Payment::create([
@@ -120,7 +126,7 @@ class OrderController extends Controller
                     'method' => $order->payment_method,
                     'provider' => $order->payment_provider,
                     'status' => 'unpaid',
-                    'amount' => $total,
+                    'amount' => round($total, 2),
                     'currency' => $mainCurrency,
                     'reference' => 'ORD-' . Str::upper(substr($order->id, 0, 8)),
                     'metadata' => [
@@ -282,7 +288,8 @@ class OrderController extends Controller
                 }
 
                 $total = 0;
-                $mainCurrency = $order->currency;
+                $mainCurrency = $this->restaurantCurrency($order->table?->restaurant ?: $order->restaurant);
+                $exchangeRate = $this->usdCdfRate($order->table?->restaurant ?: $order->restaurant);
                 $itemsByPlat = collect($validated['items'])
                     ->groupBy('plat_id')
                     ->map(fn ($items) => [
@@ -302,16 +309,19 @@ class OrderController extends Controller
                         throw new \Exception("Le plat {$plat->name} n'est plus disponible.");
                     }
 
-                    $price = $plat->currentPrice();
+                    $pricing = $this->convertedPlatPricing($plat, $mainCurrency, $exchangeRate);
 
                     $order->items()->create([
                         'plat_id' => $plat->id,
                         'quantity' => $item['quantity'],
-                        'price_at_order' => $price,
+                        'price_at_order' => $pricing['converted_price'],
+                        'original_price' => $pricing['original_price'],
+                        'original_currency' => $pricing['original_currency'],
+                        'converted_price' => $pricing['converted_price'],
+                        'conversion_rate' => $pricing['conversion_rate'],
                     ]);
 
-                    $total += ((float) $price * (int) $item['quantity']);
-                    $mainCurrency = $plat->currency;
+                    $total += ((float) $pricing['converted_price'] * (int) $item['quantity']);
                 }
 
                 $nextOrderType = $validated['order_type'] ?? $order->order_type ?? 'dine_in';
@@ -327,8 +337,10 @@ class OrderController extends Controller
                     'customer_name' => $nextCustomerName,
                     'customer_phone' => $nextCustomerPhone,
                     'customer_email' => $nextCustomerEmail,
-                    'total_amount' => $total,
+                    'total_amount' => round($total, 2),
                     'currency' => $mainCurrency,
+                    'exchange_rate' => $exchangeRate,
+                    'exchange_rate_pair' => 'USD/CDF',
                 ]);
 
                 $paymentResponse = null;
@@ -369,7 +381,7 @@ class OrderController extends Controller
                                 'method' => 'mobile_money',
                                 'provider' => $order->payment_provider,
                                 'status' => 'pending',
-                                'amount' => $total,
+                                'amount' => round($total, 2),
                                 'currency' => $mainCurrency,
                                 'reference' => 'ORD-' . Str::upper(substr($order->id, 0, 8)) . '-' . Str::upper(Str::random(4)),
                                 'metadata' => [
@@ -399,7 +411,7 @@ class OrderController extends Controller
                         }
                     } else {
                         $payment->update([
-                            'amount' => $total,
+                            'amount' => round($total, 2),
                             'currency' => $mainCurrency,
                             'status' => 'unpaid',
                             'metadata' => $metadata,
@@ -865,6 +877,53 @@ class OrderController extends Controller
         } while (Order::where('tracking_code', $code)->exists());
 
         return $code;
+    }
+
+    private function restaurantCurrency(?Restaurant $restaurant): string
+    {
+        $currency = strtoupper((string) ($restaurant?->currency ?: 'CDF'));
+        return in_array($currency, ['CDF', 'USD'], true) ? $currency : 'CDF';
+    }
+
+    private function usdCdfRate(?Restaurant $restaurant): float
+    {
+        $settings = $restaurant?->settings ?? [];
+        $rate = (float) ($settings['usd_cdf_rate'] ?? $settings['exchange_rate_usd_cdf'] ?? 2850);
+
+        return $rate > 0 ? $rate : 2850;
+    }
+
+    private function convertedPlatPricing(Plat $plat, string $targetCurrency, float $usdCdfRate): array
+    {
+        $originalCurrency = strtoupper((string) ($plat->currency ?: $targetCurrency));
+        $originalCurrency = in_array($originalCurrency, ['CDF', 'USD'], true) ? $originalCurrency : $targetCurrency;
+        $originalPrice = round((float) $plat->currentPrice(), 2);
+        $conversionRate = $this->conversionRate($originalCurrency, $targetCurrency, $usdCdfRate);
+        $convertedPrice = round($originalPrice * $conversionRate, 2);
+
+        return [
+            'original_price' => $originalPrice,
+            'original_currency' => $originalCurrency,
+            'converted_price' => $convertedPrice,
+            'conversion_rate' => $conversionRate,
+        ];
+    }
+
+    private function conversionRate(string $fromCurrency, string $toCurrency, float $usdCdfRate): float
+    {
+        if ($fromCurrency === $toCurrency) {
+            return 1.0;
+        }
+
+        if ($fromCurrency === 'USD' && $toCurrency === 'CDF') {
+            return $usdCdfRate;
+        }
+
+        if ($fromCurrency === 'CDF' && $toCurrency === 'USD') {
+            return round(1 / $usdCdfRate, 6);
+        }
+
+        return 1.0;
     }
 
     private function statusTransitionError(string $currentStatus, string $nextStatus): ?string

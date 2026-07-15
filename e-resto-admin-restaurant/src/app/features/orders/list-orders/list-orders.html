@@ -262,7 +262,7 @@
                             <div class="new-order-items">
                                 @for (item of order.items || []; track item.id) {
                                     <div>
-                                        <span>x{{ item.quantity }} {{ item.plat.name || 'Plat' }}</span>
+                                        <span>x{{ item.quantity }} {{ itemName(item) }}</span>
                                         <strong>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</strong>
                                     </div>
                                 }
@@ -315,12 +315,16 @@
                         @for (item of order.items || []; track item.id) {
                             <div class="detail-item">
                                 <div>
-                                    <strong>{{ item.plat.name || 'Plat' }}</strong>
+                                    <strong>{{ itemName(item) }}</strong>
                                     <small>{{ item.quantity }} x {{ item.price_at_order | number:'1.0-2' }} {{ order.currency }}</small>
                                 </div>
                                 <span>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</span>
                             </div>
                         }
+                        <div class="detail-total-row">
+                            <span>Total</span>
+                            <strong>{{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong>
+                        </div>
                     </div>
 
                     @if (order.note) {
@@ -340,10 +344,6 @@
                             <p class="mb-0">Le client souhaite payer en cash. {{ billRequestedAt(order) ? ('Demande envoyée le ' + (billRequestedAt(order) | date:'dd/MM/yyyy HH:mm')) : '' }}</p>
                         </div>
                     }
-                </div>
-                <div class="modal-footer border-0 justify-content-between">
-                    <strong>Total : {{ order.total_amount | number:'1.0-2' }} {{ order.currency }}</strong>
-                    <button class="btn btn-secondary" type="button" (click)="closeOrderModal()">Fermer</button>
                 </div>
             </div>
         </div>
@@ -365,7 +365,7 @@
                 <div class="new-order-items">
                     @for (item of order.items || []; track item.id) {
                         <div>
-                            <span>x{{ item.quantity }} {{ item.plat.name || 'Plat' }}</span>
+                            <span>x{{ item.quantity }} {{ itemName(item) }}</span>
                             <strong>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</strong>
                         </div>
                     }
@@ -403,14 +403,41 @@
                     </div>
 
                     <label class="form-label small fw-bold text-muted text-uppercase mt-3">Montant reçu</label>
+                    <div class="cash-display">
+                        <strong>{{ (cashReceivedAmount() || 0) | number:'1.0-2' }}</strong>
+                        <span>{{ order.currency }}</span>
+                    </div>
                     <div class="input-group input-group-lg">
                         <input type="number"
-                               class="form-control"
-                               min="0"
-                               [ngModel]="cashReceivedAmount()"
-                               (ngModelChange)="cashReceivedAmount.set(+$event)"
-                               placeholder="Montant donne par le client">
+                              class="form-control"
+                              min="0"
+                              [ngModel]="cashReceivedAmount()"
+                              (ngModelChange)="setCashReceivedAmount(+$event)"
+                              placeholder="Montant donné par le client">
                         <span class="input-group-text">{{ order.currency }}</span>
+                    </div>
+
+                    <div class="cash-keypad" aria-label="Clavier encaissement">
+                        <button type="button" class="danger" (click)="clearCashInput()">C</button>
+                        <button type="button" (click)="backspaceCashInput()"><i class="bi bi-backspace"></i></button>
+                        <button type="button" (click)="setCashReceivedAmount(orderTotal(order))">Exact</button>
+                        <button type="button" class="operator" (click)="addCashQuickAmount(1000)">+1000</button>
+                        <button type="button" (click)="appendCashDigit('7')">7</button>
+                        <button type="button" (click)="appendCashDigit('8')">8</button>
+                        <button type="button" (click)="appendCashDigit('9')">9</button>
+                        <button type="button" class="operator" (click)="addCashQuickAmount(5000)">+5000</button>
+                        <button type="button" (click)="appendCashDigit('4')">4</button>
+                        <button type="button" (click)="appendCashDigit('5')">5</button>
+                        <button type="button" (click)="appendCashDigit('6')">6</button>
+                        <button type="button" class="operator" (click)="addCashQuickAmount(10000)">+10000</button>
+                        <button type="button" (click)="appendCashDigit('1')">1</button>
+                        <button type="button" (click)="appendCashDigit('2')">2</button>
+                        <button type="button" (click)="appendCashDigit('3')">3</button>
+                        <button type="button" class="operator" (click)="addCashQuickAmount(50000)">+50000</button>
+                        <button type="button" (click)="appendCashDigit('0')">0</button>
+                        <button type="button" (click)="appendCashDigit('00')">00</button>
+                        <button type="button" (click)="appendCashDigit('.')">,</button>
+                        <button type="button" class="equals" (click)="setCashReceivedAmount(cashReceivedAmount() || 0)">=</button>
                     </div>
 
                     <div class="cash-change-box" [class.insufficient]="!cashAmountIsEnough()">
@@ -428,7 +455,7 @@
                         @for (item of order.items || []; track item.id) {
                             <div class="detail-item">
                                 <div>
-                                    <strong>{{ item.plat.name || 'Plat' }}</strong>
+                                    <strong>{{ itemName(item) }}</strong>
                                     <small>{{ item.quantity }} x {{ item.price_at_order | number:'1.0-2' }} {{ order.currency }}</small>
                                 </div>
                                 <span>{{ itemLineTotal(item) | number:'1.0-2' }} {{ order.currency }}</span>

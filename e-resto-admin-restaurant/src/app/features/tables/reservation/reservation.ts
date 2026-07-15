@@ -1,6 +1,7 @@
 import { CommonModule, DatePipe } from "@angular/common";
 import { Component, OnDestroy, OnInit, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import { SaasService } from "../../../services/saas/saas-service";
 import { ReservationDto, ReservationService, ReservationStatus } from "../../../services/reservation/reservation-service";
 import { OrderRealtimeService } from "../../../services/realtime/order-realtime-service";
@@ -16,6 +17,7 @@ import { AppPermissionService } from "../../../services/auth/permission-service"
 })
 export class Reservation implements OnInit, OnDestroy {
   private permissions = inject(AppPermissionService);
+  private route = inject(ActivatedRoute);
   Reservations = signal<ReservationDto[]>([]);
 
   selectedReservation = signal<ReservationDto | null>(null);
@@ -23,13 +25,15 @@ export class Reservation implements OnInit, OnDestroy {
   errorMessage = signal("");
   successMessage = signal("");
   updatingId = signal<string | null>(null);
-  statusFilter = signal<ReservationStatus | "all">("all");
+  statusFilter = signal<ReservationStatus | "all">("pending");
   dateFilter = signal("");
   searchTerm = signal("");
   internalNote = signal("");
   cancellationReason = signal("");
   upgradeRequired = signal(false);
   private realtimeSubscription?: Subscription;
+  private realtimeChangedSubscription?: Subscription;
+  private routeSubscription?: Subscription;
 
   readonly statusOptions: { value: ReservationStatus; label: string; icon: string }[] = [
     { value: "pending", label: "En attente", icon: "bi-hourglass" },
@@ -74,7 +78,38 @@ export class Reservation implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadUsage();
-    this.loadReservations();
+    this.routeSubscription = this.route.queryParamMap.subscribe((params) => {
+      const status = params.get("status");
+      if (this.isStatusFilter(status)) {
+        this.statusFilter.set(status);
+      }
+      this.loadReservations();
+    });
+    this.realtime.start();
+    this.realtimeChangedSubscription = this.realtime.reservationChanged$.subscribe(({ action, reservation }) => {
+      if (action === "deleted") {
+        this.Reservations.update((list) => list.filter((item) => item.id !== reservation.id));
+        if (this.selectedReservation()?.id === reservation.id) {
+          this.closeReservation();
+        }
+        this.successMessage.set("Reservation supprimee en temps reel.");
+        return;
+      }
+
+      this.Reservations.update((list) => {
+        const exists = list.some((item) => item.id === reservation.id);
+        return exists
+          ? list.map((item) => item.id === reservation.id ? reservation : item)
+          : [reservation, ...list];
+      });
+
+      if (this.selectedReservation()?.id === reservation.id) {
+        this.selectedReservation.set(reservation);
+        this.internalNote.set(reservation.internal_note || "");
+      }
+
+      this.successMessage.set(action === "created" ? "Nouvelle reservation recue." : "Reservation mise a jour en temps reel.");
+    });
     this.realtimeSubscription = this.realtime.reservationCreated$.subscribe((reservation) => {
       this.Reservations.update((list) => list.some((item) => item.id === reservation.id) ? list : [reservation, ...list]);
       this.successMessage.set("Nouvelle réservation reçue.");
@@ -83,6 +118,8 @@ export class Reservation implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.realtimeSubscription?.unsubscribe();
+    this.realtimeChangedSubscription?.unsubscribe();
+    this.routeSubscription?.unsubscribe();
   }
 
   canAccess(permission: string): boolean {
@@ -201,5 +238,9 @@ export class Reservation implements OnInit, OnDestroy {
       cancelled: "bg-danger",
       no_show: "bg-secondary",
     }[status] || "bg-secondary";
+  }
+
+  private isStatusFilter(value: string | null): value is ReservationStatus | "all" {
+    return value === "all" || this.statusOptions.some((status) => status.value === value);
   }
 }

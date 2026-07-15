@@ -297,7 +297,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
 
   private publicErrorMessage(error: any, fallback: string): string {
     if (error?.status === 0) {
-      return "Impossible de joindre le serveur. Vérifiez que l'API Laravel est démarrée sur le port 8000.";
+      return "Impossible de joindre le serveur.";
     }
 
     if (error?.name === 'TimeoutError') {

@@ -270,7 +270,7 @@
       }
 
       @if (activeTab() === 'audit') {
-        <section class="panel"><div class="panel-head"><div><span class="eyebrow">TraÃ§abilite</span><h2>Activite plateforme</h2></div></div><div class="audit-item" *ngFor="let event of auditEvents()"><div><strong>{{ event.title }}</strong><span>{{ event.subject }}</span></div><em class="status" [class]="event.status">{{ statusLabel(event.status) }}</em><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></section>
+        <section class="panel"><div class="panel-head"><div><span class="eyebrow">Traçabilité</span><h2>Activité plateforme</h2></div></div><div class="audit-item" *ngFor="let event of auditEvents()"><div><strong>{{ event.title }}</strong><span>{{ event.subject }}</span></div><em class="status" [class]="event.status">{{ statusLabel(event.status) }}</em><small>{{ event.created_at | date:'dd/MM/yyyy HH:mm' }}</small></div></section>
       }
     </section>
   </main>

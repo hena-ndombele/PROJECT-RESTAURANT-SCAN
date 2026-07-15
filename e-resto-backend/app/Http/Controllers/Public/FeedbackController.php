@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Events\FeedbackCreated;
 use App\Http\Controllers\Controller;
 use App\Models\Feedback;
 use App\Models\Order;
 use App\Models\Restaurant;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
 
 class FeedbackController extends Controller
@@ -73,9 +75,19 @@ class FeedbackController extends Controller
             throw $exception;
         }
 
+        $freshFeedback = $feedback->load(['order.table', 'table']);
+        try {
+            broadcast(new FeedbackCreated($freshFeedback))->toOthers();
+        } catch (\Throwable $exception) {
+            Log::warning('Feedback broadcast failed', [
+                'feedback_id' => $freshFeedback->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'message' => 'Merci pour votre avis.',
-            'feedback' => $feedback->load(['order.table', 'table']),
+            'feedback' => $freshFeedback,
         ], 201);
     }
 

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { finalize, timeout } from 'rxjs';
 import { Restaurant, SaasPlan, SubscriptionPayment } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
+import { AppPermissionService } from '../../services/auth/permission-service';
 
 @Component({
   selector: 'app-restaurant-subscription',
@@ -14,6 +15,7 @@ import { SaasService } from '../../services/saas/saas-service';
 })
 export class RestaurantSubscription implements OnInit, OnDestroy {
   private readonly saas = inject(SaasService);
+  private readonly permissions = inject(AppPermissionService);
   private paymentStatusTimer?: ReturnType<typeof setInterval>;
   private paymentStatusAttempts = 0;
 
@@ -91,8 +93,16 @@ export class RestaurantSubscription implements OnInit, OnDestroy {
     this.message = '';
   }
 
+  canPaySubscription(): boolean {
+    return this.permissions.has('subscription.pay');
+  }
+
   pay(plan: SaasPlan): void {
     if (this.payingPlanId || this.waitingConfirmation || !this.restaurant?.id) return;
+    if (!this.canPaySubscription()) {
+      this.showMessage("Vous n'avez pas la permission de payer l'abonnement.", 'error');
+      return;
+    }
 
     const walletId = this.normalizedWalletId(this.mobile.wallet_id);
     this.mobile.wallet_id = walletId;

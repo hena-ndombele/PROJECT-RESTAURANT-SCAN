@@ -15,6 +15,26 @@ interface OrderNotification {
     route?: string;
 }
 
+export interface FeedbackRealtimeDto {
+    id: string;
+    restaurant_id?: string | null;
+    food_rating?: number;
+    service_rating?: number;
+    ordering_rating?: number;
+    recommended?: boolean | null;
+    comment?: string | null;
+    customer_name?: string | null;
+    customer_phone?: string | null;
+    created_at?: string;
+    order?: {
+        id: string;
+        total_amount?: number;
+        currency?: string;
+        table?: { id: string; name: string } | null;
+    } | null;
+    table?: { id: string; name: string } | null;
+}
+
 @Injectable({
     providedIn: "root"
 })
@@ -38,7 +58,10 @@ export class OrderRealtimeService {
     readonly connectionState = signal<"idle" | "connecting" | "connected" | "error">("idle");
     readonly orderChanged$ = new Subject<Order>();
     readonly reservationCreated$ = new Subject<ReservationDto>();
+    readonly reservationChanged$ = new Subject<{ action: "created" | "updated" | "deleted"; reservation: ReservationDto }>();
+    readonly feedbackCreated$ = new Subject<FeedbackRealtimeDto>();
     readonly businessRestaurantsChanged$ = new Subject<any>();
+    readonly menuUpdated$ = new Subject<{ restaurant_id?: string; reason?: string }>();
 
     readonly activeOrdersCount = computed(() => {
         return this.orders().filter((order) => this.isActiveOrder(order)).length;
@@ -138,7 +161,7 @@ export class OrderRealtimeService {
 
         const apiUrl = new URL(API_ROOT);
         const host = apiUrl.hostname || window.location.hostname;
-        const key = "e-resto-key";
+        const key = "restaurant-scan-key";
         const port = 8080;
         const protocol = apiUrl.protocol === "https:" ? "wss" : "ws";
         const url = `${protocol}://${host}:${port}/app/${key}?protocol=7&client=angular-native&version=1.0&flash=false`;
@@ -152,6 +175,8 @@ export class OrderRealtimeService {
                 this.connectionState.set("connected");
                 this.subscribeToOrders();
                 this.subscribeToReservations();
+                this.subscribeToFeedbacks();
+                this.subscribeToMenu();
                 this.subscribeToBusinessRestaurants();
             });
         };
@@ -198,6 +223,27 @@ export class OrderRealtimeService {
         });
     }
 
+    private subscribeToFeedbacks(): void {
+        const restaurantId = this.authService.getUserData()?.restaurant_id;
+        const channel = restaurantId ? `feedbacks.${restaurantId}` : "feedbacks";
+
+        this.send({
+            event: "pusher:subscribe",
+            data: { channel }
+        });
+    }
+
+    private subscribeToMenu(): void {
+        const user = this.authService.getUserData();
+        const restaurantId = user?.restaurant_id || user?.restaurant?.id;
+        if (!restaurantId) return;
+
+        this.send({
+            event: "pusher:subscribe",
+            data: { channel: `menu.${restaurantId}` }
+        });
+    }
+
     private subscribeToBusinessRestaurants(): void {
         const user = this.authService.getUserData();
         const businessOwnerId = user?.restaurant?.business_owner_user_id || user?.id;
@@ -227,8 +273,23 @@ export class OrderRealtimeService {
             return;
         }
 
+        if (["reservation.updated", "reservation.deleted"].includes(message.event)) {
+            this.handleReservationChanged(message, message.event === "reservation.deleted" ? "deleted" : "updated");
+            return;
+        }
+
+        if (message.event === "feedback.created") {
+            this.handleFeedbackCreated(message);
+            return;
+        }
+
         if (message.event === "business-restaurants.updated") {
             this.handleBusinessRestaurantsUpdated(message);
+            return;
+        }
+
+        if (message.event === "menu.updated") {
+            this.handleMenuUpdated(message);
             return;
         }
 
@@ -258,6 +319,34 @@ export class OrderRealtimeService {
         this.notifyReservation(reservation);
     }
 
+    private handleReservationChanged(message: any, action: "updated" | "deleted"): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        const reservation = payload?.reservation as ReservationDto | undefined;
+        if (!reservation?.id) return;
+
+        if (action === "deleted") {
+            this.knownReservationIds.delete(reservation.id);
+            if (reservation.status === "pending") {
+                this.pendingReservationsCount.update((count) => Math.max(0, count - 1));
+            }
+        } else {
+            this.knownReservationIds.add(reservation.id);
+            this.refreshReservationsFromApi();
+        }
+
+        this.reservationChanged$.next({ action, reservation });
+    }
+
+    private handleFeedbackCreated(message: any): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        const feedback = payload?.feedback as FeedbackRealtimeDto | undefined;
+        if (!feedback?.id) return;
+
+        this.feedbackCreated$.next(feedback);
+        this.addFeedbackNotification(feedback);
+        this.playNotificationSound();
+    }
+
     private notifyReservation(reservation: ReservationDto): void {
         if (this.knownReservationIds.has(reservation.id)) {
             return;
@@ -266,6 +355,7 @@ export class OrderRealtimeService {
         this.knownReservationIds.add(reservation.id);
         this.pendingReservationsCount.update((count) => count + 1);
         this.reservationCreated$.next(reservation);
+        this.reservationChanged$.next({ action: "created", reservation });
         this.addReservationNotification(reservation);
         this.playNotificationSound();
     }
@@ -273,6 +363,14 @@ export class OrderRealtimeService {
     private handleBusinessRestaurantsUpdated(message: any): void {
         const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
         this.businessRestaurantsChanged$.next(payload || {});
+    }
+
+    private handleMenuUpdated(message: any): void {
+        const payload = typeof message.data === "string" ? JSON.parse(message.data) : message.data;
+        this.menuUpdated$.next({
+            restaurant_id: payload?.restaurant_id,
+            reason: payload?.reason || "menu_updated"
+        });
     }
 
     private upsertOrder(order: Order): void {
@@ -295,7 +393,7 @@ export class OrderRealtimeService {
                 message: `${tableName} - ${Number(order.total_amount || 0).toLocaleString("fr-FR")} ${order.currency}`,
                 createdAt: new Date(),
                 order,
-                route: "/orders/list"
+                route: "/orders/list?status=pending"
             },
             ...items
         ].slice(0, 8));
@@ -309,6 +407,20 @@ export class OrderRealtimeService {
                 message: `${reservation.name} - ${reservation.guests} pers. le ${reservation.reservation_date}`,
                 createdAt: new Date(),
                 route: "/table/reservation-table"
+            },
+            ...items
+        ].slice(0, 8));
+    }
+
+    private addFeedbackNotification(feedback: FeedbackRealtimeDto): void {
+        const tableName = feedback.order?.table?.name || feedback.table?.name || "Table inconnue";
+        this.notifications.update((items) => [
+            {
+                id: `${feedback.id}-${Date.now()}`,
+                title: "Nouveau feedback",
+                message: `${tableName} - avis client recu`,
+                createdAt: new Date(),
+                route: "/feedback/list"
             },
             ...items
         ].slice(0, 8));

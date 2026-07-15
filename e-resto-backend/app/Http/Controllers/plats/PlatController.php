@@ -290,7 +290,7 @@ public function update(Request $request, $id)
     $this->broadcastMenuUpdated($plat->restaurant_id, 'dish_updated');
 
     return response()->json([
-        'message' => 'Plat mis à jour avec succès',
+        'message' => 'Menu mis à jour avec succès',
         'data' => $plat->load('category')
     ]);
 }

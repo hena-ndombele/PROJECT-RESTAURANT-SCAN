@@ -527,7 +527,9 @@ class SaasController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($this->restaurantPayload($request->user()->restaurant));
+        $restaurant = $request->user()->restaurant()->with(['plan', 'subscription'])->firstOrFail();
+
+        return response()->json($this->restaurantPayload($restaurant));
     }
 
     public function businessRestaurants(Request $request)
@@ -979,9 +981,11 @@ class SaasController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $restaurant = $request->user()->restaurant()->with('plan')->firstOrFail();
+        $currentRestaurant = $request->user()->restaurant()->with('plan')->firstOrFail();
+        $restaurant = $currentRestaurant;
 
         $validated = $request->validate([
+            'restaurant_id' => 'sometimes|uuid|exists:restaurants,id',
             'name' => 'sometimes|string|max:255',
             'owner_name' => 'sometimes|nullable|string|max:255',
             'owner_phone' => 'sometimes|nullable|string|max:30',
@@ -992,12 +996,33 @@ class SaasController extends Controller
             'slug' => 'sometimes|string|max:80|alpha_dash|unique:restaurants,slug,' . $restaurant->id,
             'logo_data' => 'sometimes|nullable|string',
             'settings' => 'sometimes|array',
+            'settings.usd_cdf_rate' => 'sometimes|numeric|min:1',
         ]);
 
-        $protectedSettingKeys = ['app_name', 'slogan', 'description', 'google_maps_url', 'theme', 'qr_template'];
+        if (!empty($validated['restaurant_id']) && (string) $validated['restaurant_id'] !== (string) $currentRestaurant->id) {
+            $targetRestaurant = Restaurant::with('plan')->findOrFail($validated['restaurant_id']);
+            $businessOwnerId = $this->businessOwnerId($request->user());
+            $targetOwnerId = $targetRestaurant->business_owner_user_id
+                ?: ($targetRestaurant->id === $currentRestaurant->id ? $businessOwnerId : null);
+            $sameOwnerBusinessRestaurant = $this->isSameBusinessGroupRestaurant($targetRestaurant, $currentRestaurant);
+
+            if (!$this->canManageBusinessRestaurants($request->user(), $currentRestaurant)
+                || ($targetOwnerId !== $businessOwnerId && !$sameOwnerBusinessRestaurant)) {
+                return response()->json([
+                    'message' => 'Vous ne pouvez pas modifier ce restaurant.',
+                ], 403);
+            }
+
+            $restaurant = $targetRestaurant;
+        }
+
+        unset($validated['restaurant_id']);
+
+        $protectedSettingKeys = ['qr_template'];
         $settingsPayload = $request->input('settings', []);
         $hasProtectedSettings = is_array($settingsPayload)
-            && count(array_intersect(array_keys($settingsPayload), $protectedSettingKeys)) > 0;
+            && count(array_intersect(array_keys($settingsPayload), $protectedSettingKeys)) > 0
+            && !empty($settingsPayload['qr_template']);
         $hasAdvancedCustomization = $request->has('slug') || $hasProtectedSettings;
         if ($hasAdvancedCustomization && !$restaurant->plan?->allows('customization')) {
             return response()->json([
@@ -1005,27 +1030,23 @@ class SaasController extends Controller
             ], 403);
         }
 
-        if ($request->has('logo_data') && !$restaurant->plan?->allows('logo_customization')) {
-            return response()->json([
-                'message' => 'La personnalisation du logo n est pas disponible pour ce plan.',
-            ], 403);
-        }
-
         $logoChanged = !empty($validated['logo_data']);
         if ($logoChanged) {
             $validated['logo'] = $this->storeRestaurantLogo($validated['logo_data'], $restaurant->id);
-            unset($validated['logo_data']);
-        }
-
-        if (isset($validated['settings'])) {
-            $validated['settings'] = array_replace_recursive($restaurant->settings ?? [], $validated['settings']);
         }
 
         if (array_key_exists('owner_phone', $validated)) {
             $validated['owner_phone'] = $this->normalizeCongoPhone($validated['owner_phone']);
         }
 
-        $restaurant->update($validated);
+        $updateData = $validated;
+        unset($updateData['settings'], $updateData['logo_data']);
+
+        if (is_array($settingsPayload) && !empty($settingsPayload)) {
+            $updateData['settings'] = array_replace_recursive($restaurant->settings ?? [], $settingsPayload);
+        }
+
+        $restaurant->forceFill($updateData)->save();
         if ($logoChanged) {
             $this->regenerateTableQrCodes($restaurant->fresh());
         }
@@ -1437,6 +1458,7 @@ class SaasController extends Controller
             'whatsapp_order_phone' => null,
             'opening_time' => '08:00',
             'closing_time' => '22:00',
+            'usd_cdf_rate' => 2850,
             'theme' => [
                 'primary' => '#ff7a1a',
                 'secondary' => '#d71920',

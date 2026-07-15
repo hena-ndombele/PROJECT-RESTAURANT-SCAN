@@ -39,6 +39,11 @@
     <div class="subscription-message" [class]="messageType">{{ message }}</div>
   }
 
+  @if (!canPaySubscription()) {
+    <div class="subscription-message error">Vous n'avez pas la permission de payer l'abonnement.</div>
+  }
+
+  @if (canPaySubscription()) {
   <section class="payment-box">
     <div>
       <span class="eyebrow">Paiement sécurisé</span>
@@ -61,6 +66,7 @@
       <input [(ngModel)]="mobile.wallet_id" type="tel" placeholder="+24383...">
     </label>
   </section>
+  }
 
   <h2 class="section-title">Choisissez votre plan</h2>
   <div class="plan-grid">
@@ -93,10 +99,13 @@
           @if (billingCycle === 'yearly') {
             <small>{{ paymentAmount(plan) | number:'1.0-2' }} {{ displayCurrency(plan) }} facturés pour 12 mois</small>
           }
-          <button type="button" (click)="pay(plan)" [disabled]="!!payingPlanId || waitingConfirmation">
+          <button type="button" (click)="pay(plan)" [disabled]="!canPaySubscription() || !!payingPlanId || waitingConfirmation">
             @if (payingPlanId === plan.id) {
               <span class="spinner-border spinner-border-sm"></span>
               Paiement...
+            } @else if (!canPaySubscription()) {
+              <i class="ti ti-lock"></i>
+              Paiement non autorise
             } @else {
               <i class="ti ti-credit-card"></i>
               {{ isCurrentPlan(plan) ? 'Renouveler' : 'Passer au paiement' }}

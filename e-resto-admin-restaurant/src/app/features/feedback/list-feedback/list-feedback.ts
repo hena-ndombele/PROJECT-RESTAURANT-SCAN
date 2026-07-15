@@ -1,10 +1,12 @@
 import { CommonModule, DatePipe } from "@angular/common";
 import { HttpClient } from "@angular/common/http";
-import { Component, OnInit, computed, inject, signal } from "@angular/core";
+import { Component, OnDestroy, OnInit, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { API_ROOT } from "../../../services/api-url";
+import { Subscription } from "rxjs";
+import { FeedbackRealtimeDto, OrderRealtimeService } from "../../../services/realtime/order-realtime-service";
 
-type Feedback = {
+type Feedback = FeedbackRealtimeDto & {
   id: string;
   food_rating: number;
   service_rating: number;
@@ -30,8 +32,10 @@ type Feedback = {
   styleUrl: "./list-feedback.scss",
   standalone:true
 })
-export class ListFeedback implements OnInit {
+export class ListFeedback implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
+  private readonly realtime = inject(OrderRealtimeService);
+  private feedbackSubscription?: Subscription;
 
   restaurant: any = JSON.parse(localStorage.getItem("restaurant_session") || "null");
   feedbacks = signal<Feedback[]>([]);
@@ -81,6 +85,17 @@ export class ListFeedback implements OnInit {
   ngOnInit(): void {
     this.refreshRestaurantTheme();
     this.loadFeedbacks();
+    this.realtime.start();
+    this.feedbackSubscription = this.realtime.feedbackCreated$.subscribe((feedback) => {
+      this.feedbacks.update((items) => {
+        const nextFeedback = feedback as Feedback;
+        return items.some((item) => item.id === nextFeedback.id) ? items : [nextFeedback, ...items];
+      });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.feedbackSubscription?.unsubscribe();
   }
 
   themePrimary(): string {

@@ -53,7 +53,7 @@ export const routes: Routes = [
       { path: 'feedback/list', component: ListFeedback, title: 'FeedBack', canActivate: [AuthGuard], data: { permission: 'feedback.list' } },
       { path: 'orders/list', component: ListOrders, title: 'Orders', canActivate: [AuthGuard], data: { permission: 'orders.list' } },
       { path: 'restaurant/settings', component: RestaurantSettings, title: 'Paramètres restaurant - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'settings.view' } },
-      { path: 'restaurant/subscription', component: RestaurantSubscription, title: 'Abonnement - Restaurant Scan', canActivate: [AuthGuard] },
+      { path: 'restaurant/subscription', component: RestaurantSubscription, title: 'Abonnement - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'subscription.view' } },
       { path: 'dish/list-dish', component: ListDish, title: 'Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.list' } },
       { path: 'dish/show/:id', component: ShowDish, title: 'Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.view' } },
       { path: 'dish/edit/:id', component: UpdateDish, title: 'Update Dish - Restaurant Scan', canActivate: [AuthGuard], data: { permission: 'plats.update' } },

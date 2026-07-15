@@ -159,24 +159,11 @@ export class ListDish implements OnInit {
     }
 
     private exportFilename(): string {
-        const cachedRestaurant = localStorage.getItem('restaurant_session');
-        let restaurantName = 'restaurant-scan';
+        const now = new Date();
+        const date = now.toISOString().slice(0, 10);
+        const time = now.toTimeString().slice(0, 5).replace(':', '-');
 
-        try {
-            restaurantName = cachedRestaurant ? JSON.parse(cachedRestaurant).name || restaurantName : restaurantName;
-        } catch {
-            restaurantName = 'restaurant-scan';
-        }
-
-        const slug = restaurantName
-            .toString()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '') || 'restaurant-scan';
-
-        return `menu-${slug}-${new Date().toISOString().slice(0, 10)}.xls`;
+        return `export-plats-${date}-${time}.xls`;
     }
 
     private escapeHtml(value: string): string {

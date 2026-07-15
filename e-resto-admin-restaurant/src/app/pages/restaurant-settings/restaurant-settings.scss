@@ -187,7 +187,8 @@ label span,
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 48px;
   border: 1px solid #d1d5db;
@@ -199,14 +200,24 @@ select {
   transition: .18s ease;
 }
 
+textarea {
+  min-height: 92px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: #f59e0b;
   box-shadow: 0 0 0 4px rgba(245, 158, 11, .14);
 }
 
 input:disabled,
 select:disabled,
+textarea:disabled,
 button:disabled {
   cursor: not-allowed;
   opacity: .55;

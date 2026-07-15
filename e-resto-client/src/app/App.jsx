@@ -292,7 +292,7 @@ export function App() {
       setSplashBrandLoaded(false);
     }
 
-    return getPublicMenu(menuParams)
+    return getPublicMenu({ ...menuParams, _ts: Date.now() })
       .then((response) => {
         setMenu(response);
         setScannedTable(response.table || null);
@@ -419,6 +419,15 @@ export function App() {
     restoreRequest
       .then((order) => {
         const restoredTableId = order?.table_id || order?.table?.id || null;
+        const isExplicitUrlRecovery = Boolean(orderIdFromUrl || urlTrackingCode);
+        const isRemoteOrder = order?.order_type === 'remote' || isRemoteTableName(order?.table?.name);
+
+        if (!tableId && restoredTableId && !isRemoteOrder && !isExplicitUrlRecovery) {
+          clearRememberedOrder();
+          setRecoveryNotice('Entrez votre code de suivi pour retrouver uniquement votre commande.');
+          return;
+        }
+
         if (tableId && restoredTableId && String(restoredTableId) !== String(tableId)) {
           if (tableOrderId || orderIdFromUrl || urlTrackingCode) {
             clearRememberedOrder(tableId);
@@ -1499,6 +1508,7 @@ function MenuCard({ plat, index, onDetails }) {
 function MenuModal({ plat, onClose, onAdd }) {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const images = [
     assetUrl(plat?.image_url || plat?.image, ''),
     assetUrl(plat?.image_secondaire_1_url || plat?.image_secondaire_1 || plat?.secondary_image_1 || plat?.image_2, ''),
@@ -1508,6 +1518,7 @@ function MenuModal({ plat, onClose, onAdd }) {
   useEffect(() => {
     setQuantity(1);
     setActiveImage(0);
+    setImagePreviewOpen(false);
   }, [plat]);
 
   if (!plat) return null;
@@ -1517,6 +1528,7 @@ function MenuModal({ plat, onClose, onAdd }) {
   const hasPreparationTime = plat.preparation_time !== null && plat.preparation_time !== undefined && plat.preparation_time !== '';
   const promoActive = hasActivePromotion(plat);
   const promoEnd = promotionEndLabel(plat);
+  const previewImage = images[activeImage] || plat.image_url;
 
   return (
     <div id="menuPop" className="open" onClick={(event) => event.target.id === 'menuPop' && onClose()}>
@@ -1530,7 +1542,15 @@ function MenuModal({ plat, onClose, onAdd }) {
                 {promoEnd ? <small>Jusqu'au {promoEnd}</small> : null}
               </div>
             ) : null}
-            <img id="mpImg" className="mpimg" src={images[activeImage] || plat.image_url} alt={plat.name} />
+            <button
+              type="button"
+              className="clean-btn menu-detail-main-image"
+              onClick={() => previewImage && setImagePreviewOpen(true)}
+              aria-label="Voir l'image en grand"
+            >
+              <img id="mpImg" className="mpimg" src={previewImage} alt={plat.name} />
+              <span><i className="fas fa-expand"></i></span>
+            </button>
             <div className={`menu-detail-thumbs ${images.length <= 1 ? 'single' : ''}`}>
               {images.map((image, index) => (
                 <button key={image} type="button" className={`clean-btn ${activeImage === index ? 'active' : ''}`} onClick={() => setActiveImage(index)} aria-label={`Image ${index + 1}`}>
@@ -1597,6 +1617,14 @@ function MenuModal({ plat, onClose, onAdd }) {
           </div>
         </div>
       </div>
+      {imagePreviewOpen ? (
+        <div className="dish-image-preview" role="dialog" aria-modal="true" aria-label={`Image de ${plat.name}`} onClick={() => setImagePreviewOpen(false)}>
+          <button type="button" className="clean-btn dish-image-preview-close" onClick={() => setImagePreviewOpen(false)} aria-label="Fermer l'image">
+            <i className="fas fa-times"></i>
+          </button>
+          <img src={previewImage} alt={plat.name} onClick={(event) => event.stopPropagation()} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1640,10 +1668,10 @@ function ReservationPage({ tableId, brand, onStatus }) {
         guests: Number(form.guests),
       });
 
-      setMessage({ type: 'success', text: response.message || 'Demande de reservation envoyée.' });
+      setMessage({ type: 'success', text: response.message || 'Demande de réservation envoyée.' });
       onStatus?.({
         type: 'success',
-        title: 'Reservation envoyée',
+        title: 'Réservation envoyée',
         message: 'Le restaurant va confirmer la disponibilité par email.',
       });
       setForm({
@@ -1671,7 +1699,7 @@ function ReservationPage({ tableId, brand, onStatus }) {
             <h2>Reserver une table</h2>
           </div>
           {!brand.can_reservations ? (
-            <div className="client-alert error">Les Reservations ne sont pas activées pour ce restaurant.</div>
+            <div className="client-alert error">Les Réservations ne sont pas activées pour ce restaurant.</div>
           ) : (
             <form className="mobile-money-form reservation-form" onSubmit={submitReservation}>
               <label className="reservation-field">
@@ -1782,6 +1810,46 @@ function SwipeableCartLine({ children, onOpen, onDelete }) {
       </div>
     </div>
   );
+}
+
+function restaurantCurrency(brand) {
+  const currency = String(brand?.currency || 'CDF').toUpperCase();
+  return ['CDF', 'USD'].includes(currency) ? currency : 'CDF';
+}
+
+function usdCdfRate(brand) {
+  const settings = brand?.settings || {};
+  const rate = Number(settings.usd_cdf_rate || settings.exchange_rate_usd_cdf || 2850);
+  return rate > 0 ? rate : 2850;
+}
+
+function convertMoney(amount, fromCurrency, toCurrency, rate) {
+  const from = String(fromCurrency || toCurrency).toUpperCase();
+  const to = String(toCurrency || from).toUpperCase();
+  const value = Number(amount || 0);
+
+  if (from === to) return value;
+  if (from === 'USD' && to === 'CDF') return value * rate;
+  if (from === 'CDF' && to === 'USD') return value / rate;
+  return value;
+}
+
+function cartConvertedTotals(cart, brand) {
+  const currency = restaurantCurrency(brand);
+  const rate = usdCdfRate(brand);
+  const currencies = new Set();
+  const totalAmount = cart.items.reduce((sum, item) => {
+    const itemCurrency = String(item.plat?.currency || currency).toUpperCase();
+    currencies.add(itemCurrency);
+    return sum + convertMoney(effectiveDishPrice(item.plat), itemCurrency, currency, rate) * Number(item.quantity || 0);
+  }, 0);
+
+  return {
+    currency,
+    totalAmount,
+    rate,
+    hasMixedCurrencies: currencies.size > 1 || (currencies.size === 1 && !currencies.has(currency)),
+  };
 }
 
 function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQuantity, onGroupReady, onGroupEditChoice, onGroupClearMine, onGroupSubmit, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping, onDetails, emailPreferences, onEmailPreferences }) {
@@ -1981,6 +2049,7 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
     && (tableId || brand?.id || brand?.slug)
     && (effectiveOrderType !== 'remote' || (customerName.trim() && hasCompleteCongoPhone(customerPhone) && customerAddress.trim() && whatsappOrderPhone.trim()));
   const isEditing = Boolean(editingOrder?.id);
+  const displayTotals = cartConvertedTotals(cart, brand);
 
   useEffect(() => {
     if (!tableId && !customerPhone.trim()) {
@@ -2079,7 +2148,7 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
         </div>
         {isEditing && (
           <div className="client-alert info">
-            Modification autorisee tant que la commande n'est pas en preparation et pas deja payee.
+            Modification autorisée tant que la commande n'est pas en préparation et pas déjà payée.
             <button type="button" className="receipt-share-btn mt-2" onClick={onContinueShopping}>
               <i className="fas fa-plus"></i>
               Ajouter d'autres plats
@@ -2167,8 +2236,13 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
             )}
             <div className="cart-total">
               <span>Total</span>
-              <strong>{formatMoney(cart.totals.totalAmount, cart.totals.currency)}</strong>
+              <strong>{formatMoney(displayTotals.totalAmount, displayTotals.currency)}</strong>
             </div>
+            {displayTotals.hasMixedCurrencies ? (
+              <div className="payment-note success">
+                Les plats en devise differente sont convertis vers {displayTotals.currency} avec le taux 1 USD = {displayTotals.rate} CDF.
+              </div>
+            ) : null}
             <button className="btn-red cart-submit-btn w-100 justify-content-center" disabled={!canSubmit || status.type === 'loading'} onClick={submitOrder}>
               <i className="fas fa-paper-plane"></i>{isEditing ? 'Enregistrer la modification' : (!tableId ? 'Envoyer et ouvrir WhatsApp' : 'Envoyer la commande')}
             </button>
@@ -2470,14 +2544,14 @@ function hasOrderChanged(previousOrder, nextOrder) {
 function rememberActiveOrder(order, tableId, syncUrl = false) {
   if (!order?.id) return;
 
-  localStorage.setItem(ACTIVE_ORDER_STORAGE_KEY, order.id);
-  localStorage.setItem(ACTIVE_ORDER_STATUS_STORAGE_KEY, order.status);
-  if (order.tracking_code) {
-    localStorage.setItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY, order.tracking_code);
-  }
-
   if (tableId) {
     localStorage.setItem(`${ACTIVE_ORDER_BY_TABLE_PREFIX}${tableId}`, order.id);
+  } else {
+    localStorage.setItem(ACTIVE_ORDER_STORAGE_KEY, order.id);
+    localStorage.setItem(ACTIVE_ORDER_STATUS_STORAGE_KEY, order.status);
+    if (order.tracking_code) {
+      localStorage.setItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY, order.tracking_code);
+    }
   }
 
   if (syncUrl) {
@@ -2494,12 +2568,12 @@ function rememberActiveOrder(order, tableId, syncUrl = false) {
 }
 
 function clearRememberedOrder(tableId) {
-  localStorage.removeItem(ACTIVE_ORDER_STORAGE_KEY);
-  localStorage.removeItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
-  localStorage.removeItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY);
-
   if (tableId) {
     localStorage.removeItem(`${ACTIVE_ORDER_BY_TABLE_PREFIX}${tableId}`);
+  } else {
+    localStorage.removeItem(ACTIVE_ORDER_STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_ORDER_STATUS_STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_ORDER_TRACKING_CODE_STORAGE_KEY);
   }
 
   const url = new URL(window.location.href);
@@ -3363,30 +3437,38 @@ function buildClientBrand(restaurant) {
   const displayName = customName && !defaultNames.includes(customName.toLowerCase())
     ? customName
     : restaurant.name || 'Restaurant Scan';
-  const displaySlogan = customSlogan && !defaultSlogans.includes(customSlogan.toLowerCase())
-    ? customSlogan
-    : '';
+  const displaySlogan = customSlogan;
   const displayDescription = customDescription && !defaultSlogans.includes(customDescription.toLowerCase())
     ? customDescription
     : '';
-  const hasCustomTheme = Boolean(theme.customized);
   const defaultTheme = {
     primary: '#ff7a1a',
     secondary: '#d71920',
     background: '#fff7ef',
   };
-  const clientTheme = hasCustomTheme
-    ? {
-      primary: theme.primary || defaultTheme.primary,
-      secondary: theme.secondary || theme.primary || defaultTheme.secondary,
-      background: theme.background || defaultTheme.background,
-    }
-    : defaultTheme;
+  const primaryColor = normalizeThemeColor(
+    theme.primary || theme.primary_color || theme.accent || settings.primary_color || restaurant.primary_color,
+    defaultTheme.primary,
+  );
+  const backgroundColor = normalizeThemeColor(
+    theme.background || theme.background_color || theme.surface || settings.background_color || restaurant.background_color,
+    defaultTheme.background,
+  );
+  const clientTheme = {
+    primary: primaryColor,
+    secondary: primaryColor,
+    background: backgroundColor,
+  };
 
   return {
     id: restaurant.id || '',
     name: displayName,
     slug: restaurant.slug || '',
+    currency: restaurant.currency || settings.currency || 'CDF',
+    settings: {
+      ...settings,
+      usd_cdf_rate: Number(settings.usd_cdf_rate || settings.exchange_rate_usd_cdf || 2850),
+    },
     logo_url: restaurant.logo_url || '/img/logo/e-resto-logo.png',
     has_restaurant_logo: Boolean(restaurant.logo_url),
     slogan: displaySlogan,
@@ -3398,11 +3480,16 @@ function buildClientBrand(restaurant) {
     can_feedback: Boolean(restaurant.can_feedback),
     can_reservations: Boolean(restaurant.can_reservations),
     can_group_orders: Boolean(restaurant.can_group_orders),
-    can_mobile_money: false,
-    can_chatbot: false,
-    payment_methods: ['cash'],
+    can_mobile_money: Boolean(restaurant.can_mobile_money),
+    can_chatbot: Boolean(restaurant.can_chatbot),
+    payment_methods: restaurant.payment_methods || ['cash'],
     theme: clientTheme,
   };
+}
+
+function normalizeThemeColor(value, fallback) {
+  const color = String(value || '').trim();
+  return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color) ? color : fallback;
 }
 
 function canShowFeedbackForOrder(order) {
@@ -3439,9 +3526,9 @@ function exitClientAppAfterFeedback() {
 function applyClientTheme(brand) {
   const root = document.documentElement;
   root.style.setProperty('--primary', brand.theme.primary);
-  root.style.setProperty('--secondary', brand.theme.secondary);
+  root.style.setProperty('--secondary', brand.theme.primary);
   root.style.setProperty('--client-bg', brand.theme.background);
-  root.style.setProperty('--client-gradient', `linear-gradient(135deg, ${brand.theme.primary}, ${brand.theme.secondary})`);
+  root.style.setProperty('--client-gradient', brand.theme.primary);
 }
 
 function getStatusNotificationMessage(status) {

@@ -112,8 +112,7 @@
           <div class="reservation-meta">
             <div><span>Date</span><strong>{{ reservation.reservation_date | date:'dd/MM/yyyy' }}</strong></div>
             <div><span>Heure</span><strong>{{ reservation.reservation_time }}</strong></div>
-            <div><span>Email</span><strong>{{ reservation.email }}</strong></div>
-            <div><span>Source</span><strong>{{ reservation.source || 'qr_client' }}</strong></div>
+            <div><span>Table</span><strong>{{ reservation.table?.name || 'À assigner' }}</strong></div>
           </div>
           @if (reservation.special_requests) {
             <p class="reservation-note">{{ reservation.special_requests }}</p>
@@ -133,7 +132,7 @@
           }
         </article>
       } @empty {
-        <div class="empty-Reservations">
+        <div class="empty-reservations">
           <i class="bi bi-calendar-x"></i>
           <h5>Aucune réservation trouvée</h5>
         </div>

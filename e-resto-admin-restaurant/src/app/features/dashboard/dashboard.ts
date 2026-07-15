@@ -35,6 +35,13 @@ interface CurrencyRevenue {
     count: number;
 }
 
+interface TopDish {
+    name: string;
+    quantity: number;
+    revenue: number;
+    currency: string;
+}
+
 type RevenuePeriod = "today" | "month" | "year";
 type DashboardView = "restaurant" | "business";
 
@@ -85,6 +92,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     readonly businessAnalytics = signal<any | null>(null);
     readonly selectedBusinessMonth = signal(this.currentMonthValue());
     readonly businessExporting = signal<"excel" | "pdf" | "">("");
+    readonly recentOrderSearch = signal("");
 
     readonly todayOrders = signal<Order[]>([]);
     readonly monthOrders = signal<Order[]>([]);
@@ -161,19 +169,21 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     });
 
     readonly topDishes = computed(() => {
-        const totals = new Map<string, { name: string; quantity: number; revenue: number }>();
+        const totals = new Map<string, TopDish>();
 
         for (const order of this.monthOrders()) {
             for (const item of order.items || []) {
-                const key = item.plat_id || item.plat?.id || item.plat?.name || item.id;
+                const currency = this.itemRevenueCurrency(item, order);
+                const key = `${item.plat_id || item.plat?.id || item.plat?.name || item.id}-${currency}`;
                 const current = totals.get(key) || {
                     name: item.plat?.name || "Plat inconnu",
                     quantity: 0,
-                    revenue: 0
+                    revenue: 0,
+                    currency
                 };
 
                 const quantity = Number(item.quantity || 0);
-                const price = Number(item.price_at_order || item.plat?.price || 0);
+                const price = this.itemRevenueUnitPrice(item);
                 current.quantity += quantity;
                 current.revenue += quantity * price;
                 totals.set(key, current);
@@ -186,6 +196,24 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     });
 
     readonly recentOrders = computed(() => this.todayOrders().slice(0, 10));
+    readonly filteredRecentOrders = computed(() => {
+        const search = this.recentOrderSearch().trim().toLowerCase();
+        if (!search) return this.recentOrders();
+
+        return this.recentOrders().filter((order) => {
+            const values = [
+                order.tracking_code,
+                order.id,
+                order.table?.name,
+                order.status,
+                order.payment_status,
+                order.currency,
+                String(order.total_amount ?? "")
+            ];
+
+            return values.some((value) => String(value || "").toLowerCase().includes(search));
+        });
+    });
     readonly recentOrdersDescription = computed(() => {
         return this.planUsage()?.permissions?.can_use_multi_restaurant === true
             ? "Dernières commandes du restaurant sélectionné."
@@ -204,8 +232,8 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
             this.planUsage()?.permissions?.can_use_multi_restaurant === true &&
             (
                 restaurant?.can_manage_business_restaurants ||
-                isBusinessOwner ||
-                this.permissions.hasAnyRole(["multi-tenant", "multi-restaurant", "multi-restaurants"])
+                this.permissions.has("business-restaurants.manage") ||
+                isBusinessOwner
             )
         );
     });
@@ -259,7 +287,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         {
             label: "CA du jour",
             value: this.formatRevenueList(this.revenueTodayByCurrency()),
-            hint: `${this.completedOrders().length} commande(s) payee(s)`,
+            hint: `${this.completedOrders().length} commande(s) payée(s)`,
             icon: "ti ti-cash",
             tone: "success"
         },
@@ -271,7 +299,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
             tone: "warning"
         },
         {
-            label: "Plats publies",
+            label: "Plats publiés",
             value: String(this.dishes().length),
             hint: `${this.availableDishes()} disponible(s)`,
             icon: "ti ti-tools-kitchen-2",
@@ -474,6 +502,14 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         this.dashboardView.set(view);
     }
 
+    canAccess(permission: string): boolean {
+        return this.permissions.has(permission);
+    }
+
+    onRecentOrderSearch(value: string): void {
+        this.recentOrderSearch.set(value);
+    }
+
     private loadBusinessAnalytics(silent = false): void {
         if (silent) {
             this.refreshing.set(true);
@@ -672,46 +708,71 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         const element = document.querySelector<HTMLElement>("#salesPurchaseChart");
         if (!element) return;
 
-        const chartData = this.lastSevenDaysData();
+        const chartData = this.hourlyActivityData();
         const options: ApexOptions = {
             series: [
-                { name: "Commandes", data: chartData.orders },
-                { name: "Revenu", data: chartData.revenue }
+                { name: "Volume", data: chartData.values }
             ],
-            colors: ["#0d6efd", "#16a34a"],
+            colors: ["#ff8a3d"],
             chart: {
                 type: "bar",
-                height: 320,
+                height: 250,
                 width: "100%",
                 parentHeightOffset: 0,
-                toolbar: { show: false }
+                animations: { enabled: false },
+                redrawOnParentResize: false,
+                redrawOnWindowResize: false,
+                toolbar: { show: false },
+                zoom: { enabled: false }
             },
-            grid: { show: true, borderColor: "#e5e7eb" },
-            legend: { show: true, fontFamily: "Inter, Poppins, sans-serif", fontWeight: 600 },
             plotOptions: {
                 bar: {
-                    horizontal: false,
-                    columnWidth: "55%",
-                    borderRadius: 4,
+                    columnWidth: "70%",
+                    borderRadius: 3,
                     borderRadiusApplication: "end"
                 }
             },
             dataLabels: { enabled: false },
-            stroke: { show: true, width: 2, colors: ["transparent"] },
-            xaxis: { categories: chartData.labels, axisBorder: { show: false }, axisTicks: { show: false } },
-            yaxis: { labels: { formatter: (value: number) => `${Math.round(value)}` } },
-            fill: { opacity: 1 },
+            grid: {
+                show: true,
+                borderColor: "#e5e7eb",
+                strokeDashArray: 0,
+                xaxis: { lines: { show: false } },
+                yaxis: { lines: { show: true } }
+            },
+            xaxis: {
+                categories: chartData.labels,
+                axisBorder: { show: true, color: "#e5e7eb" },
+                axisTicks: { show: true, color: "#e5e7eb" },
+                labels: {
+                    style: {
+                        colors: "#111827",
+                        fontFamily: "Inter, Poppins, sans-serif",
+                        fontSize: "11px"
+                    }
+                }
+            },
+            yaxis: {
+                min: 0,
+                max: 100,
+                tickAmount: 5,
+                labels: {
+                    style: { colors: "#111827", fontFamily: "Inter, Poppins, sans-serif" },
+                    formatter: (value: number) => `${Math.round(value)}`
+                }
+            },
             tooltip: {
                 y: {
-                    formatter: (value: number, context: any) => {
-                        return context.seriesIndex === 1 ? this.formatMoney(value) : `${value} commandes`;
+                    formatter: (_value: number, context: any) => {
+                        const count = chartData.counts[context.dataPointIndex] || 0;
+                        return `${count} commande(s)`;
                     }
                 }
             }
         };
 
         if (this.salesPurchaseChart) {
-            void this.salesPurchaseChart.updateOptions(options);
+            void this.salesPurchaseChart.updateOptions(options, false, false);
             return;
         }
 
@@ -726,19 +787,39 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         const active = this.activeOrders().length;
         const completed = this.completedOrders().length;
         const cancelled = this.todayOrders().filter((order) => order.status === "cancelled").length;
-        const series = [active, completed, cancelled].map((value) => Math.max(value, 0));
+        const series = [completed, active, cancelled].map((value) => Math.max(value, 0));
 
         const options: ApexOptions = {
             series,
-            chart: { height: 250, type: "donut" },
-            colors: ["#0d6efd", "#16a34a", "#dc3545"],
-            labels: ["En cours", "Terminées", "Annulées"],
-            legend: { position: "bottom", fontFamily: "Inter, Poppins, sans-serif" },
-            dataLabels: { enabled: false },
+            chart: {
+                height: 250,
+                type: "donut",
+                animations: { enabled: false },
+                redrawOnParentResize: false,
+                redrawOnWindowResize: false
+            },
+            colors: ["#00c853", "#f6b400", "#ff3b3b"],
+            labels: ["Succès", "En attente", "Échec"],
+            legend: {
+                position: "bottom",
+                fontFamily: "Inter, Poppins, sans-serif",
+                markers: { size: 7 }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: (value: number) => `${value.toFixed(1)}%`,
+                style: {
+                    colors: ["#fff"],
+                    fontSize: "11px",
+                    fontWeight: 800
+                },
+                dropShadow: { enabled: false }
+            },
+            stroke: { width: 0 },
             plotOptions: {
                 pie: {
                     donut: {
-                        size: "68%",
+                        size: "62%",
                         labels: {
                             show: true,
                             total: {
@@ -753,7 +834,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         };
 
         if (this.customerChart) {
-            void this.customerChart.updateOptions(options);
+            void this.customerChart.updateOptions(options, false, false);
             return;
         }
 
@@ -761,24 +842,27 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         void this.customerChart.render();
     }
 
-    private lastSevenDaysData(): { labels: string[]; orders: number[]; revenue: number[] } {
-        const today = new Date();
-        const days = Array.from({ length: 7 }, (_, index) => {
-            const date = new Date(today);
-            date.setDate(today.getDate() - (6 - index));
-            return date;
-        });
+    private hourlyActivityData(): { labels: string[]; values: number[]; counts: number[] } {
+        const counts = Array.from({ length: 24 }, () => 0);
+        const sourceOrders = this.todayOrders().length
+            ? this.todayOrders()
+            : this.monthOrders().length
+                ? this.monthOrders()
+                : this.yearOrders();
 
+        for (const order of sourceOrders) {
+            const date = new Date(order.created_at);
+            if (!Number.isNaN(date.getTime())) {
+                counts[date.getHours()] += 1;
+            }
+        }
+
+        const max = Math.max(...counts, 0);
         return {
-            labels: days.map((date) => date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })),
-            orders: days.map((date) => this.ordersForDate(date).length),
-            revenue: days.map((date) => this.sumOrders(this.ordersForDate(date)))
+            labels: counts.map((_value, index) => String(index).padStart(2, "0")),
+            values: counts.map((count) => max > 0 ? Math.max(8, Math.round((count / max) * 82)) : 0),
+            counts
         };
-    }
-
-    private ordersForDate(date: Date): Order[] {
-        const target = this.toInputDate(date);
-        return this.monthOrders().filter((order) => this.toInputDate(new Date(order.created_at)) === target);
     }
 
     private applyRealtimeOrder(order: Order): void {
@@ -801,29 +885,63 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     }
 
     private sumOrders(orders: Order[]): number {
-        return orders
-            .filter((order) => order.payment_status === "paid")
-            .reduce((total, order) => total + Number(order.total_amount || 0), 0);
+        return this.groupRevenueByCurrency(orders).reduce((total, revenue) => total + revenue.amount, 0);
     }
 
     private groupRevenueByCurrency(orders: Order[]): CurrencyRevenue[] {
-        const totals = new Map<string, CurrencyRevenue>();
+        const totals = new Map<string, CurrencyRevenue & { orderIds: Set<string> }>();
 
         for (const order of orders.filter((item) => item.payment_status === "paid")) {
-            const currency = order.currency || "USD";
-            const current = totals.get(currency) || { currency, amount: 0, count: 0 };
-            current.amount += Number(order.total_amount || 0);
-            current.count += 1;
-            totals.set(currency, current);
+            const items = order.items || [];
+
+            if (!items.length) {
+                const currency = this.normalizeCurrency(order.currency);
+                const current = totals.get(currency) || { currency, amount: 0, count: 0, orderIds: new Set<string>() };
+                current.amount += Number(order.total_amount || 0);
+                current.orderIds.add(order.id);
+                current.count = current.orderIds.size;
+                totals.set(currency, current);
+                continue;
+            }
+
+            for (const item of items) {
+                const currency = this.itemRevenueCurrency(item, order);
+                const current = totals.get(currency) || { currency, amount: 0, count: 0, orderIds: new Set<string>() };
+                const quantity = Number(item.quantity || 0);
+                current.amount += quantity * this.itemRevenueUnitPrice(item);
+                current.orderIds.add(order.id);
+                current.count = current.orderIds.size;
+                totals.set(currency, current);
+            }
         }
 
-        const result = Array.from(totals.values()).sort((a, b) => a.currency.localeCompare(b.currency));
+        const result = Array.from(totals.values())
+            .map(({ currency, amount, count }) => ({ currency, amount, count }))
+            .sort((a, b) => a.currency.localeCompare(b.currency));
         for (const currency of ["CDF", "USD"]) {
             if (!result.some((item) => item.currency === currency)) {
                 result.push({ currency, amount: 0, count: 0 });
             }
         }
         return result.sort((a, b) => a.currency.localeCompare(b.currency));
+    }
+
+    private itemRevenueCurrency(item: Order["items"][number], order: Order): string {
+        return this.normalizeCurrency(item.original_currency || order.currency || item.plat?.currency);
+    }
+
+    private itemRevenueUnitPrice(item: Order["items"][number]): number {
+        const originalPrice = item.original_price;
+        if (originalPrice !== null && originalPrice !== undefined && originalPrice !== "") {
+            return Number(originalPrice || 0);
+        }
+
+        return Number(item.price_at_order || item.converted_price || 0);
+    }
+
+    private normalizeCurrency(currency?: string | null): string {
+        const value = String(currency || "USD").trim().toUpperCase();
+        return value || "USD";
     }
 
     private toInputDate(date: Date): string {

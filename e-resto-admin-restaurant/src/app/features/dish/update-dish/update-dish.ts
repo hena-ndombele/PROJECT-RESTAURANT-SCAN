@@ -184,7 +184,7 @@ export class UpdateDish implements OnInit, OnDestroy {
                 this.isLoading.set(false);
                 Swal.fire({
                     title: "Mis à jour !",
-                    text: "Plat mis à jour avec succès",
+                    text: "Menu mis à jour avec succès",
                     icon: "success",
                     timer: 2000,
                     confirmButtonColor: "#28a745",

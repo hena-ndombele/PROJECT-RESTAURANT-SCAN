@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Events\ReservationCreated;
+use App\Events\ReservationChanged;
 use App\Http\Controllers\Controller;
 use App\Mail\ReservationStatusMail;
 use App\Models\Reservation;
@@ -73,7 +74,7 @@ class ReservationController extends Controller
             }
 
             return response()->json([
-                'message' => 'Demande de reservation envoyée. Le restaurant va confirmer la disponibilité par email.',
+                'message' => 'Demande de réservation envoyée. Le restaurant va confirmer la disponibilité par email.',
                 'data' => $reservation->load(['table', 'restaurant']),
             ], 201);
         });
@@ -148,6 +149,8 @@ class ReservationController extends Controller
                 DB::afterCommit(fn () => $this->sendReservationStatusMail($freshReservation));
             }
 
+            DB::afterCommit(fn () => $this->broadcastReservationChanged($freshReservation, 'updated'));
+
             return response()->json([
                 'message' => 'Reservation mise a jour.',
                 'data' => $freshReservation,
@@ -178,11 +181,27 @@ class ReservationController extends Controller
     public function destroy(Request $request, string $id)
     {
         $reservation = Reservation::query()
+            ->with(['table', 'restaurant'])
             ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId))
             ->findOrFail($id);
 
+        $deletedReservation = clone $reservation;
         $reservation->delete();
+        $this->broadcastReservationChanged($deletedReservation, 'deleted');
 
         return response()->json(['message' => 'Reservation supprimee.']);
+    }
+
+    private function broadcastReservationChanged(Reservation $reservation, string $action): void
+    {
+        try {
+            broadcast(new ReservationChanged($reservation, $action))->toOthers();
+        } catch (\Throwable $exception) {
+            Log::warning('Reservation changed broadcast failed', [
+                'reservation_id' => $reservation->id,
+                'action' => $action,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }

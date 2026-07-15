@@ -384,7 +384,8 @@ class GroupOrderController extends Controller
             }
 
             $total = 0;
-            $currency = $lockedGroupOrder->restaurant->currency ?? 'CDF';
+            $currency = $this->restaurantCurrency($lockedGroupOrder->restaurant);
+            $exchangeRate = $this->usdCdfRate($lockedGroupOrder->restaurant);
             $itemsByPlat = $lockedGroupOrder->items
                 ->groupBy('plat_id')
                 ->map(fn ($items) => [
@@ -415,21 +416,26 @@ class GroupOrderController extends Controller
                     throw new \RuntimeException("Un plat de cette commande n'est plus disponible.");
                 }
 
-                $price = $plat->currentPrice();
+                $pricing = $this->convertedPlatPricing($plat, $currency, $exchangeRate);
 
                 $order->items()->create([
                     'plat_id' => $plat->id,
                     'quantity' => $row['quantity'],
-                    'price_at_order' => $price,
+                    'price_at_order' => $pricing['converted_price'],
+                    'original_price' => $pricing['original_price'],
+                    'original_currency' => $pricing['original_currency'],
+                    'converted_price' => $pricing['converted_price'],
+                    'conversion_rate' => $pricing['conversion_rate'],
                 ]);
 
-                $total += (float) $price * (int) $row['quantity'];
-                $currency = $plat->currency;
+                $total += (float) $pricing['converted_price'] * (int) $row['quantity'];
             }
 
             $order->update([
-                'total_amount' => $total,
+                'total_amount' => round($total, 2),
                 'currency' => $currency,
+                'exchange_rate' => $exchangeRate,
+                'exchange_rate_pair' => 'USD/CDF',
             ]);
 
             $payment = Payment::create([
@@ -438,7 +444,7 @@ class GroupOrderController extends Controller
                 'type' => 'order',
                 'method' => 'cash',
                 'status' => 'unpaid',
-                'amount' => $total,
+                'amount' => round($total, 2),
                 'currency' => $currency,
                 'reference' => 'ORD-' . Str::upper(substr($order->id, 0, 8)),
                 'metadata' => [
@@ -550,8 +556,16 @@ class GroupOrderController extends Controller
 
     private function groupOrderPayload(GroupOrder $groupOrder): array
     {
-        $total = $groupOrder->items->sum(fn ($item) => (float) $item->price_at_add * (int) $item->quantity);
-        $currency = $groupOrder->items->first()?->plat?->currency ?? $groupOrder->restaurant?->currency ?? 'CDF';
+        $currency = $this->restaurantCurrency($groupOrder->restaurant);
+        $exchangeRate = $this->usdCdfRate($groupOrder->restaurant);
+        $total = $groupOrder->items->sum(function ($item) use ($currency, $exchangeRate) {
+            if (!$item->plat) {
+                return 0;
+            }
+
+            $pricing = $this->convertedPlatPricing($item->plat, $currency, $exchangeRate);
+            return (float) $pricing['converted_price'] * (int) $item->quantity;
+        });
         $readiness = $this->readinessState($groupOrder);
 
         return [
@@ -576,8 +590,10 @@ class GroupOrderController extends Controller
             'expires_at' => $groupOrder->expires_at?->toIso8601String(),
             'checked_out_at' => $groupOrder->checked_out_at?->toIso8601String(),
             'order_id' => $groupOrder->order_id,
-            'total_amount' => $total,
+            'total_amount' => round($total, 2),
             'currency' => $currency,
+            'exchange_rate' => $exchangeRate,
+            'exchange_rate_pair' => 'USD/CDF',
             'can_checkout' => $readiness['can_checkout'],
             'readiness' => $readiness,
             'participants' => $groupOrder->participants->map(fn ($participant) => [
@@ -592,9 +608,9 @@ class GroupOrderController extends Controller
                 'is_ready' => (bool) $participant->is_ready,
                 'is_active' => $this->participantIsActive($participant),
                 'last_seen_at' => $participant->last_seen_at?->toIso8601String(),
-                'items' => $participant->items->map(fn ($item) => $this->itemPayload($item))->values(),
+                'items' => $participant->items->map(fn ($item) => $this->itemPayload($item, $currency, $exchangeRate))->values(),
             ])->values(),
-            'items' => $groupOrder->items->map(fn ($item) => $this->itemPayload($item))->values(),
+            'items' => $groupOrder->items->map(fn ($item) => $this->itemPayload($item, $currency, $exchangeRate))->values(),
         ];
     }
 
@@ -613,8 +629,19 @@ class GroupOrderController extends Controller
             ->all();
     }
 
-    private function itemPayload(GroupOrderItem $item): array
+    private function itemPayload(GroupOrderItem $item, ?string $targetCurrency = null, ?float $exchangeRate = null): array
     {
+        $targetCurrency = $targetCurrency ?: $this->restaurantCurrency($item->groupOrder?->restaurant);
+        $exchangeRate = $exchangeRate ?: $this->usdCdfRate($item->groupOrder?->restaurant);
+        $pricing = $item->plat
+            ? $this->convertedPlatPricing($item->plat, $targetCurrency, $exchangeRate)
+            : [
+                'original_price' => (float) $item->price_at_add,
+                'original_currency' => $targetCurrency,
+                'converted_price' => (float) $item->price_at_add,
+                'conversion_rate' => 1,
+            ];
+
         return [
             'id' => $item->id,
             'participant_id' => $item->group_order_participant_id,
@@ -622,8 +649,12 @@ class GroupOrderController extends Controller
             'plat_id' => $item->plat_id,
             'name' => $item->plat?->name,
             'quantity' => $item->quantity,
-            'price' => (float) $item->price_at_add,
-            'subtotal' => (float) $item->price_at_add * (int) $item->quantity,
+            'price' => (float) $pricing['converted_price'],
+            'subtotal' => (float) $pricing['converted_price'] * (int) $item->quantity,
+            'currency' => $targetCurrency,
+            'original_price' => (float) $pricing['original_price'],
+            'original_currency' => $pricing['original_currency'],
+            'conversion_rate' => (float) $pricing['conversion_rate'],
             'note' => $item->note,
             'category' => $item->plat?->category ? [
                 'id' => $item->plat->category->id,
@@ -755,6 +786,53 @@ class GroupOrderController extends Controller
         } while (Order::where('tracking_code', $code)->exists());
 
         return $code;
+    }
+
+    private function restaurantCurrency(?Restaurant $restaurant): string
+    {
+        $currency = strtoupper((string) ($restaurant?->currency ?: 'CDF'));
+        return in_array($currency, ['CDF', 'USD'], true) ? $currency : 'CDF';
+    }
+
+    private function usdCdfRate(?Restaurant $restaurant): float
+    {
+        $settings = $restaurant?->settings ?? [];
+        $rate = (float) ($settings['usd_cdf_rate'] ?? $settings['exchange_rate_usd_cdf'] ?? 2850);
+
+        return $rate > 0 ? $rate : 2850;
+    }
+
+    private function convertedPlatPricing(Plat $plat, string $targetCurrency, float $usdCdfRate): array
+    {
+        $originalCurrency = strtoupper((string) ($plat->currency ?: $targetCurrency));
+        $originalCurrency = in_array($originalCurrency, ['CDF', 'USD'], true) ? $originalCurrency : $targetCurrency;
+        $originalPrice = round((float) $plat->currentPrice(), 2);
+        $conversionRate = $this->conversionRate($originalCurrency, $targetCurrency, $usdCdfRate);
+        $convertedPrice = round($originalPrice * $conversionRate, 2);
+
+        return [
+            'original_price' => $originalPrice,
+            'original_currency' => $originalCurrency,
+            'converted_price' => $convertedPrice,
+            'conversion_rate' => $conversionRate,
+        ];
+    }
+
+    private function conversionRate(string $fromCurrency, string $toCurrency, float $usdCdfRate): float
+    {
+        if ($fromCurrency === $toCurrency) {
+            return 1.0;
+        }
+
+        if ($fromCurrency === 'USD' && $toCurrency === 'CDF') {
+            return $usdCdfRate;
+        }
+
+        if ($fromCurrency === 'CDF' && $toCurrency === 'USD') {
+            return round(1 / $usdCdfRate, 6);
+        }
+
+        return 1.0;
     }
 
     private function generateCreatorCode(): string

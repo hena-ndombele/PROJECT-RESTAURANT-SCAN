@@ -261,7 +261,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
     protected openIncomingOrder(orderId?: string): void {
         this.dismissIncomingOrder(orderId);
-        this.router.navigate(['/orders/list']);
+        this.router.navigate(['/orders/list'], { queryParams: { status: 'pending' } });
     }
 
     protected incomingOrderIndex(index: number): number {
@@ -593,7 +593,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             this.restaurantData.features?.multi_restaurant &&
             (
                 this.restaurantData.can_manage_business_restaurants ||
-                this.permissions.hasAnyRole(['multi-tenant', 'multi-restaurant', 'multi-restaurants']) ||
+                this.permissions.has('business-restaurants.manage') ||
                 isBusinessOwner
             )
         );
@@ -635,21 +635,18 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             secondary: '#d71920',
             surface: '#fff7ef',
         };
-        const planFeatures = this.featuresFromPlan(restaurant?.plan);
-        const features = {
-            ...planFeatures,
-            ...(restaurant?.features || {}),
-        };
-        const canCustomize = Boolean(features.customization);
         const theme = restaurant?.theme || restaurant?.settings?.theme || restaurant?.settings || {};
-        const hasCustomTheme = canCustomize && this.hasCustomizedTheme(theme);
-        const primary = this.normalizeColor(hasCustomTheme ? theme.primary_color || theme.primary || theme.accent : null, defaultTheme.primary);
-        const secondary = this.normalizeColor(hasCustomTheme ? theme.secondary_color || theme.secondary : null, defaultTheme.secondary);
-        const surface = this.normalizeColor(hasCustomTheme ? theme.background_color || theme.background || theme.surface : null, defaultTheme.surface);
+        const primary = this.normalizeColor(
+            theme.primary_color || theme.primary || theme.accent || restaurant?.primary_color,
+            defaultTheme.primary
+        );
+        const secondary = primary;
+        const surface = this.normalizeColor(
+            theme.background_color || theme.background || theme.surface || restaurant?.background_color,
+            defaultTheme.surface
+        );
         const primaryRgb = this.hexToRgb(primary);
-        const buttonBackground = hasCustomTheme
-            ? primary
-            : 'linear-gradient(135deg, #ff7a1a, #d71920)';
+        const buttonBackground = primary;
 
         document.body.classList.add('restaurant-theme');
         document.documentElement.style.setProperty('--dashboard-primary', primary);
@@ -661,7 +658,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         document.documentElement.style.setProperty('--bs-primary', primary);
         document.documentElement.style.setProperty('--bs-primary-rgb', primaryRgb);
         document.documentElement.style.setProperty('--bs-link-color', primary);
-        document.documentElement.style.setProperty('--bs-link-hover-color', secondary);
+        document.documentElement.style.setProperty('--bs-link-hover-color', primary);
         this.setBrowserThemeColor(primary);
     }
 

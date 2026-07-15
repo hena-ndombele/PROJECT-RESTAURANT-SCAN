@@ -68,7 +68,7 @@
         <article>
           <span>Plats</span>
           <strong>{{ planUsage()?.usage?.dishes || 0 }}</strong>
-          <small>{{ planUsage()?.messages?.dishes || 'Plats publies' }}</small>
+          <small>{{ planUsage()?.messages?.dishes || 'Plats publiés' }}</small>
         </article>
       </div>
     </section>
@@ -96,10 +96,6 @@
           <span>Ville</span>
           <input [(ngModel)]="restaurant.city" name="city" [disabled]="!canUpdateSettings()">
         </label>
-        <label class="wide">
-          <span>Adresse</span>
-          <input [(ngModel)]="restaurant.address" name="address" [disabled]="!canUpdateSettings()" placeholder="Ex: Bandalungwa, Kinshasa">
-        </label>
         <label>
           <span>Devise par défaut</span>
           <select [(ngModel)]="restaurant.currency" name="currency" [disabled]="!canUpdateSettings()">
@@ -108,12 +104,20 @@
           </select>
         </label>
         <label>
+          <span>Taux de change (1 USD = CDF)</span>
+          <input type="number" min="1" step="0.01" [(ngModel)]="restaurant.settings.usd_cdf_rate" name="usd_cdf_rate" [disabled]="!canUpdateSettings()">
+        </label>
+        <label>
           <span>Heure d'ouverture</span>
           <input type="time" [(ngModel)]="restaurant.settings.opening_time" name="opening_time" [disabled]="!canUpdateSettings()">
         </label>
         <label>
           <span>Heure de fermeture</span>
           <input type="time" [(ngModel)]="restaurant.settings.closing_time" name="closing_time" [disabled]="!canUpdateSettings()">
+        </label>
+        <label class="wide">
+          <span>Adresse</span>
+          <textarea rows="3" [(ngModel)]="restaurant.address" name="address" [disabled]="!canUpdateSettings()" placeholder="Ex: Bandalungwa, Kinshasa"></textarea>
         </label>
       </div>
     </section>
@@ -166,7 +170,7 @@
       <h2><i class="bi bi-qr-code"></i> Template QR table</h2>
       <p class="section-help">Choisissez le design qui sera imprimé ou téléchargé pour être déposé sur les tables.</p>
 
-      @if (!canCustomize()) {
+      @if (!canUsePremiumQrTemplates()) {
         <div class="template-upgrade-note">
           <i class="bi bi-lock-fill"></i>
           <span>Les templates QR premium sont disponibles avec les plans Pro et Business.</span>
@@ -188,8 +192,8 @@
         <button type="button"
                 class="qr-template-card"
                 [class.active]="restaurant.settings.qr_template === 'poster'"
-                [disabled]="!canCustomize()"
-                (click)="restaurant.settings.qr_template = 'poster'">
+                [disabled]="!canUsePremiumQrTemplates()"
+                (click)="canUsePremiumQrTemplates() && (restaurant.settings.qr_template = 'poster')">
           <span class="template-preview poster-preview">
             <img src="assets/images/premuim1.PNG" alt="Apercu affiche elegante">
           </span>
@@ -199,8 +203,8 @@
         <button type="button"
                 class="qr-template-card"
                 [class.active]="restaurant.settings.qr_template === 'table_tent'"
-                [disabled]="!canCustomize()"
-                (click)="restaurant.settings.qr_template = 'table_tent'">
+                [disabled]="!canUsePremiumQrTemplates()"
+                (click)="canUsePremiumQrTemplates() && (restaurant.settings.qr_template = 'table_tent')">
           <span class="template-preview tent-preview">
             <img src="assets/images/premuim2.PNG" alt="Apercu table tent promo">
           </span>

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use BaconQrCode\Common\ErrorCorrectionLevel;
+use BaconQrCode\Encoder\Encoder;
 use App\Models\Order;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -33,6 +35,7 @@ class ReceiptPdfService
         $primary = $this->themeColor($order, 'primary', '#f97316');
         $logo = $this->logoImage($order);
         $tableLabel = $this->tableLabel($order);
+        $receiptUrl = $this->receiptAppUrl($order);
 
         $content = '';
         $content .= $this->rect(0, 760, 595, 82, '#111827');
@@ -92,11 +95,54 @@ class ReceiptPdfService
             $content .= $this->text(54, $y - 94, 10, 'Note client : ' . $this->truncate($order->note, 82), 'F1', '#374151');
         }
 
-        $content .= $this->line(38, 98, 557, 98, '#e5e7eb');
+        $content .= $this->line(38, 118, 557, 118, '#e5e7eb');
+        $content .= $this->drawQrCode($receiptUrl, 456, 36, 74);
         $content .= $this->text(52, 74, 11, 'Merci pour votre visite chez ' . $restaurantName . '.', 'F2', '#111827');
         $content .= $this->text(52, 54, 9, 'Reçu généré automatiquement par Restaurant Scan.', 'F1', '#6b7280');
 
         return $this->buildPdf($content, $logo);
+    }
+
+    private function receiptAppUrl(Order $order): string
+    {
+        $baseUrl = rtrim(env('CLIENT_FRONTEND_URL', config('app.url')), '/');
+        $params = [
+            'restaurant_slug' => $order->restaurant?->slug,
+            'order_id' => $order->id,
+            'tracking_code' => $order->tracking_code,
+        ];
+
+        return $baseUrl . '/?' . http_build_query(array_filter($params));
+    }
+
+    private function drawQrCode(string $value, float $x, float $y, float $size): string
+    {
+        try {
+            $qrCode = Encoder::encode($value, ErrorCorrectionLevel::M(), 'UTF-8');
+            $matrix = $qrCode->getMatrix();
+        } catch (\Throwable) {
+            return '';
+        }
+
+        $matrixSize = $matrix->getWidth();
+        $quietZone = 4;
+        $moduleSize = $size / ($matrixSize + ($quietZone * 2));
+        $content = $this->rect($x - 4, $y - 4, $size + 8, $size + 8, '#ffffff', '#e5e7eb');
+        $content .= "0 0 0 rg\n";
+
+        for ($row = 0; $row < $matrixSize; $row++) {
+            for ($col = 0; $col < $matrixSize; $col++) {
+                if (!$matrix->get($col, $row)) {
+                    continue;
+                }
+
+                $moduleX = $x + (($col + $quietZone) * $moduleSize);
+                $moduleY = $y + $size - (($row + $quietZone + 1) * $moduleSize);
+                $content .= "{$moduleX} {$moduleY} {$moduleSize} {$moduleSize} re f\n";
+            }
+        }
+
+        return $content;
     }
 
     private function buildPdf(string $content, ?array $logo): string

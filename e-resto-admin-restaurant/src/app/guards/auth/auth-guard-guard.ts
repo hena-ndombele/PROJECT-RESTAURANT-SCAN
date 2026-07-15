@@ -16,6 +16,7 @@ export class AuthGuard implements CanActivate {
     { path: '/dish/list-dish', permission: 'plats.list' },
     { path: '/category/list-category', permission: 'categories.list' },
     { path: '/agents/list-agent', permission: 'agents.list' },
+    { path: '/restaurant/subscription', permission: 'subscription.view' },
     { path: '/auth/profile', permission: 'profile.view' },
   ];
 

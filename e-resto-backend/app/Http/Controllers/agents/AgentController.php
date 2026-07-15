@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class AgentController extends Controller
 {
@@ -79,19 +78,13 @@ class AgentController extends Controller
                     'emergency_contact_phone' => $validated['emergency_contact_phone'] ?? null,
                 ]);
 
-                $agent = $agent->fresh();
-
-                return [
-                    'agent' => $agent,
-                    'qr_code' => $this->agentQrCode($agent),
-                ];
+                return $agent->fresh();
             });
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Employe cree avec succes',
-                'agent' => $this->agentPayload($result['agent']),
-                'qr_code' => $result['qr_code'],
+                'agent' => $this->agentPayload($result),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -143,7 +136,6 @@ class AgentController extends Controller
                 'name' => $agent->restaurant?->name,
                 'logo_data_url' => $this->publicDiskDataUrl($agent->restaurant?->logo),
             ],
-            'qr_code' => $this->agentQrCode($agent),
         ], 200);
     }
 
@@ -277,17 +269,6 @@ class AgentController extends Controller
         } while (Agent::where('matricule', $matricule)->exists());
 
         return $matricule;
-    }
-
-    private function agentQrCode(Agent $agent): string
-    {
-        $svg = QrCode::format('svg')
-            ->size(260)
-            ->errorCorrection('H')
-            ->margin(1)
-            ->generate($this->verificationUrl($agent));
-
-        return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
     private function verificationUrl(Agent $agent): string

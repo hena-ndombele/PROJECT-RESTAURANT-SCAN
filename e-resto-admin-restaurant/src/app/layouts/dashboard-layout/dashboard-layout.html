@@ -20,10 +20,12 @@
             </h6>
             <div class="d-flex align-items-center gap-1">
                 <span class="badge-admin">{{ restaurantData.city || 'RESTAURANT' }}</span>
-                <span class="subscription-pill" [ngClass]="subscriptionInfo.tone">
-                    <i class="ti ti-calendar-stats"></i>
-                    {{ subscriptionInfo.shortLabel }}
-                </span>
+                @if (canAccess('subscription.view')) {
+                    <span class="subscription-pill" [ngClass]="subscriptionInfo.tone">
+                        <i class="ti ti-calendar-stats"></i>
+                        {{ subscriptionInfo.shortLabel }}
+                    </span>
+                }
             </div>
         </div>
     </div>
@@ -248,19 +250,21 @@
                         </div>
                     </div>
                     <div class="px-2 pt-2">
-                        <div class="session-summary">
-                            <div>
-                                <span>Abonnement</span>
-                                <strong>{{ subscriptionInfo.label }}</strong>
-                                <small>{{ subscriptionInfo.detail }}</small>
+                        @if (canAccess('subscription.view')) {
+                            <div class="session-summary">
+                                <div>
+                                    <span>Abonnement</span>
+                                    <strong>{{ subscriptionInfo.label }}</strong>
+                                    <small>{{ subscriptionInfo.detail }}</small>
+                                </div>
+                                <i class="ti ti-clock-dollar"></i>
                             </div>
-                            <i class="ti ti-clock-dollar"></i>
-                        </div>
-                        @if (subscriptionInfo.expiresAt) {
-                            <div class="session-meta">
-                                <i class="ti ti-calendar-due"></i>
-                                Fin prevue le {{ subscriptionInfo.expiresAt | date:'dd/MM/yyyy HH:mm' }}
-                            </div>
+                            @if (subscriptionInfo.expiresAt) {
+                                <div class="session-meta">
+                                    <i class="ti ti-calendar-due"></i>
+                                    Fin prevue le {{ subscriptionInfo.expiresAt | date:'dd/MM/yyyy HH:mm' }}
+                                </div>
+                            }
                         }
                         <div class="session-meta">
                             <i class="ti ti-login-2"></i>
@@ -268,10 +272,12 @@
                         </div>
                     </div>
                     <div class="p-2 d-flex flex-column gap-1">
-                        <a class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2"
-                           routerLink="/auth/profile">
-                            <i class="ti ti-user-circle fs-5 text-primary"></i> {{ 'topbar.profile' | translate }}
-                        </a>
+                        @if (canAccess('profile.view')) {
+                            <a class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2"
+                               routerLink="/auth/profile">
+                                <i class="ti ti-user-circle fs-5 text-primary"></i> {{ 'topbar.profile' | translate }}
+                            </a>
+                        }
 
 
                         <button class="dropdown-item rounded-2 d-flex align-items-center gap-3 py-2 text-black "
@@ -346,7 +352,7 @@
 
             @if (canAccess('orders.list')) {
             <li>
-                <a routerLink="/orders/list" routerLinkActive="active"
+                <a routerLink="/orders/list" [queryParams]="{ status: 'pending' }" routerLinkActive="active"
                    class="nav-link d-flex align-items-center"
                    (click)="closeMobileSidebar()">
 
@@ -373,9 +379,9 @@
 
             @if (canUse('reservations') && canAccess('reservations.list')) {
             <li>
-                <a routerLink="/table/reservation-table" routerLinkActive="active" class="nav-link"
+                <a routerLink="/table/reservation-table" [queryParams]="{ status: 'pending' }" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
-                    <i class="ti ti-calendar-event"></i><span class="nav-text">Reservations</span>
+                    <i class="ti ti-calendar-event"></i><span class="nav-text">Réservations</span>
                     @if (pendingReservationsCount > 0) {
                         <span class="badge rounded-pill bg-danger shadow-sm border border-2 border-white ms-2">
                             {{ pendingReservationsCount }}
@@ -394,12 +400,14 @@
             </li>
             }
 
+            @if (canAccess('subscription.view')) {
             <li>
                 <a routerLink="/restaurant/subscription" routerLinkActive="active" class="nav-link"
                    (click)="closeMobileSidebar()">
                     <i class="ti ti-credit-card"></i><span class="nav-text">Abonnement</span>
                 </a>
             </li>
+            }
 
 
             @if (canUse('feedback') && canAccess('feedback.list')) {
