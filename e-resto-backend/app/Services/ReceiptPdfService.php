@@ -313,7 +313,7 @@ class ReceiptPdfService
     {
         $tableName = trim((string) ($order->table?->name ?? ''));
 
-        if ($order->order_type === 'remote' || strcasecmp($tableName, 'Commandes hors restaurant') === 0) {
+        if ($order->order_type === 'remote' || strcasecmp($tableName, 'Commandes en ligne') === 0) {
             return 'WhatsApp';
         }
 

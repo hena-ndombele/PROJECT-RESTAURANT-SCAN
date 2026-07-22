@@ -855,13 +855,13 @@ class OrderController extends Controller
         }
 
         if (!$restaurant) {
-            throw new \InvalidArgumentException('Restaurant introuvable pour la commande hors restaurant.');
+            throw new \InvalidArgumentException('Restaurant introuvable pour la commande en ligne.');
         }
 
         return Table::firstOrCreate(
             [
                 'restaurant_id' => $restaurant->id,
-                'name' => 'Commandes hors restaurant',
+                'name' => 'Commandes en ligne',
             ],
             [
                 'capacity' => 1,

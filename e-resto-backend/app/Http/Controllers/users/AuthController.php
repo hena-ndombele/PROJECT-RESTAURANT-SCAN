@@ -96,6 +96,36 @@ class AuthController extends Controller
         ]);
     }
 
+    public function mobileLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Identifiants incorrects'], 401);
+        }
+
+        if (!$user->restaurant_id) {
+            return response()->json(['message' => 'Ce compte utilisateur n est lie a aucun restaurant.'], 403);
+        }
+
+        $expiresAt = $this->tokenExpiresAt();
+        $token = $user->createToken('Mobile Staff API Token', ['*'], $expiresAt)->plainTextToken;
+        $user->load('roles.permissions', 'restaurant.plan', 'restaurant.subscription', 'agent');
+
+        return response()->json([
+            'message' => 'Connexion mobile reussie',
+            'token' => $token,
+            'token_expires_at' => $expiresAt->toIso8601String(),
+            'user' => $user,
+            'restaurant' => $user->restaurant,
+        ]);
+    }
+
     public function adminLogin(Request $request)
     {
         $request->validate([

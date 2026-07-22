@@ -761,7 +761,7 @@ class GroupOrderController extends Controller
         return Table::firstOrCreate(
             [
                 'restaurant_id' => $restaurant->id,
-                'name' => 'Commandes hors restaurant',
+                'name' => 'Commandes en ligne',
             ],
             [
                 'capacity' => 1,

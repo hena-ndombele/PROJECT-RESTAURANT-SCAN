@@ -12,7 +12,7 @@ function paymentMethodLabel(order) {
 
 function tableDisplay(order) {
   const tableName = String(order?.table?.name || '').trim();
-  if (order?.order_type === 'remote' || tableName.toLowerCase() === 'commandes hors restaurant') {
+  if (order?.order_type === 'remote' || ['commandes en ligne', 'commandes hors restaurant'].includes(tableName.toLowerCase())) {
     return 'WhatsApp';
   }
 

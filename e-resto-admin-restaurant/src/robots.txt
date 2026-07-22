@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /agents
+Disallow: /category
+Disallow: /dish
+Disallow: /feedback
+Disallow: /identity
+Disallow: /orders
+Disallow: /restaurant/login
+Disallow: /restaurant/checkout
+Disallow: /restaurant/settings
+Disallow: /restaurant/subscription
+Disallow: /table
+Disallow: /tables
+
+Sitemap: https://restaurant.restaurascan.com/sitemap.xml

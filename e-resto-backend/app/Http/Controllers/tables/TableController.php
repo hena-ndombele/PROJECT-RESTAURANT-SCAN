@@ -5,6 +5,7 @@ namespace App\Http\Controllers\tables;
 use App\Http\Controllers\Controller;
 use App\Models\Table;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -139,7 +140,7 @@ class TableController extends Controller
     private function scopedTables(Request $request)
     {
         return Table::query()
-            ->where('name', '!=', 'Commandes hors restaurant')
+            ->whereNotIn(DB::raw('LOWER(name)'), ['commandes en ligne', 'commandes hors restaurant'])
             ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId));
     }
 
@@ -201,7 +202,7 @@ class TableController extends Controller
             $query['restaurant_slug'] = $slug;
         }
 
-        return rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.67:5173'), '/') . '/?' . http_build_query($query);
+        return rtrim(env('CLIENT_FRONTEND_URL', 'http://172.20.10.5:5173'), '/') . '/?' . http_build_query($query);
     }
 
     private function generateTableQrCode(Table $table, string $url): string

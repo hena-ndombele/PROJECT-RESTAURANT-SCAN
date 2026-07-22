@@ -107,7 +107,7 @@ class OrderEmailFollowupService
     {
         $baseUrl = rtrim(env('CLIENT_FRONTEND_URL', env('FRONT_CLIENT_URL', config('app.url'))), '/');
         $tableName = trim((string) ($order->table?->name ?? ''));
-        $tableId = ($order->order_type === 'remote' || strcasecmp($tableName, 'Commandes hors restaurant') === 0)
+        $tableId = ($order->order_type === 'remote' || strcasecmp($tableName, 'Commandes en ligne') === 0)
             ? null
             : $order->table_id;
         $query = array_filter([

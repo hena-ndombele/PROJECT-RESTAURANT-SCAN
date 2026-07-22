@@ -1,12 +1,12 @@
 {
   "/api": {
-    "target": "http://192.168.1.72:8000",
+    "target": "http://192.168.1.71:8000",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
   },
   "/storage": {
-    "target": "http://192.168.1.72:8000",
+    "target": "http://192.168.1.71:8000",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"

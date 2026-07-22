@@ -140,7 +140,7 @@ export class ListTable implements OnInit {
                     ? response.tables
                     : [];
 
-        return tables.filter((table: TableDto) => table?.name !== 'Commandes hors restaurant');
+        return tables.filter((table: TableDto) => !['Commandes en ligne', 'Commandes hors restaurant'].includes(String(table?.name || '').trim()));
     }
 
     loadPlanUsage(): void {

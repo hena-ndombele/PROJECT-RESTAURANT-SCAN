@@ -19,6 +19,7 @@ use App\Http\Controllers\Saas\SaasController;
 //users
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/auth/mobile/login', [AuthController::class, 'mobileLogin']);
 Route::post('/admin/auth/login', [AuthController::class, 'adminLogin']);
 Route::post('/admin/auth/verify-otp', [AuthController::class, 'adminVerifyOtp']);
 Route::post('/otp/request', [AuthController::class, 'requestOtp']);

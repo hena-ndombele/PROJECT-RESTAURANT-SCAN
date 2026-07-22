@@ -59,7 +59,7 @@ const BILL_REQUEST_STORAGE_PREFIX = 'e-resto-bill-requested-';
 const GROUP_ORDER_STORAGE_PREFIX = 'e-resto-group-order-';
 const CART_DRAFT_STORAGE_PREFIX = 'e-resto-cart-draft-';
 const EMAIL_PREFERENCES_STORAGE_KEY = 'e-resto-email-preferences';
-const REMOTE_TABLE_NAME = 'Commandes hors restaurant';
+const REMOTE_TABLE_NAME = 'Commandes en ligne';
 let notificationAudioContext;
 let notificationAudioUnlocked = false;
 
@@ -70,7 +70,8 @@ const dishSizeLabels = {
 };
 
 function isRemoteTableName(name) {
-  return String(name || '').trim().toLowerCase() === REMOTE_TABLE_NAME.toLowerCase();
+  const value = String(name || '').trim().toLowerCase();
+  return value === REMOTE_TABLE_NAME.toLowerCase() || value === 'commandes hors restaurant';
 }
 
 function orderTableDisplay(order) {
@@ -2221,7 +2222,7 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
             ) : null}
             {!tableId && !whatsappOrderPhone ? (
               <div className="client-alert error">
-                Le restaurant doit configurer un numéro WhatsApp pour recevoir les commandes hors restaurant.
+                Le restaurant doit configurer un numéro WhatsApp pour recevoir les commandes en ligne.
               </div>
             ) : null}
             {!tableId && (
@@ -2981,7 +2982,7 @@ function OrderStatusTracker({ order, tableId, onOrderUpdate, onStatusNotificatio
             </div>
             <div>
               <small>Service</small>
-              <strong>{order.order_type === 'remote' ? 'Hors restaurant' : order.order_type === 'takeaway' ? 'A emporter' : 'Sur place'}</strong>
+              <strong>{order.order_type === 'remote' ? 'En ligne' : order.order_type === 'takeaway' ? 'A emporter' : 'Sur place'}</strong>
             </div>
           </div>
 
