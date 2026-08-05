@@ -292,6 +292,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
     protected openBusinessRestaurantForm(): void {
         this.businessRestaurantFormOpen = true;
+        this.businessRestaurantPanelOpen = false;
         this.businessRestaurantForm.reset({
             name: '',
             city: '',
@@ -338,6 +339,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
                 this.businessRestaurantSaving = false;
                 this.businessRestaurantFormOpen = false;
                 this.businessRestaurants = [...this.businessRestaurants, response.restaurant].filter(Boolean);
+                document.getElementById('businessRestaurantModalClose')?.click();
                 Swal.fire({
                     icon: 'success',
                     title: 'Restaurant ajouté',

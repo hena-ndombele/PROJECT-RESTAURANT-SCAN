@@ -1,4 +1,4 @@
-@if (tableDetail; as detail) {
+﻿@if (tableDetail; as detail) {
 <button type="button"
         class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
         style="width: 35px; height: 35px; border: 2px solid var(--bs-secondary); background-color: transparent;"
@@ -7,7 +7,7 @@
     <i class="ti ti-eye fs-4"></i>
 </button>
 
-<div class="modal fade table-qr-modal" id="showTableModal{{detail.id}}" tabindex="-1" aria-hidden="true">
+<div class="modal fade table-qr-modal" id="showTableModal{{detail.id}}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered table-qr-dialog">
         <div class="modal-content table-qr-content shadow-lg">
             <div class="modal-header table-qr-header">

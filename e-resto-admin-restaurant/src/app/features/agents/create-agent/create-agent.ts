@@ -117,7 +117,7 @@ export class CreateAgent {
           text: message,
           icon: "error",
           confirmButtonColor: "#d33",
-          confirmButtonText: "Reessayer"
+          confirmButtonText: "Réessayer"
         });
       }
     });

@@ -12,6 +12,7 @@ class Order extends Model
         'restaurant_id',
         'tracking_code',
         'table_id',
+        'table_session_id',
         'order_type',
         'total_amount',
         'currency',
@@ -52,6 +53,11 @@ class Order extends Model
     public function table()
     {
         return $this->belongsTo(Table::class);
+    }
+
+    public function tableSession()
+    {
+        return $this->belongsTo(TableSession::class);
     }
 
     public function restaurant()

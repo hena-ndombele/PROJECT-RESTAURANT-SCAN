@@ -581,6 +581,52 @@ th {
   cursor: not-allowed;
 }
 
+:host ::ng-deep .subscription-swal {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+:host ::ng-deep .subscription-swal-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #ffffff;
+  background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920));
+  font-size: 28px;
+}
+
+:host ::ng-deep .subscription-swal-icon.loading {
+  position: relative;
+}
+
+:host ::ng-deep .subscription-swal-icon.loading::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border: 3px solid rgba(var(--dashboard-primary-rgb, 255, 122, 26), .18);
+  border-top-color: var(--dashboard-primary, #ff7a1a);
+  border-radius: 999px;
+  animation: subscription-loading-spin .8s linear infinite;
+}
+
+:host ::ng-deep .subscription-swal p {
+  margin: 0;
+  color: #475569;
+}
+
+:host ::ng-deep .subscription-swal small {
+  color: #64748b;
+}
+
+@keyframes subscription-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 :host-context(body.dashboard-dark-theme) .subscription-page {
   color: #e5e7eb;
   background: #111318;

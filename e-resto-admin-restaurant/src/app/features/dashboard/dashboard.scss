@@ -200,6 +200,16 @@
     line-height: 1.25;
 }
 
+.currency-stack {
+    display: grid;
+    gap: 4px;
+}
+
+.currency-stack strong {
+    display: block;
+    white-space: nowrap;
+}
+
 .business-restaurant-cell {
     display: flex;
     align-items: center;

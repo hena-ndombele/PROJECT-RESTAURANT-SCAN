@@ -4,7 +4,7 @@ import { checkoutGroupOrder, createGroupOrder, deleteGroupOrderItem, getActiveGr
 import { buildReceiptPdf } from '../features/cart/receiptPdf';
 import { useCart } from '../features/cart/useCart';
 import { getFeedbackAvailability, submitFeedback } from '../features/feedback/feedbackApi';
-import { getPublicMenu } from '../features/menu/menuApi';
+import { createTableSession, getPublicMenu } from '../features/menu/menuApi';
 import { createReservation } from '../features/reservation/reservationApi';
 import { subscribeToGroupOrderRealtime, subscribeToMenuRealtime, subscribeToOrderRealtime } from '../shared/api/realtime';
 import { assetUrl } from '../shared/api/httpClient';
@@ -216,6 +216,8 @@ export function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [splashBrandLoaded, setSplashBrandLoaded] = useState(false);
   const [menuError, setMenuError] = useState('');
+  const [tableSession, setTableSession] = useState(null);
+  const [tableSessionError, setTableSessionError] = useState('');
   const [recoveryNotice, setRecoveryNotice] = useState('');
   const [feedbackOrder, setFeedbackOrder] = useState(null);
   const [orderConfirmation, setOrderConfirmation] = useState(null);
@@ -298,6 +300,20 @@ export function App() {
         setMenu(response);
         setScannedTable(response.table || null);
         setMenuError('');
+        if (response.table?.id && !isRemoteTableName(response.table?.name)) {
+          createTableSession(response.table.id)
+            .then((sessionResponse) => {
+              setTableSession(sessionResponse.table_session || null);
+              setTableSessionError('');
+            })
+            .catch((error) => {
+              setTableSession(null);
+              setTableSessionError(error.message || 'Impossible d activer la session de table.');
+            });
+        } else {
+          setTableSession(null);
+          setTableSessionError('');
+        }
         if (response.restaurant) {
           const nextBrand = buildClientBrand(response.restaurant);
           setBrand(nextBrand);
@@ -586,6 +602,14 @@ export function App() {
       });
       return;
     }
+    if (!tableSession?.token) {
+      setSnackbar({
+        type: 'error',
+        title: 'Session de table',
+        message: tableSessionError || 'Session de table non active. Veuillez scanner à nouveau le QR code.',
+      });
+      return;
+    }
 
     if (groupOrder?.code && groupParticipant?.id) {
       setActiveView('cart');
@@ -620,6 +644,7 @@ export function App() {
       creatingGroupOrderRef.current = true;
       const response = await createGroupOrder({
         table_id: tableId,
+        table_session_token: tableSession.token,
         creator_name: name.trim(),
         creator_email: emailPreferences?.enabled ? emailPreferences.email : undefined,
         email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.receipt),
@@ -756,8 +781,18 @@ export function App() {
 
   const submitGroupOrder = async () => {
     if (!groupOrder?.code) return;
+    const groupUsesTable = Boolean(groupOrder?.table?.id);
+    if (groupUsesTable && !tableSession?.token) {
+      setSnackbar({
+        type: 'error',
+        title: 'Session de table',
+        message: tableSessionError || 'Session de table non active. Veuillez scanner à nouveau le QR code.',
+      });
+      return;
+    }
     try {
       const response = await checkoutGroupOrder(groupOrder.code, {
+        table_session_token: groupUsesTable ? tableSession?.token : undefined,
         customer_email: emailPreferences?.enabled ? emailPreferences.email : undefined,
         email_contact: emailPreferences?.enabled ? emailPreferences.email : undefined,
         email_receipt_opt_in: Boolean(emailPreferences?.enabled && emailPreferences.receipt),
@@ -900,6 +935,8 @@ export function App() {
         {activeView === 'cart' && (
           <CartPage
             tableId={clientTableId}
+            tableSession={tableSession}
+            tableSessionError={tableSessionError}
             brand={brand}
             cart={cart}
             groupOrder={groupOrder}
@@ -1853,7 +1890,7 @@ function cartConvertedTotals(cart, brand) {
   };
 }
 
-function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQuantity, onGroupReady, onGroupEditChoice, onGroupClearMine, onGroupSubmit, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping, onDetails, emailPreferences, onEmailPreferences }) {
+function CartPage({ tableId, tableSession, tableSessionError, brand, cart, groupOrder, groupParticipant, onGroupQuantity, onGroupReady, onGroupEditChoice, onGroupClearMine, onGroupSubmit, onOrderCreated, editingOrder, onOrderUpdated, onContinueShopping, onDetails, emailPreferences, onEmailPreferences }) {
   const [note, setNote] = useState(() => readCartDraft(tableId, brand).note || '');
   const [orderType, setOrderType] = useState(() => readCartDraft(tableId, brand).orderType || 'dine_in');
   const [customerName, setCustomerName] = useState(() => readCartDraft(tableId, brand).customerName || '');
@@ -2045,9 +2082,12 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
     );
   }
   const effectiveOrderType = tableId ? orderType : 'remote';
+  const requiresTableSession = Boolean(tableId && effectiveOrderType !== 'remote');
+  const hasValidTableSession = !requiresTableSession || Boolean(tableSession?.token);
   const whatsappOrderPhone = brand?.whatsapp_order_phone || brand?.owner_phone || '';
   const canSubmit = cart.items.length > 0
     && (tableId || brand?.id || brand?.slug)
+    && hasValidTableSession
     && (effectiveOrderType !== 'remote' || (customerName.trim() && hasCompleteCongoPhone(customerPhone) && customerAddress.trim() && whatsappOrderPhone.trim()));
   const isEditing = Boolean(editingOrder?.id);
   const displayTotals = cartConvertedTotals(cart, brand);
@@ -2090,6 +2130,7 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
         restaurant_id: tableId ? undefined : brand?.id,
         restaurant_slug: tableId ? undefined : brand?.slug,
         order_type: effectiveOrderType,
+        table_session_token: requiresTableSession ? tableSession?.token : undefined,
         note: effectiveOrderType === 'remote'
           ? [note, `Adresse client: ${customerAddress}`].filter(Boolean).join('\n')
           : note,
@@ -2223,6 +2264,11 @@ function CartPage({ tableId, brand, cart, groupOrder, groupParticipant, onGroupQ
             {!tableId && !whatsappOrderPhone ? (
               <div className="client-alert error">
                 Le restaurant doit configurer un numéro WhatsApp pour recevoir les commandes en ligne.
+              </div>
+            ) : null}
+            {requiresTableSession && !hasValidTableSession ? (
+              <div className="client-alert error">
+                {tableSessionError || 'Session de table non active. Veuillez scanner à nouveau le QR code.'}
               </div>
             ) : null}
             {!tableId && (

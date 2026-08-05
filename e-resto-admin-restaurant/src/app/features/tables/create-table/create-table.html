@@ -1,18 +1,17 @@
-<button type="button"
+﻿<button type="button"
         class="btn text-black"
         [class.btn-primary]="!disabled"
         [class.btn-secondary]="disabled"
         [disabled]="disabled"
-        [title]="disabled ? limitMessage : 'Créer une table'"
+        [title]="disabled ? limitMessage : 'CrÃ©er une table'"
         [attr.data-bs-toggle]="disabled ? null : 'modal'"
         [attr.data-bs-target]="disabled ? null : '#createTableModal'">
     <i class="ti ti-plus me-1"></i> Créer une table
 </button>
 
-<div class="modal fade" id="createTableModal" tabindex="-1" aria-labelledby="createTableModalLabel" aria-hidden="true">
+<div class="modal fade" id="createTableModal" tabindex="-1" aria-labelledby="createTableModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow text-start">
-
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title fs-3 mb-1" id="createTableModalLabel" style="font-weight: bolder">Créer une nouvelle table</h5>
@@ -24,14 +23,14 @@
             <div class="modal-body p-4">
                 @if (disabled) {
                     <div class="alert alert-warning">
-                        {{ limitMessage || 'Votre forfait ne permet pas de créer plus de tables.' }}
+                        {{ limitMessage || 'Votre forfait ne permet pas de creer plus de tables.' }}
                     </div>
                 }
 
                 <form [formGroup]="tableForm" (ngSubmit)="onSubmit()" id="createTableForm">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="tableName" class="form-label">Nom de la table <span style="color:red">*</span></label>
+                            <label for="tableName" class="form-label">Nom de la table <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="tableName" formControlName="name" placeholder="Ex. TABLE 1 ou VIP 2">
                             @if (tableForm.get('name')?.invalid && tableForm.get('name')?.touched) {
                                 <small class="text-danger">Le nom est obligatoire.</small>
@@ -39,14 +38,64 @@
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="capacity" class="form-label">Capacité <span style="color:red">*</span></label>
+                            <label for="capacity" class="form-label">Capacité <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" id="capacity" formControlName="capacity" placeholder="Ex. 4">
                             @if (tableForm.get('capacity')?.invalid && tableForm.get('capacity')?.touched) {
                                 <small class="text-danger">La capacité est obligatoire (min. 1).</small>
                             }
                         </div>
 
+                        <div class="col-12 mb-3">
+                            <div class="assignment-card">
+                                <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                                    <div>
+                                        <label class="form-label mb-1">Serveurs qui reçoivent les commandes</label>
+                                        <p class="assignment-help mb-0">Choisissez tous les employés ou une liste précise.</p>
+                                    </div>
+                                    <span class="assignment-count">
+                                        {{ assignmentMode() === 'all' ? 'Tous' : selectedServerEmails().length + ' selectionne(s)' }}
+                                    </span>
+                                </div>
 
+                                <div class="assignment-mode">
+                                    <label [class.active]="assignmentMode() === 'all'">
+                                        <input type="radio" formControlName="assignment_mode" value="all">
+                                        <span>Tous les employés</span>
+                                    </label>
+                                    <label [class.active]="assignmentMode() === 'selected'">
+                                        <input type="radio" formControlName="assignment_mode" value="selected">
+                                        <span>Séléction manuelle</span>
+                                    </label>
+                                </div>
+
+                                @if (assignmentMode() === 'selected') {
+                                    <div class="server-picker mt-3">
+                                        <select class="form-select" (change)="addServerFromSelect($event)">
+                                            <option value="">Ajouter un employé...</option>
+                                            @for (agent of availableAgents(); track agent.id) {
+                                                <option [value]="agent.email">{{ agent.first_name }} {{ agent.last_name }} - {{ agent.email }}</option>
+                                            }
+                                        </select>
+
+                                        <div class="selected-tags">
+                                            @for (email of selectedServerEmails(); track email) {
+                                                <span class="server-tag">
+                                                    <span>
+                                                        <strong>{{ agentLabel(email) }}</strong>
+                                                        <small>{{ email }}</small>
+                                                    </span>
+                                                    <button type="button" (click)="removeServer(email)" aria-label="Retirer">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
+                                                </span>
+                                            } @empty {
+                                                <span class="empty-tags">Aucun serveur selectionné.</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -71,3 +120,4 @@
         </div>
     </div>
 </div>
+

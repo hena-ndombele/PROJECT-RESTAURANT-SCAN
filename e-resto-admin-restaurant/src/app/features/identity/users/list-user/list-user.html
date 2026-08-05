@@ -1,4 +1,4 @@
-<div class="container-fluid py-4 bg-light min-vh-100">
+﻿<div class="container-fluid py-4 bg-light min-vh-100">
   <header class="row align-items-center mb-4">
     <div class="col-md-7">
       <div class="d-flex align-items-center">
@@ -23,7 +23,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
               [class.btn-primary]="!userLimitReached()"
               [class.btn-secondary]="userLimitReached()"
               [disabled]="userLimitReached()"
-              [title]="userLimitReached() ? (userLimitMessage() || 'Votre plan ne permet pas de créer plus d’utilisateurs.') : 'Ajouter un utilisateur'"
+              [title]="userLimitReached() ? (userLimitMessage() || 'Votre plan ne permet pas de crÃ©er plus dâ€™utilisateurs.') : 'Ajouter un utilisateur'"
               [attr.data-bs-toggle]="userLimitReached() ? null : 'modal'"
               [attr.data-bs-target]="userLimitReached() ? null : '#userModal'"
               (click)="openCreate()">
@@ -40,7 +40,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
           <div class="input-group">
             <span class="input-group-text bg-transparent border-end-0 text-muted"><i class="bi bi-search"></i></span>
             <input type="text" class="form-control border-start-0 ps-0 bg-transparent"
-                   placeholder="Rechercher par nom, e-mail ou téléphone..." (input)="onSearch($event)">
+                   placeholder="Rechercher par nom, e-mail ou tÃ©lÃ©phone..." (input)="onSearch($event)">
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
           <th class="ps-4 py-3 text-muted text-uppercase small fw-bold" style="width: 80px">#</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Utilisateurs</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Contact</th>
-          <th class="py-3 text-muted text-uppercase small fw-bold">Rôles</th>
+          <th class="py-3 text-muted text-uppercase small fw-bold">RÃ´les</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Dates</th>
           <th class="py-3 text-muted text-uppercase small fw-bold text-center">Actions</th>
         </tr>
@@ -65,7 +65,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
             <tr>
               <td colspan="6" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-3 text-muted fw-medium">Récupération des données...</p>
+                <p class="mt-3 text-muted fw-medium">RÃ©cupÃ©ration des donnÃ©es...</p>
               </td>
             </tr>
           } @else {
@@ -88,7 +88,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
                       }
                     </div>
                   } @else {
-                    <span class="text-muted small">Aucun rôle</span>
+                    <span class="text-muted small">Aucun rÃ´le</span>
                   }
                 </td>
                 <td>
@@ -106,6 +106,19 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
                       <i class="ti ti-edit fs-4"></i>
                     </button>
                     }
+                    @if (canAccess('users.reset-password')) {
+                    <button class="btn d-inline-flex align-items-center justify-content-center text-white"
+                            style="width: 35px; height: 35px; background: var(--dashboard-primary, #ff7a1a); border-color: var(--dashboard-primary, #ff7a1a);"
+                            [disabled]="resettingPasswordId() === user.id"
+                            title="Reinitialiser le mot de passe"
+                            (click)="confirmResetPassword(user)">
+                      @if (resettingPasswordId() === user.id) {
+                        <span class="spinner-border spinner-border-sm"></span>
+                      } @else {
+                        <i class="ti ti-key fs-4"></i>
+                      }
+                    </button>
+                    }
                     @if (canAccess('users.delete')) {
                     <button class="btn btn-outline-danger d-inline-flex align-items-center justify-content-center"
                             style="width: 35px; height: 35px;" (click)="confirmDelete(user)">
@@ -118,7 +131,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
             } @empty {
               <tr>
                 <td colspan="6" class="text-center py-5">
-                  <h5 class="text-muted fw-normal">Aucun utilisateur trouvé</h5>
+                  <h5 class="text-muted fw-normal">Aucun utilisateur trouvÃ©</h5>
                 </td>
               </tr>
             }
@@ -132,7 +145,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
               <nav aria-label="Page navigation">
                 <ul class="pagination mb-0">
                   <li class="page-item" [class.disabled]="currentPage() === 1">
-                    <a class="page-link" role="button" (click)="goToPage(currentPage() - 1)">Précédente</a>
+                    <a class="page-link" role="button" (click)="goToPage(currentPage() - 1)">PrÃ©cÃ©dente</a>
                   </li>
                   @for (page of pagesArray(); track page) {
                     <li class="page-item" [class.active]="page === currentPage()">
@@ -153,7 +166,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
   </div>
 </div>
 
-<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow text-start">
       <div class="modal-header">
@@ -162,7 +175,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
             {{ selectedUser() ? 'Modifier Utilisateur' : 'Ajouter Utilisateur' }}
           </h5>
           <p class="mb-0 text-muted small">
-            {{ selectedUser() ? 'Modifier le compte et les rôles' : 'Sélectionner un employé et son rôle' }}
+            {{ selectedUser() ? 'Modifier le compte et les rÃ´les' : 'SÃ©lectionner un employÃ© et son rÃ´le' }}
           </p>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -171,9 +184,9 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
         <form [formGroup]="userForm" id="userForm" (ngSubmit)="saveUser()">
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label">Utilisateur / Employé <span class="text-danger">*</span></label>
+                <label class="form-label">Utilisateur / EmployÃ© <span class="text-danger">*</span></label>
                 <select class="form-select" formControlName="agent_id" (change)="onAgentSelected($event)">
-                  <option value="">Sélectionner un employé</option>
+                  <option value="">SÃ©lectionner un employÃ©</option>
                   @for (agent of selectedUser() ? agents() : availableAgents(); track agent.id) {
                     <option [value]="agent.id">{{ agent.email }}</option>
                   }
@@ -181,15 +194,15 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
               </div>
 
               <div class="col-md-6 mb-3">
-                <label class="form-label">Rôle <span class="text-danger">*</span></label>
+                <label class="form-label">RÃ´le <span class="text-danger">*</span></label>
                 <select class="form-select" formControlName="role_name">
-                  <option value="">Selectionner un rôle</option>
+                  <option value="">Selectionner un rÃ´le</option>
                   @for (role of roles(); track role.id) {
                     <option [value]="role.name">{{ role.name }}</option>
                   }
                 </select>
                 @if (roles().length === 0) {
-                  <small class="text-danger">Aucun rôle disponible. Créez d'abord un rôle dans le menu Rôle.</small>
+                  <small class="text-danger">Aucun rÃ´le disponible. CrÃ©ez d'abord un rÃ´le dans le menu RÃ´le.</small>
                 }
               </div>
             </div>
@@ -211,3 +224,4 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
     </div>
   </div>
 </div>
+

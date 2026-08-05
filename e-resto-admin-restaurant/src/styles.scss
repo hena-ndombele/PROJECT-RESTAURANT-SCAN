@@ -674,3 +674,58 @@ body.dashboard-dark-theme .business-limit-text { color: #c2410c !important; }
 .business-form-actions button { min-height: 38px; border-radius: 8px; font-size: 12px; font-weight: 900; }
 .business-form-actions .secondary { border: 1px solid #e5e7eb; color: #475569; background: #fff; }
 .business-form-actions .primary { border: 0; color: #fff; background: var(--dashboard-primary); }
+
+/* Business restaurant creation modal */
+.business-restaurant-modal-dialog { max-width: 520px; }
+.business-restaurant-modal { position: relative; overflow: hidden; border: 0 !important; border-radius: 14px !important; background: #fff !important; box-shadow: 0 24px 70px rgba(15, 23, 42, .28) !important; }
+.business-modal-close { position: absolute; top: 18px; right: 18px; z-index: 5; width: 38px; height: 38px; border: 0; border-radius: 10px; color: #64748b; background: #f8fafc; display: inline-flex; align-items: center; justify-content: center; }
+.business-modal-close:hover { color: #111827; background: #e5e7eb; }
+.business-modal-hero { display: grid; gap: 16px; padding: 22px 22px 14px; background: linear-gradient(135deg, #fff7ed, #fff); border-bottom: 1px solid #f1f5f9; }
+.business-modal-eyebrow { display: block; color: var(--dashboard-primary, #ff7a1a); font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.business-modal-hero h5 { margin: 4px 44px 4px 0; color: #111827; font-size: 24px; font-weight: 950; }
+.business-modal-hero p { max-width: 390px; margin: 0; color: #64748b; font-size: 13px; }
+.business-modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 18px 22px 8px; }
+.business-modal-grid label { display: grid; gap: 6px; min-width: 0; margin: 0; }
+.business-modal-grid span { color: #64748b; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.business-modal-grid input, .business-modal-grid select { width: 100%; height: 42px; border: 1px solid #dbe2ea; border-radius: 8px; padding: 0 12px; color: #111827; background: #fff; font-size: 13px; outline: none; }
+.business-modal-grid input:focus, .business-modal-grid select:focus { border-color: var(--dashboard-primary, #ff7a1a); box-shadow: 0 0 0 3px rgba(var(--dashboard-primary-rgb, 255, 122, 26), .12); }
+.business-modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 22px 22px; }
+.business-modal-actions button { height: 44px; border-radius: 8px; font-weight: 900; }
+.business-modal-actions .secondary { border: 1px solid #dbe2ea; color: #475569; background: #fff; }
+.business-modal-actions .primary { border: 0; color: #111827; background: var(--dashboard-button-bg, linear-gradient(135deg, #ff7a1a, #d71920)); }
+
+@media (max-width: 575px) {
+  .business-modal-grid, .business-modal-actions { grid-template-columns: 1fr; }
+}
+
+/* Sidebar restaurant identity */
+.sidebar-restaurant-text {
+  min-width: 0;
+  display: grid;
+  line-height: 1.1;
+
+  strong {
+    max-width: 140px;
+    overflow: hidden;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: .01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    max-width: 140px;
+    overflow: hidden;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+}
+
+

@@ -83,6 +83,13 @@ export class ShowTable implements OnInit, OnChanges {
     async printQRCode(): Promise<void> {
         if (!this.tableDetail?.qr_url) return;
 
+        if (this.selectedQrTemplate() === "simple") {
+            const canvas = await this.buildSimpleQrCanvas();
+            if (!canvas || !this.tableDetail) return;
+            this.printCanvasQRCode(canvas, this.tableDetail.name);
+            return;
+        }
+
         if (this.canUsePremiumQrTemplates()) {
             void this.printTemplateQRCode();
             return;
@@ -96,6 +103,16 @@ export class ShowTable implements OnInit, OnChanges {
 
     async downloadQRCode(): Promise<void> {
         if (!this.tableDetail?.qr_url) return;
+
+        if (this.selectedQrTemplate() === "simple") {
+            const canvas = await this.buildSimpleQrCanvas();
+            if (!canvas) return;
+            const link = document.createElement("a");
+            link.download = `qr-simple-${this.slugify(this.tableDetail.name)}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+            return;
+        }
 
         if (this.canUsePremiumQrTemplates()) {
             const canvas = await this.buildPremiumQrCanvas();
@@ -178,6 +195,47 @@ export class ShowTable implements OnInit, OnChanges {
         ctx.textAlign = "center";
         ctx.font = "900 44px Arial";
         ctx.fillText(this.truncateText(ctx, tableName.toUpperCase(), 540), 450, 926);
+
+        return canvas;
+    }
+
+    private async buildSimpleQrCanvas(): Promise<HTMLCanvasElement | null> {
+        if (!this.tableDetail?.qr_url) return null;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 900;
+        canvas.height = 900;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+
+        const qrUrl = this.tableQrUrl(this.tableDetail);
+        if (!qrUrl) return null;
+        const [qr, logo] = await Promise.all([
+            this.loadImage(qrUrl),
+            this.loadRestaurantLogoImage(),
+        ]);
+        if (!qr) return null;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(qr, 80, 80, 740, 740);
+
+        if (logo) {
+            ctx.save();
+            ctx.shadowColor = "rgba(15, 23, 42, .18)";
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+            ctx.fillStyle = "#ffffff";
+            this.roundRect(ctx, 365, 382, 170, 136, 22);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.strokeStyle = "rgba(15, 23, 42, .12)";
+            ctx.lineWidth = 4;
+            this.roundRect(ctx, 365, 382, 170, 136, 22);
+            ctx.stroke();
+            this.drawContainImage(ctx, logo, 386, 402, 128, 96);
+        }
 
         return canvas;
     }
@@ -451,8 +509,9 @@ export class ShowTable implements OnInit, OnChanges {
         };
     }
 
-    private selectedQrTemplate(): "poster" | "table_tent" {
+    private selectedQrTemplate(): "simple" | "poster" | "table_tent" {
         const template = this.restaurantSession()?.settings?.qr_template;
+        if (template === "simple") return "simple";
         return template === "table_tent" ? "table_tent" : "poster";
     }
 

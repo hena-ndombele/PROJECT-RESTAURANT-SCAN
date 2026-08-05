@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { AuthService } from "../../../services/auth/auth-service";
+import { STORAGE_ROOT } from "../../../services/api-url";
 
 @Component({
   selector: "app-profile",
@@ -26,6 +27,7 @@ export class Profile implements OnInit {
     restaurantCurrency: '',
     restaurantStatus: '',
     restaurantPlan: '',
+    restaurantLogo: 'assets/logo/e-resto-logo.png',
     created_at: '',
     updated_at: ''
   };
@@ -50,8 +52,15 @@ export class Profile implements OnInit {
         restaurantPhone: restaurant.owner_phone || 'Aucun numéro',
         restaurantCurrency: restaurant.currency || 'CDF',
         restaurantStatus: restaurant.status || 'Non renseigne',
-        restaurantPlan: restaurant.plan?.name || 'Non renseigne'
+        restaurantPlan: restaurant.plan?.name || 'Non renseigne',
+        restaurantLogo: this.restaurantLogo(restaurant)
       };
     }
+  }
+
+  private restaurantLogo(restaurant: any): string {
+    return restaurant?.logo_data_url
+      || restaurant?.logo_url
+      || (restaurant?.logo ? `${STORAGE_ROOT}/${restaurant.logo}` : 'assets/logo/e-resto-logo.png');
   }
 }

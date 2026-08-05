@@ -35,14 +35,6 @@
     <span>Vous pouvez payer ou changer de plan à tout moment.</span>
   </section>
 
-  @if (message) {
-    <div class="subscription-message" [class]="messageType">{{ message }}</div>
-  }
-
-  @if (!canPaySubscription()) {
-    <div class="subscription-message error">Vous n'avez pas la permission de payer l'abonnement.</div>
-  }
-
   @if (canPaySubscription()) {
   <section class="payment-box">
     <div>

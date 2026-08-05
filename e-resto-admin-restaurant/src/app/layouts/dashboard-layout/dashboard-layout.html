@@ -92,60 +92,17 @@
                                 }
                             </div>
 
-                            @if (!businessRestaurantFormOpen) {
-                                <button class="business-add-btn"
-                                        type="button"
-                                        (click)="openBusinessRestaurantForm()"
-                                        [disabled]="!canAddBusinessRestaurant()">
-                                    <i class="ti ti-plus"></i>
-                                    Ajouter un restaurant
-                                </button>
-                                @if (!canAddBusinessRestaurant()) {
-                                    <p class="business-limit-text">Limite du plan Business atteinte.</p>
-                                }
-                            } @else {
-                                <form class="business-restaurant-form" [formGroup]="businessRestaurantForm" (ngSubmit)="createBusinessRestaurant()">
-                                    <div class="form-grid">
-                                        <label>
-                                            <span>Nom du restaurant</span>
-                                            <input type="text" formControlName="name" placeholder="Ex: Restaurant Gombe">
-                                        </label>
-                                        <label>
-                                            <span>Province</span>
-                                            <select formControlName="city">
-                                                <option value="">Choisir</option>
-                                                @for (province of provinces; track province.province) {
-                                                    <option [value]="province.province">{{ province.province }} - {{ province.capital }}</option>
-                                                }
-                                            </select>
-                                        </label>
-                                        <label>
-                                            <span>Commune</span>
-                                            <input type="text" formControlName="commune" placeholder="Ex: Gombe, Limete...">
-                                        </label>
-                                        <label>
-                                            <span>Adresse</span>
-                                            <input type="text" formControlName="address" placeholder="Adresse du restaurant">
-                                        </label>
-                                        <label>
-                                            <span>WhatsApp</span>
-                                            <input type="tel" formControlName="owner_phone" placeholder="+243..." autocomplete="tel" (blur)="businessRestaurantForm.patchValue({ owner_phone: normalizeCongoPhone(businessRestaurantForm.value.owner_phone) })">
-                                        </label>
-                                        <label>
-                                            <span>Devise</span>
-                                            <select formControlName="currency">
-                                                <option value="CDF">CDF</option>
-                                                <option value="USD">USD</option>
-                                            </select>
-                                        </label>
-                                    </div>
-                                    <div class="business-form-actions">
-                                        <button type="button" class="secondary" (click)="businessRestaurantFormOpen = false">Annuler</button>
-                                        <button type="submit" class="primary" [disabled]="businessRestaurantSaving">
-                                            {{ businessRestaurantSaving ? 'Ajout...' : 'Créer' }}
-                                        </button>
-                                    </div>
-                                </form>
+                            <button class="business-add-btn"
+                                    type="button"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#businessRestaurantModal"
+                                    (click)="openBusinessRestaurantForm()"
+                                    [disabled]="!canAddBusinessRestaurant()">
+                                <i class="ti ti-plus"></i>
+                                Ajouter un restaurant
+                            </button>
+                            @if (!canAddBusinessRestaurant()) {
+                                <p class="business-limit-text">Limite du plan Business atteinte.</p>
                             }
                         </div>
                     }
@@ -268,7 +225,7 @@
                         }
                         <div class="session-meta">
                             <i class="ti ti-login-2"></i>
-                            Connecte le {{ loginInfo.connectedAt | date:'dd/MM/yyyy HH:mm' }}
+                            Connecté le {{ loginInfo.connectedAt | date:'dd/MM/yyyy HH:mm' }}
                         </div>
                     </div>
                     <div class="p-2 d-flex flex-column gap-1">
@@ -307,7 +264,10 @@
             <div class="sidebar-logo-frame">
                 <img [src]="restaurantData.logo" alt="Logo" class="sidebar-logo-img">
             </div>
-            <span class="logo-text ms-2">Restaurant Scan</span>
+            <span class="sidebar-restaurant-text ms-2">
+                <strong>{{ restaurantData.name || 'Restaurant Scan' }}</strong>
+                <small>{{ restaurantData.city || 'Restaurant Scan' }}</small>
+            </span>
         </a>
     </div>
 
@@ -584,7 +544,7 @@
 }
 
 
-<div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
 
@@ -628,9 +588,78 @@
     </div>
 </div>
 
+<div class="modal fade" id="businessRestaurantModal" tabindex="-1" aria-labelledby="businessRestaurantModalLabel"
+     aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered business-restaurant-modal-dialog">
+        <div class="modal-content business-restaurant-modal">
+            <button id="businessRestaurantModalClose" type="button" class="business-modal-close" data-bs-dismiss="modal" aria-label="Fermer">
+                <i class="ti ti-x"></i>
+            </button>
+
+            <div class="business-modal-hero">
+                <div>
+                    <span class="business-modal-eyebrow">Plan Business</span>
+                    <h5 id="businessRestaurantModalLabel">Ajouter un restaurant</h5>
+                    <p>Créez un nouvel espace restaurant rattaché à votre compte Business.</p>
+                </div>
+            </div>
+
+            <form [formGroup]="businessRestaurantForm" (ngSubmit)="createBusinessRestaurant()">
+                <div class="business-modal-grid">
+                    <label>
+                        <span>Nom du restaurant</span>
+                        <input type="text" formControlName="name" placeholder="Ex: Restaurant Gombe">
+                    </label>
+                    <label>
+                        <span>Province</span>
+                        <select formControlName="city">
+                            <option value="">Choisir</option>
+                            @for (province of provinces; track province.province) {
+                                <option [value]="province.province">{{ province.province }} - {{ province.capital }}</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Commune</span>
+                        <input type="text" formControlName="commune" placeholder="Ex: Gombe, Limete...">
+                    </label>
+                    <label>
+                        <span>Adresse</span>
+                        <input type="text" formControlName="address" placeholder="Adresse du restaurant">
+                    </label>
+                    <label>
+                        <span>WhatsApp</span>
+                        <input type="tel" formControlName="owner_phone" placeholder="+243..." autocomplete="tel"
+                               (blur)="businessRestaurantForm.patchValue({ owner_phone: normalizeCongoPhone(businessRestaurantForm.value.owner_phone) })">
+                    </label>
+                    <label>
+                        <span>Devise</span>
+                        <select formControlName="currency">
+                            <option value="CDF">CDF</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="business-modal-actions">
+                    <button type="button" class="secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="primary" [disabled]="businessRestaurantSaving || businessRestaurantForm.invalid">
+                        @if (businessRestaurantSaving) {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            Création...
+                        } @else {
+                            Créer
+                        }
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 
 <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="addInventoryModalLabel"
-     aria-hidden="true">
+     aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow change-password-card">
 
@@ -695,11 +724,11 @@
                 </form>
             </div>
 
-            <div class="modal-footer change-password-footer d-flex gap-2">
-                <button type="button" class="btn change-password-cancel" data-bs-dismiss="modal">{{ 'common.cancel' | translate }}</button>
+            <div class="modal-footer d-flex gap-2 bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ 'common.cancel' | translate }}</button>
                 <button type="submit"
                         form="passwordFormElement"
-                        class="btn change-password-submit px-4 shadow-sm"
+                        class="btn btn-primary px-4 shadow-sm"
                         [disabled]="passwordForm.invalid || isLoading">
                     @if (isLoading) {
                         <span class="spinner-border spinner-border-sm me-2"></span>
@@ -710,5 +739,6 @@
         </div>
     </div>
 </div>
+
 
 

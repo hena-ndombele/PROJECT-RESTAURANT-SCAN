@@ -1,19 +1,19 @@
-<button type="button"
+﻿<button type="button"
         class="btn btn-primary text-black create-employee-btn"
         [disabled]="disabled"
         [title]="disabled ? limitMessage : 'Creer un employe'"
         [attr.data-bs-toggle]="disabled ? null : 'modal'"
         [attr.data-bs-target]="disabled ? null : '#createAgentModal'">
-    <i class="ti ti-plus me-1"></i> Créer un employé
+    <i class="ti ti-plus me-1"></i> CrÃ©er un employÃ©
 </button>
 
-<div class="modal fade" id="createAgentModal" tabindex="-1" aria-labelledby="createAgentModalLabel" aria-hidden="true">
+<div class="modal fade" id="createAgentModal" tabindex="-1" aria-labelledby="createAgentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow text-start employee-modal">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" id="createAgentModalLabel">Nouvel employé</h5>
-                    <p class="mb-0 text-muted small">Création du compte et informations employé.</p>
+                    <h5 class="modal-title fs-3 mb-1" id="createAgentModalLabel">Nouvel employÃ©</h5>
+                    <p class="mb-0 text-muted small">CrÃ©ation du compte et informations employÃ©.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -36,11 +36,11 @@
                             <div class="col-lg-4">
                                 <label class="photo-picker">
                                     @if (photoPreview) {
-                                        <img [src]="photoPreview" alt="Photo employé">
+                                        <img [src]="photoPreview" alt="Photo employÃ©">
                                     } @else {
                                         <span class="photo-placeholder">
                                             <i class="ti ti-camera"></i>
-                                            Photo employé
+                                            Photo employÃ©
                                         </span>
                                     }
                                     <input type="file" accept="image/*" (change)="onPhotoSelected($event)">
@@ -53,7 +53,7 @@
                                         <label class="form-label">Prenom <span class="required-star">*</span></label>
                                         <input type="text" class="form-control" formControlName="first_name" placeholder="Prenom">
                                         @if (agentForm.get('first_name')?.invalid && agentForm.get('first_name')?.touched) {
-                                            <small class="text-danger">Le prénom est obligatoire.</small>
+                                            <small class="text-danger">Le prÃ©nom est obligatoire.</small>
                                         }
                                     </div>
 
@@ -74,7 +74,7 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Telephone <span class="required-star">*</span></label>
+                                        <label class="form-label">Téléphone <span class="required-star">*</span></label>
                                         <input type="tel" class="form-control" formControlName="phone_number" placeholder="+243..." autocomplete="tel">
                                         @if (agentForm.get('phone_number')?.invalid && agentForm.get('phone_number')?.touched) {
                                             <small class="text-danger">Le téléphone est obligatoire.</small>
@@ -156,7 +156,7 @@
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label">Téléphone urgence</label>
+                                <label class="form-label">TÃ©lÃ©phone urgence</label>
                                 <input type="tel" class="form-control" formControlName="emergency_contact_phone" placeholder="+243..." autocomplete="tel">
                             </div>
                         </div>
@@ -182,7 +182,7 @@
                                 <span class="spinner-border spinner-border-sm me-1"></span>
                             }
                             <i class="bi bi-plus-circle me-1"></i>
-                            Créer l'employé
+                            CrÃ©er l'employÃ©
                         </button>
                     }
                 </div>
@@ -190,3 +190,4 @@
         </div>
     </div>
 </div>
+

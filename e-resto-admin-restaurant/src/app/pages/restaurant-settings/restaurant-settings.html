@@ -191,6 +191,18 @@
 
         <button type="button"
                 class="qr-template-card"
+                [class.active]="restaurant.settings.qr_template === 'simple'"
+                [disabled]="!canUpdateSettings()"
+                (click)="restaurant.settings.qr_template = 'simple'">
+          <span class="template-preview simple-preview">
+            <i class="bi bi-qr-code"></i>
+            <small>Logo</small>
+          </span>
+          <span>QR simple</span>
+        </button>
+
+        <button type="button"
+                class="qr-template-card"
                 [class.active]="restaurant.settings.qr_template === 'poster'"
                 [disabled]="!canUsePremiumQrTemplates()"
                 (click)="canUsePremiumQrTemplates() && (restaurant.settings.qr_template = 'poster')">
@@ -238,3 +250,4 @@
     </section>
   <!-- } -->
 </main>
+

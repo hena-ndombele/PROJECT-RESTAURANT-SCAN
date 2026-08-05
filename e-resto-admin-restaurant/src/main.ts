@@ -3,7 +3,7 @@ import 'bootstrap';
 import { appConfig } from './app/app.config';
 import { App } from './app/app';
 
-bootstrapApplication(App, appConfig).catch((error) => console.error(error));
+bootstrapApplication(App, appConfig).catch(() => {});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -16,6 +16,6 @@ if ('serviceWorker' in navigator) {
       return;
     }
 
-    navigator.serviceWorker.register('/sw.js').catch((error) => console.error(error));
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }

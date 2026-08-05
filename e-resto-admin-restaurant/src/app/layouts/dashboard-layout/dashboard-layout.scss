@@ -1,11 +1,11 @@
-/* Cache le texte et les badges quand la sidebar est repliée */
+﻿/* Cache le texte et les badges quand la sidebar est repliÃ©e */
 .sidebar.collapsed .nav-text,
 .sidebar.collapsed .badge,
 .sidebar.collapsed .nav-label {
   display: none !important;
 }
 
-/* Ajuste l'alignement de l'icône pour qu'elle soit centrée une fois seule */
+/* Ajuste l'alignement de l'icÃ´ne pour qu'elle soit centrÃ©e une fois seule */
 .sidebar.collapsed .nav-link {
   justify-content: center !important;
   padding: 10px 0;
@@ -13,11 +13,11 @@
 
 .sidebar.collapsed .nav-link i {
   margin-right: 0 !important;
-  font-size: 1.4rem; /* On agrandit un peu l'icône pour le style */
+  font-size: 1.4rem; /* On agrandit un peu l'icÃ´ne pour le style */
 }
 
-/* Optionnel : Afficher un petit point rouge à la place du badge
-   si vous voulez quand même signaler une notification en mode réduit */
+/* Optionnel : Afficher un petit point rouge Ã  la place du badge
+   si vous voulez quand mÃªme signaler une notification en mode rÃ©duit */
 .sidebar.collapsed a[routerLink="/orders/list"]::after {
   content: '';
   position: absolute;
@@ -33,8 +33,8 @@
 
 /* Style "Soft Badge" pour les demandes */
 .bg-soft-primary {
-  background-color: #e0e7ff !important; /* Bleu très clair */
-  color: #4338ca !important;            /* Bleu indigo foncé */
+  background-color: #e0e7ff !important; /* Bleu trÃ¨s clair */
+  color: #4338ca !important;            /* Bleu indigo foncÃ© */
   border: 1px solid #c7d2fe !important;
 }
 
@@ -522,7 +522,7 @@
 }
 
 
-/* --- Bouton Déconnexion Rouge --- */
+/* --- Bouton DÃ©connexion Rouge --- */
 .btn-logout-custom {
   display: flex;
   align-items: center;
@@ -603,7 +603,7 @@
   margin-top: 2px;
 }
 
-/* --- Sélecteur de Langue (Switch) --- */
+/* --- SÃ©lecteur de Langue (Switch) --- */
 .language-toggle {
   width: 80px;
   height: 36px;
@@ -653,7 +653,7 @@
   object-fit: cover;
 }
 
-/* État actif FR (Glissement vers la droite) */
+/* Ã‰tat actif FR (Glissement vers la droite) */
 .language-toggle.active-fr .flag-handle {
   transform: translateX(42px);
 }
@@ -701,13 +701,14 @@
   }
 }
 
-// Pour les icônes de drapeaux (nécessite flag-icons css ou remplacez par des images)
+
+// Pour les icÃ´nes de drapeaux (nÃ©cessite flag-icons css ou remplacez par des images)
 .fi {
   border-radius: 2px;
 }
 
 /* Configuration des variables de couleur pour un look Premium */
-$sidebar-bg: #1a1c23; // Anthracite très foncé
+$sidebar-bg: #1a1c23; // Anthracite trÃ¨s foncÃ©
 $sidebar-hover: rgba(255, 255, 255, 0.05);
 $accent-color: #3b82f6; // Bleu moderne (ou votre couleur de marque)
 $text-muted: #94a3b8;
@@ -783,7 +784,7 @@ $text-light: #f8fafc;
     }
   }
 
-  /* Gestion du mode replié (Collapsed) */
+  /* Gestion du mode repliÃ© (Collapsed) */
   &.collapsed {
     width: 80px;
 
@@ -798,7 +799,7 @@ $text-light: #f8fafc;
   }
 }
 
-/* Scrollbar personnalisée pour la sidebar */
+/* Scrollbar personnalisÃ©e pour la sidebar */
 .sidebar-scroll {
   overflow-y: auto;
   height: calc(100vh - 80px);
@@ -819,7 +820,7 @@ $text-light: #f8fafc;
   .logo-area {
     background-color: transparent; // On laisse voir le fond de la sidebar
     // OU
-    background-color: #1a1c23; // On met explicitement la même couleur
+    background-color: #1a1c23; // On met explicitement la mÃªme couleur
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 }
@@ -1153,3 +1154,4 @@ $text-light: #f8fafc;
     transform: translateY(0) scale(1);
   }
 }
+

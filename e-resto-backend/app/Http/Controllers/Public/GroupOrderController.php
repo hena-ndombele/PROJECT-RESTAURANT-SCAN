@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\Plat;
 use App\Models\Restaurant;
 use App\Models\Table;
+use App\Models\TableSession;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,7 @@ class GroupOrderController extends Controller
             'email_feedback_opt_in' => 'nullable|boolean',
             'note' => 'nullable|string|max:1000',
             'expires_in_minutes' => 'nullable|integer|min:10|max:1440',
+            'table_session_token' => 'nullable|string|max:120',
         ]);
 
         if (empty($validated['restaurant_id']) && empty($validated['restaurant_slug']) && empty($validated['table_id'])) {
@@ -55,6 +57,12 @@ class GroupOrderController extends Controller
                 return response()->json([
                     'message' => 'La commande groupee est reservee aux plans Pro et Business.',
                 ], 403);
+            }
+
+            if ($table && !$this->validTableSession($table, $validated['table_session_token'] ?? null)) {
+                return response()->json([
+                    'message' => 'Session de table expiree. Veuillez scanner a nouveau le QR code.',
+                ], 422);
             }
 
             $creatorCode = $this->generateCreatorCode();
@@ -335,6 +343,7 @@ class GroupOrderController extends Controller
             'email_receipt_opt_in' => 'nullable|boolean',
             'email_feedback_opt_in' => 'nullable|boolean',
             'note' => 'nullable|string|max:1000',
+            'table_session_token' => 'nullable|string|max:120',
         ]);
 
         $groupOrder = $this->findByCode($code);
@@ -370,6 +379,16 @@ class GroupOrderController extends Controller
             }
 
             $table = $lockedGroupOrder->table ?: $this->remoteTable($lockedGroupOrder->restaurant);
+            $tableSession = null;
+            if ($lockedGroupOrder->table_id) {
+                $tableSession = $this->validTableSession($table, $validated['table_session_token'] ?? null);
+                if (!$tableSession) {
+                    return response()->json([
+                        'message' => 'Session de table expiree. Veuillez scanner a nouveau le QR code.',
+                    ], 422);
+                }
+            }
+
             $monthlyLimit = $lockedGroupOrder->restaurant->plan?->maxOrdersPerMonth();
             if ($monthlyLimit !== null) {
                 $ordersThisMonth = $lockedGroupOrder->restaurant->orders()
@@ -396,6 +415,7 @@ class GroupOrderController extends Controller
             $order = Order::create([
                 'tracking_code' => $this->generateTrackingCode(),
                 'table_id' => $table->id,
+                'table_session_id' => $tableSession?->id,
                 'restaurant_id' => $lockedGroupOrder->restaurant_id,
                 'order_type' => $lockedGroupOrder->table_id ? 'dine_in' : 'remote',
                 'note' => trim(($validated['note'] ?? '') . "\n\n" . $this->groupOrderNote($lockedGroupOrder)),
@@ -496,6 +516,29 @@ class GroupOrderController extends Controller
             : Restaurant::where('slug', $validated['restaurant_slug'])->firstOrFail();
 
         return [$restaurant, null];
+    }
+
+    private function validTableSession(?Table $table, ?string $token): ?TableSession
+    {
+        if (!$table || !$token) {
+            return null;
+        }
+
+        TableSession::query()
+            ->where('table_id', $table->id)
+            ->where('status', TableSession::STATUS_ACTIVE)
+            ->where('expires_at', '<=', now())
+            ->update([
+                'status' => TableSession::STATUS_EXPIRED,
+                'closed_at' => now(),
+            ]);
+
+        return TableSession::query()
+            ->where('table_id', $table->id)
+            ->where('token', $token)
+            ->where('status', TableSession::STATUS_ACTIVE)
+            ->where('expires_at', '>', now())
+            ->first();
     }
 
     private function restaurantAcceptsOrders(Restaurant $restaurant): bool

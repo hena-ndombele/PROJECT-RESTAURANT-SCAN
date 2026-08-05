@@ -81,14 +81,22 @@
                     <div class="col-12 col-md-6 col-xl-3">
                         <div class="global-stat-card">
                             <span>CA total du mois</span>
-                            <strong>{{ businessRevenueList('revenue_month_by_currency') }}</strong>
+                            <div class="currency-stack">
+                                @for (item of businessRevenueItems('revenue_month_by_currency'); track item.currency) {
+                                    <strong>{{ formatMoneyWithCurrency(item.amount, item.currency) }}</strong>
+                                }
+                            </div>
                             <small>{{ global.summary?.orders_month || 0 }} commandes</small>
                         </div>
                     </div>
                     <div class="col-12 col-md-6 col-xl-3">
                         <div class="global-stat-card">
                             <span>CA annuel</span>
-                            <strong>{{ businessRevenueList('revenue_year_by_currency') }}</strong>
+                            <div class="currency-stack">
+                                @for (item of businessRevenueItems('revenue_year_by_currency'); track item.currency) {
+                                    <strong>{{ formatMoneyWithCurrency(item.amount, item.currency) }}</strong>
+                                }
+                            </div>
                             <small>{{ global.summary?.orders_year || 0 }} commandes</small>
                         </div>
                     </div>
@@ -175,7 +183,7 @@
                                             <strong>{{ dish.name }}</strong>
                                             <small>{{ dish.quantity }} vendu(s)</small>
                                         </div>
-                                        <span>{{ dish.revenue | number:'1.0-2' }}</span>
+                                        <span>{{ dish.revenue | number:'1.0-2' }} {{ dish.currency || '' }}</span>
                                     </div>
                                 } @empty {
                                     <div class="empty-state">Aucun plat vendu ce mois.</div>

@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
+import Swal from 'sweetalert2';
 import { SaasPlan } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
+import { AuthService } from '../../services/auth/auth-service';
 
 @Component({
   selector: 'app-restaurant-checkout',
@@ -25,10 +27,25 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
   paymentReference = '';
   planSyncing = true;
   planSyncError = '';
+  paymentStep: 'idle' | 'sending' | 'waiting' | 'success' | 'failed' = 'idle';
+  loggingOut = false;
+  retryingPush = false;
   private paymentStatusTimer?: ReturnType<typeof setInterval>;
   private paymentStatusAttempts = 0;
+  private paymentAttemptId = 0;
+  private paymentClosedByUser = false;
+  private readonly preventCheckoutBack = () => {
+    if (this.subscriptionExpired) {
+      history.pushState(null, '', window.location.href);
+    }
+  };
 
-  constructor(private router: Router, private saas: SaasService) {}
+  constructor(
+    private router: Router,
+    private saas: SaasService,
+    private auth: AuthService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   get planName(): string {
     return this.restaurant.plan?.name || this.selectedPlan.name || 'Plan Restaurant Scan';
@@ -50,6 +67,20 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     return this.billingCycle === 'yearly' ? this.yearlyPrice() : this.monthlyPrice;
   }
 
+  get isProcessingPayment(): boolean {
+    return this.paymentStep === 'sending' || this.paymentStep === 'waiting';
+  }
+
+  get providerLabel(): string {
+    if (this.mobile.provider === 'AIRTEL') return 'AIRTEL_COD';
+    if (this.mobile.provider === 'ORANGE') return 'ORANGE_COD';
+    return 'MPESA_COD';
+  }
+
+  get transactionReference(): string {
+    return this.paymentReference || 'Generation...';
+  }
+
   get monthlyEquivalent(): number {
     return this.billingCycle === 'yearly' ? this.annualMonthlyPrice() : this.monthlyPrice;
   }
@@ -58,7 +89,26 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     return Number(this.selectedPlan.installation_fee ?? 0);
   }
 
+  get checkoutPrimary(): string {
+    const theme = this.restaurant?.settings?.theme || this.restaurant?.theme || {};
+    return this.normalizeColor(theme.primary_color || theme.primary || theme.accent, '#ff7a1a');
+  }
+
+  get checkoutPrimaryRgb(): string {
+    return this.hexToRgb(this.checkoutPrimary);
+  }
+
   ngOnInit(): void {
+    if (this.hasActiveSession() && !this.subscriptionExpired) {
+      this.router.navigate(['/dashboard'], { replaceUrl: true });
+      return;
+    }
+
+    if (this.subscriptionExpired) {
+      history.pushState(null, '', window.location.href);
+      window.addEventListener('popstate', this.preventCheckoutBack);
+    }
+
     this.syncSelectedPlanFromApi();
   }
 
@@ -76,11 +126,61 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
 
   get subscriptionExpired(): boolean {
     const status = String(this.restaurant.status || this.restaurant.subscription?.status || '').toLowerCase();
-    return ['past_due', 'expired', 'suspended'].includes(status);
+    return ['past_due', 'expired', 'suspended', 'trial_expired', 'trial-ended', 'trial_ended'].includes(status)
+      || this.trialEnded;
+  }
+
+  get trialEnded(): boolean {
+    const trialEnd = this.restaurant.trial_ends_at || this.restaurant.subscription?.trial_ends_at;
+    if (!trialEnd) {
+      return false;
+    }
+
+    const endDate = new Date(trialEnd);
+    return !Number.isNaN(endDate.getTime()) && endDate.getTime() < Date.now();
+  }
+
+  get subscriptionExpiredMessage(): string {
+    if (this.trialEnded) {
+      return "Votre essai gratuit est terminé. Abonnez-vous pour continuer à accéder à votre espace restaurant.";
+    }
+
+    return "Votre abonnement est expire. Payez votre abonnement pour reactiver l'acces a votre espace restaurant.";
   }
 
   ngOnDestroy(): void {
     this.stopPaymentStatusPolling();
+    window.removeEventListener('popstate', this.preventCheckoutBack);
+  }
+
+  logout(): void {
+    if (this.loggingOut) {
+      return;
+    }
+
+    this.loggingOut = true;
+    this.clearPaymentState();
+    this.auth.logout().pipe(finalize(() => this.loggingOut = false)).subscribe({
+      next: () => this.router.navigate(['/restaurant/login'], { replaceUrl: true }),
+      error: () => this.router.navigate(['/restaurant/login'], { replaceUrl: true }),
+    });
+  }
+
+  retryPaymentPush(): void {
+    if (this.retryingPush) {
+      return;
+    }
+
+    this.retryingPush = true;
+    this.stopPaymentStatusPolling();
+    this.paying = false;
+    this.waitingConfirmation = false;
+    this.paymentClosedByUser = false;
+    this.paymentStep = 'sending';
+    setTimeout(() => {
+      this.pay();
+      setTimeout(() => this.retryingPush = false, 600);
+    });
   }
 
   onProviderChange(provider: string): void {
@@ -105,13 +205,7 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     }
 
     if (this.planSyncing) {
-      this.showMessage('Actualisation du tarif en cours. Patientez un instant avant de payer.', 'info');
-      return;
-    }
-
-    if (this.planSyncError) {
-      this.showMessage(this.planSyncError, 'error');
-      return;
+      this.planSyncing = false;
     }
 
     if (!this.restaurant.id) {
@@ -123,35 +217,56 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     this.mobile.wallet_id = walletId;
 
     if (!walletId || walletId === '+243') {
-      this.showMessage("Entrez le numéro Mobile Money qui va payer l'abonnement.", 'error');
+      this.showValidationAlert("Entrez le numero Mobile Money qui va payer l'abonnement.");
       return;
     }
 
     if (!this.isValidWalletForProvider(walletId)) {
-      this.showMessage(this.walletHint + '. Vérifiez le numéro avant de continuer.', 'error');
+      this.showValidationAlert('Verifiez le numero avant de continuer.');
       return;
     }
 
     this.paying = true;
+    this.paymentStep = 'sending';
+    this.paymentClosedByUser = false;
+    const attemptId = ++this.paymentAttemptId;
+    this.paymentReference = this.generatePaymentReference();
     this.stopPaymentStatusPolling();
-    this.showMessage('Envoi de la demande de paiement vers votre téléphone...', 'info');
+    this.message = '';
     this.saas.checkoutMobileMoney({
       restaurant_id: this.restaurant.id,
       provider: this.mobile.provider,
       wallet_id: walletId,
       billing_cycle: this.billingCycle,
       saas_plan_id: this.selectedPlan.id || this.restaurant.plan?.id || this.restaurant.saas_plan_id,
+      reference: this.paymentReference,
     }).pipe(
       timeout(60000),
       finalize(() => this.paying = false),
     ).subscribe({
       next: (response) => {
+        if (this.shouldIgnorePaymentAttempt(attemptId)) {
+          return;
+        }
+
         this.paymentResponse = response.maishapay;
-        this.paymentReference = response.payment?.reference || '';
-        this.handlePaymentState(response);
+        this.paymentReference = this.extractPaymentReference(response);
+        this.handlePaymentState(response, attemptId);
       },
       error: (error) => {
-        this.showMessage(this.errorMessage(error), 'error');
+        if (this.shouldIgnorePaymentAttempt(attemptId)) {
+          return;
+        }
+
+        if (error?.error?.payment) {
+          this.paymentReference = this.extractPaymentReference(error.error);
+          this.handlePaymentState(error.error, attemptId);
+          return;
+        }
+
+        const message = this.errorMessage(error);
+        this.paymentStep = 'failed';
+        this.showPaymentAlert('failed', message);
       },
     });
   }
@@ -200,27 +315,36 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     return /^\+243(81|82|83)\d{7}$/.test(walletId);
   }
 
-  private handlePaymentState(response: any): void {
+  private handlePaymentState(response: any, attemptId = this.paymentAttemptId): void {
+    if (this.shouldIgnorePaymentAttempt(attemptId)) {
+      return;
+    }
+
     const status = response.payment?.status;
+    this.paymentReference = this.extractPaymentReference(response);
 
     if (status === 'paid' && response.session?.token) {
       this.completePaidSession(response);
-      this.showMessage(response.message || 'Paiement confirmé. Ouverture de votre espace restaurant...', 'success');
+      this.paymentStep = 'success';
+      this.showPaymentAlert('success', this.cleanPaymentMessage(response.message, 'Paiement confirme. Ouverture de votre espace restaurant...'));
       setTimeout(() => this.router.navigate(['/dashboard']), 700);
       return;
     }
 
     if (status === 'pending') {
       this.waitingConfirmation = true;
-      this.showMessage(response.message || 'Confirmez le paiement sur votre téléphone. Nous attendons le retour opérateur.', 'info');
-      this.startPaymentStatusPolling(response.payment?.id);
+      this.paymentStep = 'waiting';
+      this.startPaymentStatusPolling(response.payment?.id, attemptId);
       return;
     }
 
-    this.showMessage(response.message || "Le paiement n'a pas été confirmé. Vérifiez le numéro et réessayez.", 'error');
+    this.waitingConfirmation = false;
+    this.paymentStep = 'failed';
+    const message = this.cleanPaymentMessage(response.message, "Le paiement n'a pas ete confirme. Verifiez le numero et reessayez.");
+    this.stopPaymentStatusPolling();
+    this.showPaymentAlert('failed', message);
   }
-
-  private startPaymentStatusPolling(paymentId?: string): void {
+  private startPaymentStatusPolling(paymentId?: string, attemptId = this.paymentAttemptId): void {
     if (!paymentId) {
       return;
     }
@@ -228,22 +352,34 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     this.stopPaymentStatusPolling();
     this.paymentStatusAttempts = 0;
     this.paymentStatusTimer = setInterval(() => {
+      if (this.shouldIgnorePaymentAttempt(attemptId)) {
+        this.stopPaymentStatusPolling();
+        return;
+      }
+
       this.paymentStatusAttempts++;
 
-      if (this.paymentStatusAttempts > 60) {
+      if (this.paymentStatusAttempts > 24) {
         this.stopPaymentStatusPolling();
         this.waitingConfirmation = false;
-        this.showMessage('La confirmation opérateur prend trop de temps. Si vous avez validé sur le téléphone, contactez le support avec la référence paiement.', 'error');
+        this.paymentStep = 'failed';
+        const message = 'Paiement non confirme. Si vous avez annule sur votre telephone, vous pouvez relancer le paiement.';
+        this.showPaymentAlert('failed', message);
         return;
       }
 
       this.saas.checkoutMobileMoneyStatus(paymentId).pipe(timeout(15000)).subscribe({
         next: (response) => {
+          if (this.shouldIgnorePaymentAttempt(attemptId)) {
+            return;
+          }
+
           if (response.payment?.status === 'paid') {
             this.stopPaymentStatusPolling();
             this.waitingConfirmation = false;
             this.completePaidSession(response);
-            this.showMessage(response.message || 'Paiement confirmé. Ouverture de votre espace restaurant...', 'success');
+            this.paymentStep = 'success';
+            this.showPaymentAlert('success', this.cleanPaymentMessage(response.message, 'Paiement confirme. Ouverture de votre espace restaurant...'));
             setTimeout(() => this.router.navigate(['/dashboard']), 700);
             return;
           }
@@ -251,11 +387,16 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
           if (response.payment?.status === 'failed') {
             this.stopPaymentStatusPolling();
             this.waitingConfirmation = false;
-            this.showMessage(response.message || 'Paiement refusé ou expiré. Vérifiez le numéro puis réessayez.', 'error');
+            this.paymentStep = 'failed';
+            const message = this.cleanPaymentMessage(response.message, 'Paiement refuse ou expire. Verifiez le numero puis reessayez.');
+            this.stopPaymentStatusPolling();
+            this.showPaymentAlert('failed', message);
           }
         },
         error: () => {
-          this.showMessage('Paiement envoyé. La confirmation opérateur prend du temps, nous continuons à vérifier.', 'info');
+          if (this.shouldIgnorePaymentAttempt(attemptId)) {
+            return;
+          }
         },
       });
     }, 5000);
@@ -277,12 +418,14 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
 
     this.planSyncing = true;
     this.planSyncError = '';
-    this.saas.plans().subscribe({
+    this.saas.plans().pipe(
+      timeout(8000),
+      finalize(() => this.planSyncing = false),
+    ).subscribe({
       next: (plans) => {
         const plan = plans.find((item) => item.id === selectedIdentifier || item.slug === selectedIdentifier);
         if (!plan) {
-          this.planSyncError = 'Impossible de confirmer le tarif actuel de ce plan. Retournez sur la page Tarifs et choisissez un plan actif.';
-          this.planSyncing = false;
+          this.planSyncError = 'Tarif non actualise. Le prix affiche localement sera utilise.';
           return;
         }
 
@@ -301,11 +444,9 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
           saas_plan_id: plan.id,
         };
         localStorage.setItem('selected_plan', JSON.stringify(this.selectedPlan));
-        this.planSyncing = false;
       },
       error: () => {
-        this.planSyncError = 'Impossible de charger le tarif actualise depuis le serveur. Reessayez avant de payer.';
-        this.planSyncing = false;
+        this.planSyncError = 'Tarif non actualise. Le prix affiche localement sera utilise.';
       },
     });
   }
@@ -331,6 +472,10 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     return this.restaurant.plan || this.selectedPlan || {};
   }
 
+  private hasActiveSession(): boolean {
+    return !!(localStorage.getItem('auth_token') || localStorage.getItem('restaurant_token'));
+  }
+
   private completePaidSession(response: any): void {
     if (!response.session?.token) {
       return;
@@ -352,9 +497,96 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
     this.messageType = type;
   }
 
+  private showValidationAlert(message: string): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Vérification requise',
+      text: message,
+      confirmButtonText: 'Fermer',
+      confirmButtonColor: '#dc2626',
+      showCloseButton: true,
+      allowOutsideClick: false,
+    });
+  }
+
+  private showPaymentAlert(type: 'success' | 'failed', message: string): void {
+    const safeMessage = this.escapeHtml(this.cleanPaymentMessage(message, type === 'success'
+      ? 'Paiement confirme. Ouverture de votre espace restaurant...'
+      : 'Paiement echoue. Verifiez le numero et reessayez.'));
+    const safeReference = this.escapeHtml(this.paymentReference);
+
+    Swal.fire({
+      icon: type === 'success' ? 'success' : 'error',
+      title: type === 'success' ? 'Paiement reussi' : 'Echec du paiement',
+      html: `
+        <div class="checkout-swal">
+          <div class="checkout-swal-icon"><i class="bi bi-credit-card-2-front-fill"></i></div>
+          <p>${safeMessage}</p>
+          ${safeReference ? `<small>Référence: <strong>${safeReference}</strong></small>` : ''}
+        </div>
+      `,
+      confirmButtonText: type === 'success' ? 'Continuer' : 'Fermer',
+      confirmButtonColor: type === 'success' ? '#16a34a' : '#dc2626',
+      showCloseButton: true,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didClose: () => {
+        if (type === 'failed') {
+          this.clearPaymentState(true);
+        }
+      },
+    }).then(() => {
+      if (type === 'failed') {
+        this.clearPaymentState(true);
+      }
+    });
+  }
+
+  private clearPaymentState(userClosed = false): void {
+    if (userClosed) {
+      this.paymentClosedByUser = true;
+      this.paymentAttemptId++;
+    }
+
+    this.stopPaymentStatusPolling();
+    this.paying = false;
+    this.waitingConfirmation = false;
+    this.paymentStep = 'idle';
+    this.paymentResponse = null;
+    this.paymentReference = '';
+    this.message = '';
+    this.retryingPush = false;
+    this.cdr.detectChanges();
+  }
+
+  private shouldIgnorePaymentAttempt(attemptId: number): boolean {
+    return this.paymentClosedByUser || attemptId !== this.paymentAttemptId;
+  }
+
+  private extractPaymentReference(response: any): string {
+    const payment = response?.payment || {};
+    const maishapay = response?.maishapay || response?.maishapay_response || payment?.metadata?.maishapay_response || {};
+
+    return String(
+      payment.reference
+      || maishapay.originatingTransactionId
+      || maishapay.transactionReference
+      || maishapay.data?.originatingTransactionId
+      || maishapay.data?.transactionReference
+      || this.paymentReference
+      || ''
+    );
+  }
+
+  private generatePaymentReference(): string {
+    const now = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).slice(2, 7).toUpperCase();
+    return `SUB-${now}${random}`;
+  }
+
   private errorMessage(error: any): string {
     if (error?.status === 0) {
-      return "Impossible de joindre le backend de paiement. Vérifiez que Laravel est démarré sur le port 8000.";
+      return "Impossible de joindre le backend de paiement. Verifiez que Laravel est demarre sur le port 8000.";
     }
 
     if (error?.name === 'TimeoutError') {
@@ -369,6 +601,41 @@ export class RestaurantCheckout implements OnInit, OnDestroy {
       }
     }
 
-    return error?.error?.message || 'Paiement échoué. Vérifiez le numéro et réessayez.';
+    return this.cleanPaymentMessage(error?.error?.message, 'Paiement echoue. Verifiez le numero et reessayez.');
+  }
+
+  private cleanPaymentMessage(message: any, fallback: string): string {
+    const value = String(message || '').trim();
+
+    if (!value) {
+      return fallback;
+    }
+
+    if (/curl|timed out|timeout|operation timed|maishapay|collect\/v2|libcurl/i.test(value)) {
+      return 'La passerelle de paiement est momentanément indisponible. Vérifiez votre téléphone, puis réessayez.';
+    }
+
+    return value;
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private normalizeColor(value: string | undefined, fallback: string): string {
+    const color = String(value || '').trim();
+    return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+  }
+
+  private hexToRgb(hex: string): string {
+    const normalized = this.normalizeColor(hex, '#ff7a1a').replace('#', '');
+    const value = parseInt(normalized, 16);
+    return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
   }
 }
+

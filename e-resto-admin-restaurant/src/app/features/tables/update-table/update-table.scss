@@ -1,0 +1,102 @@
+.assignment-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.assignment-help {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.assignment-count {
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.assignment-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.assignment-mode label {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  font-weight: 700;
+  gap: 8px;
+  padding: 12px 14px;
+  transition: 0.2s ease;
+}
+
+.assignment-mode label.active {
+  background: #fff7ed;
+  border-color: #ff6b1a;
+  color: #c2410c;
+}
+
+.server-picker .form-select {
+  border-radius: 12px;
+  min-height: 44px;
+}
+
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  min-height: 38px;
+}
+
+.server-tag {
+  align-items: center;
+  background: #111827;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+}
+
+.server-tag strong,
+.server-tag small {
+  display: block;
+  line-height: 1.1;
+}
+
+.server-tag small {
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+.server-tag button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.empty-tags {
+  align-items: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  color: #64748b;
+  display: flex;
+  font-size: 13px;
+  padding: 9px 12px;
+}

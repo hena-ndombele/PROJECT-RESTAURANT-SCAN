@@ -1,4 +1,4 @@
-<button type="button"
+﻿<button type="button"
         class="btn btn-outline-danger d-inline-flex align-items-center justify-content-center"
         style="width: 35px; height: 35px; border: 2px solid #dc3545; background-color: transparent;"
         data-bs-toggle="modal"
@@ -8,7 +8,7 @@
 
 
 <div class="modal fade" [id]="'deleteAgentModal' + agentId " tabindex="-1"
-     aria-labelledby="deleteCategoryModalLabel" aria-hidden="true">
+     aria-labelledby="deleteCategoryModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-bottom-0 pb-0">
@@ -20,9 +20,9 @@
                     <i class="ti ti-alert-circle text-danger" style="font-size: 4rem;"></i>
                 </div>
 
-                <h4 class="fw-bolder">Supprimer l'employé ?</h4>
+                <h4 class="fw-bolder">Supprimer l'employÃ© ?</h4>
                 <p class="text-muted text-wrap text-break px-2">
-                    Cette action est irréversible. Toutes les données liées à cet employé seront supprimées définitivement.
+                    Cette action est irrÃ©versible. Toutes les donnÃ©es liÃ©es Ã  cet employÃ© seront supprimÃ©es dÃ©finitivement.
                 </p>
             </div>
 
@@ -50,3 +50,4 @@
         </div>
     </div>
 </div>
+

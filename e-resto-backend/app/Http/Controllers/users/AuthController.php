@@ -4,6 +4,8 @@ namespace App\Http\Controllers\users;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AccountCreatedMail;
+use App\Mail\AdminPasswordResetMail;
+use App\Mail\PasswordChangedMail;
 use App\Mail\RestaurantAccountCreatedMail;
 use App\Mail\SendOtpMail;
 use App\Models\Agent;
@@ -12,6 +14,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -44,9 +47,11 @@ class AuthController extends Controller
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
 
+        $user->loadMissing('restaurant');
+
         $mailSent = true;
         try {
-            Mail::to($user->email)->send(new SendOtpMail($otpCode));
+            Mail::to($user->email)->send(new SendOtpMail((string) $otpCode, $user->restaurant));
         } catch (\Throwable) {
             $mailSent = false;
         }
@@ -98,32 +103,7 @@ class AuthController extends Controller
 
     public function mobileLogin(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Identifiants incorrects'], 401);
-        }
-
-        if (!$user->restaurant_id) {
-            return response()->json(['message' => 'Ce compte utilisateur n est lie a aucun restaurant.'], 403);
-        }
-
-        $expiresAt = $this->tokenExpiresAt();
-        $token = $user->createToken('Mobile Staff API Token', ['*'], $expiresAt)->plainTextToken;
-        $user->load('roles.permissions', 'restaurant.plan', 'restaurant.subscription', 'agent');
-
-        return response()->json([
-            'message' => 'Connexion mobile reussie',
-            'token' => $token,
-            'token_expires_at' => $expiresAt->toIso8601String(),
-            'user' => $user,
-            'restaurant' => $user->restaurant,
-        ]);
+        return $this->login($request);
     }
 
     public function adminLogin(Request $request)
@@ -280,7 +260,7 @@ class AuthController extends Controller
             'email' => 'required|email|exists:users,email',
         ]);
 
-        $user = User::where('email', $request->email)->firstOrFail();
+        $user = User::with('restaurant')->where('email', $request->email)->firstOrFail();
         $otpCode = rand(10000, 99999);
 
         Otp::where('user_id', $user->id)->delete();
@@ -292,7 +272,7 @@ class AuthController extends Controller
 
         $mailSent = true;
         try {
-            Mail::to($user->email)->send(new SendOtpMail($otpCode));
+            Mail::to($user->email)->send(new SendOtpMail((string) $otpCode, $user->restaurant));
         } catch (\Throwable) {
             $mailSent = false;
         }
@@ -388,6 +368,62 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Utilisateur mis a jour avec succes',
             'data' => $user->load('roles.permissions', 'agent'),
+        ]);
+    }
+
+    public function resetPassword(Request $request, $id)
+    {
+        $actor = $request->user();
+
+        if (!$actor?->restaurant_id) {
+            return response()->json([
+                'message' => 'Action reservee aux administrateurs de restaurant.',
+            ], 403);
+        }
+
+        $user = User::with('restaurant', 'agent')
+            ->where('restaurant_id', $actor->restaurant_id)
+            ->findOrFail($id);
+
+        if ($this->isRestaurantOwner($user) && $actor->id !== $user->id) {
+            return response()->json([
+                'message' => 'Le mot de passe du proprietaire ne peut pas etre reinitialise par un autre utilisateur.',
+            ], 403);
+        }
+
+        if (!$this->isRestaurantOwner($actor) && !$actor->can('users.reset-password')) {
+            return response()->json([
+                'message' => 'Vous n avez pas la permission de reinitialiser ce mot de passe.',
+            ], 403);
+        }
+
+        $temporaryPassword = $this->temporaryPassword();
+        $user->forceFill([
+            'password' => Hash::make($temporaryPassword),
+            'is_first_login' => true,
+        ])->save();
+        $user->tokens()->delete();
+
+        $mailSent = true;
+        try {
+            Mail::to($user->email)->send(new AdminPasswordResetMail($user, $temporaryPassword, $user->restaurant));
+        } catch (\Throwable $exception) {
+            $mailSent = false;
+            Log::warning('Admin password reset mail failed.', [
+                'actor_id' => $actor->id,
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => $mailSent
+                ? 'Mot de passe reinitialise. Un email a ete envoye a l utilisateur.'
+                : 'Mot de passe reinitialise, mais l email n a pas pu etre envoye.',
+            'temporary_password' => $temporaryPassword,
+            'mail_sent' => $mailSent,
+            'data' => $user->fresh(['roles.permissions', 'agent']),
         ]);
     }
 
@@ -535,9 +571,44 @@ class AuthController extends Controller
         $user->is_first_login = false;
         $user->save();
 
+        $user->loadMissing('restaurant');
+
+        try {
+            Mail::to($user->email)->send(new PasswordChangedMail($user, $user->restaurant));
+        } catch (\Throwable $exception) {
+            Log::warning('Password changed mail failed.', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'message' => 'Mot de passe changé avec succès',
             'is_first_login' => $user->is_first_login,
+        ]);
+    }
+
+    public function updateDeviceToken(Request $request)
+    {
+        $validated = $request->validate([
+            'fcm_token' => 'nullable|string|max:4096',
+            'enabled' => 'required|boolean',
+        ]);
+
+        $user = $request->user();
+        $enabled = (bool) $validated['enabled'];
+
+        $user->forceFill([
+            'fcm_token' => $enabled ? ($validated['fcm_token'] ?? $user->fcm_token) : null,
+            'push_notifications_enabled' => $enabled,
+        ])->save();
+
+        return response()->json([
+            'message' => $enabled
+                ? 'Notifications push activees.'
+                : 'Notifications push desactivees.',
+            'user' => $user->fresh(['roles.permissions', 'restaurant.plan', 'restaurant.subscription', 'agent']),
         ]);
     }
 

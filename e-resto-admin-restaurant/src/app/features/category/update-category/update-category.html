@@ -1,4 +1,4 @@
-<button type="button"
+﻿<button type="button"
         class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center dynamic-border"
         style="width: 35px; height: 35px; background-color: transparent;"
         data-bs-toggle="modal"
@@ -6,15 +6,15 @@
     <i class="ti ti-edit fs-4"></i>
 </button>
 
-<div class="modal fade" [id]="'updateCategoryModal' + categoryId" tabindex="-1" aria-hidden="true">
+<div class="modal fade" [id]="'updateCategoryModal' + categoryId" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
 
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" style="font-weight: bolder">Mettre à jour la catégorie
+                    <h5 class="modal-title fs-3 mb-1" style="font-weight: bolder">Mettre Ã  jour la catÃ©gorie
                         ({{ categoryDetail?.name }})</h5>
-                    <p class="mb-0 text-muted small">Modifier les détails</p>
+                    <p class="mb-0 text-muted small">Modifier les dÃ©tails</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -48,7 +48,7 @@
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold">Nom de la catégorie <span style="color:red">*</span></label>
+                            <label class="form-label fw-bold">Nom de la catÃ©gorie <span style="color:red">*</span></label>
                             <input type="text" class="form-control" formControlName="name">
                             @if (categoryForm.get('name')?.invalid && categoryForm.get('name')?.touched) {
                                 <small class="text-danger">Le nom est requis.</small>
@@ -82,3 +82,4 @@
         </div>
     </div>
 </div>
+

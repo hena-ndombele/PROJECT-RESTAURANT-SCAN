@@ -13,6 +13,7 @@ use App\Http\Controllers\Public\ReservationController;
 use App\Http\Controllers\Public\FeedbackController;
 use App\Http\Controllers\Public\RestaurantController as PublicRestaurantController;
 use App\Http\Controllers\Public\GroupOrderController;
+use App\Http\Controllers\Public\TableSessionController;
 use App\Http\Controllers\Saas\SaasController;
 
 //*****************************************ADMIN****************************************************************
@@ -71,6 +72,7 @@ Route::prefix('saas')->group(function () {
 
 //*****************************************CLIENT PUBLIC***************************************************************
 Route::get('/public/menu', [MenuController::class, 'index']);
+Route::post('/public/table-sessions', [TableSessionController::class, 'store']);
 Route::get('/public/restaurants', [PublicRestaurantController::class, 'index']);
 Route::get('/public/restaurants/search', [PublicRestaurantController::class, 'search']);
 Route::get('/public/restaurants/{restaurant}', [PublicRestaurantController::class, 'show']);
@@ -125,10 +127,14 @@ Route::middleware('auth:sanctum')->group(function () {
    Route::put('/users/{id}', [AuthController::class, 'update']);
 });
    Route::middleware('auth:sanctum')->group(function () {
+   Route::post('/users/{id}/reset-password', [AuthController::class, 'resetPassword']);
+});
+   Route::middleware('auth:sanctum')->group(function () {
   Route::delete('/users/{id}', [AuthController::class, 'destroy']);
 });
 Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::post('/auth/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
+Route::post('/auth/device-token', [AuthController::class, 'updateDeviceToken'])->middleware('auth:sanctum');
 
 
 //********************************************gestion des roles**********************************************************

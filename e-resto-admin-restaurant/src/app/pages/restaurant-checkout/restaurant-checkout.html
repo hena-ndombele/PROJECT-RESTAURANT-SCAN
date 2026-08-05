@@ -1,127 +1,182 @@
-<main class="checkout-page">
+<main class="checkout-page"
+      [style.--checkout-primary]="checkoutPrimary"
+      [style.--checkout-primary-rgb]="checkoutPrimaryRgb">
   <section class="checkout-shell">
-    <div class="checkout-intro">
-      <a class="brand" routerLink="/">
-        <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
-        <span>Restaurant Scan</span>
-      </a>
-      <span class="eyebrow">Étape 2 sur 2</span>
-      <h2>Dernière vérification avant activation</h2>
-      <p>Contrôlez votre plan, entrez le numéro wallet au format +243, puis confirmez le paiement sur votre téléphone.</p>
-      @if (subscriptionExpired) {
-        <p class="message error" role="alert">
-          <i class="bi bi-exclamation-triangle-fill"></i>
-          Votre abonnement a expiré. Payez votre abonnement pour réactiver l'accès à votre espace restaurant.
-        </p>
-      }
-      <a class="change-plan" routerLink="/pricing" fragment="plans">Changer de plan</a>
-    </div>
+    <div class="checkout-grid" [class.processing-mode]="isProcessingPayment">
+      <form class="payment-panel" (ngSubmit)="pay()" novalidate>
+        <div class="checkout-topbar">
+          <a class="brand" routerLink="/">
+            <img src="assets/logo/e-resto-logo.png" alt="Restaurant Scan">
+            <span>Restaurant Scan</span>
+          </a>
 
-    <div class="checkout-grid">
-      <aside class="summary-panel">
-        <div class="restaurant-card">
-          <span>Restaurant</span>
-          <strong>{{ restaurant.name || 'Votre restaurant' }}</strong>
-          <small>{{ restaurant.city || restaurant.address || 'Espace SaaS Restaurant Scan' }}</small>
+          <button class="checkout-logout" type="button" (click)="logout()" [disabled]="loggingOut">
+            <span *ngIf="loggingOut" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <i *ngIf="!loggingOut" class="bi bi-box-arrow-right"></i>
+            <span>{{ loggingOut ? 'Se déconnecte...' : 'Se déconnecter' }}</span>
+          </button>
         </div>
 
-        <div class="plan-summary">
-          <div class="plan-head">
-            <div>
-              <span>Plan sélectionné</span>
-              <h3>{{ planName }}</h3>
-            </div>
-            <i class="bi bi-stars"></i>
+        <div class="checkout-stepper">
+          <span [class.active]="!isProcessingPayment" [class.done]="isProcessingPayment">
+            <i *ngIf="isProcessingPayment" class="bi bi-check-lg"></i>
+            <ng-container *ngIf="!isProcessingPayment">1</ng-container>
+          </span>
+          <strong>Vérification</strong>
+          <em></em>
+          <span [class.active]="isProcessingPayment">2</span>
+          <strong>Paiement</strong>
+        </div>
+
+        @if (!isProcessingPayment) {
+          <div class="payment-head">
+            <span class="eyebrow">Etape 1 sur 2</span>
+            <h2>Paiement Mobile Money</h2>
+            <p>Choisissez l'opérateur, saisissez le numéro wallet, puis passez à la confirmation.</p>
           </div>
 
-          <div class="amount-summary">
+          @if (subscriptionExpired) {
+            <p class="message error" role="alert">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              {{ subscriptionExpiredMessage }}
+            </p>
+          }
+
+          <div class="operator-grid" aria-label="Choisir l'operateur Mobile Money">
+            <label [class.active]="mobile.provider === 'MPESA'">
+              <input type="radio" name="provider" value="MPESA" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
+              <span class="radio-dot" aria-hidden="true"></span>
+              <img src="assets/logo/mpse.png" alt="M-Pesa">
+              <span>M-Pesa</span>
+            </label>
+            <label [class.active]="mobile.provider === 'ORANGE'">
+              <input type="radio" name="provider" value="ORANGE" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
+              <span class="radio-dot" aria-hidden="true"></span>
+              <img src="assets/logo/orange.jpg" alt="Orange Money">
+              <span>Orange Money</span>
+            </label>
+            <label [class.active]="mobile.provider === 'AIRTEL'">
+              <input type="radio" name="provider" value="AIRTEL" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
+              <span class="radio-dot" aria-hidden="true"></span>
+              <img src="assets/logo/airel money.png" alt="Airtel Money">
+              <span>Airtel Money</span>
+            </label>
+          </div>
+
+          <label class="wallet-field">
+            <span>Numéro wallet</span>
+            <div>
+              <img src="assets/flags/cd.png" alt="RDC">
+              <input
+                [ngModel]="mobile.wallet_id"
+                (ngModelChange)="onWalletChange($event)"
+                name="wallet_id"
+                placeholder="+243830376004"
+                autocomplete="tel"
+                inputmode="tel">
+            </div>
+          </label>
+
+          <div class="payment-total">
+            <span>Total Abonnement</span>
+            <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
+          </div>
+
+          <button class="pay-button" [disabled]="paying || waitingConfirmation">
+            <span *ngIf="paying || waitingConfirmation" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <i *ngIf="!paying && !waitingConfirmation" class="bi bi-lock-fill"></i>
+            {{ paying ? 'Chargement...' : waitingConfirmation ? 'En attente de confirmation...' : 'Continuer vers la confirmation' }}
+          </button>
+
+        } @else {
+          <div class="confirmation-hero">
+            <div class="phone-pay-frame" aria-hidden="true">
+              <img class="phone-pay-illustration" src="assets/images/phone_pay.png" alt="">
+            </div>
+            <h2>Confirmez depuis votre téléphone</h2>
+            <p>Un message USSD ou Push vient d'être envoyé au numéro Mobile Money.</p>
+            <small><i class="bi bi-circle-fill"></i> {{ providerLabel }}</small>
+          </div>
+        }
+
+        <div class="checkout-details" *ngIf="!isProcessingPayment">
+          <div class="details-head">
+            <div>
+              <span>Restaurant</span>
+              <strong>{{ restaurant.name || 'Votre restaurant' }}</strong>
+              <small>{{ restaurant.city || restaurant.address || 'Espace SaaS Restaurant Scan' }}</small>
+            </div>
+            <a routerLink="/pricing" fragment="plans">Changer de plan</a>
+          </div>
+
+          <div class="details-grid">
+            <div>
+              <span>Plan</span>
+              <strong>{{ planName }}</strong>
+            </div>
             <div>
               <span>Cycle</span>
               <strong>{{ billingCycle === 'yearly' ? 'Annuel' : 'Mensuel' }}</strong>
             </div>
             <div>
-              <span>{{ billingCycle === 'yearly' ? 'Équivalent mensuel' : 'Abonnement mensuel' }}</span>
-              <strong>{{ monthlyEquivalent | number:'1.0-2' }} {{ currency }}</strong>
-            </div>
-            <div class="total-row">
-              <span>Montant débité maintenant</span>
-              <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
+              <span>Activation</span>
+              <strong>Après confirmation opérateur</strong>
             </div>
           </div>
-
-          <p class="billing-note">
-            {{ billingCycle === 'yearly' ? "Vous profitez du tarif annuel réduit pour 12 mois d'accès." : "Le paiement active un mois d'accès." }}
-          </p>
-        </div>
-
-        <div class="trust-list">
-          <div><i class="bi bi-check-circle-fill"></i><span>Session restaurant créée automatiquement</span></div>
-          <div><i class="bi bi-check-circle-fill"></i><span>Plan synchronisé avec votre dashboard</span></div>
-          <div><i class="bi bi-check-circle-fill"></i><span>Activation uniquement après confirmation opérateur</span></div>
-        </div>
-      </aside>
-
-      <form class="payment-panel" (ngSubmit)="pay()" novalidate>
-        <div class="payment-head">
-          <span class="eyebrow">Paiement</span>
-          <h2>Mobile Money</h2>
-          <p>Choisissez l'opérateur et le numéro wallet qui va recevoir la demande de paiement.</p>
-        </div>
-
-        <div class="operator-grid" aria-label="Choisir l'opérateur Mobile Money">
-          <label [class.active]="mobile.provider === 'MPESA'">
-            <input type="radio" name="provider" value="MPESA" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
-            <img src="assets/logo/mpse.png" alt="M-Pesa">
-            <span>M-Pesa</span>
-          </label>
-          <label [class.active]="mobile.provider === 'ORANGE'">
-            <input type="radio" name="provider" value="ORANGE" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
-            <img src="assets/logo/orange.jpg" alt="Orange Money">
-            <span>Orange</span>
-          </label>
-          <label [class.active]="mobile.provider === 'AIRTEL'">
-            <input type="radio" name="provider" value="AIRTEL" [(ngModel)]="mobile.provider" (ngModelChange)="onProviderChange($event)">
-            <img src="assets/logo/airel money.png" alt="Airtel Money">
-            <span>Airtel</span>
-          </label>
-        </div>
-
-        <label class="wallet-field">
-          <span>Numéro wallet</span>
-          <div>
-            <i class="bi bi-phone-fill"></i>
-            <input
-              [ngModel]="mobile.wallet_id"
-              (ngModelChange)="onWalletChange($event)"
-              name="wallet_id"
-              placeholder="+243830376004"
-              autocomplete="tel"
-              inputmode="tel">
-          </div>
-          <small>{{ walletHint }}</small>
-        </label>
-
-        <div class="payment-total">
-          <span>Total abonnement</span>
-          <strong>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</strong>
-        </div>
-
-        <button class="pay-button" [disabled]="planSyncing || !!planSyncError || paying || waitingConfirmation">
-          <span *ngIf="planSyncing || paying || waitingConfirmation" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-          <i *ngIf="!planSyncing && !paying && !waitingConfirmation" class="bi bi-lock-fill"></i>
-          {{ planSyncing ? 'Actualisation du tarif...' : paying ? 'Envoi à la passerelle...' : waitingConfirmation ? 'En attente de confirmation...' : 'Payer mon abonnement' }}
-        </button>
-
-        <p class="message" role="alert" *ngIf="message" [ngClass]="messageType">
-          <i class="bi" [ngClass]="messageType === 'success' ? 'bi-check-circle-fill' : messageType === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-hourglass-split'"></i>
-          <span>{{ message }}</span>
-        </p>
-
-        <div class="payment-reference" *ngIf="paymentReference">
-          <span>Référence paiement</span>
-          <strong>{{ paymentReference }}</strong>
         </div>
       </form>
+
+      <aside class="summary-panel">
+        @if (!isProcessingPayment) {
+          <div class="payment-visual">
+            <img class="payment-person" src="assets/images/person.png" alt="Confirmation paiement Mobile Money">
+            <div class="visual-overlay">
+              <span>Paiement securise</span>
+              <strong>Confirmez sur votre téléphone</strong>
+            </div>
+            <figure class="phone-mockup">
+              <div class="phone-speaker"></div>
+              <img src="assets/images/ussd.jpeg" alt="Exemple de confirmation USSD Mobile Money">
+            </figure>
+            <div class="satisfaction-pill">Confirmation opérateur</div>
+          </div>
+        } @else {
+          <section class="transaction-card">
+            <span class="eyebrow">Transaction en cours</span>
+            <h2>{{ paymentAmount | number:'1.0-2' }} {{ currency }}</h2>
+
+            <div class="transaction-meta">
+              <div>
+                <span>Opérateur</span>
+                <strong><i class="bi bi-circle-fill"></i> {{ providerLabel }}</strong>
+              </div>
+              <div>
+                <span>Reference</span>
+                <strong>{{ transactionReference }}</strong>
+              </div>
+            </div>
+
+            <div class="processing-box">
+              <strong>En cours de traitement...</strong>
+              <span class="processing-spinner"></span>
+              <em></em>
+            </div>
+
+            <div class="transaction-help">
+              <h3>Pas encore reçu le message ?</h3>
+              <p><i class="bi bi-dot"></i> Vérifiez vos notifications.</p>
+              <p><i class="bi bi-dot"></i> Assurez-vous d'avoir du reseau.</p>
+              <p><i class="bi bi-dot"></i> Le message peut prendre jusqu'à 2 minutes.</p>
+            </div>
+
+            <button class="push-button" type="button" (click)="retryPaymentPush()" [disabled]="retryingPush">
+              <span *ngIf="retryingPush" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+              <i *ngIf="!retryingPush" class="bi bi-arrow-clockwise"></i>
+              Relancer le push
+            </button>
+          </section>
+        }
+      </aside>
     </div>
   </section>
 </main>

@@ -55,7 +55,7 @@ export class SaasService {
     return this.http.post<any>(`${this.apiUrl}/signup`, payload);
   }
 
-  checkoutMobileMoney(payload: { restaurant_id: string; provider: string; wallet_id: string; billing_cycle: 'monthly' | 'yearly'; saas_plan_id?: string }): Observable<any> {
+  checkoutMobileMoney(payload: { restaurant_id: string; provider: string; wallet_id: string; billing_cycle: 'monthly' | 'yearly'; saas_plan_id?: string; reference?: string }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/checkout/mobile-money`, payload);
   }
 

@@ -1,4 +1,4 @@
-<button type="button"
+﻿<button type="button"
         class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center"
         style="width: 35px; height: 35px;"
         data-bs-toggle="modal"
@@ -7,7 +7,7 @@
     <i class="ti ti-pencil fs-4"></i>
 </button>
 
-<div class="modal fade" [id]="modalId" tabindex="-1" aria-labelledby="updateTableModalLabel" aria-hidden="true">
+<div class="modal fade" [id]="modalId" tabindex="-1" aria-labelledby="updateTableModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow text-start">
             <div class="modal-header">
@@ -15,7 +15,7 @@
                     <h5 class="modal-title fs-3 mb-1" id="updateTableModalLabel" style="font-weight: bolder">
                         Modifier la table
                     </h5>
-                    <p class="mb-0 text-muted small">Mettez à jour le nom et la capacité de cette table.</p>
+                    <p class="mb-0 text-muted small">Mettez Ã  jour le nom, la capacitÃ© et les serveurs assignÃ©s.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
@@ -34,7 +34,7 @@
                                    (input)="clearNameError()"
                                    placeholder="Ex. TABLE 1 ou VIP 2">
                             @if (tableForm.get('name')?.hasError('duplicate') && tableForm.get('name')?.touched) {
-                                <small class="text-danger">Ce nom de table existe déjà.</small>
+                                <small class="text-danger">Ce nom de table existe deja.</small>
                             } @else if (tableForm.get('name')?.invalid && tableForm.get('name')?.touched) {
                                 <small class="text-danger">Le nom de la table est obligatoire.</small>
                             }
@@ -42,7 +42,7 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label" [for]="'updateTableCapacity' + table?.id">
-                                Capacité <span class="text-danger">*</span>
+                                CapacitÃ© <span class="text-danger">*</span>
                             </label>
                             <input type="number"
                                    class="form-control"
@@ -51,8 +51,60 @@
                                    min="1"
                                    placeholder="Ex. 4">
                             @if (tableForm.get('capacity')?.invalid && tableForm.get('capacity')?.touched) {
-                                <small class="text-danger">La capacité est obligatoire et doit être supérieure à 0.</small>
+                                <small class="text-danger">La capacitÃ© est obligatoire et doit Ãªtre supÃ©rieure Ã  0.</small>
                             }
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <div class="assignment-card">
+                                <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                                    <div>
+                                        <label class="form-label mb-1">Serveurs qui recoivent les commandes</label>
+                                        <p class="assignment-help mb-0">Choisissez tous les employÃ©s ou une liste precise.</p>
+                                    </div>
+                                    <span class="assignment-count">
+                                        {{ assignmentMode() === 'all' ? 'Tous' : selectedServerEmails.length + ' séléctionne(s)' }}
+                                    </span>
+                                </div>
+
+                                <div class="assignment-mode">
+                                    <label [class.active]="assignmentMode() === 'all'">
+                                        <input type="radio" formControlName="assignment_mode" value="all">
+                                        <span>Tous les employÃ©s</span>
+                                    </label>
+                                    <label [class.active]="assignmentMode() === 'selected'">
+                                        <input type="radio" formControlName="assignment_mode" value="selected">
+                                        <span>SÃ©lection manuelle</span>
+                                    </label>
+                                </div>
+
+                                @if (assignmentMode() === 'selected') {
+                                    <div class="server-picker mt-3">
+                                        <select class="form-select" (change)="addServerFromSelect($event)">
+                                            <option value="">Ajouter un employÃ©...</option>
+                                            @for (agent of availableAgents(); track agent.id) {
+                                                <option [value]="agent.email">{{ agent.first_name }} {{ agent.last_name }} - {{ agent.email }}</option>
+                                            }
+                                        </select>
+
+                                        <div class="selected-tags">
+                                            @for (email of selectedServerEmails; track email) {
+                                                <span class="server-tag">
+                                                    <span>
+                                                        <strong>{{ agentLabel(email) }}</strong>
+                                                        <small>{{ email }}</small>
+                                                    </span>
+                                                    <button type="button" (click)="removeServer(email)" aria-label="Retirer">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
+                                                </span>
+                                            } @empty {
+                                                <span class="empty-tags">Aucun serveur selectionnz.</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -78,3 +130,4 @@
         </div>
     </div>
 </div>
+

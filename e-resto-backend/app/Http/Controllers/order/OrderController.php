@@ -10,6 +10,9 @@ use App\Models\Payment;
 use App\Models\Plat;
 use App\Models\Restaurant;
 use App\Models\Table;
+use App\Models\TableSession;
+use App\Models\User;
+use App\Services\FirebasePushService;
 use App\Services\MaishaPayService;
 use App\Services\OrderEmailFollowupService;
 use Carbon\Carbon;
@@ -19,7 +22,10 @@ use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
-    public function __construct(private MaishaPayService $maishaPayService)
+    public function __construct(
+        private MaishaPayService $maishaPayService,
+        private FirebasePushService $firebasePushService
+    )
     {
     }
 
@@ -29,6 +35,7 @@ class OrderController extends Controller
             'table_id' => 'nullable|uuid|exists:tables,id',
             'restaurant_id' => 'nullable|uuid|exists:restaurants,id',
             'restaurant_slug' => 'nullable|string|exists:restaurants,slug',
+            'table_session_token' => 'nullable|string|max:120',
             'order_type' => 'nullable|string|in:dine_in,takeaway,remote',
             'note' => 'nullable|string',
             'payment_method' => 'nullable|string|in:cash',
@@ -49,6 +56,16 @@ class OrderController extends Controller
             return DB::transaction(function () use ($validated, $request) {
                 $orderType = $validated['order_type'] ?? 'dine_in';
                 $table = $this->resolveOrderTable($validated, $orderType);
+                $tableSession = null;
+
+                if ($orderType !== 'remote') {
+                    $tableSession = $this->validTableSession($table, $validated['table_session_token'] ?? null);
+                    if (!$tableSession) {
+                        return response()->json([
+                            'message' => 'Session de table expiree. Veuillez scanner a nouveau le QR code.',
+                        ], 422);
+                    }
+                }
 
                 if (!$table->restaurant || !in_array($table->restaurant->status, ['active', 'trial'], true)) {
                     throw new \Exception("Ce restaurant n'accepte pas de commandes pour le moment.");
@@ -70,6 +87,7 @@ class OrderController extends Controller
                 $order = Order::create([
                     'tracking_code' => $this->generateTrackingCode(),
                     'table_id' => $table->id,
+                    'table_session_id' => $tableSession?->id,
                     'restaurant_id' => $table->restaurant_id,
                     'order_type' => $orderType,
                     'note' => $validated['note'] ?? null,
@@ -145,6 +163,7 @@ class OrderController extends Controller
                 }
 
                 $this->broadcastSafely(new OrderPlaced($order->load(['table', 'items.plat', 'latestPayment'])));
+                $this->notifyAssignedServersSafely($order);
 
                 return response()->json([
                     'message' => 'Commande reussie',
@@ -256,6 +275,7 @@ class OrderController extends Controller
         $validated = $request->validate([
             'note' => 'nullable|string',
             'order_type' => 'nullable|string|in:dine_in,takeaway,remote',
+            'table_session_token' => 'nullable|string|max:120',
             'wallet_id' => 'nullable|string',
             'customer_name' => 'nullable|string|max:120',
             'customer_phone' => 'nullable|string|max:30',
@@ -285,6 +305,15 @@ class OrderController extends Controller
                     return response()->json([
                         'message' => "La commande est deja payee. Demandez une modification au restaurant.",
                     ], 422);
+                }
+
+                if (($order->order_type ?? 'dine_in') !== 'remote') {
+                    $tableSession = $this->validTableSession($order->table, $validated['table_session_token'] ?? null);
+                    if (!$tableSession || ($order->table_session_id && $tableSession->id !== $order->table_session_id)) {
+                        return response()->json([
+                            'message' => 'Session de table expiree. Veuillez scanner a nouveau le QR code.',
+                        ], 422);
+                    }
                 }
 
                 $total = 0;
@@ -615,17 +644,41 @@ class OrderController extends Controller
         $query = Order::with(['table', 'items.plat', 'latestPayment'])
             ->when($request->user()?->restaurant_id, fn ($builder, $restaurantId) => $builder->where('restaurant_id', $restaurantId));
 
+        if ($request->boolean('assigned_to_me')) {
+            $email = $this->currentServerEmail($request);
+
+            if (!$email) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereHas('table', function ($tableQuery) use ($email) {
+                    $tableQuery
+                        ->where('assignment_mode', 'all')
+                        ->orWhereNull('assignment_mode')
+                        ->orWhere(function ($selectedQuery) use ($email) {
+                            $selectedQuery
+                                ->where('assignment_mode', 'selected')
+                                ->whereJsonContains('assigned_server_emails', $email);
+                        });
+                });
+            }
+        }
+
         if ($request->has('day')) {
-            $query->whereDate('created_at', $request->day);
+            [$start, $end] = $this->localDateRange($request->day);
+            $query->whereBetween('created_at', [$start, $end]);
         }
 
         if ($request->has('month')) {
-            $query->whereMonth('created_at', $request->month)
-                ->whereYear('created_at', $request->get('year', date('Y')));
+            [$start, $end] = $this->localMonthRange(
+                (int) $request->month,
+                (int) $request->get('year', date('Y'))
+            );
+            $query->whereBetween('created_at', [$start, $end]);
         }
 
         if ($request->has('year') && !$request->has('month')) {
-            $query->whereYear('created_at', $request->year);
+            [$start, $end] = $this->localYearRange((int) $request->year);
+            $query->whereBetween('created_at', [$start, $end]);
         }
 
         if ($request->boolean('active_only')) {
@@ -633,6 +686,47 @@ class OrderController extends Controller
         }
 
         return response()->json($query->orderBy('created_at', 'desc')->get());
+    }
+
+    private function currentServerEmail(Request $request): ?string
+    {
+        $user = $request->user();
+        $user?->loadMissing('agent');
+
+        $email = strtolower(trim((string) ($user?->agent?->email ?: $user?->email)));
+
+        return $email !== '' ? $email : null;
+    }
+
+    private function localDateRange(string $date): array
+    {
+        $timezone = config('app.display_timezone', 'Africa/Kinshasa');
+        $start = Carbon::parse($date, $timezone)->startOfDay()->timezone(config('app.timezone', 'UTC'));
+        $end = Carbon::parse($date, $timezone)->endOfDay()->timezone(config('app.timezone', 'UTC'));
+
+        return [$start, $end];
+    }
+
+    private function localMonthRange(int $month, int $year): array
+    {
+        $timezone = config('app.display_timezone', 'Africa/Kinshasa');
+        $date = Carbon::create($year, max(1, min(12, $month)), 1, 0, 0, 0, $timezone);
+
+        return [
+            $date->copy()->startOfMonth()->timezone(config('app.timezone', 'UTC')),
+            $date->copy()->endOfMonth()->timezone(config('app.timezone', 'UTC')),
+        ];
+    }
+
+    private function localYearRange(int $year): array
+    {
+        $timezone = config('app.display_timezone', 'Africa/Kinshasa');
+        $date = Carbon::create($year, 1, 1, 0, 0, 0, $timezone);
+
+        return [
+            $date->copy()->startOfYear()->timezone(config('app.timezone', 'UTC')),
+            $date->copy()->endOfYear()->timezone(config('app.timezone', 'UTC')),
+        ];
     }
 
     public function show($id)
@@ -836,6 +930,72 @@ class OrderController extends Controller
         }
     }
 
+    private function notifyAssignedServersSafely(Order $order): void
+    {
+        try {
+            $order->loadMissing(['table', 'restaurant']);
+            $servers = $this->pushRecipientsForOrder($order);
+
+            if ($servers->isEmpty()) {
+                return;
+            }
+
+            $tableName = $order->table?->name ?: ($order->order_type === 'remote' ? 'Commande en ligne' : 'Table');
+            $amount = number_format((float) $order->total_amount, 0, ',', ' ');
+            $currency = $order->currency ?: $order->restaurant?->currency ?: '';
+
+            $this->firebasePushService->sendToUsers(
+                $servers,
+                'Nouvelle commande',
+                trim("{$tableName} - {$amount} {$currency}"),
+                [
+                    'type' => 'new_order',
+                    'order_id' => $order->id,
+                    'restaurant_id' => $order->restaurant_id,
+                    'table_id' => $order->table_id,
+                    'tracking_code' => $order->tracking_code,
+                    'status' => $order->status,
+                ]
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    private function pushRecipientsForOrder(Order $order)
+    {
+        $table = $order->table;
+
+        if (!$table) {
+            return collect();
+        }
+
+        $query = User::query()
+            ->with('agent')
+            ->where('restaurant_id', $order->restaurant_id)
+            ->where('push_notifications_enabled', true)
+            ->whereNotNull('fcm_token');
+
+        if (($table->assignment_mode ?? 'all') === 'selected') {
+            $emails = collect($table->assigned_server_emails ?? [])
+                ->map(fn ($email) => strtolower(trim((string) $email)))
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($emails->isEmpty()) {
+                return collect();
+            }
+
+            $query->where(function ($builder) use ($emails) {
+                $builder->whereIn('email', $emails)
+                    ->orWhereHas('agent', fn ($agentQuery) => $agentQuery->whereIn('email', $emails));
+            });
+        }
+
+        return $query->get();
+    }
+
     private function resolveOrderTable(array $validated, string $orderType): Table
     {
         if (!empty($validated['table_id'])) {
@@ -956,7 +1116,37 @@ class OrderController extends Controller
 
         if ($order->status === 'cancelled' || ($order->status === 'delivered' && $order->payment_status === 'paid')) {
             Table::where('id', $order->table_id)->update(['status' => 'Libre']);
+            TableSession::query()
+                ->where('table_id', $order->table_id)
+                ->where('status', TableSession::STATUS_ACTIVE)
+                ->update([
+                    'status' => TableSession::STATUS_CLOSED,
+                    'closed_at' => now(),
+                ]);
         }
+    }
+
+    private function validTableSession(?Table $table, ?string $token): ?TableSession
+    {
+        if (!$table || !$token) {
+            return null;
+        }
+
+        TableSession::query()
+            ->where('table_id', $table->id)
+            ->where('status', TableSession::STATUS_ACTIVE)
+            ->where('expires_at', '<=', now())
+            ->update([
+                'status' => TableSession::STATUS_EXPIRED,
+                'closed_at' => now(),
+            ]);
+
+        return TableSession::query()
+            ->where('table_id', $table->id)
+            ->where('token', $token)
+            ->where('status', TableSession::STATUS_ACTIVE)
+            ->where('expires_at', '>', now())
+            ->first();
     }
 
     private function cancelOrder(Order $order, string $reason, ?string $cancelledBy, string $source): void

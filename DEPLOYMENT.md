@@ -124,7 +124,12 @@ Un exemple complet est disponible dans :
 nginx/production.conf
 ```
 
-Apres installation SSL avec Certbot, copier/adaptez ce fichier :
+Apres installation SSL avec Certbot, copier/adaptez ce fichier.
+Le domaine de la landing restaurant doit aussi avoir son certificat :
+
+```bash
+sudo certbot --nginx -d restaurant.restaurascan.com
+```
 
 ```bash
 sudo cp nginx/production.conf /etc/nginx/sites-available/restaurascan
@@ -138,10 +143,12 @@ sudo systemctl reload nginx
 ```bash
 curl https://api.restaurascan.com/api/saas/plans
 curl https://api.restaurascan.com/api/documentation
+curl -I https://restaurant.restaurascan.com
 ```
 
 Dans le navigateur :
 
+- `https://restaurant.restaurascan.com`
 - `https://admin.restaurascan.com`
 - `https://restaurascan.com`
 - `https://api.restaurascan.com/api/documentation`

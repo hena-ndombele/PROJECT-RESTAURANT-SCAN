@@ -1,16 +1,16 @@
-<button type="button" class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#addInventoryModal">
-    <i class="ti ti-plus me-1"></i> Créer une catégorie
+﻿<button type="button" class="btn btn-primary text-black" data-bs-toggle="modal" data-bs-target="#addInventoryModal">
+    <i class="ti ti-plus me-1"></i> CrÃ©er une catÃ©gorie
 </button>
 
 <div class="modal fade" id="addInventoryModal" tabindex="-1" aria-labelledby="addInventoryModalLabel"
-     aria-hidden="true">
+     aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow text-start">
 
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">Créer une catégorie</h5>
-                    <p class="mb-0 text-muted small">Gérez votre catégorie</p>
+                    <h5 class="modal-title fs-3 mb-1" id="addInventoryModalLabel" style="font-weight: bolder">CrÃ©er une catÃ©gorie</h5>
+                    <p class="mb-0 text-muted small">GÃ©rez votre catÃ©gorie</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -19,13 +19,13 @@
                 <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()" id="addProductForm">
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="productName" class="form-label">Nom de la catégorie <span
+                            <label for="productName" class="form-label">Nom de la catÃ©gorie <span
                                     style="color:red">*</span></label>
                             <input type="text" class="form-control" id="productName" formControlName="name"
                                    (input)="clearDuplicateNameError()"
-                                   placeholder="Saisissez le nom de la catégorie">
+                                   placeholder="Saisissez le nom de la catÃ©gorie">
                             @if (categoryForm.get('name')?.hasError('duplicate') && categoryForm.get('name')?.touched) {
-                                <small class="text-danger">Une catégorie avec ce nom existe déjà.</small>
+                                <small class="text-danger">Une catÃ©gorie avec ce nom existe dÃ©jÃ .</small>
                             } @else if (categoryForm.get('name')?.invalid && categoryForm.get('name')?.touched) {
                                 <small class="text-danger">Le nom est requis.</small>
                             }
@@ -33,19 +33,19 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="image" class="form-label">Image de la catégorie <span style="color:red">*</span></label>
+                        <label for="image" class="form-label">Image de la catÃ©gorie <span style="color:red">*</span></label>
                         <input type="file" class="form-control" id="image" accept="image/*"
                                (change)="onFileSelected($event)">
 
                         @if (!selectedFile && categoryForm.get('name')?.touched) {
-                            <small class="text-danger d-block">Veuillez sélectionner une image.</small>
+                            <small class="text-danger d-block">Veuillez sÃ©lectionner une image.</small>
                         }
                     </div>
 
                     <div class="mb-3">
                         <label for="categoryDescription" class="form-label">Description <span style="color:red">*</span></label>
                         <textarea class="form-control" id="categoryDescription" formControlName="description" rows="4"
-                                  placeholder="Saisissez la description de la catégorie"></textarea>
+                                  placeholder="Saisissez la description de la catÃ©gorie"></textarea>
                         @if (categoryForm.get('description')?.invalid && categoryForm.get('description')?.touched) {
                             <small class="text-danger">La description est requise.</small>
                         }
@@ -69,9 +69,10 @@
                         <i class="bi bi-plus-circle me-1"></i>
                     }
 
-                    Créer une catégorie
+                    CrÃ©er une catÃ©gorie
                 </button>
             </div>
         </div>
     </div>
 </div>
+

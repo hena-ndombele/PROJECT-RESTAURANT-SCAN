@@ -1,4 +1,4 @@
-
+﻿
 
 <button class="dish-delete-btn" title="Supprimer" data-bs-toggle="modal"
         [attr.data-bs-target]="'#deleteDishModal' +dishId">
@@ -7,7 +7,7 @@
 
 
 <div class="modal fade" [id]="'deleteDishModal' +dishId " tabindex="-1"
-     aria-labelledby="deleteCategoryModalLabel" aria-hidden="true">
+     aria-labelledby="deleteCategoryModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
 
@@ -22,7 +22,7 @@
 
                 <h4 class="fw-bolder">Supprimer ce menu ?</h4>
                 <p class="text-muted text-wrap text-break px-2">
-                    Cette action est irréversible. Toutes les données relatives à ce menu seront supprimées de manière permanente.
+                    Cette action est irrÃ©versible. Toutes les donnÃ©es relatives Ã  ce menu seront supprimÃ©es de maniÃ¨re permanente.
                 </p>
             </div>
 
@@ -50,3 +50,4 @@
         </div>
     </div>
 </div>
+

@@ -255,9 +255,39 @@
 :host-context(body.dashboard-dark-theme) .table-qr-content,
 :host-context(body.dashboard-dark-theme) .table-qr-header,
 :host-context(body.dashboard-dark-theme) .table-qr-body,
-:host-context(body.dashboard-dark-theme) .table-qr-footer,
+:host-context(body.dashboard-dark-theme) .table-qr-footer {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, .22);
+}
+
+:host-context(body.dashboard-dark-theme) .table-qr-content {
+  border: 1px solid rgba(148, 163, 184, .28);
+}
+
+:host-context(body.dashboard-dark-theme) .table-qr-header .modal-title,
+:host-context(body.dashboard-dark-theme) .scan-order-card h2 {
+  color: #f8fafc;
+}
+
 :host-context(body.dashboard-dark-theme) .scan-order-card {
+  background: #111827;
+  color: #f8fafc;
+}
+
+:host-context(body.dashboard-dark-theme) .scan-brand-badge,
+:host-context(body.dashboard-dark-theme) .qr-center-logo {
   background: #ffffff;
+}
+
+:host-context(body.dashboard-dark-theme) .table-name-preview {
+  background: #0b1120;
+  border: 1px solid rgba(148, 163, 184, .18);
+}
+
+:host-context(body.dashboard-dark-theme) .qr-download-action {
+  border-color: rgba(148, 163, 184, .25);
+  background: #111827;
+  color: #f8fafc;
 }
 
 @media (max-width: 575px) {

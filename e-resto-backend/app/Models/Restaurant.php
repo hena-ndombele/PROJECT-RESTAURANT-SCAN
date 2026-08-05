@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Restaurant extends Model
 {
@@ -36,6 +37,23 @@ class Restaurant extends Model
         'trial_ends_at' => 'datetime',
         'subscription_ends_at' => 'datetime',
     ];
+
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        if (!$this->logo) {
+            return null;
+        }
+
+        if (str_starts_with($this->logo, 'http://') || str_starts_with($this->logo, 'https://')) {
+            return $this->logo;
+        }
+
+        return Storage::disk('public')->exists($this->logo)
+            ? asset("storage/{$this->logo}")
+            : null;
+    }
 
     public function plan()
     {
@@ -70,6 +88,11 @@ class Restaurant extends Model
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function tableSessions()
+    {
+        return $this->hasMany(TableSession::class);
     }
 
     public function plats()

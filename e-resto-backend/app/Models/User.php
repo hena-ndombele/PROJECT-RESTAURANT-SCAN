@@ -29,6 +29,8 @@ class User extends Authenticatable
         'agent_id',
         'otp_code',
         'is_first_login',
+        'fcm_token',
+        'push_notifications_enabled',
         'otp_expires_at',
     ];
 
@@ -55,6 +57,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'otp_code',
+        'fcm_token',
     ];
 
     /**
@@ -64,7 +67,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'otp_expires_at' => 'datetime',
         'is_first_login' => 'boolean',
+        'push_notifications_enabled' => 'boolean',
     ];
 }
-
 

@@ -243,7 +243,7 @@ export class RestaurantSettings implements OnInit {
         usd_cdf_rate: Number(settings.usd_cdf_rate || settings.exchange_rate_usd_cdf || 2850),
         opening_time: settings.opening_time || '08:00',
         closing_time: settings.closing_time || '22:00',
-        qr_template: ['poster', 'table_tent'].includes(settings.qr_template) ? settings.qr_template : '',
+        qr_template: ['simple', 'poster', 'table_tent'].includes(settings.qr_template) ? settings.qr_template : '',
         theme: {
           primary,
           secondary,
@@ -282,9 +282,9 @@ export class RestaurantSettings implements OnInit {
       },
     };
 
-    payload.qr_template = this.canUsePremiumQrTemplates()
-      ? this.restaurant.settings.qr_template
-      : '';
+    payload.qr_template = this.restaurant.settings.qr_template === 'simple'
+      ? 'simple'
+      : (this.canUsePremiumQrTemplates() ? this.restaurant.settings.qr_template : '');
 
     return payload;
   }

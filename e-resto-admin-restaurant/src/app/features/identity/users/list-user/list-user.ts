@@ -28,6 +28,7 @@ export class ListUser implements OnInit {
 
   isLoading = signal(true);
   isSaving = signal(false);
+  resettingPasswordId = signal<string | null>(null);
   users = signal<UserDto[]>([]);
   roles = signal<RoleDto[]>([]);
   agents = signal<AgentDto[]>([]);
@@ -247,6 +248,49 @@ export class ListUser implements OnInit {
     });
   }
 
+  confirmResetPassword(user: UserDto): void {
+    Swal.fire({
+      title: "Reinitialiser le mot de passe ?",
+      text: `Un nouveau mot de passe temporaire sera genere pour ${user.first_name} ${user.last_name}.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Reinitialiser",
+      cancelButtonText: "Annuler",
+      confirmButtonColor: this.restaurantPrimaryColor(),
+    }).then((result) => {
+      if (!result.isConfirmed) {
+        return;
+      }
+
+      this.resettingPasswordId.set(user.id);
+      this.userService.resetPassword(user.id).subscribe({
+        next: (response) => {
+          this.resettingPasswordId.set(null);
+          this.loadUsers();
+          Swal.fire({
+            title: "Mot de passe reinitialise",
+            icon: response.mail_sent ? "success" : "warning",
+            html: `
+              <div class="text-start">
+                <p class="mb-2">${response.message}</p>
+                <div class="p-3 rounded bg-light border text-center">
+                  <div class="small text-muted text-uppercase fw-bold mb-1">Mot de passe temporaire</div>
+                  <div class="fs-4 fw-bolder text-dark">${response.temporary_password}</div>
+                </div>
+                <p class="small text-muted mt-3 mb-0">Donnez ce mot de passe a l'utilisateur. Il devra le changer apres connexion.</p>
+              </div>
+            `,
+            confirmButtonText: "Compris",
+          });
+        },
+        error: (err) => {
+          this.resettingPasswordId.set(null);
+          Swal.fire("Erreur", err.error?.message || "Impossible de reinitialiser le mot de passe.", "error");
+        },
+      });
+    });
+  }
+
   confirmDelete(user: UserDto): void {
     Swal.fire({
       title: "Supprimer l'utilisateur ?",
@@ -273,6 +317,12 @@ export class ListUser implements OnInit {
 
   roleNames(user: UserDto): string {
     return (user.roles ?? []).map((role) => role.name).join(", ");
+  }
+
+  restaurantPrimaryColor(): string {
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue("--dashboard-primary")
+      .trim() || "#ff7a1a";
   }
 
   onSearch(event: Event): void {

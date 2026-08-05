@@ -178,7 +178,7 @@ class SaasController extends Controller
             'owner_email.required' => 'L adresse email est obligatoire.',
             'owner_email.email' => 'L adresse email est invalide.',
             'owner_email.unique' => 'Cette adresse email possede deja un compte.',
-            'owner_phone.required' => 'Le numero de telephone est obligatoire.',
+            'owner_phone.required' => 'Le numero de téléphone est obligatoire.',
             'password.required_without' => 'Le mot de passe est obligatoire.',
             'password.min' => 'Le mot de passe doit contenir au moins 6 caracteres.',
             'password.confirmed' => 'Les mots de passe ne correspondent pas.',
@@ -264,7 +264,7 @@ class SaasController extends Controller
 
             $mailSent = true;
             try {
-                Mail::to($user->email)->send(new SendOtpMail((string) $otpCode));
+                Mail::to($user->email)->send(new SendOtpMail((string) $otpCode, $restaurant));
             } catch (\Throwable $exception) {
                 $mailSent = false;
                 Log::warning('Restaurant signup OTP mail failed.', [
@@ -295,6 +295,7 @@ class SaasController extends Controller
             'provider' => 'required|string|in:MPESA,AIRTEL,ORANGE,MTN,mpesa,airtel,orange,mtn',
             'wallet_id' => 'required|string|min:10|max:30',
             'billing_cycle' => 'sometimes|string|in:monthly,yearly',
+            'reference' => 'sometimes|nullable|string|max:60|unique:payments,reference',
         ]);
 
         $provider = Str::upper($validated['provider']);
@@ -334,7 +335,7 @@ class SaasController extends Controller
                 'status' => 'pending',
                 'amount' => $amount,
                 'currency' => $plan->currency,
-                'reference' => 'SUB-' . Str::upper(Str::random(10)),
+                'reference' => ($validated['reference'] ?? null) ?: 'SUB-' . Str::upper(Str::random(10)),
                 'metadata' => [
                     'plan_id' => $plan->id,
                     'plan_slug' => $plan->slug,
@@ -384,7 +385,7 @@ class SaasController extends Controller
             $owner = $restaurant->users()->first();
             $message = match ($status) {
                 'paid' => 'Paiement confirme. Votre abonnement est actif.',
-                'pending' => 'Demande de paiement envoyee. Confirmez sur votre telephone pour activer votre abonnement.',
+                'pending' => 'Demande de paiement envoyée. Confirmez sur votre téléphone pour activer votre abonnement.',
                 default => $this->gatewayFailureMessage($response),
             };
             $httpStatus = match ($status) {
@@ -779,11 +780,16 @@ class SaasController extends Controller
             ], 402);
         }
 
+        [$todayStart, $todayEnd] = $this->localDateRange(Carbon::now(config('app.display_timezone', 'Africa/Kinshasa'))->toDateString());
+        $todayOrders = $restaurant->orders()->whereBetween('created_at', [$todayStart, $todayEnd]);
+        $paidTodayOrders = (clone $todayOrders)->where('payment_status', 'paid')->with('items')->get();
+
         return response()->json([
             'restaurant' => $this->restaurantPayload($restaurant),
             'metrics' => [
-                'orders_today' => $restaurant->orders()->whereDate('created_at', Carbon::today())->count(),
-                'revenue_today' => (float) $restaurant->orders()->whereDate('created_at', Carbon::today())->where('payment_status', 'paid')->sum('total_amount'),
+                'orders_today' => (clone $todayOrders)->count(),
+                'revenue_today' => (float) $paidTodayOrders->sum(fn ($order) => (float) $order->total_amount),
+                'revenue_today_by_currency' => $this->ordersRevenueByCurrency($paidTodayOrders),
                 'tables' => $restaurant->tables()->count(),
                 'active_tables' => $restaurant->tables()->where('status', '!=', 'Libre')->count(),
                 'team' => $restaurant->users()->count(),
@@ -826,7 +832,7 @@ class SaasController extends Controller
 
         $restaurantRows = $restaurants->map(function (Restaurant $restaurant) use ($monthStart, $monthEnd) {
             $orders = $restaurant->orders()->whereBetween('created_at', [$monthStart, $monthEnd]);
-            $paidOrders = (clone $orders)->where('payment_status', 'paid')->get(['currency', 'total_amount']);
+            $paidOrders = (clone $orders)->where('payment_status', 'paid')->with('items')->get();
             $revenue = $this->ordersRevenueByCurrency($paidOrders);
             $ordersCount = (clone $orders)->count();
 
@@ -864,13 +870,15 @@ class SaasController extends Controller
                     Order::whereIn('restaurant_id', $restaurantIds)
                         ->whereBetween('created_at', [$monthStart, $monthEnd])
                         ->where('payment_status', 'paid')
-                        ->get(['currency', 'total_amount'])
+                        ->with('items')
+                        ->get()
                 ),
                 'revenue_year_by_currency' => $this->ordersRevenueByCurrency(
                     Order::whereIn('restaurant_id', $restaurantIds)
                         ->whereBetween('created_at', [$yearStart, $yearEnd])
                         ->where('payment_status', 'paid')
-                        ->get(['currency', 'total_amount'])
+                        ->with('items')
+                        ->get()
                 ),
                 'best_restaurant' => $topRestaurant,
                 'weakest_restaurant' => $weakestRestaurant,
@@ -1022,7 +1030,8 @@ class SaasController extends Controller
         $settingsPayload = $request->input('settings', []);
         $hasProtectedSettings = is_array($settingsPayload)
             && count(array_intersect(array_keys($settingsPayload), $protectedSettingKeys)) > 0
-            && !empty($settingsPayload['qr_template']);
+            && !empty($settingsPayload['qr_template'])
+            && $settingsPayload['qr_template'] !== 'simple';
         $hasAdvancedCustomization = $request->has('slug') || $hasProtectedSettings;
         if ($hasAdvancedCustomization && !$restaurant->plan?->allows('customization')) {
             return response()->json([
@@ -1837,7 +1846,7 @@ class SaasController extends Controller
             }
         }
 
-        return 'Le paiement Mobile Money a ete refuse ou non confirme par le gateway.';
+        return 'Le paiement Mobile Money n\'a pas pu être effectué. Veuillez réessayer.';
     }
 
     private function validatePlan(Request $request, ?SaasPlan $plan = null): array
@@ -2059,12 +2068,46 @@ class SaasController extends Controller
 
     private function ordersRevenueByCurrency($orders): array
     {
-        $totals = collect($orders)
-            ->groupBy(fn ($order) => $order->currency ?: 'USD')
-            ->map(fn ($items, $currency) => [
-                'currency' => $currency,
-                'amount' => round((float) $items->sum(fn ($order) => (float) $order->total_amount), 2),
-                'count' => $items->count(),
+        $totals = collect();
+
+        foreach (collect($orders) as $order) {
+            $order->loadMissing('items');
+            $items = $order->items ?? collect();
+
+            if ($items->isEmpty()) {
+                $currency = $this->normalizeCurrency($order->currency);
+                $current = $totals->get($currency, [
+                    'currency' => $currency,
+                    'amount' => 0,
+                    'order_ids' => collect(),
+                ]);
+                $current['amount'] += (float) $order->total_amount;
+                $current['order_ids']->push($order->id);
+                $totals->put($currency, $current);
+                continue;
+            }
+
+            foreach ($items as $item) {
+                $currency = $this->normalizeCurrency($item->original_currency ?: $order->currency);
+                $unitPrice = $item->original_price !== null
+                    ? (float) $item->original_price
+                    : (float) ($item->price_at_order ?: $item->converted_price ?: 0);
+                $current = $totals->get($currency, [
+                    'currency' => $currency,
+                    'amount' => 0,
+                    'order_ids' => collect(),
+                ]);
+                $current['amount'] += ((int) $item->quantity) * $unitPrice;
+                $current['order_ids']->push($order->id);
+                $totals->put($currency, $current);
+            }
+        }
+
+        $totals = $totals
+            ->map(fn ($item) => [
+                'currency' => $item['currency'],
+                'amount' => round((float) $item['amount'], 2),
+                'count' => $item['order_ids']->unique()->count(),
             ])
             ->values();
 
@@ -2085,7 +2128,7 @@ class SaasController extends Controller
             $end = $date->copy()->endOfMonth();
             $orders = Order::whereIn('restaurant_id', $restaurantIds)
                 ->whereBetween('created_at', [$start, $end]);
-            $paidOrders = (clone $orders)->where('payment_status', 'paid')->get(['currency', 'total_amount']);
+            $paidOrders = (clone $orders)->where('payment_status', 'paid')->with('items')->get();
 
             return [
                 'label' => $date->locale('fr')->isoFormat('MMM YYYY'),
@@ -2103,9 +2146,10 @@ class SaasController extends Controller
             ->whereIn('orders.restaurant_id', $restaurantIds)
             ->whereBetween('orders.created_at', [$start, $end])
             ->selectRaw('COALESCE(plats.name, ?) as name', ['Plat inconnu'])
+            ->selectRaw('COALESCE(order_items.original_currency, orders.currency, ?) as currency', ['USD'])
             ->selectRaw('SUM(order_items.quantity) as quantity')
-            ->selectRaw('SUM(order_items.quantity * order_items.price_at_order) as revenue')
-            ->groupBy('name')
+            ->selectRaw('SUM(order_items.quantity * COALESCE(order_items.original_price, order_items.price_at_order, order_items.converted_price, 0)) as revenue')
+            ->groupBy('name', 'currency')
             ->orderByDesc('quantity')
             ->limit(8)
             ->get()
@@ -2113,8 +2157,24 @@ class SaasController extends Controller
                 'name' => $item->name,
                 'quantity' => (int) $item->quantity,
                 'revenue' => round((float) $item->revenue, 2),
+                'currency' => $this->normalizeCurrency($item->currency),
             ])
             ->all();
+    }
+
+    private function normalizeCurrency(?string $currency): string
+    {
+        $value = strtoupper(trim((string) ($currency ?: 'USD')));
+        return in_array($value, ['CDF', 'USD'], true) ? $value : 'USD';
+    }
+
+    private function localDateRange(string $date): array
+    {
+        $timezone = config('app.display_timezone', 'Africa/Kinshasa');
+        $start = Carbon::parse($date, $timezone)->startOfDay()->timezone(config('app.timezone', 'UTC'));
+        $end = Carbon::parse($date, $timezone)->endOfDay()->timezone(config('app.timezone', 'UTC'));
+
+        return [$start, $end];
     }
 
     private function restaurantPayload(?Restaurant $restaurant): ?array

@@ -425,6 +425,14 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
         return this.formatRevenueList(this.businessAnalytics()?.summary?.[key] || []);
     }
 
+    businessRevenueItems(key: "revenue_month_by_currency" | "revenue_year_by_currency"): CurrencyRevenue[] {
+        const source = this.businessAnalytics()?.summary?.[key] || [];
+        return ["CDF", "USD"].map((currency) => {
+            const found = source.find((item: CurrencyRevenue) => this.normalizeCurrency(item.currency) === currency);
+            return { currency, amount: Number(found?.amount || 0), count: Number(found?.count || 0) };
+        });
+    }
+
     restaurantRevenueList(row: any): string {
         return this.formatRevenueList(row?.revenue_by_currency || []);
     }

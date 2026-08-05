@@ -24,10 +24,16 @@ class Table extends Model
         'status',      // Ajouté
         'qr_code',
         'server_phone',
+        'assignment_mode',
+        'assigned_server_emails',
 
     ];
 protected $keyType = 'string';
     public $incrementing = false;
+
+    protected $casts = [
+        'assigned_server_emails' => 'array',
+    ];
     /**
      * Valeurs par défaut pour les attributs
      */
@@ -41,6 +47,11 @@ protected $keyType = 'string';
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function sessions()
+    {
+        return $this->hasMany(TableSession::class);
     }
 
     public function restaurant()

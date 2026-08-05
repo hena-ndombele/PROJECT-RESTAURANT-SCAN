@@ -292,7 +292,7 @@ button:disabled {
 
 .qr-template-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-top: 18px;
 }
@@ -347,6 +347,33 @@ button:disabled {
   height: 124px;
   object-fit: contain;
   display: block;
+}
+
+.simple-preview {
+  min-height: 140px;
+  padding: 8px;
+  color: #111827;
+  background:
+    linear-gradient(90deg, rgba(15, 23, 42, .08) 1px, transparent 1px) 0 0 / 14px 14px,
+    linear-gradient(rgba(15, 23, 42, .08) 1px, transparent 1px) 0 0 / 14px 14px,
+    #ffffff;
+}
+
+.simple-preview i {
+  font-size: 44px;
+  color: var(--dashboard-primary, #ff7a1a);
+}
+
+.simple-preview small {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 34px;
+  border: 1px solid rgba(15, 23, 42, .12);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .tent-preview {

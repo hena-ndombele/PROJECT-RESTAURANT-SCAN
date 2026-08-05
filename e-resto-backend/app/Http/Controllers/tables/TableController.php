@@ -25,8 +25,11 @@ class TableController extends Controller
             ],
             'capacity' => 'required|integer|min:1',
             'server_phone' => 'nullable|string|max:20',
+            'assignment_mode' => 'nullable|string|in:all,selected',
+            'assigned_server_emails' => 'nullable|array',
+            'assigned_server_emails.*' => 'nullable|email|max:255',
         ], [
-            'name.unique' => 'Ce nom de table existe déjà.',
+            'name.unique' => 'Ce nom de table existe dÃ©jÃ .',
         ]);
 
         $tableLimit = $restaurant?->plan?->maxTables();
@@ -42,6 +45,8 @@ class TableController extends Controller
             'capacity' => $validated['capacity'],
             'status' => 'Libre',
             'server_phone' => $validated['server_phone'] ?? null,
+            'assignment_mode' => $validated['assignment_mode'] ?? 'all',
+            'assigned_server_emails' => $this->assignmentEmails($validated),
         ]);
 
         $url = $this->menuUrl($table);
@@ -116,10 +121,18 @@ class TableController extends Controller
             ],
             'capacity' => 'sometimes|required|integer|min:1',
             'server_phone' => 'nullable|string|max:20',
+            'assignment_mode' => 'nullable|string|in:all,selected',
+            'assigned_server_emails' => 'nullable|array',
+            'assigned_server_emails.*' => 'nullable|email|max:255',
             'status' => 'sometimes|string|max:50',
         ], [
-            'name.unique' => 'Ce nom de table existe déjà.',
+            'name.unique' => 'Ce nom de table existe dÃ©jÃ .',
         ]);
+
+        if (array_key_exists('assignment_mode', $validated) || array_key_exists('assigned_server_emails', $validated)) {
+            $validated['assignment_mode'] = $validated['assignment_mode'] ?? $table->assignment_mode ?? 'all';
+            $validated['assigned_server_emails'] = $this->assignmentEmails($validated);
+        }
 
         $table->update($validated);
 
@@ -141,7 +154,55 @@ class TableController extends Controller
     {
         return Table::query()
             ->whereNotIn(DB::raw('LOWER(name)'), ['commandes en ligne', 'commandes hors restaurant'])
-            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId));
+            ->when($request->user()?->restaurant_id, fn ($query, $restaurantId) => $query->where('restaurant_id', $restaurantId))
+            ->when($request->boolean('assigned_to_me'), fn ($query) => $this->scopeAssignedToCurrentServer($query, $request));
+    }
+
+    private function scopeAssignedToCurrentServer($query, Request $request)
+    {
+        $email = $this->currentServerEmail($request);
+
+        if (!$email) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function ($builder) use ($email) {
+            $builder
+                ->where('assignment_mode', 'all')
+                ->orWhereNull('assignment_mode')
+                ->orWhere(function ($selectedQuery) use ($email) {
+                    $selectedQuery
+                        ->where('assignment_mode', 'selected')
+                        ->whereJsonContains('assigned_server_emails', $email);
+                });
+        });
+    }
+
+    private function currentServerEmail(Request $request): ?string
+    {
+        $user = $request->user();
+        $user?->loadMissing('agent');
+
+        return $this->normalizeEmail($user?->agent?->email ?: $user?->email);
+    }
+
+    private function assignmentEmails(array $validated): array
+    {
+        if (($validated['assignment_mode'] ?? 'all') !== 'selected') {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            fn ($email) => $this->normalizeEmail($email),
+            $validated['assigned_server_emails'] ?? []
+        ))));
+    }
+
+    private function normalizeEmail(?string $email): ?string
+    {
+        $email = strtolower(trim((string) $email));
+
+        return $email !== '' ? $email : null;
     }
 
     private function attachLegacyTablesToCurrentRestaurant(Request $request): void
@@ -177,10 +238,12 @@ class TableController extends Controller
             'capacity' => $table->capacity,
             'status' => $table->status,
             'server_phone' => $table->server_phone,
+            'assignment_mode' => $table->assignment_mode ?: 'all',
+            'assigned_server_emails' => $table->assigned_server_emails ?: [],
             'status_color' => match ($table->status) {
                 'Libre' => 'green',
-                'Occupee', 'Occupée' => 'yellow',
-                'Reservee', 'Réservée' => 'blue',
+                'Occupee', 'OccupÃ©e' => 'yellow',
+                'Reservee', 'RÃ©servÃ©e' => 'blue',
                 default => 'gray',
             },
             'qr_url' => $table->qr_code ? $this->publicStorageUrl($table->qr_code) : null,
@@ -202,7 +265,7 @@ class TableController extends Controller
             $query['restaurant_slug'] = $slug;
         }
 
-        return rtrim(env('CLIENT_FRONTEND_URL', 'http://172.20.10.5:5173'), '/') . '/?' . http_build_query($query);
+        return rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.69:5173'), '/') . '/?' . http_build_query($query);
     }
 
     private function generateTableQrCode(Table $table, string $url): string
@@ -242,3 +305,4 @@ class TableController extends Controller
         return str_replace('</svg>', $logo . '</svg>', $svg);
     }
 }
+
