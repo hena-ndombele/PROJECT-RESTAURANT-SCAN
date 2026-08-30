@@ -20,6 +20,7 @@ import { RestaurantPlanUsage } from "../../../models/saas/saas.models";
     styleUrl: "./list-dish.scss"
 })
 export class ListDish implements OnInit {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
     private dishService = inject(DishService);
     private categoryService = inject(CategoryService);
     private permissions = inject(AppPermissionService);

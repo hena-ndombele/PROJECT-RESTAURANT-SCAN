@@ -31,7 +31,9 @@ export class RestaurantSignup implements OnInit {
     currency: 'CDF',
     password: '',
     password_confirmation: '',
+    logo_data: '',
   };
+  logoPreview = '';
   message = '';
   creating = false;
   private createAccountSafetyTimer?: ReturnType<typeof setTimeout>;
@@ -133,7 +135,7 @@ export class RestaurantSignup implements OnInit {
       return;
     }
 
-    if (!this.account.restaurant_name || !this.account.owner_name || !this.account.owner_email || !this.account.owner_phone || !this.account.password) {
+    if (!this.account.restaurant_name || !this.account.owner_name || !this.account.owner_email || !this.account.owner_phone || !this.account.password || !this.account.logo_data) {
       this.message = 'Complétez les champs obligatoires pour créer le compte.';
       return;
     }
@@ -204,6 +206,41 @@ export class RestaurantSignup implements OnInit {
 
   goToCheckout(): void {
     this.router.navigate(['/restaurant/checkout']);
+  }
+
+  onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    this.message = '';
+
+    if (!file) {
+      this.account.logo_data = '';
+      this.logoPreview = '';
+      return;
+    }
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      this.message = 'Choisissez un logo au format PNG, JPG ou WebP.';
+      input.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      this.message = 'Le logo ne doit pas dépasser 5 Mo.';
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.account.logo_data = String(reader.result || '');
+      this.logoPreview = this.account.logo_data;
+    };
+    reader.onerror = () => {
+      this.message = 'Impossible de lire ce logo. Choisissez une autre image.';
+      input.value = '';
+    };
+    reader.readAsDataURL(file);
   }
 
   goToDashboard(): void {

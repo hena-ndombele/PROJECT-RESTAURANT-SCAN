@@ -249,8 +249,10 @@
       }
 
       @if (activeTab() === 'newsletter') {
-        <section class="panel">
-          <div class="panel-head"><div><span class="eyebrow">Emails enregistres</span><h2>Newsletter</h2></div><button class="btn ghost" type="button" (click)="loadNewsletterSubscribers()"><i class="bi bi-arrow-clockwise"></i>Actualiser</button></div>
+        <section class="panel newsletter-admin">
+          <div class="panel-head"><div><span class="eyebrow">Communication Restaurant Scan</span><h2>Newsletter</h2></div><div class="newsletter-head-actions"><button class="btn ghost" type="button" (click)="refreshCurrentView()"><i class="bi bi-arrow-clockwise"></i>Actualiser</button><button class="btn primary" type="button" (click)="openCampaignModal()"><i class="bi bi-plus-lg"></i>Nouvelle campagne</button></div></div>
+          <div class="newsletter-tabs"><button type="button" [class.active]="newsletterView() === 'subscribers'" (click)="newsletterView.set('subscribers')">Abonnés <span>{{ newsletterPagination().total }}</span></button><button type="button" [class.active]="newsletterView() === 'campaigns'" (click)="newsletterView.set('campaigns')">Campagnes <span>{{ newsletterCampaigns().length }}</span></button></div>
+          @if (newsletterView() === 'subscribers') {
           <div class="filters admin-filters">
             <input [ngModel]="newsletterSearch()" (ngModelChange)="newsletterSearch.set($event)" placeholder="Recherche email, source, statut...">
             <input [ngModel]="newsletterEmail()" (ngModelChange)="newsletterEmail.set($event)" placeholder="Filtrer par email">
@@ -262,6 +264,22 @@
           </div>
           <div class="table-wrap"><table><thead><tr><th>Email</th><th>Source</th><th>Statut</th><th>Date inscription</th></tr></thead><tbody><tr *ngFor="let item of newsletterSubscribers()"><td><strong>{{ item.email }}</strong></td><td>{{ item.source || '-' }}</td><td><em class="status" [class]="item.status">{{ item.status || '-' }}</em></td><td>{{ item.subscribed_at || item.created_at | date:'dd/MM/yyyy HH:mm' }}</td></tr></tbody></table></div>
           <footer class="pagination"><span>{{ newsletterPagination().total }} email(s)</span><div><button (click)="changeNewsletterPage(newsletterPage() - 1)" [disabled]="newsletterPage() === 1">Precedent</button><strong>Page {{ newsletterPagination().current_page }} / {{ newsletterPagination().last_page }}</strong><button (click)="changeNewsletterPage(newsletterPage() + 1)" [disabled]="newsletterPage() === newsletterPagination().last_page">Suivant</button></div></footer>
+          } @else {
+            <div class="campaign-grid">
+              <article class="campaign-card" *ngFor="let campaign of newsletterCampaigns()">
+                <img *ngIf="campaign.image_url" [src]="campaign.image_url" [alt]="campaign.title">
+                <div class="campaign-card-body">
+                  <header><div><span class="eyebrow">{{ campaign.subject }}</span><h3>{{ campaign.title }}</h3></div><em class="status" [class]="campaign.status">{{ statusLabel(campaign.status) }}</em></header>
+                  <p>{{ campaign.content }}</p>
+                  <div class="campaign-stats"><span><strong>{{ campaign.recipient_total || 0 }}</strong> destinataires</span><span><strong>{{ campaign.sent_count || 0 }}</strong> envoyés</span><span><strong>{{ campaign.failed_count || 0 }}</strong> échecs</span></div>
+                  <small *ngIf="campaign.scheduled_at">Programmée le {{ campaign.scheduled_at | date:'dd/MM/yyyy HH:mm' }}</small>
+                  <small *ngIf="campaign.sent_at">Envoyée le {{ campaign.sent_at | date:'dd/MM/yyyy HH:mm' }}</small>
+                  <footer><button class="btn ghost" type="button" (click)="openCampaignModal(campaign)" [disabled]="campaign.status === 'sending' || campaign.status === 'sent'"><i class="bi bi-pencil-square"></i>Modifier</button><button class="btn primary" type="button" (click)="sendCampaignNow(campaign)" [disabled]="saving() || campaign.status === 'sending' || campaign.status === 'sent'"><i class="bi bi-send-fill"></i>Envoyer</button><button class="icon-btn danger" type="button" title="Supprimer" (click)="deleteCampaign(campaign)" [disabled]="campaign.status === 'sending' || campaign.status === 'sent'"><i class="bi bi-trash3"></i></button></footer>
+                </div>
+              </article>
+              <div class="campaign-empty" *ngIf="newsletterCampaigns().length === 0"><i class="bi bi-envelope-paper"></i><h3>Aucune campagne</h3><p>Créez votre première campagne avec du texte, une image et un bouton d'action.</p></div>
+            </div>
+          }
         </section>
       }
 
@@ -375,6 +393,25 @@
 
 @if (roleModalOpen()) {
   <div class="modal-backdrop" (click)="roleModalOpen.set(false)"><section class="modal-card" (click)="$event.stopPropagation()"><header><div><span class="eyebrow">Role</span><h2>{{ roleForm.id ? 'Modifier le role' : 'Nouveau role' }}</h2></div><button class="close-btn" (click)="roleModalOpen.set(false)">Ã—</button></header><form (ngSubmit)="saveRole()"><label>Nom du role<input [(ngModel)]="roleForm.name" name="role_name" required placeholder="Ex: administrateur"></label><footer><button type="button" class="btn ghost" (click)="roleModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">Enregistrer</button></footer></form></section></div>
+}
+
+@if (campaignModalOpen()) {
+  <div class="modal-backdrop" (click)="campaignModalOpen.set(false)">
+    <section class="modal-card wide campaign-modal" (click)="$event.stopPropagation()">
+      <header><div><span class="eyebrow">Newsletter</span><h2>{{ campaignForm.id ? 'Modifier la campagne' : 'Nouvelle campagne' }}</h2></div><button class="close-btn" type="button" (click)="campaignModalOpen.set(false)">×</button></header>
+      <form (ngSubmit)="saveCampaign()">
+        <div class="form-grid"><label>Titre interne<input [(ngModel)]="campaignForm.title" name="campaign_title" required placeholder="Ex: Nouveautés septembre"></label><label>Objet de l'e-mail<input [(ngModel)]="campaignForm.subject" name="campaign_subject" required placeholder="Ce que le destinataire verra"></label></div>
+        <label>Contenu du message<textarea class="campaign-content" [(ngModel)]="campaignForm.content" name="campaign_content" required placeholder="Rédigez le contenu de votre campagne..."></textarea></label>
+        <div class="campaign-image-field">
+          <label>Image de la campagne <small>JPG, PNG ou WebP — 5 Mo maximum</small><input type="file" accept="image/jpeg,image/png,image/webp" (change)="selectCampaignImage($event)"></label>
+          <div class="campaign-image-preview" *ngIf="campaignImagePreview()"><img [src]="campaignImagePreview()" alt="Aperçu de la campagne"><button type="button" class="icon-btn danger" title="Retirer l'image" (click)="removeCampaignImage()"><i class="bi bi-trash3"></i></button></div>
+        </div>
+        <div class="form-grid"><label>Texte du bouton (optionnel)<input [(ngModel)]="campaignForm.button_text" name="campaign_button_text" placeholder="Découvrir"></label><label>Lien du bouton (optionnel)<input [(ngModel)]="campaignForm.button_url" name="campaign_button_url" type="url" placeholder="https://..."></label><label>Programmer l'envoi (optionnel)<input [(ngModel)]="campaignForm.scheduled_at" name="campaign_scheduled_at" type="datetime-local"></label></div>
+        <div class="campaign-test" *ngIf="campaignForm.id"><label>E-mail de test<input [(ngModel)]="campaignTestEmail" name="campaign_test_email" type="email" placeholder="admin@example.com"></label><button type="button" class="btn ghost" [disabled]="saving()" (click)="sendCampaignTest()"><i class="bi bi-envelope-check"></i>Envoyer un test</button></div>
+        <footer><button type="button" class="btn ghost" (click)="campaignModalOpen.set(false)">Annuler</button><button class="btn primary" [disabled]="saving()">{{ saving() ? 'Enregistrement...' : (campaignForm.scheduled_at ? 'Programmer' : 'Enregistrer le brouillon') }}</button></footer>
+      </form>
+    </section>
+  </div>
 }
 
 @if (installPromptOpen()) {

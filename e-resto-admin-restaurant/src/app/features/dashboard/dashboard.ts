@@ -67,6 +67,7 @@ interface OnboardingStep {
     standalone: true
 })
 export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
+    readonly restaurantName = this.currentRestaurantName();
     private readonly orderService = inject(OderService);
     private readonly dishService = inject(DishService);
     private readonly categoryService = inject(CategoryService);
@@ -241,7 +242,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     readonly onboardingSteps: OnboardingStep[] = [
         {
             eyebrow: "14 jours d'essai gratuit - plan complet",
-            title: "Bienvenue sur Restaurant Scan",
+            title: `Bienvenue sur ${this.restaurantName}`,
             description: "Votre restaurant entre dans l'ère digitale. En quelques minutes, vos clients pourront consulter votre menu et commander depuis leur téléphone.",
             icon: "ti ti-hand-wave",
             tone: "orange",
@@ -275,6 +276,12 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
 
     readonly currentOnboardingStep = computed(() => this.onboardingSteps[this.onboardingStepIndex()]);
     readonly businessMonthOptions = this.monthOptions();
+
+    private currentRestaurantName(): string {
+        const user = JSON.parse(localStorage.getItem("user_data") || "null");
+        const restaurant = JSON.parse(localStorage.getItem("restaurant_session") || "null") || user?.restaurant;
+        return restaurant?.name || "Restaurant Scan";
+    }
 
     readonly kpiCards = computed<KpiCard[]>(() => [
         {

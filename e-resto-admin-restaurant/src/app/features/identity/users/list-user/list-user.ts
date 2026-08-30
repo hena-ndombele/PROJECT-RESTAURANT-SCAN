@@ -20,6 +20,7 @@ import { AppPermissionService } from "../../../../services/auth/permission-servi
   styleUrl: "./list-user.scss",
 })
 export class ListUser implements OnInit {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
   private userService = inject(UserService);
   private roleService = inject(RoleService);
   private agentService = inject(AgentService);
@@ -236,7 +237,20 @@ export class ListUser implements OnInit {
     request.subscribe({
       next: () => {
         this.isSaving.set(false);
-        Swal.fire("Succèss", selected ? "Utilisateur mis à jour avec succès." : "Utilisateur créé avec succès.", "success");
+        if (!selected) {
+          Swal.fire(
+            "Succèss",
+            "Utilisateur créé avec succès. Un e-mail a été envoyé à cet utilisateur.",
+            "success"
+          ).then((result) => {
+            if (result.isConfirmed) {
+              window.location.reload();
+            }
+          });
+          return;
+        }
+
+        Swal.fire("Succèss", "Utilisateur mis à jour avec succès.", "success");
         this.loadUsers();
         this.loadAgents();
         this.loadUsage();

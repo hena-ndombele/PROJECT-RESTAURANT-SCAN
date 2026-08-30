@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'https://api.restaurascan.com'),
 
+    'frontend_url' => env('ADMIN_RESTAURANT_FRONTEND_URL', 'https://restaurant.restaurascan.com'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

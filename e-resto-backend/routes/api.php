@@ -15,6 +15,7 @@ use App\Http\Controllers\Public\RestaurantController as PublicRestaurantControll
 use App\Http\Controllers\Public\GroupOrderController;
 use App\Http\Controllers\Public\TableSessionController;
 use App\Http\Controllers\Saas\SaasController;
+use App\Http\Controllers\Saas\NewsletterController;
 
 //*****************************************ADMIN****************************************************************
 //users
@@ -29,7 +30,7 @@ Route::post('/otp/request', [AuthController::class, 'requestOtp']);
 Route::prefix('saas')->group(function () {
     Route::get('/overview', [SaasController::class, 'overview']);
     Route::get('/plans', [SaasController::class, 'plans']);
-    Route::post('/newsletter', [SaasController::class, 'newsletterSubscribe']);
+    Route::post('/newsletter', [NewsletterController::class, 'subscribe']);
     Route::post('/signup', [SaasController::class, 'signup']);
     Route::post('/checkout/mobile-money', [SaasController::class, 'checkout']);
     Route::get('/checkout/mobile-money/{payment}', [SaasController::class, 'checkoutStatus']);
@@ -47,7 +48,13 @@ Route::prefix('saas')->group(function () {
         Route::get('/wallet/balance', [SaasController::class, 'walletBalance']);
         Route::get('/support', [SaasController::class, 'supportCenter']);
         Route::get('/contact-messages', [SaasController::class, 'contactMessages']);
-        Route::get('/newsletter-subscribers', [SaasController::class, 'newsletterSubscribers']);
+        Route::get('/newsletter-subscribers', [NewsletterController::class, 'subscribers']);
+        Route::get('/newsletter-campaigns', [NewsletterController::class, 'campaigns']);
+        Route::post('/newsletter-campaigns', [NewsletterController::class, 'storeCampaign']);
+        Route::post('/newsletter-campaigns/{campaign}', [NewsletterController::class, 'updateCampaign']);
+        Route::delete('/newsletter-campaigns/{campaign}', [NewsletterController::class, 'destroyCampaign']);
+        Route::post('/newsletter-campaigns/{campaign}/test', [NewsletterController::class, 'sendTest']);
+        Route::post('/newsletter-campaigns/{campaign}/send', [NewsletterController::class, 'sendNow']);
         Route::get('/audit', [SaasController::class, 'auditTrail']);
         Route::get('/payments', [SaasController::class, 'payments']);
         Route::get('/restaurants', [SaasController::class, 'restaurants']);

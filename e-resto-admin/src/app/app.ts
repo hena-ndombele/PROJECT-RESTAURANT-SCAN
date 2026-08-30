@@ -102,6 +102,26 @@ interface NewsletterSubscriber {
   status?: string;
   subscribed_at?: string;
   created_at?: string;
+  confirmed_at?: string;
+  unsubscribed_at?: string;
+}
+
+interface NewsletterCampaign {
+  id?: string;
+  title: string;
+  subject: string;
+  content: string;
+  image_url?: string | null;
+  button_text?: string | null;
+  button_url?: string | null;
+  status?: string;
+  scheduled_at?: string | null;
+  started_at?: string | null;
+  sent_at?: string | null;
+  recipient_total?: number;
+  sent_count?: number;
+  failed_count?: number;
+  created_at?: string;
 }
 
 interface Paginated<T> {
@@ -167,6 +187,14 @@ export class App implements OnInit, OnDestroy {
   newsletterYear = signal('');
   newsletterPage = signal(1);
   newsletterPagination = signal({ current_page: 1, last_page: 1, total: 0 });
+  newsletterView = signal<'subscribers' | 'campaigns'>('subscribers');
+  newsletterCampaigns = signal<NewsletterCampaign[]>([]);
+  campaignModalOpen = signal(false);
+  campaignForm: NewsletterCampaign = this.emptyCampaign();
+  campaignImage?: File;
+  campaignImagePreview = signal('');
+  campaignRemoveImage = false;
+  campaignTestEmail = '';
 
   restaurantModalOpen = signal(false);
   restaurantDetails = signal<Restaurant | null>(null);
@@ -552,7 +580,10 @@ export class App implements OnInit, OnDestroy {
     if (tab === 'roles') this.loadRoles();
     if (tab === 'pricing') this.loadPlans();
     if (tab === 'contacts') this.loadContacts();
-    if (tab === 'newsletter') this.loadNewsletterSubscribers();
+    if (tab === 'newsletter') {
+      this.loadNewsletterSubscribers();
+      this.loadNewsletterCampaigns();
+    }
   }
 
   refreshCurrentView(): void {
@@ -587,6 +618,7 @@ export class App implements OnInit, OnDestroy {
     }
     if (this.activeTab() === 'newsletter') {
       this.loadNewsletterSubscribers();
+      this.loadNewsletterCampaigns();
       return;
     }
     if (this.activeTab() === 'support') {
@@ -707,6 +739,100 @@ export class App implements OnInit, OnDestroy {
           total: response.total || 0,
         });
       },
+      error: (error) => this.showError(error),
+    });
+  }
+
+  loadNewsletterCampaigns(): void {
+    this.http.get<Paginated<NewsletterCampaign>>(`${this.saasUrl}/newsletter-campaigns`, {
+      params: { per_page: 100 },
+    }).subscribe({
+      next: (response) => this.newsletterCampaigns.set(response.data ?? []),
+      error: (error) => this.showError(error),
+    });
+  }
+
+  openCampaignModal(campaign?: NewsletterCampaign): void {
+    this.campaignForm = campaign ? { ...campaign } : this.emptyCampaign();
+    if (this.campaignForm.scheduled_at) {
+      this.campaignForm.scheduled_at = String(this.campaignForm.scheduled_at).slice(0, 16);
+    }
+    this.campaignImage = undefined;
+    this.campaignRemoveImage = false;
+    this.campaignImagePreview.set(campaign?.image_url || '');
+    this.campaignTestEmail = this.currentUser()?.email || '';
+    this.campaignModalOpen.set(true);
+  }
+
+  selectCampaignImage(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.campaignImage = file;
+    this.campaignRemoveImage = false;
+    const reader = new FileReader();
+    reader.onload = () => this.campaignImagePreview.set(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  }
+
+  removeCampaignImage(): void {
+    this.campaignImage = undefined;
+    this.campaignImagePreview.set('');
+    this.campaignRemoveImage = true;
+  }
+
+  saveCampaign(): void {
+    if (!this.campaignForm.title.trim() || !this.campaignForm.subject.trim() || !this.campaignForm.content.trim()) {
+      this.error.set('Le titre, l’objet et le contenu de la campagne sont obligatoires.');
+      return;
+    }
+    this.saving.set(true);
+    this.clearNotice();
+    const data = new FormData();
+    data.append('title', this.campaignForm.title);
+    data.append('subject', this.campaignForm.subject);
+    data.append('content', this.campaignForm.content);
+    if (this.campaignForm.button_text) data.append('button_text', this.campaignForm.button_text);
+    if (this.campaignForm.button_url) data.append('button_url', this.campaignForm.button_url);
+    if (this.campaignForm.scheduled_at) data.append('scheduled_at', this.campaignForm.scheduled_at);
+    if (this.campaignImage) data.append('image', this.campaignImage);
+    if (this.campaignRemoveImage) data.append('remove_image', '1');
+    const request = this.campaignForm.id
+      ? this.http.post<NewsletterCampaign>(`${this.saasUrl}/newsletter-campaigns/${this.campaignForm.id}`, data)
+      : this.http.post<NewsletterCampaign>(`${this.saasUrl}/newsletter-campaigns`, data);
+    request.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.campaignModalOpen.set(false);
+        this.message.set(this.campaignForm.scheduled_at ? 'Campagne programmée.' : 'Campagne enregistrée comme brouillon.');
+        this.loadNewsletterCampaigns();
+      },
+      error: (error) => { this.saving.set(false); this.showError(error); },
+    });
+  }
+
+  sendCampaignTest(): void {
+    if (!this.campaignForm.id) { this.error.set("Enregistrez d'abord la campagne avant d'envoyer un test."); return; }
+    if (!this.campaignTestEmail.trim()) { this.error.set("Indiquez l'adresse e-mail de test."); return; }
+    this.saving.set(true);
+    this.http.post<{ message: string }>(`${this.saasUrl}/newsletter-campaigns/${this.campaignForm.id}/test`, { email: this.campaignTestEmail }).subscribe({
+      next: (response) => { this.saving.set(false); this.message.set(response.message); },
+      error: (error) => { this.saving.set(false); this.showError(error); },
+    });
+  }
+
+  sendCampaignNow(campaign: NewsletterCampaign): void {
+    if (!campaign.id || !window.confirm(`Envoyer maintenant la campagne « ${campaign.title} » aux abonnés confirmés ?`)) return;
+    this.saving.set(true);
+    this.http.post<{ message: string }>(`${this.saasUrl}/newsletter-campaigns/${campaign.id}/send`, {}).subscribe({
+      next: (response) => { this.saving.set(false); this.message.set(response.message); this.loadNewsletterCampaigns(); },
+      error: (error) => { this.saving.set(false); this.showError(error); },
+    });
+  }
+
+  deleteCampaign(campaign: NewsletterCampaign): void {
+    if (!campaign.id || !window.confirm(`Supprimer la campagne « ${campaign.title} » ?`)) return;
+    this.http.delete(`${this.saasUrl}/newsletter-campaigns/${campaign.id}`).subscribe({
+      next: () => { this.message.set('Campagne supprimée.'); this.loadNewsletterCampaigns(); },
       error: (error) => this.showError(error),
     });
   }
@@ -1062,6 +1188,8 @@ export class App implements OnInit, OnDestroy {
     const labels: Record<string, string> = {
       pending_payment: 'Paiement attendu', trial: 'Essai', active: 'Actif', past_due: 'En retard',
       suspended: 'Suspendu', cancelled: 'Annule', paid: 'Paye', pending: 'En attente', failed: 'Echoue',
+      confirmed: 'Confirmé', unsubscribed: 'Désabonné', draft: 'Brouillon', scheduled: 'Programmée',
+      sending: 'En cours', sent: 'Envoyée', skipped: 'Ignoré',
     };
     return labels[status ?? ''] ?? (status || '-');
   }
@@ -1106,6 +1234,10 @@ export class App implements OnInit, OnDestroy {
 
   private emptyRole(): Role {
     return { name: '' };
+  }
+
+  private emptyCampaign(): NewsletterCampaign {
+    return { title: '', subject: '', content: '', button_text: '', button_url: '', scheduled_at: null };
   }
 
   normalizeCongoPhone(value: string | null | undefined): string {

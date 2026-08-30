@@ -6,6 +6,7 @@ use App\Events\OrderPlaced;
 use App\Events\OrderStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Plat;
 use App\Models\Restaurant;
@@ -105,11 +106,22 @@ class OrderController extends Controller
                 $total = 0;
                 $mainCurrency = $this->restaurantCurrency($table->restaurant);
                 $exchangeRate = $this->usdCdfRate($table->restaurant);
+                $requestedPlatIds = collect($validated['items'])->pluck('plat_id')->unique()->values();
+                $plats = Plat::query()
+                    ->where('restaurant_id', $table->restaurant_id)
+                    ->whereIn('id', $requestedPlatIds)
+                    ->get()
+                    ->keyBy('id');
+
+                if ($plats->count() !== $requestedPlatIds->count()) {
+                    throw new \Exception("Un ou plusieurs plats n'appartiennent pas à ce restaurant.");
+                }
+
+                $orderItems = [];
+                $itemTimestamp = now();
 
                 foreach ($validated['items'] as $item) {
-                    $plat = Plat::query()
-                        ->where('restaurant_id', $table->restaurant_id)
-                        ->findOrFail($item['plat_id']);
+                    $plat = $plats->get($item['plat_id']);
 
                     if (!$plat->is_available) {
                         throw new \Exception("Le plat {$plat->name} n'est plus disponible.");
@@ -117,7 +129,9 @@ class OrderController extends Controller
 
                     $pricing = $this->convertedPlatPricing($plat, $mainCurrency, $exchangeRate);
 
-                    $order->items()->create([
+                    $orderItems[] = [
+                        'id' => (string) Str::uuid(),
+                        'order_id' => $order->id,
                         'plat_id' => $plat->id,
                         'quantity' => $item['quantity'],
                         'price_at_order' => $pricing['converted_price'],
@@ -125,10 +139,14 @@ class OrderController extends Controller
                         'original_currency' => $pricing['original_currency'],
                         'converted_price' => $pricing['converted_price'],
                         'conversion_rate' => $pricing['conversion_rate'],
-                    ]);
+                        'created_at' => $itemTimestamp,
+                        'updated_at' => $itemTimestamp,
+                    ];
 
                     $total += ((float) $pricing['converted_price'] * (int) $item['quantity']);
                 }
+
+                OrderItem::insert($orderItems);
 
                 $order->update([
                     'total_amount' => round($total, 2),

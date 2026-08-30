@@ -6,6 +6,11 @@ import { finalize, timeout } from 'rxjs';
 import { Restaurant, SaasOverview, SaasPlan } from '../../models/saas/saas.models';
 import { SaasService } from '../../services/saas/saas-service';
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 @Component({
   selector: 'app-saas-landing',
   standalone: true,
@@ -27,6 +32,10 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   newsletterStatus: 'idle' | 'success' | 'error' = 'idle';
   contactMessage = '';
   contactStatus: 'idle' | 'success' | 'error' = 'idle';
+  installPromptOpen = false;
+  installAvailable = false;
+  iosInstallHelp = false;
+  manualInstallHelp = false;
   billingCycle: 'monthly' | 'yearly' = 'yearly';
   statsLoaded = true;
   ctaStats = [
@@ -41,6 +50,8 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   private ctaStatsTimer?: ReturnType<typeof setInterval>;
   private newsletterMessageTimer?: ReturnType<typeof setTimeout>;
   private contactMessageTimer?: ReturnType<typeof setTimeout>;
+  private deferredInstallPrompt?: BeforeInstallPromptEvent;
+  private readonly installDismissKey = 'restaurant-scan-landing-install-dismissed-until';
 
   lead: Partial<Restaurant> = {
     name: '',
@@ -68,6 +79,7 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
   constructor(private saas: SaasService, private router: Router, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
+    this.prepareInstallPrompt();
     this.saas.overview().subscribe({
       next: (overview) => {
         this.overview = overview;
@@ -124,6 +136,98 @@ export class SaasLanding implements OnInit, AfterViewInit, OnDestroy {
     }
     this.clearNewsletterMessageTimer();
     this.clearContactMessageTimer();
+    window.removeEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+    window.removeEventListener('appinstalled', this.handleAppInstalled);
+  }
+
+  async installApp(): Promise<void> {
+    if (this.deferredInstallPrompt) {
+      const prompt = this.deferredInstallPrompt;
+      this.deferredInstallPrompt = undefined;
+      await prompt.prompt();
+      const choice = await prompt.userChoice.catch(() => null);
+      if (choice?.outcome === 'accepted') {
+        localStorage.removeItem(this.installDismissKey);
+        this.installPromptOpen = false;
+        this.installAvailable = false;
+      } else {
+        this.dismissInstallPrompt();
+      }
+      return;
+    }
+
+    if (this.iosInstallHelp) {
+      this.installPromptOpen = true;
+      return;
+    }
+
+    this.manualInstallHelp = true;
+    this.installPromptOpen = true;
+  }
+
+  dismissInstallPrompt(): void {
+    const oneMinute = 60 * 1000;
+    localStorage.setItem(this.installDismissKey, String(Date.now() + oneMinute));
+    this.installPromptOpen = false;
+  }
+
+  private prepareInstallPrompt(): void {
+    window.addEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', this.handleAppInstalled);
+    this.iosInstallHelp = this.isIosDevice() && !this.isStandaloneApp();
+
+    if (this.iosInstallHelp && !this.installDismissed()) {
+      window.setTimeout(() => {
+        this.installPromptOpen = true;
+        this.cdr.detectChanges();
+      }, 1400);
+    }
+
+    window.setTimeout(() => {
+      if (!this.installDismissed() && !this.isStandaloneApp() && !this.installPromptOpen) {
+        this.manualInstallHelp = !this.installAvailable;
+        this.installPromptOpen = true;
+        this.cdr.detectChanges();
+      }
+    }, 1800);
+  }
+
+  private handleBeforeInstallPrompt = (event: Event): void => {
+    event.preventDefault();
+    this.deferredInstallPrompt = event as BeforeInstallPromptEvent;
+    this.installAvailable = true;
+    this.manualInstallHelp = false;
+    if (!this.installDismissed() && !this.isStandaloneApp()) {
+      this.installPromptOpen = true;
+    }
+    this.cdr.detectChanges();
+  };
+
+  private handleAppInstalled = (): void => {
+    this.deferredInstallPrompt = undefined;
+    this.installAvailable = false;
+    this.installPromptOpen = false;
+    localStorage.removeItem(this.installDismissKey);
+    this.cdr.detectChanges();
+  };
+
+  private installDismissed(): boolean {
+    const dismissedUntil = Number(localStorage.getItem(this.installDismissKey) || 0);
+    const remaining = dismissedUntil - Date.now();
+    if (remaining > 60 * 1000) {
+      localStorage.removeItem(this.installDismissKey);
+      return false;
+    }
+    return remaining > 0;
+  }
+
+  private isStandaloneApp(): boolean {
+    return window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone);
+  }
+
+  private isIosDevice(): boolean {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
   selectPlan(plan: SaasPlan): void {

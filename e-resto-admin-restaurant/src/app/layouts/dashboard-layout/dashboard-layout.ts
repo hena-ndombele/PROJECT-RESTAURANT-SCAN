@@ -73,6 +73,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             address: ['', [Validators.maxLength(255)]],
             owner_phone: ['+243', [Validators.maxLength(30)]],
             currency: ['CDF', [Validators.required]],
+            logo_data: [''],
         });
     }
 
@@ -116,6 +117,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     protected businessRestaurantFormOpen = false;
     protected businessRestaurantLoading = false;
     protected businessRestaurantSaving = false;
+    protected businessRestaurantLogoPreview = '';
     protected provinces = CONGO_PROVINCES;
     protected assistantMessages: Array<{ from: 'bot' | 'user'; text: string }> = [
         {
@@ -300,7 +302,45 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
             address: '',
             owner_phone: this.restaurantData.owner_phone || '+243',
             currency: 'CDF',
+            logo_data: '',
         });
+        this.businessRestaurantLogoPreview = '';
+    }
+
+    protected onBusinessRestaurantLogoSelected(event: Event): void {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+
+        if (!file) {
+            this.businessRestaurantForm.patchValue({ logo_data: '' });
+            this.businessRestaurantLogoPreview = '';
+            return;
+        }
+
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+            input.value = '';
+            Swal.fire('Logo invalide', 'Choisissez une image PNG, JPG ou WebP.', 'warning');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            input.value = '';
+            Swal.fire('Logo trop volumineux', 'Le logo ne doit pas dépasser 5 Mo.', 'warning');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const logoData = String(reader.result || '');
+            this.businessRestaurantForm.patchValue({ logo_data: logoData });
+            this.businessRestaurantLogoPreview = logoData;
+            this.cdref.detectChanges();
+        };
+        reader.onerror = () => {
+            input.value = '';
+            Swal.fire('Logo illisible', 'Impossible de lire cette image.', 'warning');
+        };
+        reader.readAsDataURL(file);
     }
 
     protected normalizeCongoPhone(value: string | null | undefined): string {

@@ -16,6 +16,7 @@ import { AppPermissionService } from "../../../services/auth/permission-service"
   standalone: true
 })
 export class Reservation implements OnInit, OnDestroy {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
   private permissions = inject(AppPermissionService);
   private route = inject(ActivatedRoute);
   Reservations = signal<ReservationDto[]>([]);

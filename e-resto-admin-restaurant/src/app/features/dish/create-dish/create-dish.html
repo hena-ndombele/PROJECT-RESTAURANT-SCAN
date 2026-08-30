@@ -2,8 +2,8 @@
     <div class="create-dish-header">
         <div>
             <h1 class="fs-3 fw-black text-uppercase mb-1">
-                Ajouter un nouveau plat</h1>
-            <p class="mb-0 text-muted small">Restaurant Scan ADMIN > Gestion des menus</p>
+                Ajouter un nouveau Menu</h1>
+            <p class="mb-0 text-muted small">{{ restaurantName }} ADMIN > Gestion des menus</p>
         </div>
         <a routerLink="/dish/list-dish" class="btn back-to-menu-btn">
             <i class="ti ti-arrow-left"></i>
@@ -52,7 +52,8 @@
                                 <div class="input-group">
                                     <input type="number" class="form-control rounded-0 border-2"
                                            formControlName="price">
-                                    <select class="form-select rounded-0 border-2 flex-grow-0" style="width: 100px;" formControlName="currency">
+                                    <select class="form-select rounded-0 border-2 flex-grow-0" style="width: 100px;"
+                                            formControlName="currency">
                                         <option value="CDF">CDF</option>
                                         <option value="USD">USD</option>
                                     </select>
@@ -71,7 +72,7 @@
                                     <input class="form-check-input" type="checkbox" formControlName="is_available"
                                            id="stockStatus">
                                     <label class="form-check-label fw-bold text-uppercase" for="stockStatus">disponible
-                                        </label>
+                                    </label>
                                 </div>
                             </div>
 
@@ -84,7 +85,8 @@
                                         <i class="ti ti-x ms-2 cursor-pointer" (click)="removeIngredient(i)"></i>
                                     </span>
                                     <input type="text" (keydown.enter)="addIngredient($event)"
-                                           class="border-0 flex-grow-1" style="outline: none;" placeholder="Ajouter un ingrédient...">
+                                           class="border-0 flex-grow-1" style="outline: none;"
+                                           placeholder="Ajouter un ingrédient...">
                                 </div>
                             </div>
 
@@ -105,17 +107,23 @@
                             <div class="col-12" *ngIf="canUseDishPromotions()">
                                 <div class="border border-2 rounded-0 p-3 bg-light">
                                     <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" formControlName="promotion_enabled" id="promotionEnabled">
-                                        <label class="form-check-label fw-bold text-uppercase small" for="promotionEnabled">Plat en promotion</label>
+                                        <input class="form-check-input" type="checkbox"
+                                               formControlName="promotion_enabled" id="promotionEnabled">
+                                        <label class="form-check-label fw-bold text-uppercase small"
+                                               for="promotionEnabled">Plat en promotion</label>
                                     </div>
                                     <div class="row g-3" *ngIf="dishForm.get('promotion_enabled')?.value">
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold small text-uppercase">Remise (%)</label>
-                                            <input type="number" min="1" max="95" class="form-control rounded-0 border-2" formControlName="promotion_percent" placeholder="Ex: 20">
+                                            <input type="number" min="1" max="95"
+                                                   class="form-control rounded-0 border-2"
+                                                   formControlName="promotion_percent" placeholder="Ex: 20">
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold small text-uppercase">Fin de la promo</label>
-                                            <input type="date" class="form-control rounded-0 border-2" formControlName="promotion_ends_at">
+                                            <label class="form-label fw-bold small text-uppercase">Fin de la
+                                                promo</label>
+                                            <input type="date" class="form-control rounded-0 border-2"
+                                                   formControlName="promotion_ends_at">
                                         </div>
                                     </div>
                                 </div>
@@ -180,7 +188,7 @@
                     </button>
                     <button type="button" class="btn btn-secondary dish-action-btn fw-bold rounded-0 border border-2"
                             (click)="resetForm()">
-                        <i class="bi bi-x-circle me-1"></i>    ANNULER
+                        <i class="bi bi-x-circle me-1"></i> ANNULER
                     </button>
                 </div>
             </div>

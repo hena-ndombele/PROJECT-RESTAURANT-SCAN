@@ -35,7 +35,7 @@ class ReceiptPdfService
         $primary = $this->themeColor($order, 'primary', '#f97316');
         $logo = $this->logoImage($order);
         $tableLabel = $this->tableLabel($order);
-        $receiptUrl = $this->receiptAppUrl($order);
+        $restaurantUrl = $this->restaurantMenuUrl($order);
 
         $content = '';
         $content .= $this->rect(0, 760, 595, 82, '#111827');
@@ -96,20 +96,18 @@ class ReceiptPdfService
         }
 
         $content .= $this->line(38, 118, 557, 118, '#e5e7eb');
-        $content .= $this->drawQrCode($receiptUrl, 456, 36, 74);
+        $content .= $this->drawQrCode($restaurantUrl, 456, 36, 74);
         $content .= $this->text(52, 74, 11, 'Merci pour votre visite chez ' . $restaurantName . '.', 'F2', '#111827');
         $content .= $this->text(52, 54, 9, 'Reçu généré automatiquement par Restaurant Scan.', 'F1', '#6b7280');
 
         return $this->buildPdf($content, $logo);
     }
 
-    private function receiptAppUrl(Order $order): string
+    private function restaurantMenuUrl(Order $order): string
     {
         $baseUrl = rtrim(env('CLIENT_FRONTEND_URL', config('app.url')), '/');
         $params = [
             'restaurant_slug' => $order->restaurant?->slug,
-            'order_id' => $order->id,
-            'tracking_code' => $order->tracking_code,
         ];
 
         return $baseUrl . '/?' . http_build_query(array_filter($params));

@@ -127,45 +127,6 @@ function DishSizes({ sizes, compact = false }) {
   );
 }
 
-const staticPlats = [
-  {
-    id: 'demo-1',
-    name: 'Classic Smash Burger',
-    description: 'Double smashed patty, cheddar, caramelized onions, pickles and special sauce',
-    price: 14.99,
-    currency: 'USD',
-    preparation_time: 12,
-    ingredients: ['Spicy', 'Bestseller', 'Beef'],
-    sizes: ['small', 'medium', 'large'],
-    image_url: '/img/menu/1.jpg',
-    category: { id: 'burgers', name: 'Burgers' },
-  },
-  {
-    id: 'demo-2',
-    name: 'Truffle Mushroom Pizza',
-    description: 'Mozzarella, mushrooms, truffle oil and basil on a crispy artisan crust',
-    price: 18.99,
-    currency: 'USD',
-    preparation_time: 18,
-    ingredients: ['Vegetarian', 'Chef Pick', 'Italian'],
-    sizes: ['medium', 'large'],
-    image_url: '/img/menu/2.jpg',
-    category: { id: 'pizza', name: 'Pizza' },
-  },
-  {
-    id: 'demo-3',
-    name: 'Nashville Hot Chicken',
-    description: 'Crispy fried chicken glazed with Nashville spice and served with pickles',
-    price: 16.5,
-    currency: 'USD',
-    preparation_time: 16,
-    ingredients: ['Hot', 'Chicken', 'Crunchy'],
-    sizes: ['small', 'medium'],
-    image_url: '/img/menu/3.jpg',
-    category: { id: 'chicken', name: 'Fried Chicken' },
-  },
-];
-
 function useTableId() {
   return useMemo(() => new URLSearchParams(window.location.search).get('table_id'), []);
 }
@@ -325,14 +286,7 @@ export function App() {
         setMenuError(tableId
           ? (error.message || "Cette table n'est pas disponible pour commander.")
           : "Le menu backend n'est pas disponible pour le moment.");
-        setMenu(tableId ? { categories: [], plats: [] } : {
-          categories: [
-            { id: 'burgers', name: 'Burgers', plats_count: 1 },
-            { id: 'pizza', name: 'Pizza', plats_count: 1 },
-            { id: 'chicken', name: 'Fried Chicken', plats_count: 1 },
-          ],
-          plats: staticPlats,
-        });
+        setMenu({ categories: [], plats: [] });
         setSplashBrandLoaded(true);
       })
       .finally(() => {
@@ -1354,11 +1308,7 @@ function Marquee() {
 }
 
 function CategorySection({ categories, selectedCategory, onSelect }) {
-  const visible = categories.length ? categories : [
-    { id: 'burgers', name: 'Burgers', plats_count: 24 },
-    { id: 'pizza', name: 'Pizza', plats_count: 18 },
-    { id: 'chicken', name: 'Fried Chicken', plats_count: 15 },
-  ];
+  const visible = categories;
   return (
     <section id="category">
       <div className="container">
@@ -1456,8 +1406,8 @@ function MenuSection({ loading, error, scannedTable, tableId, categories, plats,
         {error && (
           <MenuStateCard
             icon="fa-circle-exclamation"
-            title="Menu temporaire"
-            message={`${error} Les plats de demonstration restent affiches.`}
+            title="Menu indisponible"
+            message={error}
           />
         )}
         {loading ? (

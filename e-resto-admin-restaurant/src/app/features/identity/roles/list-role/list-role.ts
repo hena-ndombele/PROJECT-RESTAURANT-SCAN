@@ -25,6 +25,7 @@ interface PermissionGroup {
   styleUrl: "./list-role.scss",
 })
 export class ListRole implements OnInit {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
   private roleService = inject(RoleService);
   private permissionService = inject(PermissionService);
   private permissionsService = inject(AppPermissionService);

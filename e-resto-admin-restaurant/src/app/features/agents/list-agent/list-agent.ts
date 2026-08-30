@@ -25,6 +25,7 @@ import {RestaurantPlanUsage} from "../../../models/saas/saas.models";
   standalone:true
 })
 export class ListAgent {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
   private agentService = inject(AgentService);
   private permissions = inject(AppPermissionService);
   private saasService = inject(SaasService);

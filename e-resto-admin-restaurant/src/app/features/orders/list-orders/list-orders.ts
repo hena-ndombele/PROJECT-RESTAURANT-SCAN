@@ -25,6 +25,7 @@ import { STORAGE_ROOT } from "../../../services/api-url";
     styleUrl: "./list-orders.scss"
 })
 export class ListOrders implements OnInit, OnDestroy {
+    readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
     private readonly realtime = inject(OrderRealtimeService);
     private readonly permissions = inject(AppPermissionService);
     private readonly route = inject(ActivatedRoute);
@@ -479,8 +480,8 @@ export class ListOrders implements OnInit, OnDestroy {
         const customer = this.escapeReceiptText(order.customer_name || order.pickup_name || order.customer_phone || order.pickup_phone || "Client QR");
         const table = this.escapeReceiptText(order.table?.name || "Table inconnue");
         const orderCode = this.escapeReceiptText(order.tracking_code || order.id.slice(0, 8).toUpperCase());
-        const trackingUrl = this.receiptTrackingUrl(order, restaurant);
-        const qrCodeUrl = this.receiptQrCodeUrl(trackingUrl);
+        const restaurantUrl = this.receiptRestaurantUrl(restaurant);
+        const qrCodeUrl = this.receiptQrCodeUrl(restaurantUrl);
         const rows = (order.items || []).map((item) => `
             <tr>
                 <td class="item-name">${this.escapeReceiptText(item.plat?.name || "Plat")}</td>
@@ -637,9 +638,8 @@ export class ListOrders implements OnInit, OnDestroy {
                     <div class="row"><span>Monnaie</span><span>${this.formatCurrency(change, order.currency)}</span></div>
                     <div class="credit">PAYE: ${this.formatCurrency(this.orderTotal(order), order.currency)}</div>
                     <div class="qr-box">
-                        <img src="${this.escapeReceiptText(qrCodeUrl)}" alt="QR code suivi commande">
-                        <span>Scanner pour suivre la commande</span>
-                        <small>${orderCode}</small>
+                        <img src="${this.escapeReceiptText(qrCodeUrl)}" alt="QR code du restaurant">
+                        <span>Scanner pour ouvrir notre menu</span>
                     </div>
                     <p class="thanks">Merci pour votre visite !</p>
                 </div>
@@ -691,22 +691,12 @@ export class ListOrders implements OnInit, OnDestroy {
         return `${STORAGE_ROOT}/${path}`;
     }
 
-    private receiptTrackingUrl(order: Order, restaurant: any): string {
+    private receiptRestaurantUrl(restaurant: any): string {
         const url = new URL(window.location.origin.replace(":4200", ":5173"));
         const restaurantSlug = restaurant?.slug || restaurant?.settings?.slug;
 
         if (restaurantSlug) {
             url.searchParams.set("restaurant_slug", String(restaurantSlug));
-        }
-
-        if (order.table_id) {
-            url.searchParams.set("table_id", order.table_id);
-        }
-
-        url.searchParams.set("order_id", order.id);
-
-        if (order.tracking_code) {
-            url.searchParams.set("tracking_code", order.tracking_code);
         }
 
         return url.toString();
@@ -731,7 +721,7 @@ export class ListOrders implements OnInit, OnDestroy {
         const received = Number(metadata.received_amount ?? this.cashReceivedAmount() ?? order.total_amount ?? 0);
         const change = Number(metadata.change_amount ?? Math.max(0, received - this.orderTotal(order)));
         const restaurant = this.currentRestaurantFromStorage();
-        const qrCodeUrl = this.receiptQrCodeUrl(this.receiptTrackingUrl(order, restaurant));
+        const qrCodeUrl = this.receiptQrCodeUrl(this.receiptRestaurantUrl(restaurant));
         const rows = (order.items || []).map((item) => `
             <tr>
                 <td>${item.plat?.name || "Plat"}</td>
@@ -780,8 +770,8 @@ export class ListOrders implements OnInit, OnDestroy {
                     <div><span>Paiement</span><span>Cash</span></div>
                 </div>
                 <div class="qr">
-                    <img src="${this.escapeReceiptText(qrCodeUrl)}" alt="QR code suivi commande">
-                    <span>Scanner pour suivre la commande</span>
+                    <img src="${this.escapeReceiptText(qrCodeUrl)}" alt="QR code du restaurant">
+                    <span>Scanner pour ouvrir notre menu</span>
                 </div>
                 <p class="muted">Merci pour votre visite.</p>
                 <script>window.onload = function(){ window.print(); }</script>

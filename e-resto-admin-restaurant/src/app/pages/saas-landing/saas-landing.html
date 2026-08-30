@@ -252,3 +252,24 @@
     </div>
   </footer>
 </main>
+
+@if (installPromptOpen) {
+  <aside class="landing-install-card" role="dialog" aria-modal="false" aria-labelledby="landingInstallTitle">
+    <button type="button" class="landing-install-close" aria-label="Fermer" (click)="dismissInstallPrompt()">×</button>
+    <div class="landing-install-icon"><i class="bi bi-download"></i></div>
+    <div class="landing-install-copy">
+      <h2 id="landingInstallTitle">Installer Restaurant Scan</h2>
+      <p>Accès rapide depuis votre écran d'accueil, même hors connexion.</p>
+      @if (iosInstallHelp && !installAvailable) {
+        <div class="landing-install-ios"><span><i class="bi bi-box-arrow-up"></i> Appuyez sur Partager</span><span><i class="bi bi-plus-square"></i> Puis « Sur l'écran d'accueil »</span></div>
+      }
+      @if (manualInstallHelp && !iosInstallHelp && !installAvailable) {
+        <div class="landing-install-ios"><span><i class="bi bi-display"></i> Cliquez sur l'icône Installer dans la barre d'adresse de votre navigateur.</span></div>
+      }
+      <div class="landing-install-actions">
+        <button type="button" class="landing-install-primary" (click)="installApp()">{{ !installAvailable ? 'Comment installer' : 'Installer' }}</button>
+        <button type="button" class="landing-install-later" (click)="dismissInstallPrompt()">Plus tard</button>
+      </div>
+    </div>
+  </aside>
+}

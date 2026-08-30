@@ -43,18 +43,28 @@ class SaasController extends Controller
     public function overview()
     {
         $this->ensureDefaultPlans();
+        $restaurantMetrics = Restaurant::query()
+            ->leftJoin('saas_plans', 'saas_plans.id', '=', 'restaurants.saas_plan_id')
+            ->selectRaw("COUNT(*) as total")
+            ->selectRaw("SUM(restaurants.status IN ('active', 'trial')) as active_count")
+            ->selectRaw("SUM(restaurants.status = 'trial') as trial_count")
+            ->selectRaw("SUM(restaurants.status = 'past_due') as past_due_count")
+            ->selectRaw("SUM(LOWER(COALESCE(saas_plans.slug, '')) LIKE '%starter%' OR LOWER(COALESCE(saas_plans.name, '')) LIKE '%starter%') as starter_count")
+            ->selectRaw("SUM(LOWER(COALESCE(saas_plans.slug, '')) LIKE '%pro%' OR LOWER(COALESCE(saas_plans.name, '')) LIKE '%pro%') as pro_count")
+            ->selectRaw("SUM(LOWER(COALESCE(saas_plans.slug, '')) LIKE '%business%' OR LOWER(COALESCE(saas_plans.name, '')) LIKE '%business%') as business_count")
+            ->first();
 
         return response()->json([
             'metrics' => [
-                'restaurants' => Restaurant::count(),
+                'restaurants' => (int) ($restaurantMetrics->total ?? 0),
                 'plan_counts' => [
-                    'starter' => $this->countRestaurantsForPlan('starter'),
-                    'pro' => $this->countRestaurantsForPlan('pro'),
-                    'business' => $this->countRestaurantsForPlan('business'),
+                    'starter' => (int) ($restaurantMetrics->starter_count ?? 0),
+                    'pro' => (int) ($restaurantMetrics->pro_count ?? 0),
+                    'business' => (int) ($restaurantMetrics->business_count ?? 0),
                 ],
-                'active_restaurants' => Restaurant::whereIn('status', ['active', 'trial'])->count(),
-                'trial_restaurants' => Restaurant::where('status', 'trial')->count(),
-                'past_due_restaurants' => Restaurant::where('status', 'past_due')->count(),
+                'active_restaurants' => (int) ($restaurantMetrics->active_count ?? 0),
+                'trial_restaurants' => (int) ($restaurantMetrics->trial_count ?? 0),
+                'past_due_restaurants' => (int) ($restaurantMetrics->past_due_count ?? 0),
                 'monthly_revenue' => (float) Payment::where('type', 'subscription')
                     ->where('status', 'paid')
                     ->whereMonth('paid_at', now()->month)
@@ -172,6 +182,7 @@ class SaasController extends Controller
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
             'saas_plan_id' => 'required|string|max:80',
+            'logo_data' => ['required', 'string', 'max:7000000', 'regex:/^data:image\/(png|jpe?g|webp);base64,/'],
         ], [
             'restaurant_name.required' => 'Le nom du restaurant est obligatoire.',
             'owner_name.required' => 'Le nom du propriétaire est obligatoire.',
@@ -184,6 +195,9 @@ class SaasController extends Controller
             'password.confirmed' => 'Les mots de passe ne correspondent pas.',
             'saas_plan_id.required' => 'Choisissez un plan avant de creer le compte.',
             'saas_plan_id.string' => 'Le plan selectionne est invalide. Revenez depuis la page Tarifs.',
+            'logo_data.required' => 'Le logo du restaurant est obligatoire.',
+            'logo_data.regex' => 'Le logo doit etre une image PNG, JPG ou WebP valide.',
+            'logo_data.max' => 'Le logo ne doit pas depasser 5 Mo.',
         ]);
 
         $plan = $this->resolveSignupPlan($validated['saas_plan_id']);
@@ -230,6 +244,10 @@ class SaasController extends Controller
                 ],
             ]);
 
+            $restaurant->update([
+                'logo' => $this->storeRestaurantLogo($validated['logo_data'], $restaurant->id),
+            ]);
+
             $user = User::create([
                 'restaurant_id' => $restaurant->id,
                 'first_name' => $firstName,
@@ -258,7 +276,7 @@ class SaasController extends Controller
             Otp::where('user_id', $user->id)->delete();
             Otp::create([
                 'user_id' => $user->id,
-                'code' => $otpCode,
+                'code' => Hash::make((string) $otpCode),
                 'expires_at' => now()->addMinutes(5),
             ]);
 
@@ -602,9 +620,13 @@ class SaasController extends Controller
             'commune' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:2',
             'currency' => 'nullable|string|in:USD,CDF',
+            'logo_data' => ['nullable', 'string', 'max:7000000', 'regex:/^data:image\/(png|jpe?g|webp);base64,/'],
         ]);
 
         $businessOwnerId = $this->businessOwnerId($request->user());
+        $mainRestaurant = $this->businessRestaurantQuery($request->user())
+            ->orderBy('created_at')
+            ->first() ?? $currentRestaurant;
         $restaurant = Restaurant::create([
             'name' => $validated['name'],
             'slug' => $this->uniqueRestaurantSlug($validated['name']),
@@ -624,6 +646,17 @@ class SaasController extends Controller
             'subscription_ends_at' => $currentRestaurant->subscription_ends_at,
             'settings' => $this->defaultRestaurantSettings(),
         ]);
+
+        if (!empty($validated['logo_data'])) {
+            $restaurant->update([
+                'logo' => $this->storeRestaurantLogo($validated['logo_data'], $restaurant->id),
+            ]);
+        } elseif ($mainRestaurant->logo && Storage::disk('public')->exists($mainRestaurant->logo)) {
+            $extension = pathinfo($mainRestaurant->logo, PATHINFO_EXTENSION) ?: 'png';
+            $logoPath = "restaurants/{$restaurant->id}/logo-" . Str::random(8) . ".{$extension}";
+            Storage::disk('public')->copy($mainRestaurant->logo, $logoPath);
+            $restaurant->update(['logo' => $logoPath]);
+        }
 
         if ($currentRestaurant->plan) {
             RestaurantSubscription::create([
@@ -1101,7 +1134,7 @@ class SaasController extends Controller
 
     public function restaurants(Request $request)
     {
-        $query = Restaurant::with(['plan', 'subscription', 'users'])
+        $query = Restaurant::with(['plan', 'subscription'])
             ->withCount(['users', 'tables', 'orders'])
             ->withSum(['payments as subscription_revenue' => function ($query) {
                 $query->where('type', 'subscription')->where('status', 'paid');

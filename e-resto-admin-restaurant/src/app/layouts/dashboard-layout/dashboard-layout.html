@@ -109,6 +109,7 @@
                 </li>
             }
 
+            <!-- Bouton de changement de langue temporairement désactivé.
             <li class="nav-item d-none d-lg-flex">
                 <div class="language-toggle" [class.active-fr]="currentLang === 'fr'" (click)="switchLanguage()">
                     <div class="toggle-track">
@@ -121,6 +122,7 @@
                     </div>
                 </div>
             </li>
+            -->
 
             <li class="nav-item">
                 <button class="btn btn-icon btn-sm rounded-circle shadow-sm theme-toggle-btn"
@@ -266,7 +268,7 @@
             </div>
             <span class="sidebar-restaurant-text ms-2">
                 <strong>{{ restaurantData.name || 'Restaurant Scan' }}</strong>
-                <small>{{ restaurantData.city || 'Restaurant Scan' }}</small>
+                <small>{{ restaurantData.city || restaurantData.name }}</small>
             </span>
         </a>
     </div>
@@ -638,6 +640,17 @@
                             <option value="CDF">CDF</option>
                             <option value="USD">USD</option>
                         </select>
+                    </label>
+                    <label class="business-logo-field">
+                        <span>Logo du restaurant</span>
+                        <div class="business-logo-upload">
+                            <img [src]="businessRestaurantLogoPreview || restaurantData.logo" alt="Aperçu du logo">
+                            <div>
+                                <input type="file" accept="image/png,image/jpeg,image/webp"
+                                       (change)="onBusinessRestaurantLogoSelected($event)">
+                                <small>Facultatif. Sans image, le logo du restaurant principal sera utilisé.</small>
+                            </div>
+                        </div>
                     </label>
                 </div>
 

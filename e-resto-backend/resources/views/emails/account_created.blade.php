@@ -29,12 +29,12 @@
                             </table>
 
                             <p style="margin:0 0 20px;color:#374151;line-height:1.7;">Pour proteger votre restaurant, changez ce mot de passe lors de votre premiere connexion.</p>
-                            <a href="{{ config('app.frontend_url', config('app.url')) }}" style="display:inline-block;padding:14px 20px;border-radius:10px;background:{{ $primaryColor }};color:#111827;text-decoration:none;font-weight:700;">Se connecter</a>
+                            <a href="{{ rtrim(config('app.frontend_url'), '/') }}/restaurant/login" style="display:inline-block;padding:14px 20px;border-radius:10px;background:{{ $primaryColor }};color:#111827;text-decoration:none;font-weight:700;">Se connecter</a>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding:18px 28px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.6;">
-                            &copy; {{ date('Y') }} {{ $restaurant?->name ?? 'Restaurant Scan' }}. Cet email confirme la creation de votre acces.
+                            &copy; {{ date('Y') }} {{ $restaurant?->name ?? 'Restaurant Scan' }}. Cet email confirme la création de votre accès.
                         </td>
                     </tr>
                 </table>

@@ -29,6 +29,7 @@ import {RestaurantSettings} from "./pages/restaurant-settings/restaurant-setting
 import {RestaurantSubscription} from "./pages/restaurant-subscription/restaurant-subscription";
 import {Otp} from "./features/auth/otp/otp";
 import {EmployeeVerify} from "./pages/employee-verify/employee-verify";
+import {AccessDeniedPageComponent} from "./pages/access-denied/access-denied-page";
 
 export const routes: Routes = [
 
@@ -39,6 +40,7 @@ export const routes: Routes = [
   { path: 'restaurant/login', component: RestaurantLogin, title: 'Connexion restaurant - Restaurant Scan' },
   { path: 'auth/otp', component: Otp, title: 'Vérification OTP - Restaurant Scan' },
   { path: 'employee/verify/:id', component: EmployeeVerify, title: 'Vérification badge employé - Restaurant Scan' },
+  { path: 'access-denied', component: AccessDeniedPageComponent, title: 'Aucune permission - Restaurant Scan' },
 
   {
     path: '',

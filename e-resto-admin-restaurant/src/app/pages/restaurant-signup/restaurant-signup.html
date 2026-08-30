@@ -82,6 +82,18 @@
               </label>
 
               <label>
+                <span>Logo du restaurant *</span>
+                <div class="signup-logo-upload">
+                  <img *ngIf="logoPreview" [src]="logoPreview" alt="Aperçu du logo">
+                  <div *ngIf="!logoPreview" class="signup-logo-placeholder"><i class="bi bi-image"></i></div>
+                  <div>
+                    <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" (change)="onLogoSelected($event)" required>
+                    <small>PNG, JPG ou WebP, 5 Mo maximum.</small>
+                  </div>
+                </div>
+              </label>
+
+              <label>
                 <span>Nom du propriétaire *</span>
                 <input [(ngModel)]="account.owner_name" name="owner_name" placeholder="Nom Propriétaire" autocomplete="name" required>
               </label>

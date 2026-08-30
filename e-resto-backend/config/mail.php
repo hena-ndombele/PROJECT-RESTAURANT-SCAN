@@ -115,4 +115,9 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    'no_reply' => [
+        'address' => env('MAIL_NO_REPLY_ADDRESS', 'no-reply@restaurascan.com'),
+        'name' => env('MAIL_NO_REPLY_NAME', 'Ne pas répondre - Restaurant Scan'),
+    ],
+
 ];

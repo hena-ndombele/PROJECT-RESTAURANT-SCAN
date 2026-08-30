@@ -8,7 +8,7 @@
         <div>
           <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
-              <li class="breadcrumb-item">Restaurant Scan</li>
+              <li class="breadcrumb-item">{{ restaurantName }}</li>
               <li class="breadcrumb-item active text-primary">UTILISATEURS</li>
             </ol>
           </nav>
@@ -40,7 +40,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
           <div class="input-group">
             <span class="input-group-text bg-transparent border-end-0 text-muted"><i class="bi bi-search"></i></span>
             <input type="text" class="form-control border-start-0 ps-0 bg-transparent"
-                   placeholder="Rechercher par nom, e-mail ou tÃ©lÃ©phone..." (input)="onSearch($event)">
+                   placeholder="Rechercher par nom, e-mail ou téléphone..." (input)="onSearch($event)">
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
           <th class="ps-4 py-3 text-muted text-uppercase small fw-bold" style="width: 80px">#</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Utilisateurs</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Contact</th>
-          <th class="py-3 text-muted text-uppercase small fw-bold">RÃ´les</th>
+          <th class="py-3 text-muted text-uppercase small fw-bold">Rôles</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Dates</th>
           <th class="py-3 text-muted text-uppercase small fw-bold text-center">Actions</th>
         </tr>
@@ -65,7 +65,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
             <tr>
               <td colspan="6" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-3 text-muted fw-medium">RÃ©cupÃ©ration des donnÃ©es...</p>
+                <p class="mt-3 text-muted fw-medium">Récupération des données...</p>
               </td>
             </tr>
           } @else {
@@ -88,7 +88,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
                       }
                     </div>
                   } @else {
-                    <span class="text-muted small">Aucun rÃ´le</span>
+                    <span class="text-muted small">Aucun rôle</span>
                   }
                 </td>
                 <td>
@@ -175,7 +175,7 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
             {{ selectedUser() ? 'Modifier Utilisateur' : 'Ajouter Utilisateur' }}
           </h5>
           <p class="mb-0 text-muted small">
-            {{ selectedUser() ? 'Modifier le compte et les rÃ´les' : 'SÃ©lectionner un employÃ© et son rÃ´le' }}
+            {{ selectedUser() ? 'Modifier le compte et les rôles' : 'Sélectionner un employé et son rôle' }}
           </p>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -184,9 +184,9 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
         <form [formGroup]="userForm" id="userForm" (ngSubmit)="saveUser()">
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label">Utilisateur / EmployÃ© <span class="text-danger">*</span></label>
+                <label class="form-label">Utilisateur / Employé <span class="text-danger">*</span></label>
                 <select class="form-select" formControlName="agent_id" (change)="onAgentSelected($event)">
-                  <option value="">SÃ©lectionner un employÃ©</option>
+                  <option value="">Sélectionner un employé</option>
                   @for (agent of selectedUser() ? agents() : availableAgents(); track agent.id) {
                     <option [value]="agent.id">{{ agent.email }}</option>
                   }
@@ -194,15 +194,15 @@ Gérer vos utilisateurs ({{ totalUserCount() }})</h1>
               </div>
 
               <div class="col-md-6 mb-3">
-                <label class="form-label">RÃ´le <span class="text-danger">*</span></label>
+                <label class="form-label">Rôle <span class="text-danger">*</span></label>
                 <select class="form-select" formControlName="role_name">
-                  <option value="">Selectionner un rÃ´le</option>
+                  <option value="">Selectionner un rôle</option>
                   @for (role of roles(); track role.id) {
                     <option [value]="role.name">{{ role.name }}</option>
                   }
                 </select>
                 @if (roles().length === 0) {
-                  <small class="text-danger">Aucun rÃ´le disponible. CrÃ©ez d'abord un rÃ´le dans le menu RÃ´le.</small>
+                  <small class="text-danger">Aucun rôle disponible. Créez d'abord un rôle dans le menu Rôle.</small>
                 }
               </div>
             </div>

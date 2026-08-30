@@ -27,6 +27,7 @@ import {AppPermissionService} from "../../../services/auth/permission-service";
     standalone: true
 })
 export class ListTable implements OnInit {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
     private tableService = inject(TableService);
     private saasService = inject(SaasService);
     private permissions = inject(AppPermissionService);

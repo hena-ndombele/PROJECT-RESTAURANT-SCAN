@@ -21,7 +21,7 @@ return new class extends Migration
                   ->constrained('users')
                   ->onDelete('cascade');
 
-            $table->string('code', 6); // Passage à 6 caractères (plus standard)
+            $table->string('code', 255);
             $table->timestamp('expires_at');
             $table->timestamps();
         });

@@ -38,7 +38,7 @@ export class AuthGuard implements CanActivate {
     const fallback = this.fallbackRoutes.find((item) =>
       item.path !== state.url && this.permissions.has(item.permission)
     );
-    this.router.navigate([fallback?.path ?? '/404-error']);
+    this.router.navigate([fallback?.path ?? '/access-denied']);
     return false;
   }
 }

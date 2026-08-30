@@ -265,7 +265,7 @@ class TableController extends Controller
             $query['restaurant_slug'] = $slug;
         }
 
-        return rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.69:5173'), '/') . '/?' . http_build_query($query);
+        return rtrim(env('CLIENT_FRONTEND_URL', 'http://192.168.1.67:5173'), '/') . '/?' . http_build_query($query);
     }
 
     private function generateTableQrCode(Table $table, string $url): string
@@ -305,4 +305,3 @@ class TableController extends Controller
         return str_replace('</svg>', $logo . '</svg>', $svg);
     }
 }
-

@@ -33,6 +33,7 @@ type Feedback = FeedbackRealtimeDto & {
   standalone:true
 })
 export class ListFeedback implements OnInit, OnDestroy {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
   private readonly http = inject(HttpClient);
   private readonly realtime = inject(OrderRealtimeService);
   private feedbackSubscription?: Subscription;

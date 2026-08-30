@@ -217,6 +217,41 @@ select:focus {
   box-shadow: 0 0 0 4px rgba(255, 122, 26, .14);
 }
 
+.signup-logo-upload {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.signup-logo-upload img,
+.signup-logo-placeholder {
+  width: 72px;
+  height: 72px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.signup-logo-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--orange);
+  font-size: 1.5rem;
+}
+
+.signup-logo-upload input[type='file'] {
+  min-height: auto;
+  padding: 10px;
+}
+
+.signup-logo-upload small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
+
 .password-field {
   position: relative;
 }

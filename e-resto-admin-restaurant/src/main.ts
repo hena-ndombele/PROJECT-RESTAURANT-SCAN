@@ -7,15 +7,6 @@ bootstrapApplication(App, appConfig).catch(() => {});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-
-    if (isLocalHost) {
-      navigator.serviceWorker.getRegistrations()
-        .then((registrations) => registrations.forEach((registration) => registration.unregister()))
-        .catch(() => undefined);
-      return;
-    }
-
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }

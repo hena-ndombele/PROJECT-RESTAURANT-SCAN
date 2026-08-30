@@ -17,7 +17,7 @@ class AdminUserSeeder extends Seeder
         ]);
 
         // Keep the platform administrator separate from every restaurant account.
-        $admin = User::firstOrCreate(
+        $admin = User::updateOrCreate(
             ['email' => env('ADMIN_EMAIL', 'henandombele8@gmail.com')],
             [
                 'first_name' => 'Hena',
@@ -25,12 +25,11 @@ class AdminUserSeeder extends Seeder
                 'phone_number' => '0000000000',
                 'address' => 'Kinshasa',
                 'password' => bcrypt(env('ADMIN_PASSWORD', 'admin1234*')),
+                'restaurant_id' => null,
             ]
         );
 
-        if (!$admin->restaurant_id && !$admin->hasRole('admin')) {
-            $admin->assignRole($role);
-        }
+        $admin->syncRoles([$role]);
 
         $role->syncPermissions(Permission::pluck('name')->all());
     }

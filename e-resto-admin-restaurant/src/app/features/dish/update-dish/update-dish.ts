@@ -18,6 +18,7 @@ import { SaasService } from "../../../services/saas/saas-service";
     styleUrl: "./update-dish.scss",
 })
 export class UpdateDish implements OnInit, OnDestroy {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
     dishForm!: FormGroup;
     ingredients: string[] = [];
     selectedSizes: string[] = [];

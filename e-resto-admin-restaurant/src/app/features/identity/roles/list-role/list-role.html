@@ -8,7 +8,7 @@
         <div>
           <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1 small uppercase fw-bold text-muted">
-              <li class="breadcrumb-item">Restaurant Scan</li>
+              <li class="breadcrumb-item">{{ restaurantName }}</li>
               <li class="breadcrumb-item active text-primary">ROLES</li>
             </ol>
           </nav>
@@ -26,7 +26,7 @@
               [attr.data-bs-toggle]="roleLimitReached() ? null : 'modal'"
               [attr.data-bs-target]="roleLimitReached() ? null : '#roleModal'"
               (click)="openCreate()">
-        <i class="ti ti-plus me-1"></i> CrÃ©er un rÃ´le
+        <i class="ti ti-plus me-1"></i> Créer un rôle
       </button>
       }
     </div>
@@ -41,7 +41,7 @@
               <i class="bi bi-search"></i>
             </span>
             <input type="text" class="form-control border-start-0 ps-0 bg-transparent"
-                   placeholder="Rechercher par rÃ´le ou permission..." (input)="onSearch($event)">
+                   placeholder="Rechercher par rôle ou permission..." (input)="onSearch($event)">
           </div>
         </div>
       </div>
@@ -54,7 +54,7 @@
         <thead class="bg-light border-bottom">
         <tr>
           <th class="ps-4 py-3 text-muted text-uppercase small fw-bold" style="width: 80px">#</th>
-          <th class="py-3 text-muted text-uppercase small fw-bold">RÃ´le</th>
+          <th class="py-3 text-muted text-uppercase small fw-bold">Rôle</th>
           <th class="py-3 text-muted text-uppercase small fw-bold">Dates</th>
           <th class="py-3 text-muted text-uppercase small fw-bold text-center">Actions</th>
         </tr>
@@ -64,7 +64,7 @@
             <tr>
               <td colspan="4" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-3 text-muted fw-medium">RÃ©cupÃ©ration de donnÃ©es...</p>
+                <p class="mt-3 text-muted fw-medium">Récupération de données...</p>
               </td>
             </tr>
           } @else {
@@ -143,19 +143,19 @@
       <div class="modal-header">
         <div>
           <h5 class="modal-title fs-3 mb-1 fw-bolder" id="roleModalLabel">
-            {{ selectedRole() ? 'Mettre Ã  jour le rÃ´le' : 'CrÃ©er un rÃ´le' }}
+            {{ selectedRole() ? 'Mettre à jour le rôle' : 'Créer un rôle' }}
           </h5>
-          <p class="mb-0 text-muted small">GÃ©rer les rÃ´les et les autorisations</p>
+          <p class="mb-0 text-muted small">Gérer les rôles et les autorisations</p>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-4">
         <form [formGroup]="roleForm" id="roleForm" (ngSubmit)="saveRole()">
           <div class="mb-3">
-            <label class="form-label">Nom du rÃ´le <span class="text-danger">*</span></label>
+            <label class="form-label">Nom du rôle <span class="text-danger">*</span></label>
             <input type="text" class="form-control" formControlName="name" placeholder="manager">
             @if (roleForm.controls.name.invalid && roleForm.controls.name.touched) {
-              <small class="text-danger">Le nom du rÃ´le est requis.</small>
+              <small class="text-danger">Le nom du rôle est requis.</small>
             }
           </div>
           <label class="form-label">Permissions</label>
@@ -216,7 +216,7 @@
           } @else {
             <i class="bi bi-check-circle me-1"></i>
           }
-        Enregistrer le rÃ´le
+        Enregistrer le rôle
         </button>
       </div>
     </div>

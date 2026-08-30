@@ -43,7 +43,7 @@ class AuthController extends Controller
         Otp::where('user_id', $user->id)->delete();
         Otp::create([
             'user_id' => $user->id,
-            'code' => $otpCode,
+            'code' => Hash::make((string) $otpCode),
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
 
@@ -77,9 +77,9 @@ class AuthController extends Controller
         }
 
         $otp = Otp::where('user_id', $user->id)
-            ->where('code', $request->otp)
             ->where('expires_at', '>=', Carbon::now())
-            ->first();
+            ->get()
+            ->first(fn (Otp $candidate) => Hash::check((string) $request->otp, $candidate->code));
 
         if (!$otp) {
             return response()->json(['message' => 'OTP invalide ou expire'], 400);
@@ -123,7 +123,7 @@ class AuthController extends Controller
         Otp::where('user_id', $user->id)->delete();
         Otp::create([
             'user_id' => $user->id,
-            'code' => $otpCode,
+            'code' => Hash::make((string) $otpCode),
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
 
@@ -148,9 +148,9 @@ class AuthController extends Controller
         }
 
         $otp = Otp::where('user_id', $user->id)
-            ->where('code', $request->otp)
             ->where('expires_at', '>=', Carbon::now())
-            ->first();
+            ->get()
+            ->first(fn (Otp $candidate) => Hash::check((string) $request->otp, $candidate->code));
 
         if (!$otp) {
             return response()->json(['message' => 'OTP invalide ou expire.'], 400);
@@ -266,7 +266,7 @@ class AuthController extends Controller
         Otp::where('user_id', $user->id)->delete();
         Otp::create([
             'user_id' => $user->id,
-            'code' => $otpCode,
+            'code' => Hash::make((string) $otpCode),
             'expires_at' => Carbon::now()->addMinutes(5),
         ]);
 
@@ -419,8 +419,8 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => $mailSent
-                ? 'Mot de passe reinitialise. Un email a ete envoye a l utilisateur.'
-                : 'Mot de passe reinitialise, mais l email n a pas pu etre envoye.',
+                ? 'Mot de passe reinitialisé. Un email a été envoyé à l\' utilisateur.'
+                : 'Mot de passe reinitialisé, mais l\' email n\' a pas pu être envoyé.',
             'temporary_password' => $temporaryPassword,
             'mail_sent' => $mailSent,
             'data' => $user->fresh(['roles.permissions', 'agent']),

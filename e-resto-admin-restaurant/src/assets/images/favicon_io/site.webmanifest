@@ -2,7 +2,7 @@
   "name": "Restaurant Scan",
   "short_name": "Restaurant Scan",
   "description": "Espace restaurant pour gerer menu QR, commandes, tables et revenus.",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#111318",

@@ -16,6 +16,7 @@ import { AppPermissionService } from "../../../services/auth/permission-service"
   styleUrl: "./list-category.scss",
 })
 export class ListCategory implements OnInit {
+  readonly restaurantName = JSON.parse(localStorage.getItem("restaurant_session") || "null")?.name || "Restaurant Scan";
   private categoryService = inject(CategoryService);
   private permissions = inject(AppPermissionService);
   readonly storageRoot = STORAGE_ROOT;

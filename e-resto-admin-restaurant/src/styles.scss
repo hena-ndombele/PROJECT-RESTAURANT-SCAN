@@ -689,6 +689,11 @@ body.dashboard-dark-theme .business-limit-text { color: #c2410c !important; }
 .business-modal-grid span { color: #64748b; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
 .business-modal-grid input, .business-modal-grid select { width: 100%; height: 42px; border: 1px solid #dbe2ea; border-radius: 8px; padding: 0 12px; color: #111827; background: #fff; font-size: 13px; outline: none; }
 .business-modal-grid input:focus, .business-modal-grid select:focus { border-color: var(--dashboard-primary, #ff7a1a); box-shadow: 0 0 0 3px rgba(var(--dashboard-primary-rgb, 255, 122, 26), .12); }
+.business-modal-grid .business-logo-field { grid-column: 1 / -1; }
+.business-logo-upload { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 12px; }
+.business-logo-upload img { width: 64px; height: 64px; border: 1px solid #dbe2ea; border-radius: 8px; object-fit: contain; background: #fff; }
+.business-modal-grid .business-logo-upload input[type='file'] { height: auto; padding: 8px; }
+.business-logo-upload small { display: block; margin-top: 4px; color: #64748b; font-size: 11px; line-height: 1.35; }
 .business-modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 22px 22px; }
 .business-modal-actions button { height: 44px; border-radius: 8px; font-weight: 900; }
 .business-modal-actions .secondary { border: 1px solid #dbe2ea; color: #475569; background: #fff; }
